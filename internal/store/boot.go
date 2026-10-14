@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
 )
 
 // BootOutcome is how a boot ended, "" while it can still be resumed.

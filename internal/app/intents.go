@@ -8,12 +8,12 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
-	"deadcases/internal/screens"
-	"deadcases/internal/screens/meta"
-	"deadcases/internal/screens/reader"
-	"deadcases/internal/store"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
+	"katharsis/internal/screens"
+	"katharsis/internal/screens/meta"
+	"katharsis/internal/screens/reader"
+	"katharsis/internal/store"
 )
 
 // intent handles navigation messages; ok is false for anything else.

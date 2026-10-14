@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/judge"
-	"deadcases/internal/problem"
+	"katharsis/internal/judge"
+	"katharsis/internal/problem"
 )
 
 var (
@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 	// Compile caches binaries (and SampleProfile its probe) under
 	// os.UserCacheDir, which is $HOME/Library/Caches on macOS. Point HOME at a
 	// scratch dir so every run starts cold and the real cache is left alone.
-	home, err := os.MkdirTemp("", "deadcases-judge-test-")
+	home, err := os.MkdirTemp("", "katharsis-judge-test-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -649,7 +649,7 @@ func TestJudgeCancelled(t *testing.T) {
 // still parked.
 func TestJudgeMissingCompiler(t *testing.T) {
 	old := judge.Compiler
-	judge.Compiler = "deadcases-no-such-compiler"
+	judge.Compiler = "katharsis-no-such-compiler"
 	defer func() { judge.Compiler = old }()
 	var evs []judge.Event
 	judge.Judge(context.Background(), load(t, "ab.cpp", []testFile{{"1", "1 2\n", "3\n"}}), judge.Full, quick,

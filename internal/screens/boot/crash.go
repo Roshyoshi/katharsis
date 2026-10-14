@@ -8,8 +8,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"deadcases/internal/game"
-	"deadcases/internal/screens"
+	"katharsis/internal/game"
+	"katharsis/internal/screens"
 )
 
 // revealTime is how long the panic takes to print. Long enough to read as
@@ -181,7 +181,7 @@ func (c *Crash) elements(width, height int) [][]string {
 	head = append(head,
 		dline{at: up, text: fmt.Sprintf("Kernel panic - not syncing: %s in %q", reason, title), style: sRed.Bold(true)},
 		dline{at: up, text: "CPU: 0 PID: 1 Comm: you " + taint(cr.Door)},
-		dline{at: up, text: fmt.Sprintf("Hardware name: dead-cases %s, preset %s, seed %x",
+		dline{at: up, text: fmt.Sprintf("Hardware name: katharsis %s, preset %s, seed %x",
 			prestigeLabel(st.Prestige), st.Rules.Name, st.Seed)},
 	)
 	if mods := modules(st); mods != "" {

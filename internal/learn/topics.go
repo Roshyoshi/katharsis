@@ -4,7 +4,7 @@ import (
 	"maps"
 	"strings"
 
-	"deadcases/internal/catalog"
+	"katharsis/internal/catalog"
 )
 
 // moduleTopics maps every module in the guide's ordering.ts (snapshot of

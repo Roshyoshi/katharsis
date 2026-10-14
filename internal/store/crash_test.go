@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/game"
-	"deadcases/internal/store"
+	"katharsis/internal/game"
+	"katharsis/internal/store"
 )
 
 // snapshot is everything a reader can see, for before/after comparisons.
@@ -111,7 +111,7 @@ func TestCheckpointFault(t *testing.T) {
 	}
 }
 
-const killEnv = "DEADCASES_STORE_KILL_DB"
+const killEnv = "KATHARSIS_STORE_KILL_DB"
 
 // TestKillMidCheckpoint SIGKILLs a process inside a Checkpoint transaction,
 // after SQLite has spilled uncommitted pages into the WAL file, then checks
@@ -392,7 +392,7 @@ func edit(t *testing.T, s *store.Store, get, put string, f func(map[string]any))
 // BenchmarkCheckpoint is the per-Step cost with a late-boot State: ten
 // closed doors and a long dmesg.
 func BenchmarkCheckpoint(b *testing.B) {
-	s, err := store.Open(filepath.Join(b.TempDir(), "deadcases.db"))
+	s, err := store.Open(filepath.Join(b.TempDir(), "katharsis.db"))
 	if err != nil {
 		b.Fatal(err)
 	}

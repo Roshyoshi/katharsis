@@ -35,7 +35,7 @@ func privateTmux(t *testing.T) (pane string) {
 	// lands in $HOME, so make that a scratch dir too.
 	t.Setenv("HOME", tmp)
 
-	sock := fmt.Sprintf("deadcases-e-%d", os.Getpid())
+	sock := fmt.Sprintf("katharsis-e-%d", os.Getpid())
 	old := tmuxArgs
 	tmuxArgs = []string{"-L", sock}
 	t.Cleanup(func() { tmuxArgs = old })
@@ -218,16 +218,16 @@ func TestExecArgs(t *testing.T) {
 	t.Cleanup(func() { tmuxArgs = old })
 
 	tmuxArgs = nil
-	got := execArgs("deadcases", []string{"/bin/deadcases", "-seed", "8f3a"})
-	want := []string{"tmux", "-L", "deadcases", "new-session", "-A", "-s", "deadcases", "--", "/bin/deadcases", "-seed", "8f3a"}
+	got := execArgs("katharsis", []string{"/bin/katharsis", "-seed", "8f3a"})
+	want := []string{"tmux", "-L", "katharsis", "new-session", "-A", "-s", "katharsis", "--", "/bin/katharsis", "-seed", "8f3a"}
 	if !slices.Equal(got, want) {
 		t.Errorf("execArgs = %q\nwant      %q", got, want)
 	}
 
 	// A test's -L comes after ours, and tmux keeps the last.
 	tmuxArgs = []string{"-L", "private"}
-	got = execArgs("deadcases", []string{"/Applications/My Games/dead cases"})
-	want = []string{"tmux", "-L", "deadcases", "-L", "private", "new-session", "-A", "-s", "deadcases", "--", `'/Applications/My Games/dead cases'`}
+	got = execArgs("katharsis", []string{"/Applications/My Games/dead cases"})
+	want = []string{"tmux", "-L", "katharsis", "-L", "private", "new-session", "-A", "-s", "katharsis", "--", `'/Applications/My Games/dead cases'`}
 	if !slices.Equal(got, want) {
 		t.Errorf("execArgs = %q\nwant      %q", got, want)
 	}

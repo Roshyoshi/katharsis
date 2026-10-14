@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/catalog"
+	"katharsis/internal/catalog"
 )
 
 // testdata/guide is a miniature guide snapshot: real file shapes, a

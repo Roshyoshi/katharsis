@@ -94,7 +94,7 @@ func probeSamples(ctx context.Context) Profile {
 
 // runs compiles a trivial program with p and checks it prints within 3 s.
 func runs(ctx context.Context, p Profile) bool {
-	dir, err := os.MkdirTemp("", "deadcases-probe-")
+	dir, err := os.MkdirTemp("", "katharsis-probe-")
 	if err != nil {
 		return false
 	}

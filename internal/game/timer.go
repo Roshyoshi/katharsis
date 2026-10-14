@@ -5,7 +5,7 @@ import (
 	"slices"
 	"time"
 
-	"deadcases/internal/rules"
+	"katharsis/internal/rules"
 )
 
 // doorTimer is a door's clock: the biome default until the player has

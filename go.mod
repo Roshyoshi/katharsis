@@ -1,4 +1,4 @@
-module deadcases
+module katharsis
 
 go 1.26.8
 

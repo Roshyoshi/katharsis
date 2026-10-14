@@ -13,11 +13,11 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
-	"deadcases/internal/screens"
-	"deadcases/internal/store"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
+	"katharsis/internal/screens"
+	"katharsis/internal/store"
 )
 
 // Runner sets up and tears down the editing side of an open door: files on

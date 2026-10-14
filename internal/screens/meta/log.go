@@ -8,9 +8,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/flavor"
-	"deadcases/internal/game"
-	"deadcases/internal/screens"
+	"katharsis/internal/flavor"
+	"katharsis/internal/game"
+	"katharsis/internal/screens"
 )
 
 // Log is git log: one line per boot, newest first, in the shape of

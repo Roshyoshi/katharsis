@@ -7,8 +7,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
 )
 
 // tone is how urgent the countdown looks.

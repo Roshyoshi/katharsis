@@ -14,8 +14,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/judge"
-	"deadcases/internal/problem"
+	"katharsis/internal/judge"
+	"katharsis/internal/problem"
 )
 
 // SavedMsg tells the HUD the source was saved; the file watcher sends it.

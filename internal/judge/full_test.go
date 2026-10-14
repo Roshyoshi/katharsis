@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/judge"
-	"deadcases/internal/problem"
+	"katharsis/internal/judge"
+	"katharsis/internal/problem"
 )
 
 func TestSummarize(t *testing.T) {
@@ -105,8 +105,11 @@ func TestJudgeFull(t *testing.T) {
 		t.Errorf("Summary = %+v, want %+v", s, want)
 	}
 	for _, e := range evs {
-		if e.Result.Rerun {
-			t.Errorf("test %d was rerun; only borderline TLEs are", e.Index)
+		// Under load the spinning test can be killed with little CPU time,
+		// which is borderline; rerunning it alone is right. Nothing that
+		// finished in time may be rerun.
+		if e.Result.Rerun && e.Result.Verdict != judge.TLE {
+			t.Errorf("test %d (%s) was rerun; only borderline TLEs are", e.Index, e.Result.Verdict)
 		}
 	}
 	if judge.Workers > 1 && got[len(got)-1] != 1 {
@@ -156,6 +159,9 @@ func TestJudgeFullCancelled(t *testing.T) {
 	}
 	lim := quick
 	lim.Time = 10 * time.Second // the wall-clock kill would come at 20.5s
+	// Build before starting the clock: under load the compile alone can
+	// outlast the 500 ms, and then no test would run before the cancel.
+	build(t, "ab.cpp", judge.Full)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	time.AfterFunc(500*time.Millisecond, cancel)
@@ -284,10 +290,10 @@ func TestHardMemCap(t *testing.T) {
 
 // TestParallelDrift measures how much CPU time a fixed amount of work reads
 // when JudgeFull runs it Workers-wide instead of alone. It is a measurement,
-// not a check: DEADCASES_DRIFT=1 go test -run ParallelDrift -v.
+// not a check: KATHARSIS_DRIFT=1 go test -run ParallelDrift -v.
 func TestParallelDrift(t *testing.T) {
-	if os.Getenv("DEADCASES_DRIFT") == "" {
-		t.Skip("set DEADCASES_DRIFT=1 to measure")
+	if os.Getenv("KATHARSIS_DRIFT") == "" {
+		t.Skip("set KATHARSIS_DRIFT=1 to measure")
 	}
 	needCompiler(t)
 	b := build(t, "work.cpp", judge.Full)

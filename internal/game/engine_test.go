@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
 )
 
 func TestNewBootLayout(t *testing.T) {

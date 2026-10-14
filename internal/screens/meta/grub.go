@@ -9,10 +9,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/flavor"
-	"deadcases/internal/game"
-	"deadcases/internal/screens"
+	"katharsis/internal/catalog"
+	"katharsis/internal/flavor"
+	"katharsis/internal/game"
+	"katharsis/internal/screens"
 )
 
 // GrubConfig is what the start screen shows.
@@ -93,13 +93,13 @@ func NewGrub(c GrubConfig) *Menu {
 	for p := m.maxP; p >= 0; p-- {
 		es = append(es, m.bootEntry(p, standardPreset))
 	}
-	es = append(es, entry{label: "dead-cases (RTFM — learn mode)", msg: screens.OpenLearn{}})
+	es = append(es, entry{label: "katharsis (RTFM — learn mode)", msg: screens.OpenLearn{}})
 	if len(m.presets) > 1 {
 		sub := &page{}
 		for _, name := range m.presets[1:] {
 			sub.entries = append(sub.entries, m.bootEntry(m.maxP, name))
 		}
-		es = append(es, entry{label: "dead-cases (custom preset…)", sub: sub})
+		es = append(es, entry{label: "katharsis (custom preset…)", sub: sub})
 	}
 	ups := DueUpsolves(c.Meta, c.Title, now)
 	regs := 0
@@ -160,7 +160,7 @@ func (m *Menu) bootEntry(prestige int, preset string) entry {
 }
 
 func (m *Menu) bootLabel(prestige int, preset string) string {
-	s := fmt.Sprintf("dead-cases, prestige %d", prestige)
+	s := fmt.Sprintf("katharsis, prestige %d", prestige)
 	if m.nameOf != nil {
 		if n := m.nameOf(prestige); n != "" {
 			s += " (" + n + ")"

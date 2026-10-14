@@ -7,18 +7,18 @@ import (
 	"strings"
 	"testing"
 
-	"deadcases/internal/catalog"
+	"katharsis/internal/catalog"
 )
 
 // TestFullGuide loads every module of a real snapshot. It runs only with
-// DEADCASES_GUIDE=<repo root>, since the snapshot is ~150 MB and not
+// KATHARSIS_GUIDE=<repo root>, since the snapshot is ~150 MB and not
 // vendored. It asserts zero conversion failures, zero elements rendered as
 // bare text, and that no C++ code block is lost, and logs the counts the
 // curriculum feeds the game.
 func TestFullGuide(t *testing.T) {
-	dir := os.Getenv("DEADCASES_GUIDE")
+	dir := os.Getenv("KATHARSIS_GUIDE")
 	if dir == "" {
-		t.Skip("set DEADCASES_GUIDE to a usaco-guide checkout to run")
+		t.Skip("set KATHARSIS_GUIDE to a usaco-guide checkout to run")
 	}
 	c, err := Load(dir)
 	if err != nil {

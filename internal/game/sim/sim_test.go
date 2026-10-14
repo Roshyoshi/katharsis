@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/game"
-	"deadcases/internal/game/sim"
-	"deadcases/internal/rules"
+	"katharsis/internal/game"
+	"katharsis/internal/game/sim"
+	"katharsis/internal/rules"
 )
 
 // ideal follows the engine's own model exactly: it clears a door with the

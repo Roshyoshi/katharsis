@@ -155,7 +155,7 @@ func cacheDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(base, "deadcases", "build")
+	dir := filepath.Join(base, "katharsis", "build")
 	return dir, os.MkdirAll(dir, 0o755)
 }
 

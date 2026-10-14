@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
-	"deadcases/internal/game/sim"
-	"deadcases/internal/rules"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
+	"katharsis/internal/game/sim"
+	"katharsis/internal/rules"
 )
 
 // next lists the phases each phase may move to in one Step.

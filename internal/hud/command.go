@@ -11,9 +11,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"deadcases/internal/judge"
-	"deadcases/internal/problem"
-	"deadcases/internal/session"
+	"katharsis/internal/judge"
+	"katharsis/internal/problem"
+	"katharsis/internal/session"
 )
 
 // Commands from the editor arrive as session.Request messages. In practice
@@ -293,7 +293,7 @@ func (m *Model) startDebug(req session.Request) tea.Cmd {
 			ready.err = err
 			return ready
 		}
-		dir, err := os.MkdirTemp("", "deadcases-debug-")
+		dir, err := os.MkdirTemp("", "katharsis-debug-")
 		if err != nil {
 			ready.err = err
 			return ready

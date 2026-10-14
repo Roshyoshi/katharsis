@@ -3,7 +3,7 @@ package judge
 import (
 	"context"
 
-	"deadcases/internal/problem"
+	"katharsis/internal/problem"
 )
 
 // Event is streamed while judging so the HUD can fill in row by row.

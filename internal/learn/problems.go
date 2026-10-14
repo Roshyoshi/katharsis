@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"deadcases/internal/catalog"
+	"katharsis/internal/catalog"
 )
 
 // ProblemList is one named list from a module's .problems.json; MDX refers

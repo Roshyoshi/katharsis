@@ -5,8 +5,8 @@ import (
 	"slices"
 	"time"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/rules"
+	"katharsis/internal/catalog"
+	"katharsis/internal/rules"
 )
 
 // Upsolve records a solve of id made outside a boot and returns the core-dump

@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
-	"deadcases/internal/store"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
+	"katharsis/internal/store"
 )
 
 // Fixtures are built by hand rather than by the engine, so the store's
@@ -35,7 +35,7 @@ func (c *clock) Now() time.Time {
 
 func tempPath(t *testing.T) string {
 	// A missing parent directory checks that Open creates it.
-	return filepath.Join(t.TempDir(), "data", "deadcases", "deadcases.db")
+	return filepath.Join(t.TempDir(), "data", "katharsis", "katharsis.db")
 }
 
 func open(t *testing.T, path string) *store.Store {

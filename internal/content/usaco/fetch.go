@@ -19,8 +19,8 @@ import (
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/problem"
+	"katharsis/internal/catalog"
+	"katharsis/internal/problem"
 )
 
 const (

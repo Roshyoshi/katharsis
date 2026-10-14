@@ -12,9 +12,9 @@ import (
 	"time"
 )
 
-// ctlEnv makes the test binary act as `deadcases ctl`, so the overlay tests
+// ctlEnv makes the test binary act as `katharsis ctl`, so the overlay tests
 // drive the real client: vim runs <test binary> ctl <cmd>.
-const ctlEnv = "DEADCASES_TEST_CTL"
+const ctlEnv = "KATHARSIS_TEST_CTL"
 
 func TestMain(m *testing.M) {
 	if os.Getenv(ctlEnv) == "1" && len(os.Args) > 1 && os.Args[1] == "ctl" {

@@ -5,8 +5,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"deadcases/internal/game"
-	"deadcases/internal/screens"
+	"katharsis/internal/game"
+	"katharsis/internal/screens"
 )
 
 // Cleared is the victory screen after the last boss: how long the boot ran,

@@ -4,7 +4,7 @@
 [ 2642.000] door_4: AC "Moocast" +96 B
 [ 4650.337] Kernel panic - not syncing: timer expired in "Closing the Farm"
 [ 4650.337] CPU: 0 PID: 1 Comm: you Tainted: B (blind) C (cursed)
-[ 4650.337] Hardware name: dead-cases Silver, preset standard, seed 8f3a
+[ 4650.337] Hardware name: katharsis Silver, preset standard, seed 8f3a
 [ 4650.337] Modules linked in: strace(O)
 [ 4650.337] Call Trace:
 [ 4650.337]  it_real_fn+0x1d/0x80

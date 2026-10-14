@@ -7,9 +7,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
-	"deadcases/internal/screens"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
+	"katharsis/internal/screens"
 )
 
 // node is one room on the map.

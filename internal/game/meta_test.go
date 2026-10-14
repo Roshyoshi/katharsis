@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
 )
 
 func TestUpsolve(t *testing.T) {

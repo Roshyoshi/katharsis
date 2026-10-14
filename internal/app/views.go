@@ -3,10 +3,10 @@ package app
 import (
 	"slices"
 
-	"deadcases/internal/flavor"
-	"deadcases/internal/game"
-	"deadcases/internal/screens/meta"
-	"deadcases/internal/store"
+	"katharsis/internal/flavor"
+	"katharsis/internal/game"
+	"katharsis/internal/screens/meta"
+	"katharsis/internal/store"
 )
 
 // bootRow maps a stored boot and its attempts onto the git log row. Display

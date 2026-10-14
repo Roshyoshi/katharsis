@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"deadcases/internal/catalog"
+	"katharsis/internal/catalog"
 )
 
 func ref(uid, diff string, starred bool, kind string) ProblemRef {

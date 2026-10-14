@@ -4,7 +4,7 @@
             submits:2
 [ 3968.000] Kernel panic - not syncing: out of lives in "The Bovine Shuffle"
 [ 3968.000] CPU: 0 PID: 1 Comm: you Not tainted
-[ 3968.000] Hardware name: dead-cases Silver, preset standard, seed 8f3a
+[ 3968.000] Hardware name: katharsis Silver, preset standard, seed 8f3a
 [ 3968.000] Modules linked in: strace(O)
 [ 3968.000] Call Trace:
 [ 3968.000]  do_exit+0x3a/0xc0

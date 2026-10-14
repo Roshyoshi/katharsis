@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const userAgent = "deadcases/0.1 (terminal competitive-programming trainer; " +
+const userAgent = "katharsis/0.1 (terminal competitive-programming trainer; " +
 	"fetches each problem once and caches it)"
 
 // errNotFound is a 404: the resource does not exist, so it is cached as

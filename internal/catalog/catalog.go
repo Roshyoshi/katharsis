@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"deadcases/internal/problem"
+	"katharsis/internal/problem"
 )
 
 type Source string

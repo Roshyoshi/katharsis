@@ -1,11 +1,11 @@
                                                            GNU GRUB  version 2.12
 
  ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
- │*dead-cases, prestige 2 (Gold)                                                                                                          │
- │ dead-cases, prestige 1 (Silver)                                                                                                        │
- │ dead-cases, prestige 0 (Bronze)                                                                                                        │
- │ dead-cases (RTFM — learn mode)                                                                                                         │
- │ dead-cases (custom preset…)                                                                                                            │
+ │*katharsis, prestige 2 (Gold)                                                                                                           │
+ │ katharsis, prestige 1 (Silver)                                                                                                         │
+ │ katharsis, prestige 0 (Bronze)                                                                                                         │
+ │ katharsis (RTFM — learn mode)                                                                                                          │
+ │ katharsis (custom preset…)                                                                                                             │
  │ upsolve core dump: Bovine Shuffle (312 B)                                                                                              │
  │ regressions due: 2                                                                                                                     │
  │ git log                                                                                                                                │

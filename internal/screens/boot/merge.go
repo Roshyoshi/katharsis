@@ -6,9 +6,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
-	"deadcases/internal/screens"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
+	"katharsis/internal/screens"
 )
 
 // MaxDaemons is how many daemons a boot can hold at once.

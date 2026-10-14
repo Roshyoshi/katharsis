@@ -7,9 +7,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
-	"deadcases/internal/screens"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
+	"katharsis/internal/screens"
 )
 
 // Doors is the room's choice: one card per door with everything that bears

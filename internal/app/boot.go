@@ -7,10 +7,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
-	"deadcases/internal/screens"
-	bootui "deadcases/internal/screens/boot"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
+	"katharsis/internal/screens"
+	bootui "katharsis/internal/screens/boot"
 )
 
 // baseScreen is the screen for the boot's phase, or GRUB outside a boot.

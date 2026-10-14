@@ -11,11 +11,11 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
-	"deadcases/internal/game/sim"
-	"deadcases/internal/screens"
-	"deadcases/internal/store"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
+	"katharsis/internal/game/sim"
+	"katharsis/internal/screens"
+	"katharsis/internal/store"
 )
 
 // fakeCatalog serves the simulator's synthetic pool; Fetch returns no

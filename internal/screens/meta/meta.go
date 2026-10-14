@@ -17,8 +17,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
 )
 
 // BootRow is one boot in git log.

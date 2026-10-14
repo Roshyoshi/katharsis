@@ -17,8 +17,8 @@ import (
 	"strconv"
 	"strings"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/content/guide"
+	"katharsis/internal/catalog"
+	"katharsis/internal/content/guide"
 )
 
 // entry is one problem in the cached index: the catalog view plus what

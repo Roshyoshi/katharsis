@@ -15,7 +15,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/screens"
+	"katharsis/internal/screens"
 )
 
 // Doc is one page to read.

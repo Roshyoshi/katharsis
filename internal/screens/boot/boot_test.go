@@ -13,12 +13,12 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/flavor"
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
-	"deadcases/internal/screens"
-	"deadcases/internal/screens/boot/fixture"
+	"katharsis/internal/catalog"
+	"katharsis/internal/flavor"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
+	"katharsis/internal/screens"
+	"katharsis/internal/screens/boot/fixture"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/*.golden from the current output")
@@ -447,7 +447,7 @@ func TestCrashContent(t *testing.T) {
 	for _, want := range []string{
 		`[ 4650.337] Kernel panic - not syncing: timer expired in "Closing the Farm"`,
 		"Comm: you Tainted: B (blind) C (cursed)",
-		"Hardware name: dead-cases Silver, preset standard, seed 8f3a",
+		"Hardware name: katharsis Silver, preset standard, seed 8f3a",
 		"Modules linked in: strace(O)",
 		"[ 4650.337]  it_real_fn+0x1d/0x80\n[ 4650.337]  hrtimer_interrupt+0x10f/0x240\n[ 4650.337]  door_5+0x1e/0x1e [The Heap]",
 		"[ 4650.337]  ? door_2+0x4/0xf [Userland]",

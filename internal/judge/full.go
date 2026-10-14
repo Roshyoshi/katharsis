@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"deadcases/internal/problem"
+	"katharsis/internal/problem"
 )
 
 // Workers is how many tests JudgeFull runs at once.

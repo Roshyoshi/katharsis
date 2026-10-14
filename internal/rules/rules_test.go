@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/rules"
+	"katharsis/internal/rules"
 )
 
 func TestStandard(t *testing.T) {

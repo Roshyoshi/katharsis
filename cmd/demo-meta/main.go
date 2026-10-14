@@ -21,10 +21,10 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/screens"
-	"deadcases/internal/screens/meta"
-	"deadcases/internal/screens/meta/fixture"
-	"deadcases/internal/screens/reader"
+	"katharsis/internal/screens"
+	"katharsis/internal/screens/meta"
+	"katharsis/internal/screens/meta/fixture"
+	"katharsis/internal/screens/reader"
 )
 
 // stops are the top-level screens tab cycles through, in order.

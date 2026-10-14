@@ -10,8 +10,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/game"
-	"deadcases/internal/screens"
+	"katharsis/internal/game"
+	"katharsis/internal/screens"
 )
 
 // Top is the stats screen, laid out like htop: meters on top (a braille

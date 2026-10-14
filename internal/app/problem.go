@@ -9,10 +9,10 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
-	"deadcases/internal/screens"
-	bootui "deadcases/internal/screens/boot"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
+	"katharsis/internal/screens"
+	bootui "katharsis/internal/screens/boot"
 )
 
 // submitMsg asks the app to judge the open door's full tests. The problem

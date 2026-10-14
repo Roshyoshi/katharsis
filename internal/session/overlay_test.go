@@ -11,9 +11,9 @@ import (
 )
 
 func TestOverlayScript(t *testing.T) {
-	o := Overlay{Ctl: []string{"/opt/it's here/deadcases", "ctl"}}
+	o := Overlay{Ctl: []string{"/opt/it's here/katharsis", "ctl"}}
 	s := o.Script()
-	if !strings.Contains(s, `let s:ctl = ['/opt/it''s here/deadcases', 'ctl']`) {
+	if !strings.Contains(s, `let s:ctl = ['/opt/it''s here/katharsis', 'ctl']`) {
 		t.Errorf("ctl argv not quoted for vim:\n%s", s)
 	}
 	for _, cmd := range []string{"Submit", "Debug", "Quack", "Retreat", "GiveUp"} {
@@ -34,10 +34,10 @@ func TestEditorArgv(t *testing.T) {
 		editor []string
 		want   []string
 	}{
-		{[]string{"vim"}, []string{"env", "DEADCASES_SOCK=/s", "vim", "-S", "/o.vim"}},
-		{[]string{"/usr/local/bin/vim", "-p"}, []string{"env", "DEADCASES_SOCK=/s", "/usr/local/bin/vim", "-p", "-S", "/o.vim"}},
-		{[]string{"nvim"}, []string{"env", "DEADCASES_SOCK=/s", "nvim"}},
-		{[]string{"code", "-w"}, []string{"env", "DEADCASES_SOCK=/s", "code", "-w"}},
+		{[]string{"vim"}, []string{"env", "KATHARSIS_SOCK=/s", "vim", "-S", "/o.vim"}},
+		{[]string{"/usr/local/bin/vim", "-p"}, []string{"env", "KATHARSIS_SOCK=/s", "/usr/local/bin/vim", "-p", "-S", "/o.vim"}},
+		{[]string{"nvim"}, []string{"env", "KATHARSIS_SOCK=/s", "nvim"}},
+		{[]string{"code", "-w"}, []string{"env", "KATHARSIS_SOCK=/s", "code", "-w"}},
 	} {
 		if got := EditorArgv(tc.editor, "/s", "/o.vim"); !slices.Equal(got, tc.want) {
 			t.Errorf("EditorArgv(%q) = %q, want %q", tc.editor, got, tc.want)
@@ -166,7 +166,7 @@ func TestOverlayCommands(t *testing.T) {
 		t.Errorf("submitted before saving; file is %q", b)
 	}
 	r.Answer(Reply{OK: true, Text: "AC 3/3"})
-	waitScreen(t, pane, "dead-cases: AC 3/3")
+	waitScreen(t, pane, "katharsis: AC 3/3")
 
 	for _, tc := range []struct {
 		line string
@@ -184,7 +184,7 @@ func TestOverlayCommands(t *testing.T) {
 			t.Errorf(":%s sent %+v, want %+v", tc.line, r.Command, tc.want)
 		}
 		r.Answer(tc.rep)
-		waitScreen(t, pane, "dead-cases: "+tc.rep.Text)
+		waitScreen(t, pane, "katharsis: "+tc.rep.Text)
 	}
 	if !PaneAlive(pane) {
 		t.Fatal("vim exited")
@@ -215,7 +215,7 @@ func TestOverlayQuitGivesUp(t *testing.T) {
 		t.Errorf("got %+v, want giveup", r.Command)
 	}
 	r.Answer(Reply{OK: true, Text: "gave up"})
-	waitScreen(t, pane, "dead-cases: gave up")
+	waitScreen(t, pane, "katharsis: gave up")
 	if !PaneAlive(pane) {
 		t.Fatal("vim quit on its own after giving up")
 	}

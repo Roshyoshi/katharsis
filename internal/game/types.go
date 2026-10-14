@@ -12,8 +12,8 @@ package game
 import (
 	"time"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/rules"
+	"katharsis/internal/catalog"
+	"katharsis/internal/rules"
 )
 
 // ---- persistent player state (survives boots) ------------------------------

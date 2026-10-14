@@ -11,14 +11,14 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"deadcases/internal/judge"
-	"deadcases/internal/session"
+	"katharsis/internal/judge"
+	"katharsis/internal/session"
 )
 
 func TestMain(m *testing.M) {
 	// judge.Compile caches under os.UserCacheDir; keep the real cache out
 	// of it and start every run cold.
-	home, err := os.MkdirTemp("", "deadcases-hud-test-")
+	home, err := os.MkdirTemp("", "katharsis-hud-test-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

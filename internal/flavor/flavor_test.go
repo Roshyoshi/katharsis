@@ -12,9 +12,9 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
 )
 
 var (

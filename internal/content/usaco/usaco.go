@@ -6,7 +6,7 @@
 // never touch the network. Fetch downloads a problem's statement, test
 // data and analysis from usaco.org into the cache on first use:
 //
-//	<cache>/deadcases/usaco/
+//	<cache>/katharsis/usaco/
 //	  index.json
 //	  <cpid>/statement.html, statement.md   the page and its markdown
 //	  <cpid>/samples/1.in, 1.out, ...       from the statement
@@ -23,12 +23,12 @@ import (
 	"strconv"
 	"sync"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/content/guide"
+	"katharsis/internal/catalog"
+	"katharsis/internal/content/guide"
 )
 
 type Catalog struct {
-	root   string // <cache>/deadcases/usaco
+	root   string // <cache>/katharsis/usaco
 	base   string // "https://usaco.org"; a test server in tests
 	client *politeClient
 
@@ -50,7 +50,7 @@ func Open(ctx context.Context) (*Catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	return open(ctx, filepath.Join(c, "deadcases", "usaco"), guide.Snapshot)
+	return open(ctx, filepath.Join(c, "katharsis", "usaco"), guide.Snapshot)
 }
 
 func open(ctx context.Context, root string, snapshot func(context.Context) (string, error)) (*Catalog, error) {

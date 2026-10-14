@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"deadcases/internal/catalog"
+	"katharsis/internal/catalog"
 )
 
 func TestCatalogID(t *testing.T) {

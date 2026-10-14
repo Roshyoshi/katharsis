@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
-	"deadcases/internal/store"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
+	"katharsis/internal/store"
 )
 
 func TestDefaultPath(t *testing.T) {
@@ -20,9 +20,9 @@ func TestDefaultPath(t *testing.T) {
 	tests := []struct {
 		name, xdg, want string
 	}{
-		{"xdg set", "/xdg/data", "/xdg/data/deadcases/deadcases.db"},
-		{"xdg unset", "", filepath.Join(home, ".local/share/deadcases/deadcases.db")},
-		{"relative xdg ignored", "rel/data", filepath.Join(home, ".local/share/deadcases/deadcases.db")},
+		{"xdg set", "/xdg/data", "/xdg/data/katharsis/katharsis.db"},
+		{"xdg unset", "", filepath.Join(home, ".local/share/katharsis/katharsis.db")},
+		{"relative xdg ignored", "rel/data", filepath.Join(home, ".local/share/katharsis/katharsis.db")},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

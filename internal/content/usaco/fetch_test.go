@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/catalog"
+	"katharsis/internal/catalog"
 )
 
 // fakeUSACO serves saved pages and zips the way usaco.org lays them out and

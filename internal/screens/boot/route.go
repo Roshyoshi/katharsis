@@ -6,8 +6,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"deadcases/internal/game"
-	"deadcases/internal/screens"
+	"katharsis/internal/game"
+	"katharsis/internal/screens"
 )
 
 // Route is the fork at the entrance of a choice biome: one card per topic

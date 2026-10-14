@@ -206,10 +206,10 @@ func TestSnapshotRejects(t *testing.T) {
 }
 
 // TestSnapshotNetwork downloads the real pinned snapshot into the user cache.
-// Opt in with DEADCASES_NET=1; it moves about 150 MB once.
+// Opt in with KATHARSIS_NET=1; it moves about 150 MB once.
 func TestSnapshotNetwork(t *testing.T) {
-	if os.Getenv("DEADCASES_NET") != "1" {
-		t.Skip("set DEADCASES_NET=1 to download the pinned USACO Guide")
+	if os.Getenv("KATHARSIS_NET") != "1" {
+		t.Skip("set KATHARSIS_NET=1 to download the pinned USACO Guide")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()

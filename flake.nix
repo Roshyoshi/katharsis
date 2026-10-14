@@ -1,5 +1,5 @@
 {
-  description = "dead-cases: a competitive-programming roguelike for the terminal";
+  description = "katharsis: a competitive-programming roguelike for the terminal";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 

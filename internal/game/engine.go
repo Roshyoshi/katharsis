@@ -7,8 +7,8 @@ import (
 	"slices"
 	"time"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/rules"
+	"katharsis/internal/catalog"
+	"katharsis/internal/rules"
 )
 
 // ErrInvalid wraps every error Step returns for an action the current phase

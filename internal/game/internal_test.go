@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/rules"
+	"katharsis/internal/rules"
 )
 
 func TestSplitmixKnownValues(t *testing.T) {

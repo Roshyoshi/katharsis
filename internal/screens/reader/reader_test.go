@@ -12,8 +12,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/screens"
-	"deadcases/internal/screens/meta/fixture"
+	"katharsis/internal/screens"
+	"katharsis/internal/screens/meta/fixture"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/*.golden from the current output")

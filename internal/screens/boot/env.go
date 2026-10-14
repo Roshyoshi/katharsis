@@ -11,10 +11,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/flavor"
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
+	"katharsis/internal/catalog"
+	"katharsis/internal/flavor"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
 )
 
 // Lookup resolves a door's problem. catalog.Catalog.Get satisfies it.

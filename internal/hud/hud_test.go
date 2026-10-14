@@ -9,8 +9,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/judge"
-	"deadcases/internal/problem"
+	"katharsis/internal/judge"
+	"katharsis/internal/problem"
 )
 
 // fixture builds a problem dir with n empty tests and a model already

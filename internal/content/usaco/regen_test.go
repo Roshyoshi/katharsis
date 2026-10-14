@@ -15,13 +15,13 @@ import (
 	"strings"
 	"testing"
 
-	"deadcases/internal/content/guide"
+	"katharsis/internal/content/guide"
 )
 
 // TestRegenFacts rebuilds facts.json from the live statement pages of every
 // problem in the pinned guide. Run it after bumping guide.Commit:
 //
-//	DEADCASES_REGEN_FACTS=/tmp/usaco-pages go test -run TestRegenFacts \
+//	KATHARSIS_REGEN_FACTS=/tmp/usaco-pages go test -run TestRegenFacts \
 //	    ./internal/content/usaco
 //
 // The dir caches what it downloads (statements/<cpid>.html,
@@ -29,9 +29,9 @@ import (
 // stems), so a rerun after fixing the parser is offline. A cold run makes
 // about 1450 requests at the polite client's pace: roughly 20 minutes.
 func TestRegenFacts(t *testing.T) {
-	dir := os.Getenv("DEADCASES_REGEN_FACTS")
+	dir := os.Getenv("KATHARSIS_REGEN_FACTS")
 	if dir == "" {
-		t.Skip("set DEADCASES_REGEN_FACTS=<cache dir> to rebuild facts.json")
+		t.Skip("set KATHARSIS_REGEN_FACTS=<cache dir> to rebuild facts.json")
 	}
 	ctx := context.Background()
 	gdir, err := guide.Snapshot(ctx)

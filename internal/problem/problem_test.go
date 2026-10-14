@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"deadcases/internal/problem"
+	"katharsis/internal/problem"
 )
 
 // mkdir builds dir/<name> with the given files (path relative to it -> body)

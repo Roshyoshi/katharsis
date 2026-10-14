@@ -46,7 +46,7 @@ const (
 	maxFile      = 16 << 20
 	maxExtracted = 256 << 20
 
-	userAgent = "deadcases/0.1 (terminal competitive-programming trainer)"
+	userAgent = "katharsis/0.1 (terminal competitive-programming trainer)"
 )
 
 var (
@@ -75,7 +75,7 @@ func cacheRoot() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(c, "deadcases", "guide"), nil
+	return filepath.Join(c, "katharsis", "guide"), nil
 }
 
 func snapshot(ctx context.Context, root, url, commit string) (string, error) {

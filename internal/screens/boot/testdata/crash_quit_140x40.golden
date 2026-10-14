@@ -5,7 +5,7 @@
 [ 3524.000] you[1]: :q! sent SIGKILL to init
 [ 3524.000] Kernel panic - not syncing: Attempted to kill init! exitcode=0x00000009 in "Wormhole Sort"
 [ 3524.000] CPU: 0 PID: 1 Comm: you Tainted: M (mystery) B (blind)
-[ 3524.000] Hardware name: dead-cases Silver, preset standard, seed 8f3a
+[ 3524.000] Hardware name: katharsis Silver, preset standard, seed 8f3a
 [ 3524.000] Modules linked in: strace(O)
 [ 3524.000] Call Trace:
 [ 3524.000]  do_exit+0x3a/0xc0

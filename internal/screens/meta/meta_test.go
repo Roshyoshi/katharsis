@@ -13,11 +13,11 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/flavor"
-	"deadcases/internal/game"
-	"deadcases/internal/screens"
-	"deadcases/internal/screens/meta"
-	"deadcases/internal/screens/meta/fixture"
+	"katharsis/internal/flavor"
+	"katharsis/internal/game"
+	"katharsis/internal/screens"
+	"katharsis/internal/screens/meta"
+	"katharsis/internal/screens/meta/fixture"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/*.golden from the current output")
@@ -264,7 +264,7 @@ func TestGrubHidesWhatIsNotThere(t *testing.T) {
 			t.Errorf("fresh player's menu shows %q:\n%s", absent, got)
 		}
 	}
-	for _, present := range []string{"*dead-cases, prestige 0 (Bronze)", "git log", "top", "poweroff", "bank 0 B"} {
+	for _, present := range []string{"*katharsis, prestige 0 (Bronze)", "git log", "top", "poweroff", "bank 0 B"} {
 		if !strings.Contains(got, present) {
 			t.Errorf("fresh player's menu lacks %q:\n%s", present, got)
 		}

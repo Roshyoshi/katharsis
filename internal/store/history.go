@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
 )
 
 // BootSummary is one `git log` line.

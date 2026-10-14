@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"deadcases/internal/catalog"
+	"katharsis/internal/catalog"
 )
 
 func TestCapabilityFor(t *testing.T) {

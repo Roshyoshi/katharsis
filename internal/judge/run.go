@@ -93,7 +93,7 @@ const DefaultOutputLimit = 64 << 20
 // whose memory grows past memCap (MLE) while it runs; a run under that cap
 // but over Mem is judged MLE on its peak afterwards.
 func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result, error) {
-	work, err := os.MkdirTemp("", "deadcases-run-")
+	work, err := os.MkdirTemp("", "katharsis-run-")
 	if err != nil {
 		return Result{}, err
 	}

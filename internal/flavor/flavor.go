@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
 )
 
 type Quote struct {

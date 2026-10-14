@@ -19,15 +19,15 @@ import (
 
 // The control socket is how the editor talks to the game. Each game process
 // listens on a unix socket of its own, RunDir/<pid>.sock, and the editor
-// reaches it with `deadcases ctl <cmd> [args]`, which finds it through
-// $DEADCASES_SOCK. The protocol is JSON lines: one Command per line in, one
+// reaches it with `katharsis ctl <cmd> [args]`, which finds it through
+// $KATHARSIS_SOCK. The protocol is JSON lines: one Command per line in, one
 // Reply per line back, in order.
 //
 //	→ {"cmd":"debug","args":["3"]}
 //	← {"ok":true,"text":"lldb on #3: type run"}
 
-// SockEnv carries the socket path to the editor and to `deadcases ctl`.
-const SockEnv = "DEADCASES_SOCK"
+// SockEnv carries the socket path to the editor and to `katharsis ctl`.
+const SockEnv = "KATHARSIS_SOCK"
 
 // Commands the game answers. Anything else is refused by the server without
 // reaching the game.
@@ -84,7 +84,7 @@ func RunDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(base, "deadcases", "run")
+	dir := filepath.Join(base, "katharsis", "run")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
@@ -283,7 +283,7 @@ func Call(path string, c Command, timeout time.Duration) (Reply, error) {
 	return rep, nil
 }
 
-// CallTimeout is how long `deadcases ctl` waits for cmd. A submit answers
+// CallTimeout is how long `katharsis ctl` waits for cmd. A submit answers
 // when the judge finishes, which a slow solution on many tests can stretch
 // to a minute or more; the editor runs it as a job, so waiting costs
 // nothing.
@@ -295,24 +295,24 @@ func CallTimeout(cmd string) time.Duration {
 	return 10 * time.Second
 }
 
-// CtlMain is `deadcases ctl <cmd> [args]`: it sends one command to the game
-// whose socket $DEADCASES_SOCK names and prints the answer on stdout. The
+// CtlMain is `katharsis ctl <cmd> [args]`: it sends one command to the game
+// whose socket $KATHARSIS_SOCK names and prints the answer on stdout. The
 // exit status is 0 when the game said OK, 1 when it refused, 2 when it could
 // not be asked.
 func CtlMain(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintf(stderr, "usage: deadcases ctl <%s> [args]\n", strings.Join(Commands, "|"))
+		fmt.Fprintf(stderr, "usage: katharsis ctl <%s> [args]\n", strings.Join(Commands, "|"))
 		return 2
 	}
 	path := os.Getenv(SockEnv)
 	if path == "" {
-		fmt.Fprintf(stderr, "deadcases ctl: $%s is not set; run this from the game's editor\n", SockEnv)
+		fmt.Fprintf(stderr, "katharsis ctl: $%s is not set; run this from the game's editor\n", SockEnv)
 		return 2
 	}
 	c := Command{Cmd: args[0], Args: args[1:]}
 	rep, err := Call(path, c, CallTimeout(c.Cmd))
 	if err != nil {
-		fmt.Fprintln(stderr, "deadcases ctl:", err)
+		fmt.Fprintln(stderr, "katharsis ctl:", err)
 		return 2
 	}
 	fmt.Fprintln(stdout, rep.Text)

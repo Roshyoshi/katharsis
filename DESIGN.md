@@ -1,4 +1,4 @@
-# dead-cases
+# katharsis
 
 A competitive-programming roguelike that runs in the terminal. Each run is a
 sequence of locally judged problems. Problems are picked by difficulty, solved
@@ -103,7 +103,8 @@ label only; doors draw from every local source by difficulty.
 
 - Inside tmux the game pane shrinks to the HUD and vim opens beside it.
   Outside tmux the game starts its own tmux session.
-- The timer also appears in the tmux status bar.
+- The timer also appears on the editor pane's border (a window-scoped
+  tmux option, so the player's own status bar is never touched).
 - File I/O problems (old USACO) run in a temp dir with `<name>.in`/`.out`.
 
 ## Crash screen

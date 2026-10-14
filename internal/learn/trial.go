@@ -3,7 +3,7 @@ package learn
 import (
 	"sort"
 
-	"deadcases/internal/catalog"
+	"katharsis/internal/catalog"
 )
 
 // DefaultUnitSize is the number of unit doors in a module trial (DESIGN.md

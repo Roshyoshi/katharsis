@@ -11,9 +11,9 @@ import (
 	"math"
 	"time"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/game"
-	"deadcases/internal/screens/meta"
+	"katharsis/internal/catalog"
+	"katharsis/internal/game"
+	"katharsis/internal/screens/meta"
 )
 
 // Now is the moment every fixture is rendered at.

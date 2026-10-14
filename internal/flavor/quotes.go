@@ -1,6 +1,6 @@
 package flavor
 
-import "deadcases/internal/game"
+import "katharsis/internal/game"
 
 // Every quote below was checked against a primary source or a reputable
 // secondary one (Wikiquote "sourced" sections, Quote Investigator, the

@@ -12,17 +12,17 @@ import (
 	"testing"
 	"time"
 
-	"deadcases/internal/catalog"
+	"katharsis/internal/catalog"
 )
 
 // TestNetwork opens the real catalog (downloading the guide snapshot on
 // first run, about 150 MB) and fetches three problems end to end into the
 // user cache: a Nov 2011 problem with I.N/O.N zip names, a file-I/O era
 // HTML statement, and a stdin problem with a 4 s limit. Opt in with
-// DEADCASES_NET=1; -v prints index statistics.
+// KATHARSIS_NET=1; -v prints index statistics.
 func TestNetwork(t *testing.T) {
-	if os.Getenv("DEADCASES_NET") != "1" {
-		t.Skip("set DEADCASES_NET=1 to use the network")
+	if os.Getenv("KATHARSIS_NET") != "1" {
+		t.Skip("set KATHARSIS_NET=1 to use the network")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()

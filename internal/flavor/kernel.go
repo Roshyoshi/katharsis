@@ -3,7 +3,7 @@ package flavor
 import (
 	"fmt"
 
-	"deadcases/internal/game"
+	"katharsis/internal/game"
 )
 
 // PanicReason is the text after "Kernel panic - not syncing: " on the crash

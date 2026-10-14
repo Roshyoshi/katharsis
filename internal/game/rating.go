@@ -3,7 +3,7 @@ package game
 import (
 	"math"
 
-	"deadcases/internal/rules"
+	"katharsis/internal/rules"
 )
 
 // Mixed is the catalog topic for problems with no mapped tag. A biome on

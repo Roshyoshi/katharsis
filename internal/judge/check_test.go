@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"deadcases/internal/judge"
+	"katharsis/internal/judge"
 )
 
 func TestCheck(t *testing.T) {

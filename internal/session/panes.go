@@ -67,7 +67,7 @@ func WindowOf(pane string) (string, error) {
 }
 
 // borderOption holds a pane's border text; pane-border-format shows it.
-const borderOption = "@deadcases_border"
+const borderOption = "@katharsis_border"
 
 // borderOptions are set on the game's window while the border shows.
 var borderOptions = [][2]string{

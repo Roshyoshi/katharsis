@@ -1,4 +1,4 @@
-# catharsis: a Dead Cells-style CP roguelike in the terminal, done asap
+# katharsis: a Dead Cells-style CP roguelike in the terminal, done asap
 Out of scope (for now): CF/AtCoder platform integration (W6), non-macOS polish.
 
 ## Decisions
@@ -15,7 +15,7 @@ D6  settled 10-14  Sources picked by difficulty, local judging: "it should be an
 D7  settled 10-14  Finish the game before platforms: "before adding CF and AT coder
                    finishin the entire game might be a better use of time".
 D8  settled 10-14  Stack Go + Bubble Tea: "python is kinda slow" → "Alright lets do go".
-D9  settled 10-14  Name: "lets change the name to catharsis" (rename pending, see Now).
+D9  superseded by D17
 D10 settled 10-14  Parallel agents ok: "you can use as many subagents as you want",
                    "i want this game done asap".
 D11 settled 10-14  jj commit per finished wave (local only); this workfile.
@@ -23,24 +23,31 @@ D12 settled 10-14  CSES stays in W5 ("Later, keep W5"); short learn units are to
                    from the catalog by topic and band.
 D13 proposed       Run length: full clear ≈ 2–2.5 h, typical crash ≈ 1 h (user asked for
                    "2-3 hours per run"; not confirmed).
-D14 open           Quote 81 (Torvalds "real men ... ftp") keep or drop; default keep.
+D14 settled 10-14  Keep quote 81 (Torvalds "real men ... ftp"): "Keep it".
 D15 proposed       Balance: calibrate the clear-rate aim from outcomes with the prestige
                    offset subtracted, so prestige stays harder (engine finding 1).
-D16 open           Pull the Codeforces open-r1 dataset (local, no login) forward to fix
-                   pool exhaustion and the 800-rating floor (engine findings 3, 5).
+D16 settled 10-14  Pull the Codeforces open-r1 dataset (local, no login) forward to fix
+                   pool exhaustion and the 800 floor: "Yes, pull it forward".
+D17 settled 10-14  Name is katharsis: "lets change the name to catharsis" then
+                   "katharsis is better" (rename pending, see Now).
 
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
 S2 W2 parallel packages        done: engine+sim, store, flavor, screens/boot, screens/meta,
-                               reader, learn · running: content/usaco+guide, E (judge+control)
-S3 rename to catharsis         after S2 agents finish; module path, dirs, strings, caches
-S4 W3 integrate internal/app   headless end-to-end check first, then tmux
+                               reader, learn, content/usaco+guide · running: E (judge+control)
+S3 rename to katharsis         done: module path, cmd/katharsis, ~/katharsis, caches, banners
+S3b Codeforces dataset content   after S3; alongside S4 (D16 pull forward)
+S4 W3 integrate internal/app   started: routing, engine stepping, saves, effects, upsolve,
+                               headless e2e suite green (clear, crash+upsolve, timeout,
+                               resume) · next: real Runner/Judge on E's APIs, main
+                               command, RTFM screens + trial boots, capability-name fix
 S5 W4 hardening                balance sim (D15), e2e tests, fixes → game done
-S6 W5 content                  CSES (login), Codeforces dataset (D16 may move it earlier)
+S6 W5 content                  CSES (login); Codeforces dataset moved to S3b per D16
 S7 W6 platforms                CF sync/submit, AtCoder browser submit
 
 ## Now
-Waiting on content (A) and E. Commits for S0 (problem), S1, S2-done packages made.
-Next: S3 rename once A and E report, then S4. Engine sim: Standard gives a 1600 player
-~50% full clears vs ~20% target (D15). Repo still at ~/dead-cases until S3.
+Rename done; repo at ~/katharsis; all W2 agents finished and committed.
+Next, in parallel: me on the real Runner/Judge/main (E's APIs), an engine agent
+(trial boots, D15 calibration, faster cold start, capability names, hidden-test
+rules), S3b Codeforces dataset agent.

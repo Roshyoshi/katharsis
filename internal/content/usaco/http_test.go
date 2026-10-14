@@ -21,7 +21,7 @@ func TestPoliteClientSerializes(t *testing.T) {
 	var mu sync.Mutex
 	var starts, ends []time.Time
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.UserAgent(), "deadcases/") {
+		if !strings.HasPrefix(r.UserAgent(), "katharsis/") {
 			t.Errorf("User-Agent = %q", r.UserAgent())
 		}
 		n := inFlight.Add(1)

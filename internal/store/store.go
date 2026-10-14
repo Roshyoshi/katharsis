@@ -26,15 +26,15 @@ import (
 
 	_ "modernc.org/sqlite" // registers driver "sqlite"
 
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
 )
 
 var (
-	// ErrNewerSchema means the file was migrated by a newer deadcases.
+	// ErrNewerSchema means the file was migrated by a newer katharsis.
 	// Opening it anyway would let this binary drop fields it does not know
 	// on the next write.
-	ErrNewerSchema = errors.New("store: database is from a newer deadcases")
+	ErrNewerSchema = errors.New("store: database is from a newer katharsis")
 	// ErrNoBoot is returned for a boot id that was never checkpointed.
 	ErrNoBoot = errors.New("store: no such boot")
 	// ErrInvalidBoot rejects a nil State or a boot numbered below 1. Boot 0
@@ -61,13 +61,13 @@ type Store struct {
 // XDG_DATA_HOME is ignored, as the spec requires.
 func DefaultPath() (string, error) {
 	if d := os.Getenv("XDG_DATA_HOME"); d != "" && filepath.IsAbs(d) {
-		return filepath.Join(d, "deadcases", "deadcases.db"), nil
+		return filepath.Join(d, "katharsis", "katharsis.db"), nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".local", "share", "deadcases", "deadcases.db"), nil
+	return filepath.Join(home, ".local", "share", "katharsis", "katharsis.db"), nil
 }
 
 // busyTimeout bounds how long a write waits for another process's write.

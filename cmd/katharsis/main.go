@@ -1,9 +1,9 @@
-// deadcases is a competitive-programming roguelike for the terminal.
+// katharsis is a competitive-programming roguelike for the terminal.
 //
-// M0 ships the training room: `deadcases practice <dir>` opens the solution
+// M0 ships the training room: `katharsis practice <dir>` opens the solution
 // in vim beside a HUD that rejudges the samples on every save. In vim,
 // :Submit judges every test at -O2 (the HP bar) and :Debug n opens lldb on
-// test n under the editor; both reach the HUD through `deadcases ctl`.
+// test n under the editor; both reach the HUD through `katharsis ctl`.
 package main
 
 import (
@@ -19,30 +19,30 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"deadcases/internal/hud"
-	"deadcases/internal/judge"
-	"deadcases/internal/problem"
-	"deadcases/internal/session"
+	"katharsis/internal/hud"
+	"katharsis/internal/judge"
+	"katharsis/internal/problem"
+	"katharsis/internal/session"
 )
 
 func main() {
-	// vim runs `deadcases ctl` on every :Submit, so it goes first and
+	// vim runs `katharsis ctl` on every :Submit, so it goes first and
 	// touches nothing but the control socket's client.
 	if len(os.Args) > 1 && os.Args[1] == "ctl" {
 		os.Exit(session.CtlMain(os.Args[2:], os.Stdout, os.Stderr))
 	}
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "deadcases:", err)
+		fmt.Fprintln(os.Stderr, "katharsis:", err)
 		os.Exit(1)
 	}
 }
 
 func usage() {
-	fmt.Fprint(os.Stderr, `usage: deadcases practice [flags] <dir>
-       deadcases ctl <submit|debug [n]|quack|giveup|retreat|status>
+	fmt.Fprint(os.Stderr, `usage: katharsis practice [flags] <dir>
+       katharsis ctl <submit|debug [n]|quack|giveup|retreat|status>
 
 <dir> holds <dir>.cpp (or sol.cpp) and tests/N.in + tests/N.out.
-ctl talks to the game whose socket $DEADCASES_SOCK names; the game's vim
+ctl talks to the game whose socket $KATHARSIS_SOCK names; the game's vim
 runs it for :Submit, :Debug and the rest.
 
 flags:
@@ -87,7 +87,7 @@ func run(args []string) error {
 		}
 		argv := append([]string{self, "practice"}, args[1:len(args)-1]...)
 		argv = append(argv, dir)
-		return session.ExecInTmux("deadcases-"+prob.Name, argv)
+		return session.ExecInTmux("katharsis-"+prob.Name, argv)
 	}
 
 	opt := hud.Options{

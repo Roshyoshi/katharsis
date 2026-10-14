@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"deadcases/internal/catalog"
-	"deadcases/internal/rules"
+	"katharsis/internal/catalog"
+	"katharsis/internal/rules"
 )
 
 func topicOf(p *catalog.Problem) string {

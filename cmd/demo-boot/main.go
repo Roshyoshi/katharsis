@@ -15,10 +15,10 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"deadcases/internal/game"
-	"deadcases/internal/screens"
-	"deadcases/internal/screens/boot"
-	"deadcases/internal/screens/boot/fixture"
+	"katharsis/internal/game"
+	"katharsis/internal/screens"
+	"katharsis/internal/screens/boot"
+	"katharsis/internal/screens/boot/fixture"
 )
 
 // page is one screen of the demo, built fresh each time it is shown.
@@ -121,7 +121,7 @@ func emittedByScreen(msg tea.Msg) bool {
 		return true
 	}
 	t := reflect.TypeOf(msg)
-	return t != nil && t.PkgPath() == "deadcases/internal/screens"
+	return t != nil && t.PkgPath() == "katharsis/internal/screens"
 }
 
 var bar = lipgloss.NewStyle().Reverse(true)

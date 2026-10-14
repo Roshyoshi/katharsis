@@ -4,8 +4,8 @@ import (
 	"math"
 	"strconv"
 
-	"deadcases/internal/game"
-	"deadcases/internal/rules"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
 )
 
 type named struct{ name, blurb string }
