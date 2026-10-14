@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html><head>
+<title>Contest Results</title>
+<META HTTP-EQUIV="EXPIRES" CONTENT="0">
+<META HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE">
+<META HTTP-EQUIV="PRAGMA" CONTENT="NO-CACHE">
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+});
+</script>
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script src="https://google-code-prettify.googlecode.com/svn/loader/run_prettify.js"></script>
+</head>
+<body>
+(Analysis by Brian Dean and Benjamin Qi)
+<p>With some careful reasoning, we can deduce that the smallest two numbers must be
+<span class='math'>$A$</span> and <span class='math'>$B$</span>, and the largest must be <span class='math'>$A+B+C$</span>.  Subtracting the smallest two from
+the largest therefore gives us <span class='math'>$C$</span> and we are done.  
+<p>The only computational aspect of this problem therefore is locating the two 
+smallest and the largest of the seven input numbers.  One way to do this is by
+sorting the numbers, giving a very concise answer.  E.g., in C++, this looks
+like:
+<p><pre class='prettyprint'>
+#include &lt;iostream&gt;
+#include &lt;algorithm&gt;
+using namespace std;
+
+int main(void)
+{
+  int nums[7];
+  for (int i=0; i&lt;7; i++) cin &gt;&gt; nums[i];
+  sort (nums, nums+7);
+  int a = nums[0], b = nums[1];
+  int c = nums[6] - a - b;
+  cout &lt;&lt; a &lt;&lt; &quot; &quot; &lt;&lt; b &lt;&lt; &quot; &quot; &lt;&lt; c &lt;&lt; &quot;\n&quot;;
+}
+</pre>
+<p>In Python, a similarly-concise solution might be:
+<p><pre class='prettyprint'>
+nums = list(sorted(map(int,input().split())))
+a,b = nums[0],nums[1]
+c = nums[-1]-a-b
+print(a,b,c)
+</pre>
+<p>Sorting isn&apos;t absolutely necessary here.  One could also just scan the input to find 
+the largest number, and then scan two more times to find the two smallest numbers 
+(being careful to account for the possibility these might be the same value).  Code
+for this is slightly longer but not too bad.  Here&apos;s an example in C++:
+<p><pre class='prettyprint'>
+#include &lt;iostream&gt;
+using namespace std;
+
+int main(void)
+{
+  int nums[7], A, B, C;
+  for (int i=0; i&lt;7; i++) cin &gt;&gt; nums[i];
+  
+  int largest = nums[0];
+  for (int i=1; i&lt;7; i++) 
+    if (nums[i] &gt; largest) largest = nums[i];
+
+  int smallest = nums[0], count_smallest = 1;
+  for (int i=1; i&lt;7; i++) {
+    if (nums[i] == smallest) count_smallest++;
+    if (nums[i] &lt; smallest) { smallest = nums[i]; count_smallest = 1; }
+  }
+
+  if (count_smallest &gt; 1) {
+    A = B = smallest;
+    C = largest - A - B;
+  } else {
+    int second_smallest = nums[0];
+    if (second_smallest == smallest) second_smallest = nums[1];
+    for (int i=1; i&lt;7; i++) 
+      if (nums[i] &lt; second_smallest &amp;&amp; nums[i] != smallest) 
+	second_smallest = nums[i]; 
+    A = smallest;
+    B = second_smallest;
+    C = largest - A - B;
+  }
+  
+  cout &lt;&lt; A &lt;&lt; &quot; &quot; &lt;&lt; B &lt;&lt; &quot; &quot; &lt;&lt; C &lt;&lt; &quot;\n&quot;;
+}
+</pre>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4aa3702d908227d',t:'MTc5MjAxODk4MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body></html>

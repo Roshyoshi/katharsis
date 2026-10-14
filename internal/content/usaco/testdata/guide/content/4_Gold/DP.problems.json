@@ -1,0 +1,7 @@
+{
+  "MODULE_ID": "intro-dp",
+  "general": [
+    {"uniqueId": "usaco-1059", "name": "Do You Know Your ABCs?", "url": "", "source": "Bronze",
+     "difficulty": "Very Hard", "isStarred": false, "tags": ["Sorting", "DP"], "solutionMetadata": {"kind": "internal"}}
+  ]
+}

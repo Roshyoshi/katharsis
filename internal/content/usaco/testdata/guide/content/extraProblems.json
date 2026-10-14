@@ -1,0 +1,7 @@
+{
+  "MODULE_ID": "EXTRA_PROBLEMS",
+  "EXTRA_PROBLEMS": [
+    {"uniqueId": "usaco-1060", "name": "Daisy Chains", "url": "", "source": "Bronze",
+     "difficulty": "N/A", "isStarred": false, "tags": ["Complete Search", "Prefix Sums"], "solutionMetadata": {"kind": "USACO", "usacoId": "1060"}}
+  ]
+}

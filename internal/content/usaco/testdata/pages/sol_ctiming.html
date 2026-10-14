@@ -1,0 +1,44 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+"https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="https://www.w3.org/1999/xhtml">
+
+<head>
+
+<title>Contest Results</title>
+
+<META HTTP-EQUIV="EXPIRES" CONTENT="0">
+<META HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE">
+<META HTTP-EQUIV="PRAGMA" CONTENT="NO-CACHE">
+
+</head>
+
+<p><b>Solution Notes:</b> A key to making the problem easy to solve is to write a function that converts from (day, hour, minute) to a single integer that reflects an absolute count of number of minutes since some pre-determined starting point.  In the sample C solution below, the function total_mins() computes the total number of minutes elapsed since the beginning of the month.  Using this function, it is now easy to compute the number of minutes in the difference of two dates - we first convert the two dates into integers, and then simply subtract!  </p>
+
+<pre><code>
+#include &lt;stdio.h&gt;
+
+int total_mins(int d, int h, int m)
+{
+  return d * 24 * 60 + h * 60 + m;
+}
+
+int main(void)
+{
+  int d, h, m;
+  
+  freopen ("ctiming.in", "r", stdin);
+  freopen ("ctiming.out", "w", stdout);
+
+  scanf ("%d %d %d", &d, &h, &m);
+  
+  if (total_mins(d,h,m) &lt; total_mins(11,11,11))
+    printf ("-1\n");
+  else
+    printf ("%d\n", total_mins(d,h,m) - total_mins(11,11,11));
+
+  return 0;
+}
+</code></pre>
+</html><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4aa36ed8f9743e9',t:'MTc5MjAxODk3Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
