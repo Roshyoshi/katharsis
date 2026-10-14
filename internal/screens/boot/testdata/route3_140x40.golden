@@ -1,0 +1,40 @@
+Boot #42 · Silver · route · biome 3/4                                                                                         uptime 1:12:30
+♥♥♡  🦆1  176 B uncommitted · 112 B committed                                                                                 daemons strace
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+                                     Pick a route. The topic you choose sets every door in this biome.
+
+  ┏━ ▸ 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  ╭─ 2 ──────────────────────────────────────╮  ╭─ 3 ──────────────────────────────────────╮
+  ┃ The Mesh                                 ┃  │ The Cache                                │  │ The FPU                                  │
+  ┃ graphs                                   ┃  │ dp                                       │  │ math                                     │
+  ┃ Stub blurb for graphs, long enough to    ┃  │ Stub blurb for dp, long enough to wrap   │  │ Stub blurb for math, long enough to wrap │
+  ┃ wrap onto a second line of a card.       ┃  │ onto a second line of a card.            │  │ onto a second line of a card.            │
+  ┃                                          ┃  │                                          │  │                                          │
+  ┃ 2 rooms · ⏱ ~35:00                       ┃  │ 2 rooms · ⏱ ~35:00                       │  │ 2 rooms · ⏱ ~35:00                       │
+  ┃ ◆ 1050–1250 · aim 60% clear              ┃  │ ◆ 950–1150 · aim 60% clear               │  │ ◆ 1000–1200 · aim 60% clear              │
+  ┃ your graphs rating 1210                  ┃  │ your dp rating 1120                      │  │                                          │
+  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ╰──────────────────────────────────────────╯  ╰──────────────────────────────────────────╯
+
+                                                              the boot so far
+                                           ╭─ Userland ─╮   ╭─ The Heap ─╮   ╭─ ? ─╮   ╭─ boss ─╮
+                                           │    ✓ ✓     │───│    ✓ ✓     │───│ ○ ○ │───│   ⚔    │
+                                           ╰────────────╯   ╰────────────╯   ╰─────╯   ╰────────╯
+
+
+
+
+
+
+
+
+
+
+←/→ choose · enter take route

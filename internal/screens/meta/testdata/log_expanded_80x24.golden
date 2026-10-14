@@ -1,0 +1,24 @@
+git log --graph --oneline  42 boots · 10 cleared · 31 crashed        filter: all
+* 54bf774 #42 Oct 14 P2 1:04:12 crashed in The Heap (timer)                +96 B
+│   started 2026-10-14 17:58 · seed 8f3a2c1d9e04b7a1 · preset standard ·
+│   prestige 2 (Gold) · banked 96 B · dumped 312 B · on Bovine Shuffle
+│   ✓ Mixing Milk        simulation 1150      8:41 1 sub    🦆0 independent
+│   ✓ The Bucket List    sorting-greedy 1280 13:02 3 sub 2✗ 🦆1 hinted [blind]
+│   ✓ Wormhole Sort      dsu 1610            21:37 2 sub 1✗ 🦆0 independent
+│   ✗ Bovine Shuffle     graphs 1720         30:00 4 sub 4✗ 🦆1 timer [cursed]
+* 11b9dc7 #41 Oct 13 P2 2:18:40 cleared                                 +1.2 KiB
+* 3961090 #40 Oct 12 P2   41:05 crashed in Page Tables (:q!)                 0 B
+* 7677f58 #39 Oct 11 P1 1:17:30 crashed in The Scheduler (out of lives)   +410 B
+* 2290cd9 #38 Oct 10 P1 1:41:02 cleared                                   +902 B
+* bb1a2d3 #37 Oct 09 P1   12:09 abandoned                                    0 B
+* 2e2f1f1 #36 Oct 08 P2   25:00 cleared                                   +700 B
+* a84eb59 #35 Oct 07 P2 1:02:13 crashed in The Stack (timer)               +53 B
+* 3df73d2 #34 Oct 06 P2 1:39:26 crashed in Page Tables (out of lives)     +106 B
+* 456a842 #33 Oct 05 P2   26:39 crashed in The Cache (timer)              +159 B
+* 890b7c9 #32 Oct 04 P2 1:03:52 crashed in The Heap (:q!)                 +212 B
+* 73fde85 #31 Oct 03 P2 1:40:05 cleared                                   +755 B
+* fdc0073 #30 Oct 02 P2   27:18 crashed in Userland (timer)               +318 B
+* 7ebcbdb #29 Oct 01 P2 1:04:31 crashed in The Cache (out of lives)       +371 B
+* caee4e1 #28 Sep 30 P2 1:41:44 crashed in The Heap (timer)                +24 B
+* 488cc22 #27 Sep 29 P1   28:57 crashed in The Stack (:q!)                 +77 B
+j/k move · enter expand · f filter · g/G ends · q back

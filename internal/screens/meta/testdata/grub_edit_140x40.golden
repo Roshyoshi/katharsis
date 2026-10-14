@@ -1,0 +1,40 @@
+                                                           GNU GRUB  version 2.12
+
+ ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+ │setparams 'dead-cases, prestige 2 (Gold)'                                                                                               │
+ │                                                                                                                                        │
+ │        set prestige=2                                                                                                                  │
+ │        set preset=hardcore                                                                                                             │
+ │        set seed=8f3a█   # hex; 0 is random                                                                                             │
+ │        boot                                                                                                                            │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ │                                                                                                                                        │
+ └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+                                   Minimum Emacs-like screen editing is supported. ↑ and ↓ pick a line,
+                                   TAB lists completions, and the seed takes hex digits. Press Ctrl-x or
+                                   F10 to boot, or ESC to discard edits and return to the GRUB menu.
+
+                                                 bank 1.3 KiB · rating 1432 · next boot #43

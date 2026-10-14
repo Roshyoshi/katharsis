@@ -1,0 +1,40 @@
+Boot #42 · Silver · map                                                                                                       uptime 1:17:30
+♥♥♡  🦆1  0 B uncommitted · 112 B committed                                                                                   daemons strace
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+                                           ╭─ Userland ─╮   ╭─ The Heap ─╮   ╭─ ? ─╮   ╭─ boss ─╮
+                                           │    ✓ ✓     │───│    ✓ ☠     │───│ ○ ○ │───│   ⚔    │
+                                           ╰────────────╯   ╰────────────╯   ╰─────╯   ╰────────╯
+
+                                              ✓ cleared   ● here   ○ ahead   ☠ crash   ⚔ boss
+
+                       #    biome           door                                          ◆  result       time
+                       1    Userland        Cow Tipping                                1000  ✓ AC         09:20 / 15:00
+                       2    Userland        Haybale Stacking                           1050  ↺ retreat    04:10 / 15:00
+                       3    Userland        Milk Measurement                           1100  ✓ AC 🦆1     12:31 / 15:00
+                       4    The Heap        Moocast                                    1250  ✓ AC         14:02 / 30:00
+                       5    The Heap        Closing the Farm                           1350  ☠ timer      30:00 / 30:00
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+esc back

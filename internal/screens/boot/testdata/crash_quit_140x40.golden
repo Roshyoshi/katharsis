@@ -1,0 +1,40 @@
+[  890.000] door_2: retreat from "Haybale Stacking", -1 life
+[ 1651.000] door_3: AC "Milk Measurement" +64 B
+[ 1750.000] merge: committed 112 B, loaded strace
+[ 2642.000] door_4: AC "Moocast" +96 B
+[ 3524.000] you[1]: :q! sent SIGKILL to init
+[ 3524.000] Kernel panic - not syncing: Attempted to kill init! exitcode=0x00000009 in "Wormhole Sort"
+[ 3524.000] CPU: 0 PID: 1 Comm: you Tainted: M (mystery) B (blind)
+[ 3524.000] Hardware name: dead-cases Silver, preset standard, seed 8f3a
+[ 3524.000] Modules linked in: strace(O)
+[ 3524.000] Call Trace:
+[ 3524.000]  do_exit+0x3a/0xc0
+[ 3524.000]  door_5+0xb/0x1e [The Heap]
+[ 3524.000]  door_4+0xe/0x1e [The Heap]
+[ 3524.000]  door_3+0xc/0xf [Userland]
+[ 3524.000]  ? door_2+0x4/0xf [Userland]
+[ 3524.000]  door_1+0x9/0xf [Userland]
+[ 3524.000]  boot_42+0x3a/0x69
+[ 3524.000] ---[ end Kernel panic ]---
+
+  "Talk is cheap. Show me the code."
+                                       — Linus Torvalds, linux-kernel (2000)
+
+  core dumped: 96 B on "Wormhole Sort" · [u] upsolve  [r] reboot  [l] git log
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

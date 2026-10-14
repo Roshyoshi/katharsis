@@ -1,0 +1,40 @@
+Boot #42 · Silver · The Mesh · room 1/2                                                                                       uptime 1:12:30
+♥♥♡  🦆1  176 B uncommitted · 112 B committed                                                                            daemons strace fork
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+ ┏━ ▸ 1 ━━━━━━━━━━ ↺ regression ━┓  ╭─ 2 ───────────────────────────╮  ╭─ 3 ───────────────── ◌ blind ─╮  ╭─ 4 ──────────────── ☠ cursed ─╮
+ ┃ USACO · 2020 US Open, Silver… ┃  │ USACO · 2019 December, Silve… │  │ USACO · 2018 February, Silve… │  │ CSES                          │
+ ┃ Cereal                        ┃  │ MooBuzz                       │  │ Snow Boots                    │  │ ???                           │
+ ┃ Simulation · Amortized        ┃  │ Math · Periodicity            │  │ tags hidden                   │  │ tags hidden                   │
+ ┃ Analysis                      ┃  │                               │  │                               │  │                               │
+ ┃                               ┃  │ ◆ 1200  ⏱ 35:00  +96 B        │  │ ◆ 1350  ⏱ 35:00  +168 B       │  │ ◆ 1600  ⏱ 35:00  +512 B       │
+ ┃ ◆ 1400  ⏱ 35:00  +128 B       ┃  │ ≈69% clear                    │  │ ≈64% clear                    │  │ ≈41% clear                    │
+ ┃ ≈62% clear                    ┃  │                               │  │ ◌ blind: tags hidden · ×1.5   │  │ ? mystery: title and tags     │
+ ┃ ↺ regression: crashed you 3   ┃  │                               │  │                               │  │ hidden · ×2                   │
+ ┃ days ago                      ┃  │                               │  │                               │  │ ☠ no ducks · 1 WA = crash ·   │
+ ┃                               ┃  │                               │  │                               │  │ ×2                            │
+ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ╰───────────────────────────────╯  ╰───────────────────────────────╯  ╰───────────────────────────────╯
+
+                                       ╭─ Userland ─╮   ╭─ The Heap ─╮   ╭─ The Mesh ─╮   ╭─ boss ─╮
+                                       │    ✓ ✓     │───│    ✓ ✓     │───│    ● ○     │───│   ⚔    │
+                                       ╰────────────╯   ╰────────────╯   ╰────────────╯   ╰────────╯
+
+
+
+
+
+
+
+
+
+
+←/→ select · 1-4 jump · enter open door · m map

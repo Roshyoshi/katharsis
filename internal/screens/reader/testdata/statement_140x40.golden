@@ -1,0 +1,40 @@
+ Bovine Shuffle  ·  USACO 2024 December, Silver P2
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  Note: The time limit for this problem is 4s, twice the default.
+
+  Farmer John has N cows (1 ≤ N ≤ 2 · 10⁵) standing in a line, the i-th of which has height hᵢ (1
+  ≤ hᵢ ≤ 10⁹). Every morning he performs the same shuffle: for each i, the cow in position i moves
+  to position aᵢ, where a[1], a[2], …, a[N] is given.
+
+  A position is always occupied if some cow stands there after every shuffle, no matter how many
+  shuffles have happened. Count the always occupied positions, and output ⌊S / 2⌋ mod (10⁹+7)
+  where S is the sum of their heights.
+
+  ### INPUT FORMAT (input arrives from the terminal / stdin):
+
+  The first line contains N. The second line contains a[1] … a[N] (1 ≤ aᵢ ≤ N). The third line
+  contains h[1] … h[N].
+
+  ### OUTPUT FORMAT (print output to the terminal / stdout):
+
+  Two integers: the count, and ⌊S/2⌋ modulo 10⁹+7.
+
+  ### SAMPLE INPUT:
+
+    4
+    3 2 1 3
+    5 1 7 2
+
+  ### SAMPLE OUTPUT:
+
+    3 6
+
+  Positions 1, 2 and 3 stay occupied; S = 5 + 1 + 7 = 13 and ⌊13/2⌋ = 6.
+
+  SCORING:
+
+  • Inputs 2-5: N ≤ 100
+  • Inputs 6-10: N ≤ 10³
+  • Inputs 11-14: no additional constraints.
+j/k scroll · space/b page · g/G ends · / search · o browser · q back                                                                    Top

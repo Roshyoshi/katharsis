@@ -1,0 +1,8 @@
+The .mdx and .problems.json files under content/, and ../ordering_full.ts,
+are copied unmodified from the USACO Guide (https://usaco.guide,
+https://github.com/cpinitiative/usaco-guide, commit
+092bf547cf4f63140057b220dba2861f884e1905) by the Competitive Programming
+Initiative and its contributors. They are licensed under CC BY-NC-SA 4.0
+(https://creativecommons.org/licenses/by-nc-sa/4.0/). content/ordering.ts is
+a trimmed version of the guide's file. ../golden/*.md are adaptations of
+those modules under the same license.

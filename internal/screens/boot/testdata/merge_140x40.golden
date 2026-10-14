@@ -1,0 +1,40 @@
+Boot #42 · Silver · merge window                                                                                              uptime 1:12:30
+♥♥♡  🦆1  176 B uncommitted · 112 B committed                                                                                 daemons strace
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+                                           ╭─ Userland ─╮   ╭─ The Heap ─╮   ╭─ ? ─╮   ╭─ boss ─╮
+                                           │    ✓ ✓     │───│    ✓ ✓     │─●─│ ○ ○ │───│   ⚔    │
+                                           ╰────────────╯   ╰────────────╯   ╰─────╯   ╰────────╯
+
+                                  commit   176 B uncommitted, lost if you crash  c commit
+
+                                  upgrade  a clear earned one; pick it before you leave
+                                    ▸ Overclock  +15% timer on every later door
+                                      ECC        +1 life
+                                      Duck       +1 rubber duck
+
+                                  daemon   pick one · held 1/3: strace
+                                      nice -20     +20% timer, but a WA costs 2 lives
+                                      fork         4 doors per room after an AC
+                                      /dev/random  mystery doors pay 2x
+
+                                  leave → biome 3: route choice
+
+
+
+
+
+
+
+
+
+
+↑/↓ move · enter pick or leave · c commit

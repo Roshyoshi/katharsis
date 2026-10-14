@@ -1,0 +1,24 @@
+ Bovine Shuffle — analysis  ·  USACO official analysis
+────────────────────────────────────────────────────────────────────────────────
+
+  (Analysis by Nick Wu)
+
+  Treat the shuffle as a functional graph: position i has one edge to aᵢ. A
+  position stays occupied forever exactly when it lies on a cycle, since every
+  other position eventually empties. Repeatedly delete positions with in-
+  degree 0 (a queue, as in topological sort); what remains are the cycles.
+  This is O(N).
+
+    for (int i = 1; i <= n; i++) if (indeg[i] == 0) q.push(i);
+    while (!q.empty()) {
+        int v = q.front(); q.pop(); alive[v] = false;
+        if (--indeg[a[v]] == 0) q.push(a[v]);
+    }
+
+
+
+
+
+
+
+j/k scroll · space/b page · g/G ends · / search · o browser · q back        All

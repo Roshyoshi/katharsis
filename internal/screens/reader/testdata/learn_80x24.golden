@@ -1,0 +1,24 @@
+ Prefix Sums  ·  USACO Guide · Silver
+────────────────────────────────────────────────────────────────────────────────
+
+  ## Introduction
+
+  Given an array a[1], a[2], …, a[N], a prefix sum array stores pₖ = ∑ᵢ₌₁ᵏ aᵢ
+  for every k, with p₀ = 0. Any range sum is then a difference of two prefix
+  sums:
+
+  aₗ + aₗ₊₁ + ⋯ + aᵣ = pᵣ - pₗ₋₁
+
+  Building p takes O(N) and each query O(1), so Q queries cost O(N + Q)
+  instead of O(NQ).
+
+  ## Implementation
+
+    #include <bits/stdc++.h>
+    using namespace std;
+
+    int main() {
+        int n, q;
+        cin >> n >> q;
+        vector<long long> p(n + 1);
+j/k scroll · space/b page · g/G ends · / search · o browser · q back        Top
