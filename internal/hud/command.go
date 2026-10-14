@@ -190,7 +190,7 @@ func (m *Model) submitReply() session.Reply {
 	if first.Reason != "" {
 		text += " " + first.Reason
 	}
-	if d := first.Diff; d != nil {
+	if d := first.Diff; d != nil && !m.concealed() {
 		text += fmt.Sprintf(": want %s, got %s", d.Want, d.Got)
 	}
 	return fail(text)
@@ -323,6 +323,9 @@ func (m *Model) startDebug(req session.Request) tea.Cmd {
 // selected row.
 func (m *Model) debugTest(args []string) (problem.Test, error) {
 	all := slices.Concat(m.prob.Tests, m.sub.tests)
+	if m.concealed() {
+		all = m.prob.Tests
+	}
 	if len(args) > 0 {
 		name := strings.TrimPrefix(args[0], "#")
 		for _, t := range all {
@@ -330,9 +333,12 @@ func (m *Model) debugTest(args []string) (problem.Test, error) {
 				return t, nil
 			}
 		}
+		if m.concealed() {
+			return problem.Test{}, fmt.Errorf("no sample %q (have %s; full tests are hidden)", name, testNames(m.prob.Tests))
+		}
 		return problem.Test{}, fmt.Errorf("no test %q (have %s)", name, testNames(m.prob.Tests))
 	}
-	if s := judge.Summarize(m.sub.results); s.First >= 0 {
+	if s := judge.Summarize(m.sub.results); s.First >= 0 && !m.concealed() {
 		return m.sub.tests[s.First], nil
 	}
 	if i := m.firstFailure(); i >= 0 {
@@ -381,3 +387,5 @@ func copyFile(src, dst string) error {
 	}
 	return os.WriteFile(dst, b, 0o644)
 }
+
+func (m *Model) concealed() bool { return m.opt.Conceal != nil && m.opt.Conceal() }

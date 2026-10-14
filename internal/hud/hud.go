@@ -51,6 +51,14 @@ type Options struct {
 	// (session.CloseEditor). With it, quitting the HUD waits for the
 	// editor to close first; nil quits at once.
 	CloseEditor func() error
+	// Conceal hides the full tests while it returns true: a submit reply
+	// names the failing test but not its expected and actual output, and
+	// :Debug takes samples only. In a boot the full tests are the judge's
+	// hidden data; nil reveals everything, as in practice.
+	Conceal func() bool
+	// Clock replaces the elapsed-time clock in the header and border, e.g.
+	// with a boot's countdown; nil counts up from when the HUD started.
+	Clock func() string
 }
 
 type row struct {
@@ -305,7 +313,7 @@ func (m *Model) updateBorder() tea.Cmd {
 // statusText is one line for the pane border and `ctl status`:
 // "⏱ 12:34 · samples 2/3 · HP 37/52 WA".
 func (m *Model) statusText() string {
-	parts := []string{"⏱ " + fmtClock(m.now.Sub(m.started))}
+	parts := []string{"⏱ " + m.clockText()}
 	switch {
 	case m.loadErr != nil:
 		parts = append(parts, "problem not loaded")
@@ -367,7 +375,7 @@ func (m *Model) View() tea.View {
 	if m.prob != nil {
 		name = m.prob.Name
 	}
-	clock := fmtClock(m.now.Sub(m.started))
+	clock := m.clockText()
 	line(bold.Render(name) + strings.Repeat(" ", max(w-len(name)-len(clock)-2, 1)) + "⏱ " + clock)
 	line(m.statusLine())
 	if m.closing {
@@ -544,4 +552,11 @@ func firstLines(s string, n int) []string {
 
 func wrap(s string, w int) []string {
 	return strings.Split(ansi.Wrap(s, max(w, 10), ""), "\n")
+}
+
+func (m *Model) clockText() string {
+	if m.opt.Clock != nil {
+		return m.opt.Clock()
+	}
+	return fmtClock(m.now.Sub(m.started))
 }

@@ -31,6 +31,10 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "ctl" {
 		os.Exit(session.CtlMain(os.Args[2:], os.Stdout, os.Stderr))
 	}
+	run := runGame
+	if len(os.Args) > 1 && os.Args[1] == "practice" {
+		run = runPractice
+	}
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "katharsis:", err)
 		os.Exit(1)
@@ -38,7 +42,8 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprint(os.Stderr, `usage: katharsis practice [flags] <dir>
+	fmt.Fprint(os.Stderr, `usage: katharsis [flags]                 play (GRUB menu, boots, learn mode)
+       katharsis practice [flags] <dir>
        katharsis ctl <submit|debug [n]|quack|giveup|retreat|status>
 
 <dir> holds <dir>.cpp (or sol.cpp) and tests/N.in + tests/N.out.
@@ -50,11 +55,7 @@ flags:
 	flag.PrintDefaults()
 }
 
-func run(args []string) error {
-	if len(args) == 0 || args[0] != "practice" {
-		usage()
-		return fmt.Errorf("expected a subcommand")
-	}
+func runPractice(args []string) error {
 	fs := flag.NewFlagSet("practice", flag.ContinueOnError)
 	noTmux := fs.Bool("no-tmux", false, "HUD only; edit the source yourself")
 	editor := fs.String("editor", "vim", "editor command; the source path is appended")

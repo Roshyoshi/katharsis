@@ -11,28 +11,59 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
+	"katharsis/internal/hud"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
+	"katharsis/internal/session"
 )
 
 // submitMsg asks the app to judge the open door's full tests. The problem
-// screen's key and the editor's :Submit both send it.
+// screen's key and the editor's :Submit both lead here.
 type submitMsg struct{}
 
+// hudRunner is a Runner with a HUD to embed (the tmux runner). The
+// headless tests' runner has none, and the app judges through Deps.Judge.
+type hudRunner interface {
+	HUD() *hud.Model
+	Reopen() error
+}
+
+// hudQuitMsg replaces the HUD's tea.Quit: embedded in the game, the HUD
+// quitting means the player closed the editor, not that the game ends.
+type hudQuitMsg struct{}
+
+// guard rewrites a HUD command so its quit cannot stop the program.
+func guard(cmd tea.Cmd) tea.Cmd {
+	if cmd == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		switch msg := cmd().(type) {
+		case tea.QuitMsg:
+			return hudQuitMsg{}
+		case tea.BatchMsg:
+			out := make(tea.BatchMsg, len(msg))
+			for i, c := range msg {
+				out[i] = guard(c)
+			}
+			return out
+		default:
+			return msg
+		}
+	}
+}
+
 // problemScreen is the pane beside the editor while a door is open: the
-// boot HUD bar, the last full-test result, and the keys for the door. In an
-// upsolve it shows the problem without a timer or lives.
-//
-// SPONGE: the sample-judging HUD from internal/hud (rejudge on save) is
-//
-//	embedded here once its boot mode lands; until then samples are
-//	judged by :Submit only.
+// boot HUD bar on top, the sample/submit HUD below, and the keys for the
+// door. In an upsolve it shows the problem without a timer or lives.
 type problemScreen struct {
 	m       *Model
 	upsolve bool
 	door    game.Door
-	last    judgedMsg
-	confirm bool // :q! asked once; the next Q confirms
+	last    judgedMsg // the headless judge's last result
+	confirm bool      // Q asked once; the next Q confirms :q!
+	closed  bool      // the player closed the editor
+	hudSize [2]int
 }
 
 func newProblemScreen(m *Model) *problemScreen {
@@ -45,6 +76,13 @@ func newProblemScreen(m *Model) *problemScreen {
 
 func newUpsolveScreen(m *Model, d game.Door) *problemScreen {
 	return &problemScreen{m: m, upsolve: true, door: d}
+}
+
+func (s *problemScreen) hud() *hud.Model {
+	if r, ok := s.m.d.Runner.(hudRunner); ok {
+		return r.HUD()
+	}
+	return nil
 }
 
 func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
@@ -66,6 +104,15 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 			return s, screens.Emit(game.Quack{})
 		}
 	case "e":
+		if s.closed {
+			if r, ok := s.m.d.Runner.(hudRunner); ok {
+				s.closed = false
+				if err := r.Reopen(); err != nil {
+					return s, fail("reopen editor: %v", err)
+				}
+				return s, guard(r.HUD().Init())
+			}
+		}
 		if s.upsolve {
 			return s, screens.Emit(screens.OpenEditorial{Problem: string(s.door.Problem)})
 		}
@@ -83,6 +130,13 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 			return s, nil
 		}
 		return s, screens.Emit(game.GiveUp{})
+	case "q":
+		return s, nil // the HUD's q would close the editor; the door decides
+	}
+	// The rest (j/k, r to rerun samples) is the HUD's.
+	if h := s.hud(); h != nil {
+		_, cmd := h.Update(msg)
+		return s, guard(cmd)
 	}
 	return s, nil
 }
@@ -95,48 +149,118 @@ var (
 )
 
 func (s *problemScreen) View(w, h int) string {
-	var b strings.Builder
-	line := func(t string) { b.WriteString(ansi.Truncate(t, w, "…") + "\n") }
+	var top []string
 	p, _ := s.m.d.Catalog.Get(s.door.Problem)
-
 	switch {
 	case s.upsolve:
-		line(bold.Render("upsolve · "+p.Title) + faint.Render("  untimed, editorial allowed"))
+		top = append(top, bold.Render("upsolve · "+p.Title)+faint.Render("  untimed, editorial allowed"))
 	case s.m.state != nil:
-		for _, l := range strings.Split(bootui.HUDBar(s.m.state, p, s.m.d.Now(), w), "\n") {
-			line(l)
-		}
-	}
-	line(faint.Render(strings.Repeat("─", w)))
-
-	switch {
-	case s.m.open == nil:
-		line(faint.Render("fetching " + string(s.door.Problem) + "…"))
-	case s.m.judging:
-		line(faint.Render("judging full tests…"))
-	case s.last.verdict != "":
-		st := red
-		if s.last.verdict == "AC" {
-			st = green
-		}
-		line(st.Render(fmt.Sprintf("%s  %d/%d tests", s.last.verdict, s.last.passed, s.last.total)))
-	default:
-		line(faint.Render("samples rejudge on :w · :Submit for the full tests"))
+		top = append(top, strings.Split(bootui.HUDBar(s.m.state, p, s.m.d.Now(), w), "\n")...)
 	}
 	if s.confirm {
-		line(red.Render(":q! — this crashes the boot. Q again to confirm."))
+		top = append(top, red.Render(":q! crashes the boot. Q again to confirm."))
 	}
-
-	used := strings.Count(b.String(), "\n")
-	for i := used; i < h-1; i++ {
-		b.WriteString("\n")
+	if s.closed {
+		top = append(top, red.Render("editor closed · e reopens it"))
 	}
 	help := "s submit · t statement · ? duck · R retreat · Q :q!"
 	if s.upsolve {
 		help = "s submit · t statement · e editorial · Q leave"
 	}
+
+	var b strings.Builder
+	for _, l := range top {
+		b.WriteString(ansi.Truncate(l, w, "…") + "\n")
+	}
+	room := h - len(top) - 1
+	if hm := s.hud(); hm != nil && room > 2 {
+		// The HUD sizes itself from WindowSizeMsg; give it the room left.
+		if s.hudSize != [2]int{w, room} {
+			s.hudSize = [2]int{w, room}
+			hm.Update(tea.WindowSizeMsg{Width: w, Height: room})
+		}
+		b.WriteString(hm.View().Content + "\n")
+	} else {
+		b.WriteString(s.headless(w))
+		for i := strings.Count(b.String(), "\n"); i < h-1; i++ {
+			b.WriteString("\n")
+		}
+	}
 	b.WriteString(ansi.Truncate(faint.Render(help), w, "…"))
 	return b.String()
+}
+
+// headless is the body without a HUD: the last full-test result.
+func (s *problemScreen) headless(w int) string {
+	line := faint.Render("samples rejudge on :w · :Submit for the full tests")
+	switch {
+	case s.m.open == nil:
+		line = faint.Render("fetching " + string(s.door.Problem) + "…")
+	case s.m.judging:
+		line = faint.Render("judging full tests…")
+	case s.last.verdict != "":
+		st := red
+		if s.last.verdict == "AC" {
+			st = green
+		}
+		line = st.Render(fmt.Sprintf("%s  %d/%d tests", s.last.verdict, s.last.passed, s.last.total))
+	}
+	return ansi.Truncate(line, w, "…") + "\n"
+}
+
+// onRequest handles a command from the editor. The game's own commands
+// become engine actions; submit and debug belong to the HUD.
+func (m *Model) onRequest(req session.Request) tea.Cmd {
+	h := (*hud.Model)(nil)
+	if r, ok := m.d.Runner.(hudRunner); ok {
+		h = r.HUD()
+	}
+	inBoot := m.state != nil && m.state.Phase == game.PhaseProblem && m.open != nil && !m.open.Upsolve
+	var a game.Action
+	switch req.Cmd {
+	case session.CmdQuack:
+		a = game.Quack{}
+	case session.CmdGiveUp:
+		a = game.GiveUp{}
+	case session.CmdRetreat:
+		a = game.Retreat{}
+	case session.CmdStatus:
+		req.Answer(session.Reply{OK: true, Text: m.statusLine()})
+		return nil
+	default:
+		if h == nil {
+			req.Answer(session.Reply{Text: "no door open"})
+			return nil
+		}
+		_, cmd := h.Update(req)
+		return guard(cmd)
+	}
+	if !inBoot {
+		req.Answer(session.Reply{Text: req.Cmd + " needs an open door in a boot"})
+		return nil
+	}
+	cmd := m.step(a)
+	req.Answer(session.Reply{OK: true, Text: m.statusLine()})
+	return cmd
+}
+
+// statusLine is the one-line boot state for the editor and its border:
+// countdown, lives, ducks.
+func (m *Model) statusLine() string {
+	s := m.state
+	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil {
+		return "no door open"
+	}
+	left := max(s.Current.Deadline.Sub(m.d.Now()), 0)
+	return fmt.Sprintf("⏱ %s · %s · 🦆%d", countdown(left), strings.Repeat("♥", s.Lives), s.Ducks)
+}
+
+func countdown(d interface{ Seconds() float64 }) string {
+	t := int(d.Seconds())
+	if t >= 3600 {
+		return fmt.Sprintf("%d:%02d:%02d", t/3600, t/60%60, t%60)
+	}
+	return fmt.Sprintf("%02d:%02d", t/60, t%60)
 }
 
 func readFile(path string) (string, error) {

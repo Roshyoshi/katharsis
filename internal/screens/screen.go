@@ -33,4 +33,8 @@ type (
 	Upsolve       struct{ Problem string } // catalog.ID of a core dump or regression
 	OpenStatement struct{ Problem string }
 	OpenEditorial struct{ Problem string }
+	// StartTrial begins a learn-mode trial for a USACO Guide module id.
+	StartTrial struct{ Module string }
+	// OpenModule shows a learn-mode module page in the reader.
+	OpenModule struct{ Module string }
 )

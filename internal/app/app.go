@@ -9,14 +9,18 @@ import (
 	"context"
 	"fmt"
 	"math/rand/v2"
+	"slices"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
+	"katharsis/internal/hud"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	"katharsis/internal/session"
 	"katharsis/internal/store"
 )
 
@@ -156,6 +160,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.step(msg)
 	case judgedMsg:
 		return m, m.onJudged(msg)
+	case hud.SubmittedMsg:
+		s := msg.Summary
+		return m, m.onJudged(judgedMsg{verdict: string(s.Verdict), passed: s.Passed, total: s.Total})
+	case session.Request:
+		return m, m.onRequest(msg)
+	case hudQuitMsg:
+		for _, s := range m.stack {
+			if p, ok := s.(*problemScreen); ok {
+				p.closed = true
+			}
+		}
+		return m, nil
 	case fetchedMsg:
 		return m, m.onFetched(msg)
 	case errMsg:
@@ -168,9 +184,29 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if cmd, ok := m.intent(msg); ok {
 		return m, cmd
 	}
-	s, cmd := m.top().Update(msg)
-	m.stack[len(m.stack)-1] = s
-	return m, cmd
+	// Keys belong to the screen on top. Everything else (timers, judge
+	// events, a reveal animation) goes to every screen in the stack and to
+	// the open door's HUD: a screen under another one, or the HUD under the
+	// statement reader, must keep its own clock and passes running.
+	if _, key := msg.(tea.KeyPressMsg); key {
+		s, cmd := m.top().Update(msg)
+		m.stack[len(m.stack)-1] = s
+		return m, cmd
+	}
+	var cmds []tea.Cmd
+	for i := len(m.stack) - 1; i >= 0; i-- {
+		s, cmd := m.stack[i].Update(msg)
+		m.stack[i] = s
+		cmds = append(cmds, cmd)
+	}
+	// The problem screen sizes the HUD to the room below its own bar, so
+	// the window size is not passed on to it.
+	_, resize := msg.(tea.WindowSizeMsg)
+	if r, ok := m.d.Runner.(hudRunner); ok && r.HUD() != nil && !resize {
+		_, cmd := r.HUD().Update(msg)
+		cmds = append(cmds, guard(cmd))
+	}
+	return m, tea.Batch(cmds...)
 }
 
 func (m *Model) View() tea.View {
@@ -207,4 +243,24 @@ func note(format string, args ...any) tea.Cmd {
 func fail(format string, args ...any) tea.Cmd {
 	err := fmt.Errorf(format, args...)
 	return func() tea.Msg { return errMsg{err} }
+}
+
+// Conceal reports whether the open door's full tests are hidden: always in
+// a boot, unless the strace daemon is held. Upsolves never hide them.
+func (m *Model) Conceal() bool {
+	if m.state == nil || m.open == nil || m.open.Upsolve {
+		return false
+	}
+	return !slices.Contains(m.state.Daemons, game.Strace)
+}
+
+// Clock is the HUD's clock in a boot: the countdown with lives and ducks,
+// e.g. "23:41 · ♥♥♡ · 🦆1". Outside a boot it counts up, as in practice.
+func (m *Model) Clock() string {
+	s := m.state
+	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil || (m.open != nil && m.open.Upsolve) {
+		return "untimed"
+	}
+	left := max(s.Current.Deadline.Sub(m.d.Now()), 0)
+	return fmt.Sprintf("%s · %s · 🦆%d", countdown(left), strings.Repeat("♥", s.Lives), s.Ducks)
 }

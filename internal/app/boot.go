@@ -11,6 +11,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
+	"katharsis/internal/session"
 )
 
 // baseScreen is the screen for the boot's phase, or GRUB outside a boot.
@@ -210,6 +211,9 @@ func (m *Model) onFetched(f fetchedMsg) tea.Cmd {
 		}
 	}
 	m.refresh()
+	if r, ok := m.d.Runner.(hudRunner); ok && r.HUD() != nil {
+		return guard(r.HUD().Init())
+	}
 	return nil
 }
 
@@ -242,7 +246,17 @@ type judgedMsg struct {
 
 // submit judges the open door's full tests in the background.
 func (m *Model) submit() tea.Cmd {
-	if m.open == nil || m.judging || m.d.Judge == nil {
+	if m.open == nil || m.judging {
+		return nil
+	}
+	if r, ok := m.d.Runner.(hudRunner); ok && r.HUD() != nil {
+		// The HUD judges and reports back with a SubmittedMsg.
+		m.judging = true
+		req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+		_, cmd := r.HUD().Update(req)
+		return guard(cmd)
+	}
+	if m.d.Judge == nil {
 		return nil
 	}
 	m.judging = true
