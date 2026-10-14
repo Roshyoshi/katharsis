@@ -1,0 +1,210 @@
+// Package app is the game: it routes between screens, feeds player choices
+// and judge results to the engine, saves after every step, and carries out
+// the engine's effects (open a door, play a sound, show the crash). Screens
+// and the engine stay pure; everything with side effects is reached through
+// Deps so the whole loop runs headless in tests.
+package app
+
+import (
+	"context"
+	"fmt"
+	"math/rand/v2"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+
+	"deadcases/internal/catalog"
+	"deadcases/internal/game"
+	"deadcases/internal/rules"
+	"deadcases/internal/screens"
+	"deadcases/internal/store"
+)
+
+// Runner sets up and tears down the editing side of an open door: files on
+// disk, the editor pane, the file watcher. Results come back as messages.
+type Runner interface {
+	Open(ctx context.Context, d Door) error
+	Close() error
+}
+
+// Door is everything a Runner needs to put a problem in front of the player.
+type Door struct {
+	Door     game.Door
+	Problem  catalog.Problem
+	Assets   catalog.Assets
+	Deadline time.Time
+	Boot     int
+	Upsolve  bool // untimed, outside a boot
+	Opened   time.Time
+	// ReadEditorial marks an upsolve whose editorial was opened, so the
+	// solve is recorded as editorial-assisted.
+	ReadEditorial bool
+}
+
+// Judge runs the full tests of an open door. The app calls it on :Submit;
+// it must be safe to call from a goroutine.
+type Judge func(ctx context.Context, d Door) (verdict string, passed, total int, err error)
+
+type Deps struct {
+	Store   *store.Store
+	Catalog catalog.Catalog
+	// Presets are rule presets by name; "standard" is added if missing.
+	Presets map[string]rules.Rules
+	Runner  Runner
+	Judge   Judge
+	Now     func() time.Time
+	Sound   func(name string) // nil plays nothing
+	Seed    func() uint64     // nil uses math/rand
+}
+
+// Model is the root tea.Model.
+type Model struct {
+	d     Deps
+	meta  game.Meta
+	state *game.State // nil outside a boot
+	pool  []catalog.Problem
+
+	stack   []screens.Screen // top is shown; the bottom is GRUB or a boot screen
+	open    *Door            // the door being played, nil otherwise
+	judging bool
+	flash   string // one-line error shown over the screen until the next key
+
+	width, height int
+}
+
+func New(d Deps) (*Model, error) {
+	if d.Now == nil {
+		d.Now = time.Now
+	}
+	if d.Seed == nil {
+		d.Seed = func() uint64 { return rand.Uint64() }
+	}
+	if d.Presets == nil {
+		d.Presets = map[string]rules.Rules{}
+	}
+	if _, ok := d.Presets["standard"]; !ok {
+		d.Presets["standard"] = rules.Standard()
+	}
+	meta, err := d.Store.LoadMeta()
+	if err != nil {
+		return nil, err
+	}
+	m := &Model{d: d, meta: meta, pool: d.Catalog.All()}
+	st, err := d.Store.ActiveBoot()
+	if err != nil {
+		return nil, err
+	}
+	m.state = st
+	m.reset()
+	return m, nil
+}
+
+type tickMsg time.Time
+
+func tick() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg { return tickMsg(t) })
+}
+
+func (m *Model) Init() tea.Cmd {
+	cmds := []tea.Cmd{tick(), m.initTop()}
+	// A boot resumed in the middle of a door reopens it; its deadline is
+	// absolute, so time spent away still counted.
+	if m.state != nil && m.state.Phase == game.PhaseProblem && m.state.Current != nil {
+		cmds = append(cmds, m.openDoor(m.state.Current.Door, false))
+	}
+	return tea.Batch(cmds...)
+}
+
+// reset rebuilds the screen stack from scratch for the current phase.
+func (m *Model) reset() {
+	m.stack = []screens.Screen{m.baseScreen()}
+}
+
+func (m *Model) top() screens.Screen { return m.stack[len(m.stack)-1] }
+
+func (m *Model) push(s screens.Screen) tea.Cmd {
+	m.stack = append(m.stack, s)
+	return m.initTop()
+}
+
+func (m *Model) pop() {
+	if len(m.stack) > 1 {
+		m.stack = m.stack[:len(m.stack)-1]
+	}
+}
+
+// initTop runs a screen's optional Init (the crash screen's reveal).
+func (m *Model) initTop() tea.Cmd {
+	if s, ok := m.top().(interface{ Init() tea.Cmd }); ok {
+		return s.Init()
+	}
+	return nil
+}
+
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width, m.height = msg.Width, msg.Height
+	case tea.KeyPressMsg:
+		m.flash = ""
+		if msg.String() == "ctrl+c" {
+			return m, m.quit()
+		}
+	case tickMsg:
+		return m, tea.Batch(tick(), m.onTick())
+	case game.Action:
+		return m, m.step(msg)
+	case judgedMsg:
+		return m, m.onJudged(msg)
+	case fetchedMsg:
+		return m, m.onFetched(msg)
+	case errMsg:
+		m.flash = msg.err.Error()
+		return m, nil
+	case noteMsg:
+		m.flash = msg.text
+		return m, nil
+	}
+	if cmd, ok := m.intent(msg); ok {
+		return m, cmd
+	}
+	s, cmd := m.top().Update(msg)
+	m.stack[len(m.stack)-1] = s
+	return m, cmd
+}
+
+func (m *Model) View() tea.View {
+	w, h := m.width, m.height
+	if w <= 0 || h <= 0 {
+		w, h = 80, 24
+	}
+	body := m.top().View(w, h)
+	if m.flash != "" {
+		body = overlayFlash(body, m.flash, w)
+	}
+	v := tea.NewView(body)
+	v.AltScreen = true
+	return v
+}
+
+func (m *Model) quit() tea.Cmd {
+	if m.open != nil && m.d.Runner != nil {
+		m.d.Runner.Close()
+	}
+	return tea.Quit
+}
+
+type errMsg struct{ err error }
+
+// noteMsg flashes a message that is not an error.
+type noteMsg struct{ text string }
+
+func note(format string, args ...any) tea.Cmd {
+	text := fmt.Sprintf(format, args...)
+	return func() tea.Msg { return noteMsg{text} }
+}
+
+func fail(format string, args ...any) tea.Cmd {
+	err := fmt.Errorf(format, args...)
+	return func() tea.Msg { return errMsg{err} }
+}
