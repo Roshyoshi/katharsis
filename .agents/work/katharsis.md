@@ -253,6 +253,12 @@ D56 open 10-15     Achievements: "w spoiler ones as well"; like Star of Providen
                    secret ones (an alternate ending like Silksong's act 2 one),
                    completion. Design thread first: docs/design/achievements.md.
 
+10-15 engine merged: cycles, twists, three-act map with gates, time bought, fountain,
+      ladder P1-P8, easing in cycles, standard = the map (short/patch linear, trials
+      Legacy()), old saves boot the map next (TestLegacySaves), map apt prices x2.7.
+      Sim P0: clears 44-46.5%, act hazards 13-16/21-24/29-37%, G1 0.8-2.5%. Full-boot
+      QA on the map next (qa-map).
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
