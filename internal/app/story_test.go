@@ -13,6 +13,7 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/story"
 )
 
@@ -329,4 +330,27 @@ func TestStoryOff(t *testing.T) {
 	if len(h.m.meta.Seen) != 0 {
 		t.Errorf("a trial marked %v seen", seenIDs(h.m.meta))
 	}
+}
+
+// TestStoryRead: a screen asks for a beat's page (story.Read), as a boot
+// end's teaser or the reread log will. It shows over that screen, is seen
+// once read, and never shows over an open door or for an id that is no
+// beat. The headless game reads too: the player asked.
+func TestStoryRead(t *testing.T) {
+	h := newHarness(t)
+	h.send(story.Read{ID: "no.such.beat"})
+	if h.scene() != nil {
+		t.Fatal("an unknown beat has a page")
+	}
+	h.send(story.Read{ID: "reveal.prestige.1"})
+	if got, _ := h.watch(); !slices.Equal(got, []string{"reveal.prestige.1"}) {
+		t.Fatalf("read shows %v", got)
+	}
+	if _, ok := h.m.top().(*meta.Menu); !ok || !slices.Equal(seenIDs(h.m.meta), []string{"reveal.prestige.1"}) {
+		t.Errorf("after reading: on %T, seen %v", h.m.top(), seenIDs(h.m.meta))
+	}
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.send(game.ChooseDoor{})
+	h.send(story.Read{ID: "reveal.prestige.2"})
+	h.noSceneOverDoor()
 }

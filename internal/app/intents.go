@@ -69,7 +69,9 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 	case submitMsg:
 		return m.submit(), true
 	case story.Done: // story.go
-		return m.sceneDone(msg), true
+		return m.sceneDone(msg)
+	case story.Read:
+		return m.readBeat(msg.ID), true
 	case crashSceneMsg:
 		return m.onCrashScene(msg), true
 	}

@@ -31,6 +31,11 @@ type Done struct {
 	Skipped bool
 }
 
+// Read asks the app to show the one-time beat ID as a page (NewBeat) over
+// the screen that emits it: the key under a boot end's teaser line, or the
+// reread log. It is shown between doors only.
+type Read struct{ ID string }
+
 // page is one step of a scene: a clip built for the body's size.
 type page func(w, h int) anim.Clip
 

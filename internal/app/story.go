@@ -257,22 +257,34 @@ func (m *Model) nextScene() tea.Cmd {
 }
 
 // sceneDone takes a scene's Done. The scene was on screen, so a one-time
-// one is seen. It pops and the next queued scene shows, none after an esc.
-// A Done from a scene no longer on top (a rebuilt stack dropped it) only
-// records it.
-func (m *Model) sceneDone(d story.Done) tea.Cmd {
+// one is seen. When it is the app's scene on top it pops and the next
+// queued scene shows, none after an esc; ok is false otherwise, so the
+// Done goes on to the screens, for one that shows a scene itself. A Done
+// from a scene a rebuilt stack dropped goes nowhere.
+func (m *Model) sceneDone(d story.Done) (cmd tea.Cmd, ok bool) {
 	m.markSeen(d.Scene)
 	on := m.story.on
 	if on == nil || !on.Left() || m.top() != screens.Screen(on) {
 		m.syncStory()
-		return nil
+		return nil, false
 	}
 	m.pop()
 	m.story.on = nil
 	if d.Skipped {
 		m.story.queue = nil
 	}
-	return m.nextScene()
+	return m.nextScene(), true
+}
+
+// readBeat shows a one-time beat's page (story.Read): from a boot end's
+// teaser, or reread from the log. Never over an open door, and never for
+// an id that is no beat.
+func (m *Model) readBeat(id string) tea.Cmd {
+	m.syncStory()
+	if flavor.BeatTitle(id) == "" || m.open != nil || m.state != nil && m.state.Phase == game.PhaseProblem {
+		return nil
+	}
+	return m.playStory(queued{id, func() *story.Scene { return story.NewBeat(id) }})
 }
 
 // markSeen records a one-time scene, saves it, and notes it (RT6).
