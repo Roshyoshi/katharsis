@@ -18,11 +18,20 @@ func topicOf(p *catalog.Problem) string {
 	return p.Topic
 }
 
-// target is the door rating at which the player clears topic doors with
-// probability clear, raised by the prestige offset.
-func (e *engine) target(topic string, clear float64) float64 {
+// target is the door rating at which the player clears rb's topic doors
+// with probability rb.TargetClear, raised by the prestige offset and
+// corrected by the tier's calibration.
+func (e *engine) target(topic string, rb rules.Biome) float64 {
 	r := &e.s.Rules
-	return Aim(PlayerRating(r, e.meta, topic), clear) + float64(e.s.Prestige)*r.PrestigeOffset
+	return Aim(PlayerRating(r, e.meta, topic), rb.TargetClear) +
+		float64(e.s.Prestige)*r.PrestigeOffset + e.aimOffset(rb)
+}
+
+// Target is the door rating the current biome aims topic doors at for m:
+// what the engine is trying to offer, before the pool decides what it can.
+func (s *State) Target(m *Meta, topic string) float64 {
+	e := &engine{s: s, meta: m}
+	return e.target(topic, s.Rules.Biomes[min(s.Biome, len(s.Rules.Biomes)-1)])
 }
 
 // attempted is every problem opened this boot.
@@ -58,7 +67,7 @@ type cand struct {
 
 // candidates lists eligible problems, sorted by ID so the pick depends on the
 // seed and not on the order the catalog listed them in.
-func (e *engine) candidates(topic string, clear float64, ex map[catalog.ID]bool) []cand {
+func (e *engine) candidates(topic string, rb rules.Biome, ex map[catalog.ID]bool) []cand {
 	targets := map[string]float64{}
 	var cs []cand
 	for i := range e.pool {
@@ -69,7 +78,7 @@ func (e *engine) candidates(topic string, clear float64, ex map[catalog.ID]bool)
 		t := topicOf(p)
 		tg, ok := targets[t]
 		if !ok {
-			tg = e.target(t, clear)
+			tg = e.target(t, rb)
 			targets[t] = tg
 		}
 		cs = append(cs, cand{p, math.Abs(float64(p.Rating) - tg), topic == Mixed || t == topic})
@@ -155,17 +164,21 @@ func (e *engine) rollRoom(fresh bool) {
 	n := e.roomSize(b)
 
 	var ps []*catalog.Problem
-	for _, ex := range []map[catalog.ID]bool{e.excluded(), e.attempted(), {}} {
-		ps = e.pick(e.candidates(b.Topic, rb.TargetClear, ex), n)
-		if len(ps) > 0 {
-			break
+	if s.Trial != nil {
+		ps = []*catalog.Problem{e.trialProblem()}
+	} else {
+		for _, ex := range []map[catalog.ID]bool{e.excluded(), e.attempted(), {}} {
+			ps = e.pick(e.candidates(b.Topic, rb, ex), n)
+			if len(ps) > 0 {
+				break
+			}
 		}
 	}
 	doors := make([]Door, 0, n)
 	for _, p := range ps {
 		doors = append(doors, e.makeDoor(p, rb, b.Boss, false))
 	}
-	if fresh {
+	if fresh && s.Trial == nil {
 		if d, ok := e.regressionDoor(rb, doors); ok {
 			if len(doors) > 0 {
 				doors[len(doors)-1] = d
@@ -215,6 +228,12 @@ func (e *engine) regressionDoor(rb rules.Biome, offered []Door) (Door, bool) {
 
 // makeDoor rolls a door's modifiers and prices it. It always draws three
 // numbers, so one door's modifiers never shift the next door's rolls.
+//
+// SolveP takes the tier's calibration offset back out of the rating: the
+// offset moved the door to where the player really clears at the target
+// rate, so the logistic at the uncorrected rating is the better estimate,
+// and pricing by it keeps a door's expected payout at BaseBytes/2 whatever
+// the calibration has learned.
 func (e *engine) makeDoor(p *catalog.Problem, rb rules.Biome, boss string, regression bool) Door {
 	r := &e.s.Rules
 	asc := r.Ascend(e.s.Prestige)
@@ -224,7 +243,7 @@ func (e *engine) makeDoor(p *catalog.Problem, rb rules.Biome, boss string, regre
 		Problem:    p.ID,
 		Topic:      topic,
 		Rating:     p.Rating,
-		SolveP:     Expected(R, float64(p.Rating)),
+		SolveP:     Expected(R, float64(p.Rating)-e.aimOffset(rb)),
 		Regression: regression,
 		Boss:       boss,
 	}
@@ -232,6 +251,14 @@ func (e *engine) makeDoor(p *catalog.Problem, rb rules.Biome, boss string, regre
 	d.Mystery = mystery < r.MysteryChance+asc.MysteryChance
 	d.Blind = r.BlindAll || d.Mystery || blind < r.BlindChance+asc.BlindChance
 	d.Cursed = boss == "" && !regression && cursed < r.CursedChance+asc.CursedChance
+	if e.s.Trial != nil {
+		// The unit shows tags; the integration doors are blind.
+		d.Blind, d.Mystery, d.Cursed = e.s.Biome > 0 || r.BlindAll, false, false
+	}
+	plain := !d.Blind && !d.Cursed && !regression && e.s.Trial == nil
+	if plain && math.Abs(float64(p.Rating)-e.target(topic, rb)) <= float64(r.RatingWindows[0]) {
+		d.Tier = CalibrationTier(rb)
+	}
 	d.Timer = e.doorTimer(rb, boss != "", float64(p.Rating)-R)
 	d.Bytes = e.doorBytes(d)
 	return d
@@ -284,7 +311,7 @@ func (e *engine) routeOffers(rb rules.Biome, k int, used map[string]bool) []stri
 		}
 		tg, ok := targets[t]
 		if !ok {
-			tg = e.target(t, rb.TargetClear)
+			tg = e.target(t, rb)
 			targets[t] = tg
 		}
 		if math.Abs(float64(p.Rating)-tg) <= widest {

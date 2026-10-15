@@ -6,14 +6,15 @@ import (
 	"testing"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/game"
 )
 
 func TestCapabilityFor(t *testing.T) {
 	for _, tc := range []struct{ topic, want string }{
 		{"dp", "CAP_DP"},
-		{"prefix-sums", "CAP_PREFIX_SUMS"},
-		{"complete-search", "CAP_COMPLETE_SEARCH"},
-		{"shortest-paths", "CAP_SHORTEST_PATHS"},
+		{"prefix-sums", "CAP_PREFIX"},
+		{"shortest-paths", "CAP_SSSP"},
+		{"complete-search", ""}, // Bronze material: never gated
 		{"mixed", ""},
 		{"", ""},
 		{"not-a-topic", ""},
@@ -34,8 +35,20 @@ func TestCapabilityFor(t *testing.T) {
 		}
 		seen[c] = topic
 	}
-	if len(seen) != len(catalog.Topics)-1 {
-		t.Errorf("%d capabilities for %d topics", len(seen), len(catalog.Topics))
+	if len(seen) != len(game.TopicCapabilities) {
+		t.Errorf("%d capabilities for the engine's %d gated topics", len(seen), len(game.TopicCapabilities))
+	}
+}
+
+// A passed trial must open the biomes of the topic it taught: the bug this
+// guards is learn naming a capability the engine's gate never checks.
+func TestTrialUnlocksItsBiome(t *testing.T) {
+	for id, topic := range ModuleTopics() {
+		m := &game.Meta{}
+		game.GrantCapability(m, CapabilityFor(topic))
+		if !game.Unlocked(m, topic) {
+			t.Errorf("module %s: passing grants %q, which does not unlock %s", id, CapabilityFor(topic), topic)
+		}
 	}
 }
 

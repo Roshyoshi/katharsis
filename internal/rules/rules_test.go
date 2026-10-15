@@ -36,16 +36,68 @@ func TestWithDefaults(t *testing.T) {
 		t.Errorf("set fields changed: %+v", got)
 	}
 	if got.ForkDoors != d.ForkDoors || got.TimerGapScale != d.TimerGapScale || got.RatingK != d.RatingK ||
+		got.RatingKCold != d.RatingKCold || got.CalibMax != d.CalibMax || got.OnExpire != rules.ExpireCrash ||
 		!reflect.DeepEqual(got.RatingWindows, d.RatingWindows) || !reflect.DeepEqual(got.FreeVerdicts, d.FreeVerdicts) {
 		t.Errorf("unset fields not defaulted: %+v", got)
 	}
-	if got.BlindChance != 0 || got.PrestigeOffset != 0 || got.Ascensions != nil {
+	// Zero turns these off, which is what such Rules did before the
+	// fields existed.
+	if got.BlindChance != 0 || got.PrestigeOffset != 0 || got.Ascensions != nil ||
+		got.CalibRate != 0 || got.CalibWarm != 0 || got.CalibAfter != 0 || got.RatingColdAttempts != 0 ||
+		got.TopicFollow != 0 || got.OvertimeScore != 0 || got.OvertimeBytesMult != 0 || got.ShowFailingInput {
 		t.Errorf("zero-is-meaningful fields defaulted: %+v", got)
 	}
 	empty := old
 	empty.FreeVerdicts = []string{}
 	if got := empty.WithDefaults().FreeVerdicts; len(got) != 0 {
 		t.Errorf("an explicit empty FreeVerdicts became %v", got)
+	}
+}
+
+func TestTrial(t *testing.T) {
+	t.Parallel()
+	r := rules.Trial()
+	if err := r.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.WithDefaults(); !reflect.DeepEqual(got, r) {
+		t.Errorf("WithDefaults changed Trial():\n%+v\n%+v", got, r)
+	}
+	if r.Name != "trial" || r.OnExpire != rules.ExpireOvertime || !r.ShowFailingInput || r.DoorsPerRoom != 1 ||
+		len(r.Biomes) != 2 || r.Biomes[0].Rooms != 4 || r.Biomes[1].Rooms != 2 ||
+		r.BlindChance != 0 || r.MysteryChance != 0 || r.CursedChance != 0 || r.Ascensions != nil {
+		t.Errorf("Trial() = %+v", r)
+	}
+	// Trial() is a copy: changing it leaves Standard() alone.
+	r.Biomes[0].Rooms = 9
+	if rules.Trial().Biomes[0].Rooms != 4 || len(rules.Standard().Biomes) != 3 {
+		t.Error("Trial() shares its biomes")
+	}
+}
+
+func TestValidate(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		edit func(*rules.Rules)
+		err  string
+	}{
+		{"standard", func(*rules.Rules) {}, ""},
+		{"overtime", func(r *rules.Rules) { r.OnExpire = rules.ExpireOvertime }, ""},
+		{"empty on_expire", func(r *rules.Rules) { r.OnExpire = "" }, ""},
+		{"bad on_expire", func(r *rules.Rules) { r.OnExpire = "pause" }, "on_expire"},
+		{"negative calib_rate", func(r *rules.Rules) { r.CalibRate = -0.1 }, "calib_rate"},
+		{"calib_rate of 1", func(r *rules.Rules) { r.CalibRate = 1 }, "calib_rate"},
+		{"negative calib_after", func(r *rules.Rules) { r.CalibAfter = -1 }, "calib_after"},
+		{"negative cold start", func(r *rules.Rules) { r.RatingColdAttempts = -1 }, "rating_cold_attempts"},
+	}
+	for _, tc := range tests {
+		r := rules.Standard()
+		tc.edit(&r)
+		err := r.Validate()
+		if tc.err == "" && err != nil || tc.err != "" && (err == nil || !strings.Contains(err.Error(), tc.err)) {
+			t.Errorf("%s: Validate = %v, want %q", tc.name, err, tc.err)
+		}
 	}
 }
 
@@ -109,6 +161,12 @@ target_clear = 0.5
 timer = "40m"
 `, nil, "not fixed, choice or boss"},
 		{"bad ascension level", "[[ascension]]\nlevel = 0\n", nil, "ascension level"},
+		{"soft timer and calibration knobs", "on_expire = \"overtime\"\ncalib_rate = 0.05\ncalib_after = 10\ntopic_follow = 0\n",
+			func(r rules.Rules) bool {
+				return r.OnExpire == rules.ExpireOvertime && r.CalibRate == 0.05 && r.CalibAfter == 10 &&
+					r.TopicFollow == 0 && r.CalibWarm == rules.Standard().CalibWarm
+			}, ""},
+		{"bad on_expire", "on_expire = \"never\"\n", nil, "on_expire"},
 	}
 	for _, tc := range tests {
 		path := filepath.Join(t.TempDir(), "preset.toml")

@@ -30,6 +30,7 @@ type checker struct {
 	t     testing.TB
 	bank0 int64 // meta.Bank when the boot started
 	phase game.Phase
+	dump0 string // a trial's meta.CoreDump (JSON) when it started
 }
 
 // check asserts the invariants that hold after every Step.
@@ -102,8 +103,28 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 		if s.Uncommitted != 0 {
 			fail("uncommitted %d after a crash", s.Uncommitted)
 		}
-		if d := m.CoreDump; (lost > 0) != (d != nil) || d != nil && (d.Problem != s.Crash.Door.Problem || d.Bytes != lost) {
+		d := m.CoreDump
+		switch {
+		case s.Trial != nil:
+			// A failed trial leaves the dump a boot made, and no other.
+			if got := mustJSON(t, d); got != c.dump0 {
+				fail("trial crash changed the core dump %s to %s", c.dump0, got)
+			}
+		case (lost > 0) != (d != nil) || d != nil && (d.Problem != s.Crash.Door.Problem || d.Bytes != lost):
 			fail("crash lost %d, core dump %+v", lost, d)
+		}
+	}
+	if s.Trial != nil {
+		if len(s.DaemonOffers) != 0 || len(s.Daemons) != 0 || len(s.Doors) > 1 {
+			fail("trial with daemons %v offers %v doors %d", s.Daemons, s.DaemonOffers, len(s.Doors))
+		}
+		for _, d := range s.Doors {
+			if d.Problem != s.Trial.Plan[s.Biome][s.Room] || d.Blind != (s.Biome > 0) || d.Cursed || d.Mystery || d.Tier != "" {
+				fail("trial door %+v in biome %d room %d of plan %v", d, s.Biome, s.Room, s.Trial.Plan)
+			}
+		}
+		if s.Phase == game.PhaseCleared && !s.Trial.Passed {
+			fail("trial cleared but not passed")
 		}
 	}
 	if s.Earned() != s.Committed+s.Uncommitted+lost {
@@ -210,6 +231,43 @@ func fuzzBoot(t testing.TB, r rules.Rules, m *game.Meta, ps []catalog.Problem, f
 		t.Fatalf("NewBoot: %v", err)
 	}
 	c := &checker{t: t, bank0: m.Bank, phase: s.Phase}
+	return s, c.play(s, m, ps, f, verify)
+}
+
+// fuzzTrial is fuzzBoot for a learn-mode trial on a spec drawn from ps.
+func fuzzTrial(t testing.TB, m *game.Meta, ps []catalog.Problem, f *fuzzer, verify bool) (*game.State, []move) {
+	t.Helper()
+	spec := fuzzSpec(f.rng, ps)
+	dump0 := mustJSON(t, m.CoreDump)
+	s, _, err := game.NewTrial(rules.Trial(), m, ps, spec, f.rng.Uint64(), f.now)
+	if err != nil {
+		t.Fatalf("NewTrial(%+v): %v", spec, err)
+	}
+	c := &checker{t: t, bank0: m.Bank, phase: s.Phase, dump0: dump0}
+	return s, c.play(s, m, ps, f, verify)
+}
+
+// fuzzSpec is a trial on a random topic and band, with a unit of 0 to 5 of
+// that topic's problems and sometimes an id the pool lacks.
+func fuzzSpec(rng *rand.Rand, ps []catalog.Problem) game.TrialSpec {
+	topic := catalog.Topics[rng.IntN(len(catalog.Topics))]
+	lo := 800 + 100*rng.IntN(16)
+	spec := game.TrialSpec{Module: "m-" + topic, IntegTopic: topic, IntegBand: [2]int{lo, lo + 300}, Capability: game.CapabilityFor(topic)}
+	for range rng.IntN(6) {
+		p := ps[rng.IntN(len(ps))]
+		spec.Unit = append(spec.Unit, p.ID)
+	}
+	if rng.IntN(4) == 0 {
+		spec.Unit = append(spec.Unit, "gone:1")
+	}
+	return spec
+}
+
+// play fuzzes s to its end (or a step cap), checking c after every step,
+// and returns the actions with their times, for replay.
+func (c *checker) play(s *game.State, m *game.Meta, ps []catalog.Problem, f *fuzzer, verify bool) []move {
+	t := c.t
+	t.Helper()
 	c.check(s, m, nil, nil)
 	var moves []move
 	for n := 0; n < 400 && s.Phase != game.PhaseCrashed && s.Phase != game.PhaseCleared; n++ {
@@ -226,7 +284,81 @@ func fuzzBoot(t testing.TB, r rules.Rules, m *game.Meta, ps []catalog.Problem, f
 		c.check(s, m, a, err)
 		moves = append(moves, move{a, f.now, err != nil})
 	}
-	return s, moves
+	return moves
+}
+
+// TestFuzzTrials plays fuzzed trials between fuzzed boots, so trials meet
+// core dumps and regressions a boot left, under every invariant plus the
+// trial's own (one planned door per room, no daemons, the dump untouched).
+func TestFuzzTrials(t *testing.T) {
+	t.Parallel()
+	ps := sim.SyntheticPool(600, 3)
+	m := &game.Meta{Prestige: game.MaxPrestige}
+	f := &fuzzer{rng: rand.New(rand.NewPCG(21, 22)), now: t0}
+	ends := map[game.Phase]int{}
+	runs := 2000
+	if testing.Short() {
+		runs = 200
+	}
+	for i := range runs {
+		if i%3 == 0 {
+			fuzzBoot(t, rules.Standard(), m, ps, f, false)
+		} else {
+			s, _ := fuzzTrial(t, m, ps, f, i%10 == 1)
+			ends[s.Phase]++
+		}
+		f.now = f.now.Add(time.Duration(f.rng.IntN(int(72 * time.Hour))))
+	}
+	t.Logf("trial ends %v, %d modules passed, capabilities %v", ends, len(m.TrialsPassed), m.Capabilities)
+	if ends[game.PhaseCleared] == 0 || ends[game.PhaseCrashed] == 0 {
+		t.Errorf("ends %v: the fuzzer should reach both", ends)
+	}
+}
+
+// TestTrialJSONRoundTrip is TestJSONRoundTrip for trials.
+func TestTrialJSONRoundTrip(t *testing.T) {
+	t.Parallel()
+	ps := sim.SyntheticPool(600, 6)
+	resumed := 0
+	for seed := range uint64(150) {
+		f := &fuzzer{rng: rand.New(rand.NewPCG(seed, 7)), now: t0}
+		_, moves := fuzzTrial(t, &game.Meta{}, ps, f, false)
+		if len(moves) < 4 {
+			continue
+		}
+		cut := len(moves) / 2
+		f2 := &fuzzer{rng: rand.New(rand.NewPCG(seed, 7)), now: t0}
+		m2 := &game.Meta{}
+		s2, _, err := game.NewTrial(rules.Trial(), m2, ps, fuzzSpec(f2.rng, ps), f2.rng.Uint64(), t0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, mv := range moves[:cut] {
+			game.Step(s2, m2, ps, mv.A, mv.At)
+		}
+		var s3 game.State
+		var m3 game.Meta
+		if err := json.Unmarshal([]byte(mustJSON(t, s2)), &s3); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal([]byte(mustJSON(t, m2)), &m3); err != nil {
+			t.Fatal(err)
+		}
+		for _, mv := range moves[cut:] {
+			fx2, err2 := game.Step(s2, m2, ps, mv.A, mv.At)
+			fx3, err3 := game.Step(&s3, &m3, ps, mv.A, mv.At)
+			if (err2 == nil) != (err3 == nil) || (err2 != nil) != mv.Err || fmt.Sprint(fx2) != fmt.Sprint(fx3) {
+				t.Fatalf("seed %d: %T%+v diverged after the reload: %v / %v", seed, mv.A, mv.A, err2, err3)
+			}
+		}
+		if mustJSON(t, s2) != mustJSON(t, &s3) || mustJSON(t, m2) != mustJSON(t, &m3) {
+			t.Fatalf("seed %d: reloaded trial ended differently", seed)
+		}
+		resumed += len(moves) - cut
+	}
+	if resumed < 300 {
+		t.Errorf("only %d moves played after a reload", resumed)
+	}
 }
 
 // TestFuzzBoots plays thousands of fuzzed boots with meta carried across,

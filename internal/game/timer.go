@@ -45,9 +45,10 @@ func (e *engine) timerMult() float64 {
 // from their own in-boot solves.
 //
 // Method: take the TimerFitHistory most recent in-boot solves (not upsolves,
-// not editorial), keep the max(TimerFitMin, half) closest to gap, move each
-// onto gap with t·2^((gap−g)/TimerGapScale), take the TimerQuantile quantile
-// (linear between order statistics), and multiply by TimerHeadroom.
+// trials or editorial), keep the max(TimerFitMin, half) closest to gap,
+// move each onto gap with t·2^((gap−g)/TimerGapScale), take the
+// TimerQuantile quantile (linear between order statistics), and multiply
+// by TimerHeadroom.
 //
 // Only solves that beat their timer are recorded, so the data is censored
 // from above and the raw quantile undershoots; fed back, it would shrink the
@@ -62,7 +63,7 @@ func fitTimer(r *rules.Rules, solves []Solve, gap float64) (time.Duration, bool)
 	var xs []obs
 	for i := len(solves) - 1; i >= 0 && len(xs) < r.TimerFitHistory; i-- {
 		s := solves[i]
-		if s.Upsolve || s.Kind == Editorial || s.Elapsed <= 0 {
+		if s.Upsolve || s.Trial || s.Kind == Editorial || s.Elapsed <= 0 {
 			continue
 		}
 		t := s.Elapsed.Seconds() * math.Exp2((gap-s.Gap)/r.TimerGapScale)

@@ -2,10 +2,14 @@ package learn
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/game"
+	"katharsis/internal/rules"
 )
 
 func ref(uid, diff string, starred bool, kind string) ProblemRef {
@@ -71,18 +75,46 @@ func TestTrialIntegration(t *testing.T) {
 		band  [2]int
 		cap   string
 	}{
-		{trialModule, "prefix-sums", [2]int{1350, 1650}, "CAP_PREFIX_SUMS"},
+		{trialModule, "prefix-sums", [2]int{1350, 1650}, "CAP_PREFIX"},
 		{Module{Division: "bronze", Topic: "mixed"}, "mixed", [2]int{1000, 1300}, ""},
 		{Module{Division: "general"}, "mixed", [2]int{1000, 1300}, ""},
 		{Module{Division: "gold", Topic: "dp"}, "dp", [2]int{1700, 2000}, "CAP_DP"},
-		{Module{Division: "plat", Topic: "trees"}, "trees", [2]int{2100, 2400}, "CAP_TREES"},
-		{Module{Division: "adv", Topic: "strings"}, "strings", [2]int{2400, 2800}, "CAP_STRINGS"},
+		{Module{Division: "plat", Topic: "trees"}, "trees", [2]int{2100, 2400}, "CAP_TREE"},
+		{Module{Division: "adv", Topic: "strings"}, "strings", [2]int{2400, 2800}, "CAP_STRING"},
+		{Module{Division: "bronze", Topic: "simulation"}, "simulation", [2]int{1000, 1300}, ""},
 	} {
 		got := TrialFor(tc.m, nil)
 		if got.IntegTopic != tc.topic || got.IntegBand != tc.band || got.Capability != tc.cap {
 			t.Errorf("%s/%q: topic=%q band=%v cap=%q, want %q %v %q",
 				tc.m.Division, tc.m.Topic, got.IntegTopic, got.IntegBand, got.Capability, tc.topic, tc.band, tc.cap)
 		}
+	}
+}
+
+// TestTrialSpec: learn's trial is what the engine plays, and a short unit
+// is the engine's to top up.
+func TestTrialSpec(t *testing.T) {
+	tr := TrialForN(trialModule, nil, 2)
+	spec := tr.Spec()
+	if spec.Module != "prefix-sums" || spec.IntegTopic != "prefix-sums" || spec.IntegBand != [2]int{1350, 1650} ||
+		spec.Capability != "CAP_PREFIX" || !reflect.DeepEqual(spec.Unit, tr.Unit) {
+		t.Fatalf("spec %+v from trial %+v", spec, tr)
+	}
+	spec.Unit[0] = "x"
+	if tr.Unit[0] == "x" {
+		t.Error("Spec shares the trial's unit")
+	}
+	var pool []catalog.Problem
+	for i, id := range append(slices.Clone(tr.Unit), ids("usaco:900", "usaco:901", "usaco:902", "usaco:903", "usaco:904")...) {
+		pool = append(pool, catalog.Problem{ID: id, Topic: "prefix-sums", Rating: 1360 + 50*i, Judgeable: true})
+	}
+	m := &game.Meta{}
+	s, _, err := game.NewTrial(rules.Trial(), m, pool, tr.Spec(), 1, time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Trial.Plan[0]) != 4 || len(s.Trial.TopUp) != 2 || len(s.Trial.Plan[1]) != 2 {
+		t.Errorf("plan %v, top-ups %v: want a unit of 4 (2 topped up) and 2 integration doors", s.Trial.Plan, s.Trial.TopUp)
 	}
 }
 

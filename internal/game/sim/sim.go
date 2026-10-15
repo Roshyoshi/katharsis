@@ -12,6 +12,7 @@ package sim
 import (
 	"cmp"
 	"fmt"
+	"maps"
 	"math"
 	"math/rand/v2"
 	"slices"
@@ -39,6 +40,10 @@ type Player struct {
 	BlindCost   float64 // effective rating lost when tags are hidden
 	UpsolveProb float64 // chance it upsolves the crash between boots
 	Overhead    time.Duration
+
+	// Daemons is the model's pick order at a merge window; nil is fork,
+	// kexec, dev-random, strace, nice.
+	Daemons []game.Daemon
 }
 
 // DefaultPlayer is the model the reports in this package's tests use.
@@ -75,6 +80,18 @@ type Config struct {
 	Meta *game.Meta
 	// Check, when set, sees every engine call; tests hook invariants here.
 	Check func(s *game.State, m *game.Meta, a game.Action, fx []game.Effect, err error)
+	// Block is how many boots each entry of Report.Blocks sums, warm-up
+	// included; 0 leaves Blocks empty.
+	Block int
+}
+
+// Block sums a stretch of boots, to show the cold start, the calibration
+// settling and the pool running dry over a run.
+type Block struct {
+	Boots, FullClears int
+	Opened, OffTarget int                // doors opened, and how many off target
+	Rating            float64            // the engine's rating at the end
+	Offsets           map[string]float64 // calibration offsets at the end
 }
 
 // Tally counts boots and full clears at one prestige level.
@@ -90,6 +107,15 @@ type Report struct {
 	Attempts   []int // doors opened per biome
 	Clears     []int // doors cleared per biome
 	MeanTimer  []time.Duration
+	// OffTarget counts opened doors more than the first rating window from
+	// their target (regressions aside): where the pool had nothing near.
+	OffTarget []int
+	// Taught counts opened doors that teach the aim calibration (plain and
+	// aimed, Door.Tier set), TaughtClears how many of them were cleared and
+	// TaughtP the sum of their SolveP, so TaughtClears/Taught against
+	// TaughtP/Taught is the calibration's observed against expected.
+	Taught, TaughtClears []int
+	TaughtP              []float64
 
 	MeanUptime, MeanClearUptime, MeanCrashUptime time.Duration
 
@@ -104,6 +130,10 @@ type Report struct {
 	FinalRating float64 // the engine's estimate of the player at the end
 	Errors      int     // engine calls the model made that failed
 	Meta        *game.Meta
+
+	// Ratings is the engine's rating after each boot, warm-up included.
+	Ratings []float64
+	Blocks  []Block
 }
 
 // Simulate runs boots with DefaultPlayer(playerRating), climbing prestige.
@@ -129,6 +159,8 @@ func Run(c Config) Report {
 	clock := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
 
 	warm, main := newSums(nb), newSums(nb)
+	var ratings []float64
+	var blocks []Block
 	for i := range c.Warmup + c.Boots {
 		sm := main
 		if i < c.Warmup {
@@ -175,6 +207,24 @@ func Run(c Config) Report {
 			}
 		}
 		clock = clock.Add(24 * time.Hour) // a boot a day, so regressions come due
+		ratings = append(ratings, m.Rating)
+		if c.Block > 0 {
+			if i%c.Block == 0 {
+				blocks = append(blocks, Block{})
+			}
+			bl := &blocks[len(blocks)-1]
+			bl.Boots++
+			if s.Phase == game.PhaseCleared {
+				bl.FullClears++
+			}
+			bl.Opened += b.opened
+			bl.OffTarget += b.off
+			bl.Rating = m.Rating
+			bl.Offsets = map[string]float64{}
+			for k, v := range m.Calibration {
+				bl.Offsets[k] = v.Offset
+			}
+		}
 	}
 	main.rep.Errors += warm.rep.Errors
 
@@ -182,6 +232,8 @@ func Run(c Config) Report {
 	rep.Prestige = m.Prestige
 	rep.FinalRating = m.Rating
 	rep.Meta = m
+	rep.Ratings = ratings
+	rep.Blocks = blocks
 	return rep
 }
 
@@ -196,13 +248,17 @@ type sums struct {
 func newSums(nb int) *sums {
 	return &sums{
 		rep: Report{
-			CrashBiome: make([]int, nb),
-			Causes:     map[game.Outcome]int{},
-			Attempts:   make([]int, nb),
-			Clears:     make([]int, nb),
-			MeanTimer:  make([]time.Duration, nb),
-			PrestigeAt: make([]int, game.MaxPrestige),
-			ByPrestige: make([]Tally, game.MaxPrestige+1),
+			CrashBiome:   make([]int, nb),
+			Causes:       map[game.Outcome]int{},
+			Attempts:     make([]int, nb),
+			Clears:       make([]int, nb),
+			MeanTimer:    make([]time.Duration, nb),
+			OffTarget:    make([]int, nb),
+			Taught:       make([]int, nb),
+			TaughtClears: make([]int, nb),
+			TaughtP:      make([]float64, nb),
+			PrestigeAt:   make([]int, game.MaxPrestige),
+			ByPrestige:   make([]Tally, game.MaxPrestige+1),
 		},
 		timerSum: make([]time.Duration, nb),
 	}
@@ -240,6 +296,8 @@ type boot struct {
 	rng   *rand.Rand
 	clock time.Time
 	sums  *sums
+
+	opened, off int // doors opened this boot, and how many off target
 }
 
 func (b *boot) step(a game.Action) {
@@ -266,11 +324,26 @@ func (b *boot) play() {
 		case s.Phase == game.PhaseRoute:
 			b.step(game.ChooseRoute{Index: b.rng.IntN(len(s.Biomes[s.Biome].Offers))})
 		case s.Phase == game.PhaseDoors:
+			i := b.door()
+			d := s.Doors[i]
 			b.sums.rep.Attempts[s.Biome]++
-			b.sums.timerSum[s.Biome] += s.Doors[b.door()].Timer
+			b.sums.timerSum[s.Biome] += d.Timer
+			b.opened++
+			if !d.Regression && math.Abs(float64(d.Rating)-s.Target(b.m, d.Topic)) > float64(s.Rules.RatingWindows[0]) {
+				b.sums.rep.OffTarget[s.Biome]++
+				b.off++
+			}
 			biome := s.Biome
-			b.step(game.ChooseDoor{Index: b.door()})
+			b.step(game.ChooseDoor{Index: i})
 			b.attempt(biome)
+			if h := s.History; d.Tier != "" && len(h) > 0 {
+				rep := &b.sums.rep
+				rep.Taught[biome]++
+				rep.TaughtP[biome] += d.SolveP
+				if h[len(h)-1].Outcome == game.Cleared {
+					rep.TaughtClears[biome]++
+				}
+			}
 		case s.Phase == game.PhaseMerge:
 			switch {
 			case s.Uncommitted > 0:
@@ -340,7 +413,11 @@ func (b *boot) upgrade() game.Upgrade {
 }
 
 func (b *boot) daemon() game.Daemon {
-	for _, d := range []game.Daemon{game.Fork, game.Kexec, game.DevRandom, game.Strace, game.Nice} {
+	order := b.p.Daemons
+	if order == nil {
+		order = []game.Daemon{game.Fork, game.Kexec, game.DevRandom, game.Strace, game.Nice}
+	}
+	for _, d := range order {
 		if slices.Contains(b.s.DaemonOffers, d) {
 			return d
 		}
@@ -463,8 +540,23 @@ func (r Report) String() string {
 	}
 	fmt.Fprintf(&w, "\ndoor clear rate:")
 	for i := range r.Attempts {
-		fmt.Fprintf(&w, " b%d=%.1f%% (%d, timer %s)", i, pct(r.Clears[i], r.Attempts[i]),
-			r.Attempts[i], r.MeanTimer[i].Round(time.Minute))
+		fmt.Fprintf(&w, " b%d=%.1f%% (%d, timer %s, %.0f%% off target)", i, pct(r.Clears[i], r.Attempts[i]),
+			r.Attempts[i], r.MeanTimer[i].Round(time.Minute), pct(r.OffTarget[i], r.Attempts[i]))
+	}
+	fmt.Fprintf(&w, "\nplain doors cleared vs expected:")
+	for i := range r.Taught {
+		exp := 0.0
+		if r.Taught[i] > 0 {
+			exp = 100 * r.TaughtP[i] / float64(r.Taught[i])
+		}
+		fmt.Fprintf(&w, " b%d=%.1f%% vs %.1f%% (%d)", i, pct(r.TaughtClears[i], r.Taught[i]), exp, r.Taught[i])
+	}
+	if r.Meta != nil && len(r.Meta.Calibration) > 0 {
+		fmt.Fprintf(&w, "\ncalibration:")
+		for _, k := range slices.Sorted(maps.Keys(r.Meta.Calibration)) {
+			c := r.Meta.Calibration[k]
+			fmt.Fprintf(&w, " [%s] %+.0f (%d doors, %.0f%% vs %.0f%%)", k, c.Offset, c.Doors, 100*c.Observed, 100*c.Expected)
+		}
 	}
 	fmt.Fprintf(&w, "\nuptime: mean %s, clear %s, crash %s\n", r.MeanUptime.Round(time.Minute),
 		r.MeanClearUptime.Round(time.Minute), r.MeanCrashUptime.Round(time.Minute))

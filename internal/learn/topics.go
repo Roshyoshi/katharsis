@@ -4,7 +4,7 @@ import (
 	"maps"
 	"strings"
 
-	"katharsis/internal/catalog"
+	"katharsis/internal/game"
 )
 
 // moduleTopics maps every module in the guide's ordering.ts (snapshot of
@@ -196,25 +196,14 @@ func TopicFor(moduleID, title, division string) string {
 	return "mixed"
 }
 
-// CapabilityFor names the capability a passed trial grants for topic:
-// "dp" -> "CAP_DP", "prefix-sums" -> "CAP_PREFIX_SUMS". "mixed", "" and
-// topics outside catalog.Topics return "": the catch-all biome is never
-// gated, so it has nothing to unlock.
-func CapabilityFor(topic string) string {
-	if topic == "" || topic == "mixed" || !isCatalogTopic(topic) {
-		return ""
-	}
-	return "CAP_" + strings.ToUpper(strings.ReplaceAll(topic, "-", "_"))
-}
-
-func isCatalogTopic(t string) bool {
-	for _, c := range catalog.Topics {
-		if c == t {
-			return true
-		}
-	}
-	return false
-}
+// CapabilityFor names the capability a passed trial grants for topic. The
+// engine's gate table (game.TopicCapabilities) is the only source: a name
+// built here would never unlock a biome the engine gates by another. So
+// "dp" -> "CAP_DP" and "prefix-sums" -> "CAP_PREFIX", while topics the
+// engine never gates ("mixed", the Bronze topics such as "simulation") and
+// unknown ones return "": their biomes are open, so there is nothing to
+// unlock.
+func CapabilityFor(topic string) string { return game.CapabilityFor(topic) }
 
 // divisionBands are CF-scale rating bands for the integration doors, the
 // same division table the USACO content source uses for its estimates.

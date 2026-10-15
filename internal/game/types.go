@@ -40,6 +40,10 @@ type Solve struct {
 	Rating  int
 	Gap     float64
 	Upsolve bool
+
+	// Trial marks a solve made in a learn-mode trial. Timer fitting ignores
+	// it too: a soft timer and a module just read are not boot pace.
+	Trial bool
 }
 
 // CoreDump is the shade: bytes left on the problem that crashed you. Upsolve
@@ -84,6 +88,30 @@ type Meta struct {
 	// TopicAttempts counts rated attempts per topic; a topic's rating aims
 	// doors once it reaches rules.TopicRatingMin.
 	TopicAttempts map[string]int
+
+	// Rated counts every rated attempt; the first
+	// rules.RatingColdAttempts move the ratings with rules.RatingKCold.
+	Rated int
+	// Calibration corrects door aim per tier, keyed by CalibrationTier.
+	Calibration map[string]Calibration
+	// TrialsPassed lists the modules (TrialSpec.Module) whose trial was
+	// cleared, each once, in the order first passed.
+	TrialsPassed []string
+}
+
+// Calibration is what one tier of biomes (see CalibrationTier) has learned
+// about aiming its doors. The engine aims a door where the logistic says
+// the player clears it with the biome's TargetClear; real solve curves are
+// flatter than the logistic and have a ceiling (timers, wrong submits), so
+// that aim is off by an amount that differs per tier. Offset is added to
+// the tier's door targets to correct it; Observed and Expected are the
+// recent clear rate of the tier's plain doors and what the engine expected
+// of them, for display.
+type Calibration struct {
+	Offset   float64
+	Doors    int // plain doors learned from
+	Observed float64
+	Expected float64
 }
 
 // ---- one boot ----------------------------------------------------------------
@@ -112,6 +140,12 @@ type Door struct {
 	Cursed     bool   // no ducks; one failed submit crashes
 	Regression bool   // a past crash returning
 	Boss       string // key from BossKeys (or FinalBoss), "" for normal doors
+
+	// Tier is the calibration tier the door's outcome teaches, "" when it
+	// teaches none: a door with a modifier (blind, mystery, cursed), a
+	// regression, a trial door, or one the pool could not place near its
+	// target. SolveP already includes the tier's offset.
+	Tier string
 }
 
 type BiomeState struct {
@@ -157,6 +191,9 @@ type Attempt struct {
 	Hint int
 	// O3 is set when the clear beat O3Frac of the timer (a free upgrade).
 	O3 bool
+	// Overtime is set when the timer ran out under rules.ExpireOvertime and
+	// the attempt went on; a clear then pays and rates less.
+	Overtime bool
 }
 
 // Upgrade is picked after each cleared door.
@@ -190,6 +227,12 @@ type Crash struct {
 	// DumpLost is the core dump from an earlier boot that this crash
 	// destroyed before writing its own.
 	DumpLost int64
+
+	// Cursed is set when a failed submit on a cursed door ended the boot:
+	// the curse, not the lives, which it does not charge (State.Lives has
+	// what was left). Cause is OutOfLives then too, the failed-submit
+	// family that screens and quotes group by.
+	Cursed bool
 }
 
 type State struct {
@@ -232,6 +275,35 @@ type State struct {
 	UpgradePicks int
 	// RegressionOffered: a boot offers at most one regression door.
 	RegressionOffered bool
+
+	// Trial is set when this boot is a learn-mode trial (NewTrial).
+	Trial *TrialState
+}
+
+// TrialSpec is a learn-mode trial as learn builds it (learn.Trial): the
+// module's unit problems, Easy to Hard, and where to draw the blind
+// integration doors from.
+type TrialSpec struct {
+	Module, Title string
+	Unit          []catalog.ID
+	IntegTopic    string // "" or Mixed: any topic
+	IntegBand     [2]int // CF-scale ratings, inclusive; {0, 0}: any rating
+	Capability    string // granted on a clear; "" grants nothing
+}
+
+// TrialState is a trial in progress. Biome 0 is the unit and biome 1 the
+// integration; Plan holds each biome's problems, one per room, so the map
+// can show the whole trial up front.
+type TrialState struct {
+	TrialSpec
+	Plan [][]catalog.ID
+	// TopUp lists the unit problems drawn from the pool because Unit was
+	// shorter than the trial rules' unit biome.
+	TopUp []catalog.ID
+	// Passed is set on a clear; Granted is the capability it added to Meta
+	// ("" when Capability was empty or already held).
+	Passed  bool
+	Granted string
 }
 
 type LogLine struct {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -182,23 +183,41 @@ func TestRouteOffers(t *testing.T) {
 func TestDoorTargets(t *testing.T) {
 	t.Parallel()
 	ps := dense(allTopics(), 400, 3000, 10)
+	r := plain()
+	tier := game.CalibrationTier(r.Biomes[0])
+	cal := func(all, own float64) map[string]game.Calibration {
+		return map[string]game.Calibration{game.CalibrationAll: {Offset: all}, tier: {Offset: own}}
+	}
 	tests := []struct {
 		rating   float64
 		prestige int
+		cal      map[string]game.Calibration
+		offset   float64 // the calibration the doors should carry
 	}{
-		{1500, 0}, {1500, 2}, {2000, 0}, {1000, 4},
+		{1500, 0, nil, 0}, {1500, 2, nil, 0}, {2000, 0, nil, 0}, {1000, 4, nil, 0},
+		{1500, 0, cal(80, -30), 50},
+		{1500, 2, cal(-60, 0), -60},
+		{1500, 0, cal(400, 100), r.CalibMax},                             // clamped
+		{1500, 0, map[string]game.Calibration{"0.50": {Offset: 200}}, 0}, // another tier's
 	}
 	for _, tc := range tests {
 		for seed := range uint64(20) {
-			m := &game.Meta{Rating: tc.rating, Prestige: tc.prestige}
-			h := newHarness(t, plain(), m, ps, tc.prestige, seed)
-			target := tc.rating + 400*math.Log10(1/0.9-1) + 75*float64(tc.prestige)
+			m := &game.Meta{Rating: tc.rating, Prestige: tc.prestige, Calibration: tc.cal}
+			h := newHarness(t, r, m, ps, tc.prestige, seed)
+			target := tc.rating + 400*math.Log10(1/r.Biomes[0].TargetClear-1) + r.PrestigeOffset*float64(tc.prestige) + tc.offset
+			if got := h.s.Target(m, "dp"); math.Abs(got-target) > 1e-9 {
+				t.Errorf("rating %v prestige %d: Target %.1f, want %.1f", tc.rating, tc.prestige, got, target)
+			}
 			for _, d := range h.s.Doors {
 				if math.Abs(float64(d.Rating)-target) > 100 {
 					t.Errorf("rating %v prestige %d: door %d, target %.0f±100", tc.rating, tc.prestige, d.Rating, target)
 				}
-				if want := game.Expected(tc.rating, float64(d.Rating)); math.Abs(d.SolveP-want) > 1e-12 {
+				// SolveP takes the calibration back out of the rating.
+				if want := game.Expected(tc.rating, float64(d.Rating)-tc.offset); math.Abs(d.SolveP-want) > 1e-12 {
 					t.Errorf("SolveP %v, want %v", d.SolveP, want)
+				}
+				if d.Tier != tier {
+					t.Errorf("plain door on target has tier %q, want %q", d.Tier, tier)
 				}
 			}
 		}
@@ -215,7 +234,7 @@ func TestDoorWindows(t *testing.T) {
 		}
 		return ps
 	}
-	// Player 1500 in the 0.9 biome aims at 1118.
+	// Player 1500 in the 0.92 biome aims at 1076.
 	tests := []struct {
 		name string
 		pool []catalog.Problem
@@ -479,8 +498,22 @@ func TestSubmit(t *testing.T) {
 		h := newHarness(t, r, nil, ps, 0, 1)
 		h.open(0)
 		h.do(wa)
-		if h.s.Phase != game.PhaseCrashed || h.s.Crash.Cause != game.OutOfLives {
-			t.Errorf("phase %s crash %+v", h.s.Phase, h.s.Crash)
+		// The curse ends it with lives to spare, and says so.
+		if h.s.Phase != game.PhaseCrashed || h.s.Crash.Cause != game.OutOfLives || !h.s.Crash.Cursed || h.s.Lives != 3 {
+			t.Errorf("phase %s lives %d crash %+v", h.s.Phase, h.s.Lives, h.s.Crash)
+		}
+		if last := h.s.Log[len(h.s.Log)-1].Text; !strings.Contains(last, "curse triggered") {
+			t.Errorf("last dmesg line %q", last)
+		}
+	})
+	t.Run("out of lives is not the curse", func(t *testing.T) {
+		h := newHarness(t, plain(), nil, ps, 0, 1)
+		h.open(0)
+		h.do(wa)
+		h.do(wa)
+		h.do(wa)
+		if h.s.Crash == nil || h.s.Crash.Cursed || !strings.Contains(h.s.Log[len(h.s.Log)-1].Text, "out of lives") {
+			t.Errorf("crash %+v, log %v", h.s.Crash, h.s.Log[len(h.s.Log)-1])
 		}
 	})
 	t.Run("accepted", func(t *testing.T) {
@@ -596,8 +629,11 @@ func TestQuack(t *testing.T) {
 		}
 	}
 
-	// A hinted clear records a Hinted solve and rates 0.7.
-	h := newHarness(t, plain(), nil, ps, 0, 1)
+	// A hinted clear records a Hinted solve and rates 0.7 (at the
+	// steady-state K; TestColdStart covers the cold start's).
+	r := plain()
+	r.RatingColdAttempts = 0
+	h := newHarness(t, r, nil, ps, 0, 1)
 	d := h.open(0)
 	h.do(game.Quack{})
 	h.do(game.SubmitResult{Verdict: "AC"})
@@ -623,8 +659,9 @@ func TestRetreat(t *testing.T) {
 	if _, ok := has[game.CloseProblem](fx); !ok {
 		t.Errorf("effects %v", fx)
 	}
-	if h.m.Rating >= 1000 {
-		t.Errorf("a retreat scored %v; it is a loss", h.m.Rating)
+	// A swap is a choice of door, not a loss: no rating moves.
+	if h.m.Rating != 1000 || h.m.Rated != 0 || h.m.TopicAttempts[d.Topic] != 0 {
+		t.Errorf("a retreat rated: rating %v, rated %d, topic attempts %v", h.m.Rating, h.m.Rated, h.m.TopicAttempts)
 	}
 	h.open(0)
 	h.do(game.Retreat{})
@@ -1023,6 +1060,7 @@ func TestElo(t *testing.T) {
 	r := plain()
 	r.DoorsPerRoom = 1
 	r.Biomes = []rules.Biome{{Kind: rules.Fixed, Rooms: 3, TargetClear: 0.5, Timer: rules.Duration{Duration: 30 * time.Minute}}}
+	r.RatingColdAttempts = 0 // the steady-state K; see TestColdStart
 
 	h := newHarness(t, r, nil, ps, 0, 1)
 	first := h.open(0)
@@ -1057,6 +1095,45 @@ func TestElo(t *testing.T) {
 	}
 	if got := game.PlayerRating(&r, &game.Meta{}, "dp"); got != 1000 {
 		t.Errorf("cold start: %v", got)
+	}
+}
+
+// TestColdStart: the first RatingColdAttempts rated attempts move the
+// overall and topic ratings with RatingKCold, later ones with RatingK, and
+// a save from before Meta.Rated (topic attempts only) is not put back into
+// a cold start.
+func TestColdStart(t *testing.T) {
+	t.Parallel()
+	ps := []catalog.Problem{{ID: "a", Topic: "dp", Rating: 1000, Judgeable: true}}
+	r := plain()
+	r.DoorsPerRoom = 1
+	r.Biomes = []rules.Biome{{Kind: rules.Fixed, Rooms: 1, TargetClear: 0.5, Timer: rules.Duration{Duration: 30 * time.Minute}}}
+	off := r
+	off.RatingColdAttempts = 0
+	tests := []struct {
+		name string
+		r    rules.Rules
+		meta game.Meta
+		k    float64
+	}{
+		{"new player", r, game.Meta{}, 100},
+		{"last cold attempt", r, game.Meta{Rated: 19}, 100},
+		{"warm", r, game.Meta{Rated: 20}, 40},
+		{"old save", r, game.Meta{TopicAttempts: map[string]int{"dp": 12, "graphs": 8}}, 40},
+		{"old save, few attempts", r, game.Meta{TopicAttempts: map[string]int{"dp": 3}}, 100},
+		{"turned off", off, game.Meta{}, 40},
+	}
+	for _, tc := range tests {
+		m := tc.meta
+		m.Rating = 1000
+		h := newHarness(t, tc.r, &m, ps, 0, 1)
+		h.open(0)
+		h.do(game.SubmitResult{Verdict: "AC"})
+		want := 1000 + tc.k*0.5
+		if m.Rating != want || m.TopicRating["dp"] != want || m.Rated != tc.meta.Rated+1 {
+			t.Errorf("%s: rating %v topic %v rated %d, want %v, %v and %d",
+				tc.name, m.Rating, m.TopicRating["dp"], m.Rated, want, want, tc.meta.Rated+1)
+		}
 	}
 }
 

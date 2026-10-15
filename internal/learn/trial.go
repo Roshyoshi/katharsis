@@ -1,9 +1,11 @@
 package learn
 
 import (
+	"slices"
 	"sort"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/game"
 )
 
 // DefaultUnitSize is the number of unit doors in a module trial (DESIGN.md
@@ -24,6 +26,20 @@ type Trial struct {
 	// Capability is what passing grants: CapabilityFor(Module.Topic), ""
 	// when the module teaches no gated topic.
 	Capability string
+}
+
+// Spec is the trial as game.NewTrial plays it. A unit shorter than
+// DefaultUnitSize is fine: the engine tops it up from the catalog by
+// IntegTopic and IntegBand (rules.Trial sets the size).
+func (t Trial) Spec() game.TrialSpec {
+	return game.TrialSpec{
+		Module:     t.Module.ID,
+		Title:      t.Module.Title,
+		Unit:       slices.Clone(t.Unit),
+		IntegTopic: t.IntegTopic,
+		IntegBand:  t.IntegBand,
+		Capability: t.Capability,
+	}
 }
 
 // TrialFor builds the trial for m with DefaultUnitSize unit doors.

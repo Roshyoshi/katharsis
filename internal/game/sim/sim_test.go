@@ -20,9 +20,18 @@ func ideal(rating float64) sim.Player {
 	return p
 }
 
-// TestIdealPlayerHitsTargets is the engine's end-to-end calibration check:
-// for a player who behaves like the logistic model, Elo must find the true
-// rating and door selection must land each biome on its TargetClear.
+// taught is the calibration's observed and expected clear rate of the
+// plain, aimed doors of biome i.
+func taught(rep sim.Report, i int) (observed, expected float64) {
+	n := float64(max(rep.Taught[i], 1))
+	return float64(rep.TaughtClears[i]) / n, rep.TaughtP[i] / n
+}
+
+// TestIdealPlayerHitsTargets is the engine's end-to-end aiming check: for
+// a player who behaves like the logistic model, Elo must find the true
+// rating, the plain doors of each biome (the ones the aim controls; blind
+// and cursed doors are the player's risk) must clear at its TargetClear,
+// and the calibration must stay near zero, since there is no shape to fix.
 func TestIdealPlayerHitsTargets(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -31,19 +40,60 @@ func TestIdealPlayerHitsTargets(t *testing.T) {
 	r := rules.Standard()
 	rep := sim.Run(sim.Config{
 		Rules:  r,
-		Pool:   sim.SyntheticPool(6000, 1),
+		Pool:   sim.SyntheticPool(20000, 1),
 		Player: ideal(1600),
-		Boots:  600, Warmup: 100, Seed: 3,
+		Boots:  500, Warmup: 100, Seed: 3,
 	})
 	t.Logf("ideal 1600:\n%s", rep)
 	for i, b := range r.Biomes {
-		got := float64(rep.Clears[i]) / float64(rep.Attempts[i])
-		if math.Abs(got-b.TargetClear) > 0.06 {
-			t.Errorf("biome %d: door clear rate %.3f, target %.2f", i, got, b.TargetClear)
+		if got, _ := taught(rep, i); math.Abs(got-b.TargetClear) > 0.05 {
+			t.Errorf("biome %d: plain doors clear %.3f, target %.2f", i, got, b.TargetClear)
+		}
+		cal := rep.Meta.Calibration
+		if off := cal[game.CalibrationAll].Offset + cal[game.CalibrationTier(b)].Offset; math.Abs(off) > 100 {
+			t.Errorf("biome %d: calibrated by %+.0f for a logistic player", i, off)
 		}
 	}
 	if math.Abs(rep.FinalRating-1600) > 120 {
 		t.Errorf("engine rating %.0f, true 1600", rep.FinalRating)
+	}
+}
+
+// TestCalibrationHitsTargets: the default model's solve curve is flatter
+// than the logistic and has ceilings (timers, wrong submits, ducks), which
+// is what the calibration is for. Its plain doors must clear at what the
+// engine expects of them in every tier, within binomial noise (3 standard
+// errors, plus 2 points of calibration lag), and the expectation must be
+// TargetClear at prestige 0 and, at prestige 2, the logistic chance
+// 2·PrestigeOffset above the aim: a higher prestige stays harder by
+// exactly what the offset says.
+func TestCalibrationHitsTargets(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("slow")
+	}
+	r := rules.Standard()
+	pool := sim.SyntheticPool(20000, 1)
+	for _, prestige := range []int{0, 2} {
+		rep := sim.Run(sim.Config{
+			Rules:    r,
+			Pool:     pool,
+			Player:   sim.DefaultPlayer(1600),
+			Boots:    500,
+			Warmup:   100,
+			Seed:     5,
+			Prestige: prestige,
+		})
+		t.Logf("model 1600, prestige %d:\n%s", prestige, rep)
+		for i, b := range r.Biomes {
+			got, exp := taught(rep, i)
+			want := game.Expected(0, game.Aim(0, b.TargetClear)+float64(prestige)*r.PrestigeOffset)
+			tol := 3*math.Sqrt(exp*(1-exp)/float64(max(rep.Taught[i], 1))) + 0.02
+			if math.Abs(got-exp) > tol || math.Abs(exp-want) > 0.03 {
+				t.Errorf("prestige %d biome %d: plain doors clear %.3f (±%.3f), engine expected %.3f, want both near %.3f",
+					prestige, i, got, tol, exp, want)
+			}
+		}
 	}
 }
 

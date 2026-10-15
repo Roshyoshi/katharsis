@@ -3,6 +3,7 @@ package game
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"slices"
 	"time"
@@ -187,21 +188,35 @@ func (e *engine) chooseDoor(i int) error {
 // ---- inside a problem ------------------------------------------------------
 
 func (e *engine) tick() error {
-	if e.s.Phase == PhaseProblem {
-		e.expired()
+	if e.s.Phase == PhaseProblem && !e.expired() {
+		e.overtime(e.s.Current.Deadline)
 	}
 	return nil
 }
 
 // expired crashes the open door if its deadline has passed, and reports
 // whether it did. Every in-problem action checks it first, so a late Tick
-// can't be outrun by a retreat or a quack.
+// can't be outrun by a retreat or a quack. A soft timer never crashes; the
+// deadline only marks the attempt overtime, which Tick and the judge
+// result do (they cannot fail, so the mark never sticks to a refused
+// action).
 func (e *engine) expired() bool {
-	if e.now.Before(e.s.Current.Deadline) {
+	if e.now.Before(e.s.Current.Deadline) || e.s.Rules.OnExpire == rules.ExpireOvertime {
 		return false
 	}
-	e.crash(TimedOut)
+	e.crash(TimedOut, false)
 	return true
+}
+
+// overtime marks the open attempt overtime once now reaches after, under a
+// soft timer.
+func (e *engine) overtime(after time.Time) {
+	a := e.s.Current
+	if e.s.Rules.OnExpire != rules.ExpireOvertime || a.Overtime || e.now.Before(after) {
+		return
+	}
+	a.Overtime = true
+	e.logf("%s: timer expired, overtime", e.door())
 }
 
 func (e *engine) submit(v SubmitResult) error {
@@ -210,10 +225,12 @@ func (e *engine) submit(v SubmitResult) error {
 		return err
 	}
 	a := s.Current
-	if !e.now.Before(a.Deadline.Add(s.Rules.SubmitGrace.Duration)) {
-		e.crash(TimedOut)
+	late := a.Deadline.Add(s.Rules.SubmitGrace.Duration)
+	if !e.now.Before(late) && s.Rules.OnExpire != rules.ExpireOvertime {
+		e.crash(TimedOut, false)
 		return nil
 	}
+	e.overtime(late)
 	a.Submits++
 	a.LastVerdict = v.Verdict
 	if v.Total > 0 {
@@ -229,14 +246,21 @@ func (e *engine) submit(v SubmitResult) error {
 		e.logf("%s: %s, no charge", e.door(), v.Verdict)
 		return nil
 	}
+	if a.Door.Cursed {
+		// The curse takes the boot, not a life: lives left stay on the
+		// record for the crash screen.
+		e.logf("%s: %s %d/%d on a cursed door, %d lives left", e.door(), v.Verdict, v.Passed, v.Total, s.Lives)
+		e.crash(OutOfLives, true)
+		return nil
+	}
 	cost := 1
 	if slices.Contains(s.Daemons, Nice) {
 		cost = s.Rules.NiceLifeCost
 	}
 	s.Lives = max(0, s.Lives-cost)
 	e.logf("%s: %s %d/%d, -%d life, %d left", e.door(), v.Verdict, v.Passed, v.Total, cost, s.Lives)
-	if a.Door.Cursed || s.Lives == 0 {
-		e.crash(OutOfLives)
+	if s.Lives == 0 {
+		e.crash(OutOfLives, false)
 		return nil
 	}
 	e.emit(Sound{Name: "wa"})
@@ -280,7 +304,7 @@ func (e *engine) giveUp() error {
 	if e.expired() {
 		return nil
 	}
-	e.crash(GaveUp)
+	e.crash(GaveUp, false)
 	return nil
 }
 
@@ -294,6 +318,9 @@ func (e *engine) retreat() error {
 	}
 	if e.expired() {
 		return nil
+	}
+	if s.Trial != nil {
+		return invalid("a trial door can't be swapped")
 	}
 	free := slices.Contains(s.Daemons, Kexec) && !s.KexecUsed
 	if !free && s.Lives <= 1 {
@@ -314,8 +341,12 @@ func (e *engine) retreat() error {
 	return nil
 }
 
-// close ends the open attempt with outcome, files it in History and rates
-// it. Everything but a clear scores 0.
+// close ends the open attempt with outcome, files it in History, teaches
+// the aim calibration and rates it. A clear scores 1, a hinted or overtime
+// one the lower of what each allows, a crash 0. A retreat is not rated: a
+// swap is a choice of door (a free kexec swap two seconds in says nothing
+// about skill), and rating it as a loss dropped every door's clear chance
+// for taking it.
 func (e *engine) close(o Outcome) Attempt {
 	s := e.s
 	a := s.Current
@@ -326,8 +357,14 @@ func (e *engine) close(o Outcome) Attempt {
 		if a.Quacks > 0 {
 			score = s.Rules.HintedScore
 		}
+		if a.Overtime {
+			score = min(score, s.Rules.OvertimeScore)
+		}
 	}
-	rate(&s.Rules, e.meta, a.Door, score)
+	calibrate(&s.Rules, e.meta, a.Door, o)
+	if o != Retreated {
+		rate(&s.Rules, e.meta, a.Door, score)
+	}
 	s.History = append(s.History, *a)
 	s.Current = nil
 	return *a
@@ -353,12 +390,18 @@ func (e *engine) clear() {
 		Boot:    s.Boot,
 		Rating:  d.Rating,
 		Gap:     float64(d.Rating) - PlayerRating(r, m, d.Topic),
+		Trial:   s.Trial != nil,
 	})
+	paid := s.Paid(*a)
 	e.close(Cleared)
 	advanceRegression(m, d.Problem, e.now)
-	s.Uncommitted += d.Bytes
-	m.LifetimeBytes += d.Bytes
-	e.logf("%s: AC in %s, +%s", name, clock(elapsed), fmtBytes(d.Bytes))
+	s.Uncommitted += paid
+	m.LifetimeBytes += paid
+	over := ""
+	if a.Overtime {
+		over = " (overtime)"
+	}
+	e.logf("%s: AC in %s, +%s%s", name, clock(elapsed), fmtBytes(paid), over)
 	e.emit(CloseProblem{Door: d})
 
 	picks := 1
@@ -386,26 +429,42 @@ func (e *engine) clear() {
 // boot is destroyed first, then this boot's uncommitted bytes (if any)
 // become the new dump. Crashing with nothing uncommitted still costs the old
 // dump.
-func (e *engine) crash(cause Outcome) {
+//
+// A failed trial loses its uncommitted bytes but leaves no core dump and
+// schedules no regression. A dump would destroy a real boot's shade over a
+// practice failure. A regression would come back in boots, where a trial
+// problem is rarely near the player's level (trial doors are the module's,
+// not aimed), and the one regression slot per boot, oldest first, would
+// sit behind it; retrying the trial brings the unit back anyway.
+//
+// cursed marks a crash the curse caused (a failed submit on a cursed door)
+// rather than the lives running out; Cause is OutOfLives either way.
+func (e *engine) crash(cause Outcome, cursed bool) {
 	s, m := e.s, e.meta
 	name := e.door()
 	a := e.close(cause)
 	d := a.Door
 
 	var dumpLost int64
-	if m.CoreDump != nil {
-		dumpLost = m.CoreDump.Bytes
-		e.logf("coredump: %s on %s overwritten", fmtBytes(dumpLost), m.CoreDump.Problem)
-		m.CoreDump = nil
-	}
 	lost := s.Uncommitted
-	if lost > 0 {
-		m.CoreDump = &CoreDump{Problem: d.Problem, Bytes: lost, Boot: s.Boot, At: e.now}
-		e.logf("core dumped: %s on %s", fmtBytes(lost), d.Problem)
-	}
 	s.Uncommitted = 0
-	if due, ok := scheduleRegression(m, d.Problem, e.now, s.Rules.RegressionDays); ok {
-		e.logf("regression: %s due %s", d.Problem, due.Format(time.DateOnly))
+	if s.Trial != nil {
+		if lost > 0 {
+			e.logf("trial: %s lost, no core dump", fmtBytes(lost))
+		}
+	} else {
+		if m.CoreDump != nil {
+			dumpLost = m.CoreDump.Bytes
+			e.logf("coredump: %s on %s overwritten", fmtBytes(dumpLost), m.CoreDump.Problem)
+			m.CoreDump = nil
+		}
+		if lost > 0 {
+			m.CoreDump = &CoreDump{Problem: d.Problem, Bytes: lost, Boot: s.Boot, At: e.now}
+			e.logf("core dumped: %s on %s", fmtBytes(lost), d.Problem)
+		}
+		if due, ok := scheduleRegression(m, d.Problem, e.now, s.Rules.RegressionDays); ok {
+			e.logf("regression: %s due %s", d.Problem, due.Format(time.DateOnly))
+		}
 	}
 
 	c := Crash{
@@ -416,6 +475,7 @@ func (e *engine) crash(cause Outcome) {
 		At:       e.now,
 		Uptime:   e.now.Sub(s.Started),
 		DumpLost: dumpLost,
+		Cursed:   cursed,
 	}
 	s.Crash = &c
 	s.Phase = PhaseCrashed
@@ -425,6 +485,9 @@ func (e *engine) crash(cause Outcome) {
 		OutOfLives: "Kernel panic - not syncing: out of lives on " + name,
 		GaveUp:     "Kernel panic - not syncing: Attempted to kill init! (:q! on " + name + ")",
 	}[cause]
+	if cursed {
+		why = "Kernel panic - not syncing: curse triggered on " + name
+	}
 	e.logf("%s", why)
 	e.emit(CloseProblem{Door: d}, ShowCrash{Crash: c}, Sound{Name: "crash"})
 	if cause == GaveUp {
@@ -495,7 +558,9 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 // ---- merge window ----------------------------------------------------------
 
 // enterMerge opens the window between biomes: ducks refill to the boot's
-// base plus Duck upgrades, and daemons not yet running are offered.
+// base plus Duck upgrades, and daemons not yet running are offered. A
+// trial offers none: fork and kexec need rooms that re-roll, which a
+// trial's do not, and the rest are boot perks.
 func (e *engine) enterMerge() {
 	s, r := e.s, &e.s.Rules
 	s.Phase = PhaseMerge
@@ -508,7 +573,7 @@ func (e *engine) enterMerge() {
 	}
 	s.Ducks = max(s.Ducks, refill)
 	s.DaemonOffers = nil
-	if len(s.Daemons) < r.MaxDaemons {
+	if len(s.Daemons) < r.MaxDaemons && s.Trial == nil {
 		var pool []Daemon
 		for _, d := range AllDaemons {
 			if !slices.Contains(s.Daemons, d) {
@@ -585,7 +650,11 @@ func (e *engine) enterBiome(i int) {
 	if label == "" {
 		label = string(b.Kind)
 	}
-	e.logf("biome_%d: %s, %d rooms, aim %.0f%%", i, label, b.Rooms, rb.TargetClear*100)
+	aim := fmt.Sprintf(", aim %.0f%%", rb.TargetClear*100)
+	if s.Trial != nil {
+		aim = "" // trial doors are not aimed
+	}
+	e.logf("biome_%d: %s, %d rooms%s", i, label, b.Rooms, aim)
 	if b.Kind == rules.Choice && b.Topic == "" {
 		s.Phase = PhaseRoute
 		e.logf("route: biome_%d offers %v", i, b.Offers)
@@ -600,7 +669,8 @@ func (e *engine) enterBiome(i int) {
 }
 
 // finish clears the boot: what is still uncommitted is banked, and beating
-// the top unlocked prestige unlocks the next.
+// the top unlocked prestige unlocks the next. A trial unlocks no prestige;
+// it grants its capability instead.
 func (e *engine) finish() {
 	s, m := e.s, e.meta
 	if s.Uncommitted > 0 {
@@ -608,7 +678,10 @@ func (e *engine) finish() {
 	}
 	s.Phase = PhaseCleared
 	e.dropPicks()
-	if s.Prestige == m.Prestige && m.Prestige < MaxPrestige {
+	switch {
+	case s.Trial != nil:
+		e.passTrial()
+	case s.Prestige == m.Prestige && m.Prestige < MaxPrestige:
 		m.Prestige++
 		e.logf("prestige %d unlocked", m.Prestige)
 	}
@@ -624,10 +697,42 @@ func (s *State) Earned() int64 {
 	var n int64
 	for _, a := range s.History {
 		if a.Outcome == Cleared {
-			n += a.Door.Bytes
+			n += s.Paid(a)
 		}
 	}
 	return n
+}
+
+// Paid is what clearing a's door pays (or paid): its Bytes, scaled by
+// OvertimeBytesMult when the clear came in overtime.
+func (s *State) Paid(a Attempt) int64 {
+	if !a.Overtime {
+		return a.Door.Bytes
+	}
+	return max(1, int64(math.Round(float64(a.Door.Bytes)*s.Rules.OvertimeBytesMult)))
+}
+
+// SoftTimer reports whether door timers are soft (rules.ExpireOvertime):
+// past the deadline the HUD counts overtime up instead of crashing.
+func (s *State) SoftTimer() bool { return s.Rules.OnExpire == rules.ExpireOvertime }
+
+// ShowsFailingInput reports whether the HUD may show what a failing full
+// test contains: its input, the expected output and the program's output,
+// and whether :Debug may run the debugger on it. Inside a boot this is
+// hidden unless the strace daemon runs (or the rules show it to everyone,
+// as rules.Trial does): the full tests are the judge's, and a failing case
+// on screen turns a wrong answer into a diff to match, which is the perk
+// strace sells. What stays visible either way is the verdict, the HP bar
+// (tests passed of the total) and the samples, which are the statement's.
+//
+// A boot that has ended (crashed or cleared) shows everything, as does a
+// nil State, meaning no boot at all (practice, an upsolve between boots):
+// nothing is at stake any more.
+func (s *State) ShowsFailingInput() bool {
+	if s == nil || s.Phase == PhaseCrashed || s.Phase == PhaseCleared {
+		return true
+	}
+	return s.Rules.ShowFailingInput || slices.Contains(s.Daemons, Strace)
 }
 
 // clock formats a duration as m:ss or h:mm:ss, like the HUD.

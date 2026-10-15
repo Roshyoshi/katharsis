@@ -22,6 +22,13 @@ func (d *Duration) UnmarshalText(b []byte) error {
 
 func (d Duration) MarshalText() ([]byte, error) { return []byte(d.String()), nil }
 
+// OnExpire values. A soft timer (overtime) suits learn mode, where the point
+// is to finish the problem, not to beat the clock.
+const (
+	ExpireCrash    = "crash"
+	ExpireOvertime = "overtime"
+)
+
 // BiomeKind: a fixed biome has one topic chosen by the engine; a choice
 // biome offers Choices topics at its entrance; a boss biome is a single
 // named-bug room.
@@ -93,6 +100,10 @@ type Rules struct {
 	// TopicRatingMin is how many attempts a topic needs before its own
 	// rating replaces the overall one for aiming doors.
 	TopicRatingMin int `toml:"topic_rating_min"`
+	// TopicFollow is the share of every overall rating change that each
+	// topic rating follows, so a topic rating is the overall plus what its
+	// own doors taught (1) rather than a separate rating (0).
+	TopicFollow float64 `toml:"topic_follow"`
 	// RouteMinPool is how many eligible problems per room a topic needs
 	// within the widest window to be offered as a biome.
 	RouteMinPool int `toml:"route_min_pool"`
@@ -149,6 +160,44 @@ type Rules struct {
 	// scales by gap, so a 1.5 here would count the stretch twice.
 	BossTimerMult float64 `toml:"boss_timer_mult"`
 
+	// ---- rating and aim calibration ----------------------------------------
+
+	// RatingKCold is the Elo K for the player's first RatingColdAttempts
+	// rated attempts. Everyone starts at ColdStartRating, and a clear of a
+	// door aimed at 90% moves the rating by a tenth of K, so at the
+	// steady-state K a strong newcomer spends boots on doors far below
+	// them. RatingColdAttempts 0 turns the boost off.
+	RatingKCold        float64 `toml:"rating_k_cold"`
+	RatingColdAttempts int     `toml:"rating_cold_attempts"`
+	// CalibRate is the gain of the aim calibration (game.Calibration): the
+	// share of one plain door's surprise that moves its tier's offset, so a
+	// tier forgets its past over about 1/CalibRate doors. 0 turns it off.
+	CalibRate float64 `toml:"calib_rate"`
+	// CalibWarm starts each offset on a faster gain, 1/(doors+CalibWarm),
+	// until it falls to CalibRate: the first doors average like a running
+	// mean, as if CalibWarm doors had agreed with the aim. 0 starts at
+	// CalibRate.
+	CalibWarm int `toml:"calib_warm"`
+	// CalibAfter is how many rated attempts the player needs before doors
+	// teach the calibration: the rating is still climbing out of the cold
+	// start before that, and the offsets would learn the climb.
+	CalibAfter int `toml:"calib_after"`
+	// CalibMax bounds the aim correction, in rating points either way.
+	CalibMax float64 `toml:"calib_max"`
+
+	// ---- soft timers -------------------------------------------------------
+
+	// OnExpire is what a door's timer running out does: ExpireCrash ends the
+	// boot, ExpireOvertime lets the attempt go on, marked overtime (trials).
+	OnExpire string `toml:"on_expire"`
+	// OvertimeScore caps the Elo score of a clear made in overtime;
+	// OvertimeBytesMult scales its bytes.
+	OvertimeScore     float64 `toml:"overtime_score"`
+	OvertimeBytesMult float64 `toml:"overtime_bytes_mult"`
+	// ShowFailingInput shows every door's failing full test, as the strace
+	// daemon does (see game.State.ShowsFailingInput).
+	ShowFailingInput bool `toml:"show_failing_input"`
+
 	// ---- prestige ----------------------------------------------------------
 
 	// PrestigeOffset is added to every door's target rating per prestige
@@ -193,8 +242,10 @@ func (r Rules) Ascend(prestige int) Ascension {
 
 // WithDefaults fills fields whose zero value means nothing (counts, scales,
 // clamps) from Standard(), so Rules built in code before a field existed
-// still play. Fields where zero is a real setting (chances, offsets,
-// Ascensions) are left alone.
+// still play. Fields where zero is a real setting (chances, offsets, the
+// calibration rate, the cold-start length, overtime penalties, Ascensions)
+// are left alone, so such Rules keep the behavior they had before the
+// field existed. An empty OnExpire becomes ExpireCrash.
 func (r Rules) WithDefaults() Rules {
 	d := Standard()
 	if len(r.RatingWindows) == 0 {
@@ -227,7 +278,8 @@ func (r Rules) WithDefaults() Rules {
 		{&r.TimerHeadroom, &d.TimerHeadroom}, {&r.TimerFitLo, &d.TimerFitLo},
 		{&r.TimerFitHi, &d.TimerFitHi}, {&r.BossTimerMult, &d.BossTimerMult},
 		{&r.TimerQuantile, &d.TimerQuantile}, {&r.RatingK, &d.RatingK},
-		{&r.ColdStartRating, &d.ColdStartRating},
+		{&r.ColdStartRating, &d.ColdStartRating}, {&r.RatingKCold, &d.RatingKCold},
+		{&r.CalibMax, &d.CalibMax},
 	}
 	for _, f := range floats {
 		if *f.v <= 0 {
@@ -236,6 +288,9 @@ func (r Rules) WithDefaults() Rules {
 	}
 	if r.BaseBytes <= 0 {
 		r.BaseBytes = d.BaseBytes
+	}
+	if r.OnExpire == "" {
+		r.OnExpire = ExpireCrash
 	}
 	return r
 }
@@ -250,7 +305,7 @@ func Standard() Rules {
 		Ducks:        1,
 		DoorsPerRoom: 3,
 		Biomes: []Biome{
-			{Kind: Fixed, Name: "Userland", Rooms: 2, TargetClear: 0.9, Timer: Duration{15 * time.Minute}},
+			{Kind: Fixed, Name: "Userland", Rooms: 2, TargetClear: 0.92, Timer: Duration{15 * time.Minute}},
 			{Kind: Choice, Rooms: 2, Choices: 2, TargetClear: 0.7, Timer: Duration{30 * time.Minute}},
 			{Kind: Boss, Rooms: 1, TargetClear: 0.5, Timer: Duration{50 * time.Minute}},
 		},
@@ -272,6 +327,7 @@ func Standard() Rules {
 
 		RatingWindows:  []int{100, 250, 500},
 		TopicRatingMin: 5,
+		TopicFollow:    1,
 		RouteMinPool:   6,
 		BossDoors:      1,
 		MinBytesMult:   0.25,
@@ -299,7 +355,18 @@ func Standard() Rules {
 		TimerFitHistory: 200,
 		BossTimerMult:   1,
 
-		PrestigeOffset: 75,
+		RatingKCold:        100,
+		RatingColdAttempts: 20,
+		CalibRate:          0.02,
+		CalibWarm:          10,
+		CalibAfter:         60,
+		CalibMax:           300,
+
+		OnExpire:          ExpireCrash,
+		OvertimeScore:     0.5,
+		OvertimeBytesMult: 0.5,
+
+		PrestigeOffset: 25,
 		Ascensions: []Ascension{
 			{Level: 1, BlindChance: 0.15},
 			{Level: 2, Ducks: -1, MysteryChance: 0.05},
@@ -307,6 +374,33 @@ func Standard() Rules {
 			{Level: 4, Lives: -1},
 		},
 	}
+}
+
+// Trial is the learn-mode preset (DESIGN.md "Learn mode") that
+// game.NewTrial plays: a unit biome of the module's own problems with tags
+// shown, then blind integration doors, one door per room, on a soft timer.
+//
+// The two biomes are a shape, not a layout: the unit's Rooms is the
+// minimum unit size (a short unit is topped up to it, a longer one plays
+// in full) and the integration's Rooms is how many blind doors it draws.
+// TargetClear is unused, since trial doors are the module's, not aimed at
+// the player; it only has to pass Validate.
+//
+// Failing input is shown, as if strace ran: a trial is the first time the
+// player meets the topic, and a hidden WA teaches nothing.
+func Trial() Rules {
+	r := Standard()
+	r.Name = "trial"
+	r.DoorsPerRoom = 1
+	r.Biomes = []Biome{
+		{Kind: Fixed, Name: "unit", Rooms: 4, TargetClear: 0.7, Timer: Duration{30 * time.Minute}},
+		{Kind: Fixed, Name: "integration", Rooms: 2, TargetClear: 0.7, Timer: Duration{30 * time.Minute}},
+	}
+	r.BlindChance, r.MysteryChance, r.CursedChance = 0, 0, 0
+	r.Ascensions = nil
+	r.OnExpire = ExpireOvertime
+	r.ShowFailingInput = true
+	return r
 }
 
 // Load reads a preset on top of Standard(), so a preset file lists only
@@ -354,6 +448,12 @@ func (r Rules) Validate() error {
 	}
 	if r.TimerFitLo > r.TimerFitHi {
 		return fmt.Errorf("rules %q: timer_fit_lo above timer_fit_hi", r.Name)
+	}
+	if r.OnExpire != "" && r.OnExpire != ExpireCrash && r.OnExpire != ExpireOvertime {
+		return fmt.Errorf("rules %q: on_expire %q is not %q or %q", r.Name, r.OnExpire, ExpireCrash, ExpireOvertime)
+	}
+	if r.CalibRate < 0 || r.CalibRate >= 1 || r.CalibWarm < 0 || r.CalibAfter < 0 || r.RatingColdAttempts < 0 {
+		return fmt.Errorf("rules %q: need 0 <= calib_rate < 1 and calib_warm, calib_after, rating_cold_attempts >= 0", r.Name)
 	}
 	for _, a := range r.Ascensions {
 		if a.Level < 1 {
