@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -111,6 +112,8 @@ func runGame(args []string) error {
 		return err
 	}
 	defer st.Close() // every write already committed
+	logger, closeLog := openLog(path)
+	defer closeLog()
 
 	// Before the TUI: the first run downloads the USACO Guide snapshot
 	// (about 150 MB) and the Codeforces index (about 17 MB) and builds the
@@ -154,6 +157,7 @@ func runGame(args []string) error {
 		Audio:         sink,
 		AudioSettings: audioSet,
 		Credits:       credits,
+		Log:           logger,
 	})
 	if err != nil {
 		return err
@@ -198,4 +202,16 @@ func showDownload() (done func()) {
 			fmt.Fprintln(os.Stderr)
 		}
 	}
+}
+
+// openLog appends to katharsis.log beside the store: what goes wrong where
+// the player cannot see it, such as an event the store could not write.
+// The game plays without it.
+func openLog(db string) (*log.Logger, func()) {
+	f, err := os.OpenFile(filepath.Join(filepath.Dir(db), "katharsis.log"),
+		os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600)
+	if err != nil {
+		return nil, func() {}
+	}
+	return log.New(f, "", log.LstdFlags), func() { _ = f.Close() }
 }

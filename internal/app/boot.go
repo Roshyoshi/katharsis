@@ -298,6 +298,7 @@ func (m *Model) onFetched(f fetchedMsg) tea.Cmd {
 		return fail("open door: %v", err)
 	}
 	m.open = d
+	m.upsolveOpened()
 	m.refresh()
 	var cmds []tea.Cmd
 	if h := m.hud(); h != nil {
@@ -320,6 +321,7 @@ func (m *Model) awaits(f fetchedMsg) bool {
 }
 
 func (m *Model) closeDoor() {
+	m.doorClosed()
 	if m.open != nil {
 		m.d.Runner.Close()
 	}

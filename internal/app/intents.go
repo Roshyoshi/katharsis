@@ -60,7 +60,7 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 	case reader.OpenURL:
 		return openURL(msg.URL), true
 	case docMsg:
-		return m.push(reader.New(msg.doc)), true
+		return m.push(m.docShown(msg)), true
 	case submitMsg:
 		return m.submit(), true
 	}
@@ -126,14 +126,21 @@ func (m *Model) openTop() tea.Cmd {
 	return m.push(meta.NewTop(m.stats(st, hist)))
 }
 
-type docMsg struct{ doc reader.Doc }
+// docMsg carries a doc to show; editorial is its problem when it is an
+// editorial.
+type docMsg struct {
+	doc       reader.Doc
+	editorial catalog.ID
+}
 
 // openDoc shows a problem's statement or editorial in the reader, fetching
 // it first if needed.
 func (m *Model) openDoc(id catalog.ID, editorial bool) tea.Cmd {
 	cat := m.d.Catalog
+	var ed catalog.ID
 	if editorial {
 		m.editorials[id] = true
+		ed = id
 		if m.open != nil && m.open.Door.Problem == id {
 			m.open.ReadEditorial = true
 		}
@@ -163,9 +170,9 @@ func (m *Model) openDoc(id catalog.ID, editorial bool) tea.Cmd {
 		}
 		if mystery {
 			// The page online names it too, so `o` is off.
-			return docMsg{reader.Doc{Title: "???", Source: "mystery door · " + kind, Markdown: redact(md, p)}}
+			return docMsg{reader.Doc{Title: "???", Source: "mystery door · " + kind, Markdown: redact(md, p)}, ""}
 		}
-		return docMsg{reader.Doc{Title: p.Title, Source: p.Contest + " · " + kind, URL: p.URL, Markdown: md}}
+		return docMsg{reader.Doc{Title: p.Title, Source: p.Contest + " · " + kind, URL: p.URL, Markdown: md}, ed}
 	})
 }
 
@@ -248,6 +255,7 @@ func (m *Model) upsolveFiles(id catalog.ID) (sub string, seedBoot int) {
 
 // onUpsolveJudged records an accepted upsolve; anything else just shows.
 func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
+	m.upsolveJudged(j)
 	if s, ok := m.top().(*problemScreen); ok {
 		s.last = j
 	}

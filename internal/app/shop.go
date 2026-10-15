@@ -7,6 +7,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens/meta"
+	"katharsis/internal/store"
 )
 
 // apt's packages are bought between boots, so GRUB sells the standard
@@ -58,6 +59,7 @@ func (m *Model) install(name string) tea.Cmd {
 	if err := m.d.Store.SaveMeta(m.meta); err != nil {
 		return fail("save: %v", err)
 	}
+	m.event(store.EventAptInstall, "", kv{"package": name, "price": p.Price, "bank": m.meta.Bank})
 	m.shopChanged()
 	return note("installed %s: %s", name, flavor.PackageText(p, r))
 }

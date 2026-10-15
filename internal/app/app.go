@@ -8,6 +8,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"sync"
 	"time"
@@ -76,6 +77,9 @@ type Deps struct {
 	Audio         audio.Sink
 	AudioSettings audio.Settings
 	Credits       func() string
+	// Log gets what goes wrong out of the player's sight, such as an event
+	// the store could not write; nil discards it.
+	Log *log.Logger
 }
 
 // Model is the root tea.Model.
@@ -120,6 +124,8 @@ type Model struct {
 	cancel  context.CancelFunc
 	fetches sync.WaitGroup
 
+	tele tele // telemetry.go
+
 	width, height int
 
 	// Sound (audio.go): the last state effects were diffed from, the door
@@ -158,6 +164,7 @@ func New(d Deps) (*Model, error) {
 	m := &Model{d: d, meta: meta, state: st, pool: d.Catalog.All(), editorials: map[catalog.ID]bool{}}
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 	m.reset()
+	m.startTelemetry()
 	return m, nil
 }
 
@@ -210,7 +217,9 @@ func leftText(left time.Duration) string {
 
 // reset rebuilds the screen stack from scratch for the current phase.
 func (m *Model) reset() {
+	m.dropped(m.stack...)
 	m.stack = []screens.Screen{m.baseScreen()}
+	m.screenShown()
 }
 
 func (m *Model) top() screens.Screen { return m.stack[len(m.stack)-1] }
@@ -222,6 +231,7 @@ func (m *Model) push(s screens.Screen) tea.Cmd {
 
 func (m *Model) pop() {
 	if len(m.stack) > 1 {
+		m.dropped(m.top())
 		m.stack = m.stack[:len(m.stack)-1]
 	}
 }
@@ -265,6 +275,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.onDoorReady(msg)
 	case prefetchedMsg:
 		m.recheck(msg...)
+		return m, nil
+	case hud.SamplesMsg:
+		m.samplesJudged(msg)
 		return m, nil
 	case game.Action:
 		return m, m.step(msg)
@@ -352,6 +365,7 @@ func (m *Model) View() tea.View {
 const quitWait = 2 * time.Second
 
 func (m *Model) quit() tea.Cmd {
+	m.stopTelemetry()
 	if m.open != nil {
 		m.d.Runner.Close()
 	}

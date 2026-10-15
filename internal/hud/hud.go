@@ -239,7 +239,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.ch {
 		case m.pass:
 			m.apply(msg.ev)
-			return m, tea.Batch(next(msg.ch), m.updateBorder())
+			return m, tea.Batch(next(msg.ch), m.updateBorder(), m.samplesDone(msg.ev))
 		case m.sub.ch:
 			return m, tea.Batch(m.applySubmit(msg.ev), next(msg.ch), m.updateBorder())
 		}
