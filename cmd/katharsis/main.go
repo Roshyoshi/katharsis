@@ -228,10 +228,14 @@ func openEditor(opt *hud.Options, dir, source, editor string, split int) (pane s
 	}
 	undo = append(undo, func() error { return os.Remove(overlay) })
 
+	// The editor and lldb panes killed games left in this tmux server,
+	// so this HUD's file opens in one vim (session.SweepOrphans).
+	_, _ = session.SweepOrphans(3 * time.Second)
 	pane, err = session.SplitEditor(dir, source, session.EditorArgv(editor, sock, overlay), split)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("open editor: %w", err)
 	}
+	_ = session.TagPane(pane, session.RoleEditor) // best effort, for the sweep
 	opt.EditorAlive = func() bool { return session.PaneAlive(pane) }
 	opt.CloseEditor = func() error { return session.CloseEditor(pane) }
 
@@ -248,6 +252,7 @@ func openEditor(opt *hud.Options, dir, source, editor string, split int) (pane s
 		if err != nil {
 			return nil, err
 		}
+		_ = session.TagPane(dbg, session.RoleLLDB)
 		if border != nil {
 			_ = border.Set(dbg, " lldb · #"+d.Test+" · stopped at main: run ")
 		}
