@@ -1,0 +1,369 @@
+# The game's sound effects, synthesized at start (synth.go). Each effect is
+# a few tones; times are seconds, pitches Hz (A4 = 440). `level` is dB from
+# the SFX loudness target, `channel` "ui" plays at once and "jingle" waits
+# for the jingle before it. Kept short and low-passed: they play hundreds
+# of times a session, beside the player's own thinking.
+
+# ---- verdicts and the boot --------------------------------------------------
+
+[ac]
+note = "Accepted: a rising fifth, C6 to G6, with a soft triangle under it."
+level = 0
+channel = "jingle"
+[[ac.tone]]
+wave = "square"
+duty = 0.25
+freq = 1046.5
+dur = 0.08
+attack = 0.002
+decay = 0.06
+release = 0.02
+lowpass = 7000
+[[ac.tone]]
+at = 0.07
+wave = "square"
+duty = 0.25
+freq = 1567.98
+dur = 0.24
+attack = 0.002
+decay = 0.12
+release = 0.06
+vibrato = 0.12
+vib_rate = 7
+lowpass = 7000
+[[ac.tone]]
+at = 0.07
+wave = "triangle"
+freq = 783.99
+dur = 0.24
+decay = 0.15
+release = 0.06
+vol = 0.6
+
+[wa]
+note = "Wrong answer: two low pulses stepping down, muffled."
+level = -2
+channel = "jingle"
+[[wa.tone]]
+wave = "square"
+freq = 233.08
+to = 207.65
+dur = 0.11
+attack = 0.003
+release = 0.02
+lowpass = 2200
+[[wa.tone]]
+at = 0.12
+wave = "square"
+freq = 185.0
+to = 155.56
+dur = 0.2
+attack = 0.003
+decay = 0.12
+release = 0.05
+lowpass = 2200
+
+[crash]
+note = "Kernel panic: a falling noise burst over a pulse sliding down to A1."
+level = 1
+channel = "jingle"
+[[crash.tone]]
+wave = "noise"
+freq = 3000
+to = 150
+dur = 0.5
+decay = 0.22
+release = 0.1
+vol = 0.6
+[[crash.tone]]
+wave = "square"
+freq = 440
+to = 55
+dur = 0.9
+attack = 0.005
+decay = 0.45
+release = 0.2
+lowpass = 2500
+
+[commit]
+note = "Bytes banked: a quick narrow-pulse B5 to E6, like a save."
+level = -3
+channel = "ui"
+[[commit.tone]]
+wave = "square"
+duty = 0.125
+freq = 987.77
+dur = 0.05
+attack = 0.002
+release = 0.01
+lowpass = 6000
+[[commit.tone]]
+at = 0.05
+wave = "square"
+duty = 0.125
+freq = 1318.51
+dur = 0.14
+attack = 0.002
+decay = 0.07
+release = 0.04
+lowpass = 6000
+
+[boss]
+note = "A boss room: a low tritone trill with vibrato, something large below."
+level = 0
+channel = "jingle"
+[[boss.tone]]
+wave = "square"
+freq = 110
+dur = 0.9
+attack = 0.02
+decay = 0.6
+release = 0.2
+arp = [0, 6]
+arp_step = 0.075
+vibrato = 0.2
+vib_rate = 5
+lowpass = 1800
+[[boss.tone]]
+wave = "triangle"
+freq = 55
+dur = 0.9
+attack = 0.02
+decay = 0.7
+release = 0.2
+vol = 0.8
+
+[cleared]
+note = "Last boss down: a C major run to C6, held with vibrato, triangle bass."
+level = 1
+channel = "jingle"
+[[cleared.tone]]
+wave = "square"
+duty = 0.25
+freq = 523.25
+dur = 0.36
+attack = 0.003
+release = 0.02
+arp = [0, 4, 7]
+arp_step = 0.09
+lowpass = 6500
+[[cleared.tone]]
+at = 0.36
+wave = "square"
+duty = 0.25
+freq = 1046.5
+dur = 0.5
+attack = 0.003
+decay = 0.35
+release = 0.12
+vibrato = 0.15
+vib_rate = 6
+lowpass = 6500
+[[cleared.tone]]
+wave = "triangle"
+freq = 130.81
+dur = 0.36
+release = 0.02
+vol = 0.8
+[[cleared.tone]]
+at = 0.36
+wave = "triangle"
+freq = 261.63
+dur = 0.5
+decay = 0.4
+release = 0.12
+vol = 0.8
+
+# ---- doors and the timer ----------------------------------------------------
+
+[door]
+note = "A door opens: a short thunk, then a pulse sweeping up."
+level = -4
+channel = "ui"
+[[door.tone]]
+wave = "noise"
+freq = 800
+dur = 0.03
+decay = 0.01
+vol = 0.5
+[[door.tone]]
+at = 0.01
+wave = "square"
+duty = 0.25
+freq = 220
+to = 880
+dur = 0.12
+attack = 0.005
+release = 0.04
+lowpass = 4000
+
+[submit]
+note = "A submission is sent: two quiet triangle blips, A5 then E6."
+level = -6
+channel = "ui"
+[[submit.tone]]
+wave = "triangle"
+freq = 880
+dur = 0.04
+release = 0.01
+[[submit.tone]]
+at = 0.05
+wave = "triangle"
+freq = 1318.51
+dur = 0.05
+release = 0.02
+
+[life]
+note = "A life lost: E5, C5, A4 falling, after the verdict."
+level = -2
+channel = "jingle"
+[[life.tone]]
+wave = "square"
+freq = 659.25
+dur = 0.27
+attack = 0.003
+decay = 0.25
+release = 0.05
+arp = [0, -4, -7]
+arp_step = 0.08
+lowpass = 3500
+
+[warn]
+note = "A minute left: two soft triangle beeps on A5. A nudge, not an alarm."
+level = -3
+channel = "ui"
+[[warn.tone]]
+wave = "triangle"
+freq = 880
+dur = 0.08
+attack = 0.003
+release = 0.02
+[[warn.tone]]
+at = 0.16
+wave = "triangle"
+freq = 880
+dur = 0.08
+attack = 0.003
+release = 0.02
+
+[quack]
+note = "The rubber duck: a nasal saw falling from 430 to 300 Hz through duck formants."
+level = -2
+channel = "ui"
+[[quack.tone]]
+wave = "saw"
+freq = 430
+to = 300
+dur = 0.17
+attack = 0.012
+decay = 0.12
+release = 0.03
+formants = [[1000, 4, 1.0], [1700, 5, 0.8], [2700, 6, 0.4]]
+[[quack.tone]]
+wave = "noise"
+freq = 3000
+dur = 0.025
+decay = 0.01
+vol = 0.15
+
+# ---- the merge window -------------------------------------------------------
+
+[buy]
+note = "A purchase: the coin interval, B5 then a ringing E6."
+level = -3
+channel = "ui"
+[[buy.tone]]
+wave = "square"
+duty = 0.25
+freq = 987.77
+dur = 0.06
+attack = 0.002
+release = 0.01
+lowpass = 6500
+[[buy.tone]]
+at = 0.06
+wave = "square"
+duty = 0.25
+freq = 1318.51
+dur = 0.25
+attack = 0.002
+decay = 0.12
+release = 0.06
+lowpass = 6500
+
+[reroll]
+note = "A reroll: a narrow pulse arpeggio up and back down."
+level = -5
+channel = "ui"
+[[reroll.tone]]
+wave = "square"
+duty = 0.125
+freq = 659.25
+dur = 0.18
+attack = 0.002
+release = 0.03
+arp = [0, 4, 7, 12, 7, 4]
+arp_step = 0.03
+lowpass = 6000
+
+[pick]
+note = "An upgrade or daemon picked: a soft triangle G5 to C6."
+level = -5
+channel = "ui"
+[[pick.tone]]
+wave = "triangle"
+freq = 783.99
+dur = 0.05
+release = 0.01
+[[pick.tone]]
+at = 0.05
+wave = "triangle"
+freq = 1046.5
+dur = 0.1
+decay = 0.08
+release = 0.03
+
+[prestige]
+note = "A prestige unlocked: a two-octave C major run up to C7, held, with bass."
+level = 1
+channel = "jingle"
+[[prestige.tone]]
+wave = "square"
+duty = 0.25
+freq = 392
+dur = 0.35
+attack = 0.003
+release = 0.02
+arp = [0, 5, 9, 12, 17, 21, 24]
+arp_step = 0.05
+lowpass = 7000
+[[prestige.tone]]
+at = 0.35
+wave = "square"
+duty = 0.25
+freq = 2093
+dur = 0.7
+attack = 0.003
+decay = 0.4
+release = 0.2
+vibrato = 0.18
+vib_rate = 6
+lowpass = 6000
+[[prestige.tone]]
+at = 0.35
+wave = "square"
+duty = 0.5
+freq = 1046.5
+dur = 0.7
+attack = 0.003
+decay = 0.4
+release = 0.2
+vol = 0.5
+lowpass = 5000
+[[prestige.tone]]
+wave = "triangle"
+freq = 130.81
+dur = 1.05
+decay = 0.6
+release = 0.2
+vol = 0.8
