@@ -35,6 +35,8 @@ func all() []built {
 			func() *Scene { return NewBossIntro("off-by-one", 0, true) }},
 		{"first final boss", "reveal.final-boss", flavor.StoryBlock("reveal.final-boss"),
 			func() *Scene { return NewBossIntro(game.FinalBoss, 0, true) }},
+		{"boot splash", "", []string{"katharsis boot #42 (k&r@bell-labs)", "cpu: entering ring 1: the nameless wood"},
+			func() *Scene { return NewBootSplash(42, 2) }},
 		{"beat", "reveal.prestige.3", flavor.StoryBlock("reveal.prestige.3"), func() *Scene { return NewBeat("reveal.prestige.3") }},
 	}
 	for _, k := range append(append([]string{}, game.BossKeys...), game.FinalBoss) {

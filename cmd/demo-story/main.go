@@ -37,6 +37,8 @@ type scene struct {
 func scenes() []scene {
 	out := []scene{
 		{"prologue", story.NewPrologue},
+		{"boot splash", func() *story.Scene { return story.NewBootSplash(42, 0) }},
+		{"boot splash, ring -1", func() *story.Scene { return story.NewBootSplash(318, game.MaxPrestige) }},
 		{"first-door", story.NewFirstDoor},
 		{"first-merge", story.NewFirstMerge},
 		{"accepted", func() *story.Scene { return story.NewAccepted("AC · 12/12 tests · 08:41 / 15:00") }},

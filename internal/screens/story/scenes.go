@@ -1,6 +1,7 @@
 package story
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,18 +16,20 @@ import (
 // Timings. Every one is short enough that nobody waits for it, and any key
 // cuts it short.
 const (
-	fallTime   = 1400 * time.Millisecond // the prologue's drop
-	biomeFall  = 1000 * time.Millisecond // a drop between biomes
-	cardTime   = 1200 * time.Millisecond // a boss card opening
-	catIn      = 900 * time.Millisecond  // the Cat, grin first
-	catOut     = 1500 * time.Millisecond // the Cat, tail first
-	fadeTime   = 300 * time.Millisecond
-	acWipe     = 360 * time.Millisecond // ACCEPTED: the banner, then the line
-	acFade     = 240 * time.Millisecond
-	biomeDwell = 1500 * time.Millisecond // how long a biome card stays
-	acDwell    = 900 * time.Millisecond  // how long ACCEPTED stays
-	carveCPS   = 14                      // the old gods carve slowly
-	cardWidth  = 64
+	fallTime    = 1400 * time.Millisecond // the prologue's drop
+	biomeFall   = 1000 * time.Millisecond // a drop between biomes
+	cardTime    = 1200 * time.Millisecond // a boss card opening
+	catIn       = 900 * time.Millisecond  // the Cat, grin first
+	catOut      = 1500 * time.Millisecond // the Cat, tail first
+	fadeTime    = 300 * time.Millisecond
+	acWipe      = 360 * time.Millisecond // ACCEPTED: the banner, then the line
+	acFade      = 240 * time.Millisecond
+	biomeDwell  = 1500 * time.Millisecond // how long a biome card stays
+	acDwell     = 900 * time.Millisecond  // how long ACCEPTED stays
+	carveCPS    = 14                      // the old gods carve slowly
+	cardWidth   = 64
+	revealTime  = 600 * time.Millisecond  // the crash screen's reveal
+	splashDwell = 1200 * time.Millisecond // how long a boot splash stays
 )
 
 // lines is s split into rows, nil for "".
@@ -275,5 +278,27 @@ func NewBeat(id string) *Scene {
 	title, said := []string{flavor.BeatTitle(id)}, flavor.BeatLines(id)
 	return newScene(id, 0, func(w, _ int) anim.Clip {
 		return anim.Then(fadeIn(fit(title, w), strong), blank, typed(said, w))
+	})
+}
+
+// NewBootSplash is the start of boot number boot at prestige p
+// (boot.splash.dmesg, boot.motd): the banner, then the dmesg block printed
+// a line at a time the way the crash screen prints, then one line of the
+// motd. It shows every boot and leaves on its own; the app may replace it
+// sooner, once door 1 is fetched.
+func NewBootSplash(boot, p int) *Scene {
+	ring, where := flavor.Ring(p)
+	var dmesg []string
+	for _, l := range flavor.StoryBlock("boot.splash.dmesg") {
+		if where == "" && strings.Contains(l, "{place}") {
+			continue // a ring the story has no name for
+		}
+		dmesg = append(dmesg, flavor.Fill(l, "boot", strconv.Itoa(boot), "ring", strconv.Itoa(ring), "place", where))
+	}
+	motd := lines(flavor.Story("boot.motd", uint64(max(boot, 0))))
+	return newScene("", splashDwell, func(w, _ int) anim.Clip {
+		log := fit(dmesg, w)
+		return anim.Then(over(fadeIn(art("boot"), plain), widest(log)), blank,
+			anim.Reveal{Lines: log, Total: revealTime, Style: muted}, blank, typed(motd, w))
 	})
 }

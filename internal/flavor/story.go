@@ -572,3 +572,17 @@ The White Knight explains his song, K&R-style:
 "It's my own invention."
 `),
 }
+
+// places are the story's {place} by prestige: ring 3 down to ring -1
+// (docs/story/text.md, the placeholder table).
+var places = []string{"Userland", "the looking-glass", "the nameless wood", "the Court of Hearts", "the Red King's dream"}
+
+// Ring is the privilege ring prestige p puts you in (ring = 3 - p) and its
+// {place}. Past the table the place is "", and a line that needs it should
+// not be shown: the story has no name for a ring nobody reached.
+func Ring(p int) (ring int, place string) {
+	if p >= 0 && p < len(places) {
+		place = places[p]
+	}
+	return 3 - p, place
+}

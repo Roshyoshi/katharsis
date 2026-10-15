@@ -10,6 +10,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/charmbracelet/x/ansi"
+
+	"katharsis/internal/game"
 )
 
 // placeholderWidths is text.md's placeholder table: the widest value each
@@ -545,5 +547,17 @@ func TestRegisterMatchesText(t *testing.T) {
 		if _, ok := register[id]; !ok && id != "S4" { // S4 is cited by number, not quoted
 			t.Errorf("text.md register %s %q is missing from the test's copy", id, q)
 		}
+	}
+}
+
+func TestRing(t *testing.T) {
+	if r, p := Ring(0); r != 3 || p != "Userland" {
+		t.Errorf("Ring(0) = %d, %q", r, p)
+	}
+	if r, p := Ring(game.MaxPrestige); r != -1 || p != "the Red King's dream" {
+		t.Errorf("Ring(max) = %d, %q", r, p)
+	}
+	if r, p := Ring(5); r != -2 || p != "" {
+		t.Errorf("Ring(5) = %d, %q", r, p)
 	}
 }
