@@ -9,12 +9,17 @@ import (
 	"strings"
 )
 
+// ArgForce, after submit, submits although the samples fail: :Submit!.
+const ArgForce = "force"
+
 // Overlay is the vimscript the game's vim sources with -S, after the user's
 // own vimrc, which loads as usual. It defines the game's commands; each runs
 // `katharsis ctl` as a job (vim 8+ +job), so vim never waits on the judge,
 // and shows the answer in the message line when it comes.
 //
-//	:Submit      write the buffer if modified, judge the full tests
+//	:Submit[!]   write the buffer if modified, judge the full tests; while
+//	             the samples fail the game refuses :Submit, and :Submit!
+//	             (ctl submit force) submits anyway
 //	:Debug [n]   write if modified, open lldb on test n (default: the
 //	             first failing test)
 //	:Quack       use a rubber duck
@@ -199,7 +204,15 @@ function! s:GiveUp() abort
   endif
 endfunction
 
-command! -bar Submit call s:Run(1, 'submit')
+function! s:Submit(force) abort
+  if a:force
+    call s:Run(1, 'submit', 'force')
+  else
+    call s:Run(1, 'submit')
+  endif
+endfunction
+
+command! -bar -bang Submit call s:Submit(<bang>0)
 command! -bar -nargs=? Debug call s:Run(1, 'debug', <f-args>)
 command! -bar Quack call s:Run(0, 'quack')
 command! -bar Retreat call s:Run(0, 'retreat')

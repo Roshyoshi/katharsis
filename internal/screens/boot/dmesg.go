@@ -52,7 +52,8 @@ type Event struct {
 
 // Event kinds.
 const (
-	EvVerdict    = "verdict"    // a failed submit: its cost, or "no charge"
+	EvVerdict    = "verdict"    // a failed submit and its cost
+	EvFree       = "free"       // a failed submit that cost nothing (a CE)
 	EvAC         = "ac"         // a door cleared
 	EvRegression = "regression" // a regression door cleared
 	EvRetreat    = "retreat"    // a door swapped, for a life or kexec
@@ -230,13 +231,14 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 		if judged[1] > 0 {
 			text += fmt.Sprintf(" %d/%d", judged[0], judged[1])
 		}
+		kind := EvVerdict
 		if lost := p.lives - n.lives; lost > 0 {
 			text += ui.Muted.Render(ui.G.Sep) + livesLost(lost, n.lives)
 			livesSeen = true
 		} else {
-			text += ui.Muted.Render(ui.G.Sep + "no charge")
+			kind, text = EvFree, text+ui.Muted.Render(ui.G.Sep+"no charge")
 		}
-		add(EvVerdict, text, "verdict."+v)
+		add(kind, text, "verdict."+v)
 	}
 
 	// Doors that closed since: a clear, or a swap.
@@ -574,6 +576,8 @@ func tips(st *game.State, m *game.Meta, now time.Time, out []Event) []Event {
 			st.PendingUpgrade},
 		{"tip.bytes", "bytes: a crash loses the uncommitted · commit them at a merge window",
 			st.Phase == game.PhaseDoors && !st.PendingUpgrade && st.Uncommitted > 0},
+		{"tip.fail", "a failed submit costs " + ui.Life.Render(ui.G.Life) + ", a CE nothing · red samples need :Submit!",
+			has(EvVerdict)},
 		{"tip.duck", "ducks: the 1st quack shows hidden tags, the 2nd the technique",
 			has(EvQuack)},
 		{"tip.regression", ui.Warn.Render(ui.G.Regression) + " a door that crashed you returns; each clear sends it further out",
@@ -587,23 +591,37 @@ func tips(st *game.State, m *game.Meta, now time.Time, out []Event) []Event {
 }
 
 // DoorLines is the strip in the problem pane, rows lines of width cells
-// at most: the newest event since the open door opened, its mechanic and
-// then its flavor line, wrapped, with no stamp, which the narrow pane has
-// no room for. Nil when the door has had none.
+// at most, wrapped and with no stamp, which the narrow pane has no room
+// for: the newest moment since the open door opened, its events, then its
+// one-time line, then the flavor line. Nil when the door has had none.
 func (e Env) DoorLines(width, rows int) []string {
 	c := e.State.Current
 	if c == nil || rows <= 0 || len(e.Events) == 0 {
 		return nil
 	}
-	ev := e.Events[len(e.Events)-1]
-	if ev.At.Before(c.Opened) {
+	last := e.Events[len(e.Events)-1]
+	if last.At.Before(c.Opened) {
 		return nil
 	}
-	out := ui.WrapN(ev.Text, width, rows)
-	for _, v := range e.voice(ev) {
-		for _, l := range ui.WrapN(v, width, 0) {
-			out = append(out, ui.Voice.Render(ui.Muted.Render(l)))
+	var real, tips, voice []string
+	speaker := Event{}
+	for _, ev := range e.Events {
+		switch {
+		case !ev.At.Equal(last.At):
+		case ev.Kind == EvTip:
+			tips = append(tips, ui.WrapN(ev.Text, width, 0)...)
+		default:
+			real = append(real, ui.WrapN(ev.Text, width, 0)...)
+			if ev.Hook != "" {
+				speaker = ev
+			}
 		}
 	}
+	for _, v := range e.voice(speaker) {
+		for _, l := range ui.WrapN(v, width, 0) {
+			voice = append(voice, ui.Voice.Render(ui.Muted.Render(l)))
+		}
+	}
+	out := concat(real, tips, voice)
 	return out[:min(len(out), rows)]
 }

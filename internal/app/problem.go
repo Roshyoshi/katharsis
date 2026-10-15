@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -70,8 +71,11 @@ type problemScreen struct {
 	upsolve bool
 	door    game.Door
 	last    judgedMsg // the headless judge's last result
-	confirm bool      // Q asked once; the next Q confirms :q!
-	closed  bool      // the player closed the editor
+	// confirm is the key that asked once, its question on the keys' row:
+	// the same key again goes ahead, any other lets it go. Q gives up, R
+	// retreats, s submits over failing samples (J3, J4).
+	confirm, ask string
+	closed       bool // the player closed the editor
 	// editorErr, with closed, is why the editor could not start.
 	editorErr string
 	hudSize   [2]int
@@ -95,11 +99,14 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		return s, nil
 	}
 	key := k.String()
-	if key != "Q" {
-		s.confirm = false
-	}
+	asked := s.confirm == key
+	s.confirm, s.ask = "", ""
 	switch key {
 	case "s":
+		if ask, ok := s.m.samplesFail("s again submits"); ok && !asked && !s.upsolve {
+			s.confirm, s.ask = key, ask
+			return s, nil
+		}
 		return s, screens.Emit(submitMsg{})
 	case "t":
 		return s, screens.Emit(screens.OpenStatement{Problem: s.door.Problem})
@@ -124,16 +131,21 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 			return s, screens.Emit(screens.OpenEditorial{Problem: s.door.Problem})
 		}
 	case "R":
-		if !s.upsolve {
-			return s, screens.Emit(game.Retreat{})
+		if s.upsolve {
+			break
 		}
+		if ask, ok := s.m.retreatAsk(); ok && !asked {
+			s.confirm, s.ask = key, ask
+			return s, nil
+		}
+		return s, screens.Emit(game.Retreat{})
 	case "Q":
 		if s.upsolve {
 			s.m.closeDoor()
 			return s, screens.Emit(screens.Back{})
 		}
-		if !s.confirm {
-			s.confirm = true
+		if !asked {
+			s.confirm, s.ask = key, "Q again: :q! crashes the boot"
 			return s, nil
 		}
 		return s, screens.Emit(game.GiveUp{})
@@ -171,9 +183,9 @@ func (s *problemScreen) View(w, h int) string {
 	// The vitals end in a rule; the judgement starts under it (C8).
 	top = append(top, ui.Rule(w))
 	vimHelp, help := s.footers(w)
-	if s.confirm {
+	if s.confirm != "" {
 		// The confirm takes the keys' row, so the pane does not move.
-		help = ui.Alert.Render(ui.Fit(" Q again: :q! crashes the boot", w))
+		help = ui.Alert.Render(ui.Fit(" "+s.ask, w))
 	}
 
 	var b strings.Builder
@@ -276,6 +288,14 @@ func (m *Model) onRequest(req session.Request) tea.Cmd {
 		case h == nil || m.open == nil:
 			req.Answer(session.Reply{Text: "no door open"})
 			return nil
+		case req.Cmd == session.CmdSubmit && !slices.Contains(req.Args, session.ArgForce):
+			// Failing samples disprove the submit before it is judged: a
+			// misinput, not a gamble, so it asks for :Submit! (J3).
+			if ask, ok := m.samplesFail(":Submit! submits anyway"); ok {
+				req.Answer(session.Reply{Text: ask})
+				return nil
+			}
+			return m.startSubmit(req)
 		case req.Cmd == session.CmdSubmit:
 			// The submit most players make, so it must hold the clock
 			// for the grace, and be noted, the way the s key's is.

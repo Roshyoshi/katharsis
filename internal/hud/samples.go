@@ -34,3 +34,20 @@ func (m *Model) samplesDone(ev judge.Event) tea.Cmd {
 	}
 	return func() tea.Msg { return s }
 }
+
+// Samples is the sample pass as it stands, for a host that asks before a
+// full submit (the game's :Submit! when they fail).
+type Samples struct {
+	// Done is set once a pass has finished: none is running, and one ran
+	// since the HUD opened. Compiled is false for a build that failed.
+	Done, Compiled bool
+	Passed, Total  int
+}
+
+// Samples reports the sample pass.
+func (m *Model) Samples() Samples {
+	s := Samples{Total: len(m.rows), Passed: m.passed()}
+	s.Done = m.build != nil && !m.running && m.passErr == nil
+	s.Compiled = m.build != nil && m.build.OK
+	return s
+}

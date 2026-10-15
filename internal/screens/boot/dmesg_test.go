@@ -110,7 +110,7 @@ func TestTrackerTellsTheBoot(t *testing.T) {
 	}
 	b.tr.Judged(0, 0)
 	evs = b.step(game.SubmitResult{Verdict: "CE"})
-	if plain(evs) != "verdict: judge: CE · no charge" {
+	if plain(evs) != "free: judge: CE · no charge" {
 		t.Errorf("free verdict: got\n%s", plain(evs))
 	}
 	b.now = b.now.Add(time.Minute)

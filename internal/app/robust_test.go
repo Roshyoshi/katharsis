@@ -380,7 +380,8 @@ func TestSecondSubmitCannotDodgeTheFirst(t *testing.T) {
 	h.enterDoor()
 	lives := h.m.state.Lives
 
-	first, firstReply := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	// Forced: the samples fail too, and :Submit alone would ask first.
+	first, firstReply := session.NewRequest(session.Command{Cmd: session.CmdSubmit, Args: []string{session.ArgForce}})
 	_, c1 := h.m.Update(first) // pumped below: the judge takes a while
 	if err := os.WriteFile(filepath.Join(dir, "sol.cpp"), []byte(acSrc), 0o644); err != nil {
 		t.Fatal(err)
@@ -412,7 +413,7 @@ func TestRefusedSubmitKeepsTheClock(t *testing.T) {
 	cur := h.enterDoor()
 	h.clock.t = cur.Deadline.Add(-time.Minute)
 	made := h.clock.t
-	first, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	first, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit, Args: []string{session.ArgForce}})
 	h.send(first)
 
 	h.clock.t = made.Add(20 * time.Second)
@@ -448,7 +449,7 @@ func TestResumedJudgeCannotBeReplaced(t *testing.T) {
 	h.send(screens.StartBoot{Preset: "standard"})
 	cur := h.enterDoor()
 	lives := h.m.state.Lives
-	first, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	first, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit, Args: []string{session.ArgForce}})
 	h.send(first)
 	h.m.quit() // ctrl+c mid-judge
 

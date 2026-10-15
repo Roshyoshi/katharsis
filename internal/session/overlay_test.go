@@ -17,7 +17,8 @@ func TestOverlayScript(t *testing.T) {
 		t.Errorf("ctl argv not quoted for vim:\n%s", s)
 	}
 	for _, cmd := range []string{"Submit", "Debug", "Quack", "Retreat", "GiveUp"} {
-		if !strings.Contains(s, "command! -bar "+cmd+" ") && !strings.Contains(s, "-nargs=? "+cmd+" ") {
+		if !strings.Contains(s, "command! -bar "+cmd+" ") && !strings.Contains(s, "-nargs=? "+cmd+" ") &&
+			!strings.Contains(s, "-bang "+cmd+" ") {
 			t.Errorf("no :%s in the overlay", cmd)
 		}
 	}
@@ -204,6 +205,15 @@ func TestOverlayCommands(t *testing.T) {
 	}
 	r.Answer(Reply{OK: true, Text: "AC 3/3"})
 	waitScreen(t, pane, "katharsis: AC 3/3")
+
+	// :Submit! is the submit that goes ahead over failing samples.
+	ex(t, pane, "Submit!")
+	r = next(t, reqs)
+	if r.Cmd != CmdSubmit || !slices.Equal(r.Args, []string{ArgForce}) {
+		t.Errorf(":Submit! sent %+v, want submit force", r.Command)
+	}
+	r.Answer(Reply{Text: "WA 2/3"})
+	waitScreen(t, pane, "katharsis: WA 2/3")
 
 	for _, tc := range []struct {
 		line string
