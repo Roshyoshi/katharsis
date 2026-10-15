@@ -132,7 +132,7 @@ func (h *Hub) headLine(width int) string {
 	for _, try := range [][2]string{
 		{boot + dot + prestigeLabel(st.Prestige) + dot + where, cyclesText(st) + "  " + bytes + ui.Muted.Render(" uncommitted")},
 		{boot + dot + where, cyclesText(st) + "  " + bytes},
-		{boot, ui.Hearts(st.Cycles, st.StartCycles()) + "  " + bytes},
+		{boot, ui.Hearts(st.Cycles, st.MaxCycles) + "  " + bytes},
 	} {
 		if widthOf(try[0])+2+widthOf(try[1]) <= width {
 			return ui.Spread(try[0], try[1], width)
@@ -193,8 +193,8 @@ func (h *Hub) where() string {
 // (State.StartCycles), "♥ 22/30 cycles", or a row of hearts for a pool
 // small enough to draw (units.Hearts decides).
 func cyclesText(st *game.State) string {
-	h := ui.Hearts(st.Cycles, st.StartCycles())
-	if strings.Contains(units.Hearts(st.Cycles, st.StartCycles()), "/") {
+	h := ui.Hearts(st.Cycles, st.MaxCycles)
+	if strings.Contains(units.Hearts(st.Cycles, st.MaxCycles), "/") {
 		h += ui.Muted.Render(" cycles")
 	}
 	return h

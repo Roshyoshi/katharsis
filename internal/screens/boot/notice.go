@@ -29,7 +29,7 @@ func Cycles(st *game.State) string {
 }
 
 // cyclesShort is Cycles without its word, for a line short of room.
-func cyclesShort(st *game.State) string { return ui.Hearts(st.Cycles, st.StartCycles()) }
+func cyclesShort(st *game.State) string { return ui.Hearts(st.Cycles, st.MaxCycles) }
 
 // Burned is a burn as it happened, for the strip and vim's :Submit reply:
 // "burned 2 cycles, 22 left".

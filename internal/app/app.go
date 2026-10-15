@@ -499,7 +499,7 @@ func (m *Model) Clock() string {
 		// half pay, so show how far over it is instead of a frozen 00:00.
 		t = "+" + units.Clock(-left) + " over"
 	}
-	return fmt.Sprintf("%s · %s · %s", t, units.Cycles(s.Cycles, s.StartCycles()), ducks(s))
+	return fmt.Sprintf("%s · %s · %s", t, units.Cycles(s.Cycles, s.MaxCycles), ducks(s))
 }
 
 // BorderClock is Clock as a tmux format for the editor pane's border, the
@@ -522,7 +522,7 @@ func (m *Model) BorderClock() string {
 	case left < 0 && s.SoftTimer():
 		t = ui.Danger.Tmux(ui.G.Timer + "+" + units.Clock(-left) + " over")
 	}
-	return t + " · " + ui.BorderHearts(s.Cycles, s.StartCycles()) + ui.Muted.Tmux(" cycles") + " · " +
+	return t + " · " + ui.BorderHearts(s.Cycles, s.MaxCycles) + ui.Muted.Tmux(" cycles") + " · " +
 		ui.TmuxEscape(ducks(s)) + m.borderWarn(left)
 }
 

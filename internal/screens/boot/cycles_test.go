@@ -91,7 +91,7 @@ func TestCyclesScreensSay(t *testing.T) {
 		s    screens.Screen
 		want []string
 	}{
-		{"room", NewDoors(env(fixture.CyclesRoom())), []string{"♥ 24/30 cycles", "⏱ a timeout or :q! burns 12 cycles"}},
+		{"room", NewDoors(env(fixture.CyclesRoom())), []string{"♥ 24/50 cycles", "⏱ a timeout or :q! burns 12 cycles"}},
 		{"boss I", NewDoors(env(fixture.CyclesBoss("off-by-one"))), []string{
 			"Stub line for boss.rule.off-by-one.", "⚔ one test short burns ×2",
 			"a fail or :q! burns 20 cycles and deals a new boss door (4 left)"}},
@@ -112,7 +112,7 @@ func TestCyclesScreensSay(t *testing.T) {
 		{"crash final", NewCrash(env(fixture.CyclesCrash("final"))), []string{
 			"halting_problem: one shot, no second door", "one shot, no second door"}},
 		{"cleared", NewCleared(env(fixture.CyclesCleared())), []string{
-			"cycles left ♥ 14/30 cycles · fountains +10", "1 lost", "1 boss retry"}},
+			"cycles left ♥ 14/50 cycles · fountains +10", "1 lost", "1 boss retry"}},
 	} {
 		v := view(c.s)
 		for _, w := range c.want {

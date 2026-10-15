@@ -533,7 +533,7 @@ func (m *Model) statusLine() string {
 	if bootui.HiddenClock(s) {
 		t = "clock hidden" // The Halting Problem's twist (D54)
 	}
-	return fmt.Sprintf("%s · %s · %s", t, units.Cycles(s.Cycles, s.StartCycles()), ducks(s))
+	return fmt.Sprintf("%s · %s · %s", t, units.Cycles(s.Cycles, s.MaxCycles), ducks(s))
 }
 
 // ducks is the duck count, or ✗ on a cursed door, which takes none.
