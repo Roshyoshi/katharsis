@@ -234,7 +234,8 @@ fix-polish (O2: an upsolve pays the editorial rate only after an editorial_open
 event; RTFM hides the guide's pages about itself; route and door timers are the
 ones the doors open with; RTFM next step names the biome and the nearest-band
 module; strip ellipsis; resume note clears; a passed trial offers the next
-module). ALPHA READY 10-15: full gate green, -race clean, nix build ok, binary
+module). Pushed to origin (private GitHub repo, the URL the user gave); tagged and released
+v0.1.0-alpha (prerelease) at 39ce7a0a. ALPHA READY 10-15: full gate green, -race clean, nix build ok, binary
 30.2 MB. Open for the user: practice trials for the 33 capability-less modules;
 rate retreats or not; J18 fixed-order redraw; J11 refuse a quack that reveals
 nothing; go clean -cache (16 GB); nix-collect-garbage; the GitHub remote; wave 1 done.
