@@ -21,8 +21,6 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/usaco"
@@ -32,6 +30,7 @@ import (
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/screens/rtfm"
 	"katharsis/internal/screens/rtfm/fixture"
+	"katharsis/internal/ui"
 )
 
 type model struct {
@@ -91,8 +90,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-var bar = lipgloss.NewStyle().Faint(true)
-
 func (m *model) View() tea.View {
 	w, h := m.width, m.height
 	if w == 0 || h == 0 {
@@ -104,11 +101,11 @@ func (m *model) View() tea.View {
 	}
 	out := m.top().View(w, max(sh, 1))
 	if m.status {
-		s := "demo-rtfm · ctrl+c quit"
+		s := "demo-rtfm"
 		if m.last != "" {
-			s = "emitted " + m.last + " · " + s
+			s += ui.G.Sep + "emitted " + m.last
 		}
-		out += "\n" + bar.Render(ansi.Truncate(s, w, "…"))
+		out += "\n" + ui.StatusBar(w, s, "ctrl+c", "quit")
 	}
 	v := tea.NewView(out)
 	v.AltScreen = true

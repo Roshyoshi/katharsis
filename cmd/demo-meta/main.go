@@ -18,13 +18,12 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/meta/fixture"
 	"katharsis/internal/screens/reader"
+	"katharsis/internal/ui"
 )
 
 // stops are the top-level screens tab cycles through, in order.
@@ -119,8 +118,6 @@ func (m *model) top() screens.Screen { return m.stack[len(m.stack)-1] }
 
 func (m *model) note(msg tea.Msg) { m.last = fmt.Sprintf("%T%+v", msg, msg) }
 
-var bar = lipgloss.NewStyle().Faint(true)
-
 func (m *model) View() tea.View {
 	w, h := m.width, m.height
 	if w == 0 || h == 0 {
@@ -132,11 +129,11 @@ func (m *model) View() tea.View {
 	}
 	out := m.top().View(w, max(sh, 1))
 	if m.status {
-		s := fmt.Sprintf("demo-meta [%s] · tab next screen · ctrl+c quit", stops[m.stop].name)
+		s := "demo-meta " + stops[m.stop].name
 		if m.last != "" {
-			s = "emitted " + m.last + " · " + s
+			s += ui.G.Sep + "emitted " + m.last
 		}
-		out += "\n" + bar.Render(ansi.Truncate(s, w, "…"))
+		out += "\n" + ui.StatusBar(w, s, "tab", "next screen", "ctrl+c", "quit")
 	}
 	v := tea.NewView(out)
 	v.AltScreen = true

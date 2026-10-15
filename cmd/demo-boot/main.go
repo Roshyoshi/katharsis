@@ -19,6 +19,7 @@ import (
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/boot"
 	"katharsis/internal/screens/boot/fixture"
+	"katharsis/internal/ui"
 )
 
 // page is one screen of the demo, built fresh each time it is shown.
@@ -127,20 +128,16 @@ func emittedByScreen(msg tea.Msg) bool {
 	return t != nil && t.PkgPath() == "katharsis/internal/screens"
 }
 
-var bar = lipgloss.NewStyle().Reverse(true)
-
 func (m *model) View() tea.View {
 	w, h := m.w, m.h
 	if w <= 0 || h <= 0 {
 		w, h = 80, 24
 	}
-	status := fmt.Sprintf(" demo-boot %d/%d %s · n/p screens · ctrl+c quit", m.i+1, len(m.pages), m.pages[m.i].name)
+	status := fmt.Sprintf("demo-boot %d/%d %s", m.i+1, len(m.pages), m.pages[m.i].name)
 	if m.last != "" {
-		status += " · emitted " + m.last
+		status += ui.G.Sep + "emitted " + m.last
 	}
-	status = ansi.Truncate(status, w, "…")
-	status += strings.Repeat(" ", max(w-ansi.StringWidth(status), 0))
-	v := tea.NewView(m.cur.View(w, h-1) + "\n" + bar.Render(status))
+	v := tea.NewView(m.cur.View(w, h-1) + "\n" + ui.StatusBar(w, status, "n/p", "screens", "ctrl+c", "quit"))
 	v.AltScreen = true
 	return v
 }
