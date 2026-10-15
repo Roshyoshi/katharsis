@@ -588,6 +588,7 @@ func (e *engine) layout() {
 	// The snapshot shares its slices with the caller's rules until here,
 	// and a map writes its tiers' nodes into it.
 	r.Biomes = slices.Clone(r.Biomes)
+	defer e.firstClock()
 	if s.mapped() {
 		e.layoutMap()
 		return
@@ -636,4 +637,12 @@ func doorMods(d Door) string {
 		}
 	}
 	return strings.Join(m, " ")
+}
+
+// firstClock sets the first biome's default timer to the prestige's
+// (rules.Ascension.FirstTimer: Userland 9:00 at P3, 8:00 at P6).
+func (e *engine) firstClock() {
+	if ft := e.s.Rules.Ascend(e.s.Prestige).FirstTimer.Duration; ft > 0 {
+		e.s.Rules.Biomes[0].Timer = rules.Duration{Duration: ft}
+	}
 }

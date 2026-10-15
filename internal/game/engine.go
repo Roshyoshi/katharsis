@@ -227,6 +227,7 @@ func (e *engine) chooseDoor(i int) error {
 		return invalid("door %d of %d", i, len(s.Doors))
 	}
 	d := s.Doors[i]
+	bought := s.AtTime
 	if s.AtTime > 0 { // bought with at: the next door, whichever it is
 		d.Timer = s.OpenTimer(d)
 		e.logf("at: +%s on the next door", units.Clock(s.AtTime))
@@ -234,7 +235,7 @@ func (e *engine) chooseDoor(i int) error {
 	}
 	s.Current = &Attempt{
 		Door: d, Opened: e.now, Deadline: e.now.Add(d.Timer), Biome: s.Biome,
-		Offer: e.choose("doors", i), CyclesAtOpen: s.Cycles, DucksAtOpen: s.Ducks,
+		Offer: e.choose("doors", i), CyclesAtOpen: s.Cycles, DucksAtOpen: s.Ducks, At: bought,
 	}
 	s.Doors = nil
 	s.Phase = PhaseProblem
@@ -488,7 +489,7 @@ func (e *engine) clear() {
 	// machine) puts now before Opened. That is no evidence of speed: the
 	// solve records 0, and -O3 wants a time that really passed.
 	elapsed := max(e.now.Sub(a.Opened), 0)
-	a.O3 = r.O3Frac > 0 && elapsed > 0 && elapsed <= scale(d.Timer, r.O3Frac)
+	a.O3 = r.O3Frac > 0 && elapsed > 0 && elapsed <= scale(s.o3Timer(*a), r.O3Frac)
 
 	kind := Independent
 	if a.Quacks > 0 {
@@ -529,7 +530,7 @@ func (e *engine) clear() {
 	}
 	if a.O3 {
 		picks++
-		e.logf("%s: -O3, under %s, free upgrade", name, units.Clock(scale(d.Timer, r.O3Frac)))
+		e.logf("%s: -O3, under %s, free upgrade", name, units.Clock(scale(s.o3Timer(*a), r.O3Frac)))
 	}
 	e.emit(Sound{Name: "ac"})
 	e.owe(picks)
@@ -657,10 +658,17 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 	s.Upgrades = append(s.Upgrades, u)
 	switch u {
 	case Overclock:
-		// "Later doors" includes the ones on screen: the pick happens
-		// before the door does.
+		// Time is bought (D50): the pick burns its price. "Later doors"
+		// includes the ones on screen: the pick happens before the door
+		// does.
+		s.Cycles -= s.Rules.OverclockCycles
+		n := s.count(Overclock)
+		k := 1 + s.Rules.OverclockFrac // compounding
+		if s.Rules.OverclockMax > 0 {
+			k = s.overclock(n) / s.overclock(n-1) // 1 past the cap
+		}
 		for i := range s.Doors {
-			s.Doors[i].Timer = roundTimer(scale(s.Doors[i].Timer, 1+s.Rules.OverclockFrac))
+			s.Doors[i].Timer = roundTimer(scale(s.Doors[i].Timer, k))
 		}
 	case ECC:
 		if s.Rules.ECCPenalty.Duration <= 0 {
@@ -688,6 +696,7 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 func (e *engine) enterMerge() {
 	s, r := e.s, &e.s.Rules
 	s.Phase = PhaseMerge
+	e.fountain()
 	e.reachMerge()
 	refill := e.baseDucks()
 	for _, u := range s.Upgrades {
@@ -767,7 +776,7 @@ func (e *engine) leaveMerge() error {
 	if s.Uncommitted > 0 {
 		e.logf("merge window: leaving %s uncommitted", units.Bytes(s.Uncommitted))
 	}
-	s.DaemonOffers = nil
+	s.DaemonOffers, s.Fountain = nil, 0
 	e.enterBiome(s.Biome + 1)
 	return nil
 }
@@ -778,7 +787,12 @@ func (e *engine) leaveMerge() error {
 // open exit, taken at once); else to its route or first room.
 func (e *engine) enterBiome(i int) {
 	s := e.s
-	s.Biome, s.Room, s.KexecUsed = i, 0, false
+	s.Biome, s.Room = i, 0
+	// kexec swaps once a biome, or once an act (rules.KexecPerAct): an act
+	// starts at the first tier and after each boss.
+	if !s.Rules.KexecPerAct || i == 0 || s.Biomes[i-1].Kind == rules.Boss {
+		s.KexecUsed = false
+	}
 	if e.enterMapTier(i) {
 		return
 	}

@@ -282,11 +282,18 @@ func (e *engine) saveFail(o Outcome) bool {
 	return true
 }
 
-// offerable reports whether upgrade u would do something now. ECC as the
-// conversion (rules.ECCPenalty) is offered until the boot holds it, ECC as
-// a heal while cycles are short of MaxCycles.
+// offerable reports whether upgrade u would do something now, and can be
+// paid for. ECC as the conversion (rules.ECCPenalty) is offered until the
+// boot holds it, ECC as a heal while cycles are short of MaxCycles;
+// Overclock until its cap (rules.OverclockMax) and while more cycles are
+// left than it burns.
 func (s *State) offerable(u Upgrade) bool {
-	if u != ECC {
+	r := &s.Rules
+	switch u {
+	case Overclock:
+		return (r.OverclockMax <= 0 || s.count(Overclock) < r.OverclockMax) && s.Cycles > r.OverclockCycles
+	case ECC:
+	default:
 		return true
 	}
 	if s.Rules.ECCPenalty.Duration > 0 {
@@ -329,4 +336,28 @@ func (e *engine) twist(d *Door) {
 			d.Twist, d.HiddenClock = d.Boss, true
 		}
 	}
+}
+
+// fountain restores this merge window's free cycles (rules.FountainCycles,
+// with the ascensions' cut), up to the pool the boot was dealt
+// (StartCycles), where rules.FountainWhere puts a fountain: between acts by
+// default, gone from P5 (map.md §(e)).
+func (e *engine) fountain() {
+	s, r := e.s, &e.s.Rules
+	s.Fountain = 0
+	gain := r.FountainCycles + r.Ascend(s.Prestige).FountainCycles
+	next := s.Biome + 1
+	switch {
+	case gain <= 0, s.Trial != nil,
+		r.FountainWhere == rules.FountainAct && s.Biomes[s.Biome].Kind != rules.Boss,
+		r.FountainWhere == rules.FountainBoss && (next >= len(s.Biomes) || s.Biomes[next].Kind != rules.Boss):
+		return
+	}
+	gain = min(gain, s.StartCycles()-s.Cycles)
+	if gain <= 0 {
+		return
+	}
+	s.Cycles += gain
+	s.Fountain, s.Fountained = gain, s.Fountained+gain
+	e.logf("fountain: +%s, %d", units.Plural(gain, "cycle"), s.Cycles)
 }

@@ -132,16 +132,18 @@ func TestBossRetry(t *testing.T) {
 	}
 	key := h.s.Biomes[1].Boss
 	d := h.open(0)
+	c0 := h.s.Cycles // an Overclock pick may have spent some
 	h.now = h.s.Current.Deadline
 	h.do(game.Tick{})
-	if h.s.Cycles != 10 || h.s.Phase != game.PhaseDoors || h.s.Room != 0 || len(h.s.Doors) != 1 || h.s.Doors[0].Problem == d.Problem ||
+	if h.s.Cycles != c0-20 || h.s.Phase != game.PhaseDoors || h.s.Room != 0 || len(h.s.Doors) != 1 || h.s.Doors[0].Problem == d.Problem ||
 		h.s.Doors[0].Boss != key || lastOffer(h.s).Reason != "retry" {
 		t.Fatalf("boss timeout: cycles %d phase %s room %d doors %+v", h.s.Cycles, h.s.Phase, h.s.Room, h.s.Doors)
 	}
 	h.open(0)
+	h.s.Cycles = 20
 	h.do(game.GiveUp{})
 	if h.s.Crash == nil || h.s.Crash.Cause != game.GaveUp {
-		t.Fatalf("a boss failure with 10 left: crash %+v", h.s.Crash)
+		t.Fatalf("a boss failure with 20 left: crash %+v", h.s.Crash)
 	}
 
 	// The final is one shot, whatever the cycles.
@@ -160,9 +162,10 @@ func TestBossRetry(t *testing.T) {
 	if c, ok := h.s.FailCost(game.TimedOut); c != 0 || ok {
 		t.Errorf("the final's timeout costs %d (%v)", c, ok)
 	}
+	c0 = h.s.Cycles
 	h.now = h.s.Current.Deadline
 	h.do(game.Tick{})
-	if h.s.Crash == nil || h.s.Crash.Cause != game.TimedOut || h.s.Cycles != 30 {
+	if h.s.Crash == nil || h.s.Crash.Cause != game.TimedOut || h.s.Cycles != c0 {
 		t.Errorf("the final's timeout: crash %+v cycles %d", h.s.Crash, h.s.Cycles)
 	}
 }
@@ -218,17 +221,18 @@ func TestECCConversion(t *testing.T) {
 		t.Fatalf("ECC healed to %d (converts %v)", h.s.Cycles, h.s.ECCConverts())
 	}
 	h.open(0)
+	c0 := h.s.Cycles // the -O3 pick may have been an Overclock
 	deadline := h.s.Current.Deadline
 	if c, k := h.s.SubmitCost(2); c != 0 || k != 5*time.Minute {
 		t.Errorf("SubmitCost under ECC %d %s", c, k)
 	}
 	h.do(wa)
-	if h.s.Cycles != 30 || !h.s.Current.Deadline.Equal(deadline.Add(-5*time.Minute)) {
+	if h.s.Cycles != c0 || !h.s.Current.Deadline.Equal(deadline.Add(-5*time.Minute)) {
 		t.Fatalf("ECC WA: cycles %d, deadline moved %s", h.s.Cycles, deadline.Sub(h.s.Current.Deadline))
 	}
 	h.now = h.s.Current.Deadline.Add(-4 * time.Minute)
 	h.do(wa)
-	if h.s.Cycles != 20 || len(h.s.History) != 2 || h.s.History[1].Outcome != game.TimedOut {
+	if h.s.Cycles != c0-10 || len(h.s.History) != 2 || h.s.History[1].Outcome != game.TimedOut {
 		t.Fatalf("a WA that emptied the clock: cycles %d history %d", h.s.Cycles, len(h.s.History))
 	}
 	for range 50 {
@@ -357,4 +361,63 @@ func TestTwists(t *testing.T) {
 		return
 	}
 	t.Fatal("no seed draws off-by-one")
+}
+
+// TestLadderBitesLate: the map's prestige cuts land on acts II and III and
+// on the pool, not on Userland (map.md §(d)): at P3 a fail after Boss I
+// burns 5 more, P4 starts at 25, P6 makes Boss II one shot and P8 every
+// boss. P6 and P8 are read off the state, as MaxPrestige may stop short of
+// them.
+func TestLadderBitesLate(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	m := &game.Meta{Prestige: 4}
+	h := newHarness(t, mapPlain(), m, ps, 3, 1)
+	h.open(0)
+	if c, _ := h.s.FailCost(game.TimedOut); c != 10 {
+		t.Errorf("P3 Userland fail %d, want 10", c)
+	}
+	h.do(game.Retreat{})
+	nextTier(h)
+	h.do(game.ChooseRoute{Index: exitIndex(t, h.s, "scheduler")})
+	h.open(0)
+	if c, _ := h.s.FailCost(game.GaveUp); c != 10 {
+		t.Errorf("P3 act I fail %d, want 10", c)
+	}
+	h.do(game.Retreat{})
+	nextTier(h)
+	h.open(0)
+	if c, _ := h.s.FailCost(game.GaveUp); c != 20 || h.s.OneShot() {
+		t.Errorf("P3 Boss I fail %d (one shot %v), want 20", c, h.s.OneShot())
+	}
+	h.s.Prestige = 8
+	if !h.s.OneShot() {
+		t.Error("P8: Boss I retries")
+	}
+	h.s.Prestige = 3
+	h.do(game.Retreat{})
+	h.s.Cycles = 50
+	nextTier(h) // Off-by-One cleared; The ALU taken at once
+	h.open(0)
+	if c, _ := h.s.FailCost(game.GaveUp); c != 17 {
+		t.Errorf("P3 act II fail %d, want 12+5", c)
+	}
+	h.do(game.Retreat{})
+	nextTier(h)
+	h.do(game.ChooseRoute{Index: exitIndex(t, h.s, "heisenbug")})
+	for p, one := range map[int]bool{5: false, 6: true} {
+		h.s.Prestige = p
+		if h.s.OneShot() != one {
+			t.Errorf("P%d: Boss II one shot %v, want %v", p, h.s.OneShot(), one)
+		}
+	}
+	h.s.Prestige = 3
+	if c, _ := h.s.FailCost(game.TimedOut); c != 25 {
+		t.Errorf("P3 Boss II fail %d, want 20+5", c)
+	}
+
+	p4 := newHarness(t, mapPlain(), &game.Meta{Prestige: 4}, ps, 4, 1)
+	if p4.s.Cycles != 25 || p4.s.StartCycles() != 25 {
+		t.Errorf("P4 starts at %d (start %d), want 25", p4.s.Cycles, p4.s.StartCycles())
+	}
 }

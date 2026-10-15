@@ -265,6 +265,9 @@ type Exit struct {
 	Name  string // the node's name
 	Topic string // its doors' topic: Mixed for a mixed or boss node, "" for a skip
 	Rooms int    // 0 for a skip
+	// Timer is the clock its doors get at its aim, every multiplier and its
+	// boss's twist in it (State.RouteTimer for an exit); 0 for a skip.
+	Timer time.Duration `json:",omitempty"`
 	// Boss is the node's key when it is a boss node; Bosses are the boss
 	// keys its own exits lead to, for a topic node ("→ ⚔ Heisenbug").
 	Boss   string   `json:",omitempty"`

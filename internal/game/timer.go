@@ -13,7 +13,9 @@ import (
 // TimerFitMin in-boot solves, then a fit to their own solve times; either
 // way scaled by the boot's multipliers. Bosses get BossTimerMult only on the
 // fitted path, since the boss biome's default timer already includes the
-// stretch.
+// stretch. The first biome's clock is its own per prestige where
+// rules.FirstClockOwn says so (Ascension.FirstTimer), so the ascensions'
+// timer cuts leave it alone.
 func (e *engine) doorTimer(b rules.Biome, boss bool, gap float64) time.Duration {
 	r := &e.s.Rules
 	base := b.Timer.Duration
@@ -23,7 +25,8 @@ func (e *engine) doorTimer(b rules.Biome, boss bool, gap float64) time.Duration 
 		}
 		base = min(max(fit, scale(base, r.TimerFitLo)), scale(base, r.TimerFitHi))
 	}
-	return roundTimer(scale(base, e.timerMult()))
+	own := r.FirstClockOwn && e.s.Biome == 0 && e.s.Trial == nil
+	return roundTimer(scale(base, e.timerMult(!own)))
 }
 
 // RouteTimer is the timer the current biome's doors get if the player
@@ -45,12 +48,18 @@ func (s *State) RouteTimer(m *Meta, topic string) time.Duration {
 func (s *State) OpenTimer(d Door) time.Duration { return d.Timer + s.AtTime }
 
 // timerMult is the product of every timer modifier this boot runs with:
-// ascension, each Overclock (compounding), nice and chrt.
-func (e *engine) timerMult() float64 {
+// the clock's setting (rules.TimerMult), ascension, Overclock, nice and
+// chrt; the ascensions' only when asc is set.
+func (e *engine) timerMult(asc bool) float64 {
 	r := &e.s.Rules
-	m := r.Ascend(e.s.Prestige).TimerMult
-	for _, u := range e.s.Upgrades {
-		if u == Overclock {
+	m := r.Clock()
+	if asc {
+		m = r.Ascend(e.s.Prestige).TimerMult * r.Clock()
+	}
+	if n := e.s.count(Overclock); r.OverclockMax > 0 {
+		m *= e.s.overclock(n)
+	} else {
+		for range n { // one at a time, as before D50, to the last bit
 			m *= 1 + r.OverclockFrac
 		}
 	}
@@ -61,6 +70,44 @@ func (e *engine) timerMult() float64 {
 		m *= 1 - r.ChrtTimerFrac
 	}
 	return m
+}
+
+// overclock is what n Overclock picks multiply a timer by: +OverclockFrac
+// each, added and stopping at rules.OverclockMax picks where it is set,
+// compounding without a cap where it is not (a boot saved before D50).
+func (s *State) overclock(n int) float64 {
+	r := &s.Rules
+	if r.OverclockMax > 0 {
+		return 1 + r.OverclockFrac*float64(min(n, r.OverclockMax))
+	}
+	return math.Pow(1+r.OverclockFrac, float64(n))
+}
+
+// count is how many of u the boot has picked.
+func (s *State) count(u Upgrade) int {
+	n := 0
+	for _, x := range s.Upgrades {
+		if x == u {
+			n++
+		}
+	}
+	return n
+}
+
+// o3Timer is the timer -O3 measures attempt a against: under
+// rules.O3OnBase the door's timer before the time the player bought (at,
+// Overclock, nice), so bought time never makes the free upgrade easier;
+// else the timer it opened with.
+func (s *State) o3Timer(a Attempt) time.Duration {
+	r := &s.Rules
+	if !r.O3OnBase {
+		return a.Door.Timer
+	}
+	bought := s.overclock(s.count(Overclock))
+	if slices.Contains(s.Daemons, Nice) {
+		bought *= 1 + r.NiceTimerFrac
+	}
+	return scale(a.Door.Timer-a.At, 1/bought)
 }
 
 // fitTimer estimates a timer for a door gap rating points above the player

@@ -160,6 +160,13 @@ func (e *engine) exitOf(n rules.Biome, i int) Exit {
 		x.Gate.Package = "" // a package opens only what a capability closes
 	}
 	x.Locked = e.locked(n, x.Gate, i)
+	if !n.Skip {
+		topic := x.Topic
+		x.Timer = e.doorTimer(n, n.Boss != "", e.target(topic, i)-PlayerRating(&s.Rules, e.meta, topic))
+		if tw := s.Rules.Twists; n.Boss == "race-condition" && tw.RaceClock > 0 {
+			x.Timer = roundTimer(scale(x.Timer, tw.RaceClock))
+		}
+	}
 	return x
 }
 

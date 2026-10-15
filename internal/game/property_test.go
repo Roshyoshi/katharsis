@@ -107,7 +107,11 @@ func (c *checker) start(s *game.State, m *game.Meta) {
 		eased && kinds[game.EaseComeback] {
 		t.Fatalf("boot %d (%d trials before) with easings %+v", s.Boot, m.Trials, s.Ease)
 	}
-	if first && len(r.FirstBiomes) > 0 && mustJSON(t, r.Biomes) != mustJSON(t, r.FirstBiomes) {
+	want := slices.Clone(r.FirstBiomes)
+	if ft := r.Ascend(s.Prestige).FirstTimer; ft.Duration > 0 && len(want) > 0 {
+		want[0].Timer = ft // the prestige's own Userland clock
+	}
+	if first && len(r.FirstBiomes) > 0 && mustJSON(t, r.Biomes) != mustJSON(t, want) {
 		t.Fatalf("boot #1 plays %+v, not its first biomes", r.Biomes)
 	}
 	if gov := r.GovernorAfter > 0 && m.Governor.EarlyCrashes >= r.GovernorAfter; gov != kinds[game.EaseGovernor] {
@@ -537,7 +541,9 @@ func (c *checker) checkEase(s *game.State, m *game.Meta, a game.Action, err erro
 		case s.Crash != nil && s.Crash.Cause == game.Abandoned:
 			// Not counted, but a merge window reached starts the early
 			// crashes over.
-			if c.merged {
+			// (An abandon whose door had expired can fail it, move on and
+			// reach the merge window in the one step.)
+			if c.merged || s.Biome > 0 || s.Room >= s.Biomes[s.Biome].Rooms {
 				want.EarlyCrashes = 0
 			}
 		case s.Phase == game.PhaseCleared:
