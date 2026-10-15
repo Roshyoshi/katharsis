@@ -203,8 +203,11 @@ profile; the chaos harness reaches doors again (--no-prompts, past story scenes)
 REPO default no longer a hard-coded home path; audio: a lead never repeats, a
 deviceless engine stays silent, 0 Hz WAV rejected; qa lint 30 -> 0). g-flavor (a finished story page could freeze half-typed after a resize; the
 first-crash title cut to 24 cells; 92 quotes checked live; SPONGEs added on
-merge.full and regression.door for the storyteller).
-Cleanup wave 2 running: g-engine, g-ui, g-app; wave 1 done.
+merge.full and regression.door for the storyteller). g-ui (overtime clears showed the unpaid reward; the HUD froze at 00:00 past a soft
+deadline; compact rows dropped their numbers for long titles; one h:mm; OLE gets
+the MLE line; ASCII separators; route stats aligned; Solves meter |#*; git log
+rating column; real GRUB art fits 80x24 with up to 13 entries).
+Cleanup wave 2 running: g-engine, g-app, story-polish; wave 1 done.
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
 retired milestone); cleanup wave 1: g-store, g-qa
@@ -325,5 +328,7 @@ Run with the unslop pass (package by package), then core-loop QA, then alpha.
   rtfm.*, help.vocab, white-knight.song, merge.full, story.first-rtfm never
   queued); regression.stage.1/.2 hardcode "Day three" / "Seventeen days on";
   text.md "where:" pointers stale (screens/learn -> screens/rtfm, merge.go:160).
+- ASCII mode still draws Unicode in the parody screens (GRUB box, git log gutter,
+  top's braille chart, ▲/▼).
 - When deps change: recompute vendorHash with a fake hash (nix reuses a
   cached vendor dir and hides a stale hash).
