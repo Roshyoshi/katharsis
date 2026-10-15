@@ -1,10 +1,5 @@
 RTFM(7)                  USACO Guide · CC BY-NC-SA 4.0                   RTFM(7)
        MODULE                            BIOME               CAPABILITY    TRIAL
-       Two Pointers                      The Sliding Window  ■ CAP_TWOPTR  4
-▾ GOLD                                                          1 module · ■ 0/1
-   ▾ Additional Topics
-       (Optional) Hashmaps               The Heap            □ CAP_DS      1+3
-▾ PLATINUM                                                              1 module
    ▾ Misc. Topics
        Matrix Exponentiation             The ALU                           1+3
 ▾ ADVANCED                                                      1 module · ■ 0/1
@@ -18,7 +13,12 @@ COLOPHON
        (https://creativecommons.org/licenses/by-nc-sa/4.0/). Modules were
        converted from MDX to Markdown and adapted for a terminal; the adapted
        content is shared under the same license.
+       The story quotes Lewis Carroll's Alice's Adventures in Wonderland (1865)
+       and Through the Looking-Glass (1871), in the public domain, and Structure
+       and Interpretation of Computer Programs, 2nd ed., by Harold Abelson and
+       Gerald Jay Sussman with Julie Sussman (MIT Press, 1996), licensed under
+       CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
        Music, licenses and sources: press c in the GRUB menu.
 
 katharsis                                                                RTFM(7)
- line 11/31 (END) · ■ 1/3 held        enter open · tab fold · / filter · q quit
+ line 16/36 (END) · ■ 1/3 held        enter open · tab fold · / filter · q quit

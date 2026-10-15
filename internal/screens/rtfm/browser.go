@@ -425,6 +425,13 @@ const (
 	modIndent = 7 // man's paragraph indent
 	colGap    = 2
 
+	// storyCredit is the story's sources, as the README credits them.
+	storyCredit = "The story quotes Lewis Carroll's Alice's Adventures in Wonderland " +
+		"(1865) and Through the Looking-Glass (1871), in the public domain, and " +
+		"Structure and Interpretation of Computer Programs, 2nd ed., by Harold " +
+		"Abelson and Gerald Jay Sussman with Julie Sussman (MIT Press, 1996), " +
+		"licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)."
+
 	// minTitle is the title room columns give way for: 30 cells show four
 	// in five of the guide's module titles whole.
 	minTitle = 30
@@ -602,6 +609,11 @@ func (b *Browser) lines(cols columns, w int) []string {
 	}
 	out = append(out, "", ui.Strong.Render("COLOPHON"))
 	for _, l := range wrap(curriculum.Attribution(), modIndent, min(w, 80)) {
+		out = append(out, ui.Muted.Render(l))
+	}
+	// The story's sources (docs/story/story-bible.md, "Sources and
+	// licenses"), next to the guide's.
+	for _, l := range wrap(storyCredit, modIndent, min(w, 80)) {
 		out = append(out, ui.Muted.Render(l))
 	}
 	// The game's own credits (music, licenses, sources) are a GRUB key.
