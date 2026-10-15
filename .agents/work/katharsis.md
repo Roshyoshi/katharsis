@@ -171,7 +171,9 @@ S8 consolidation (after all code QA lands; from the cross-package report):
      (qa/chaos/oracle.sh); single-player honor system, not fixed
 
 ## Now
-Merged since last: S9 part 1 (flavor story table + RT6 pacing, Meta.Seen, internal/anim,
+Merged since last: R1 (14 robustness items: store lock, unwritable store, W1 submit
+snapshot + resume re-judge, editor shell line, orphan panes, idle saves, guide
+stall cut; one hud conflict with the GCC change resolved), S9 part 1 (flavor story table + RT6 pacing, Meta.Seen, internal/anim,
 screens/story scenes + cmd/demo-story incl. the ACCEPTED beat; Part 2 map and
 defaults in .agents/work/s9-part2.md), C part 1 (internal/ui on units; reader, rtfm, demo status bars;
 Part 2 checklist in .agents/work/c-part2.md; defaults: AC flash goes to S9, door
@@ -180,7 +182,10 @@ and :Debug; samples clang ASan on libstdc++ + _GLIBCXX_ASSERTIONS; cin 1e6 ints
 38 ms vs 967 ms on libc++; clang 21 out; package closure 2013 -> 1989 MiB;
 binary 28.4 MB). Main tests green (judge TLE timing flaked at load 23; passed
 alone); nix build ok.
-Running (workspaces): a2-economy, r1-robust, audio, b-judge
+Running (workspaces): a2-economy, audio, b-judge, b-content (content/web, one topic
+table, DivisionBand, CF cache-only start, deps tidy), submit-busy (a :Submit while
+one judges is refused, so a failing pass is always charged; chaos r01/r04/r05/
+r09/r13b scripts)
 (PCH, qa/judge, stale text). Agents keep .agents/work/progress-<ws>.md for
 restarts (spamming esc stops every agent).
 For B (from the GCC report): qa/judge expects ASan wording on the libstdc++
@@ -191,7 +196,7 @@ bits/stdc++.h (-0.8 s per g++ build, 175 MB .gch) and libc++ hardening for the
 clang fallback.
 Final QA must make the tmux/lldb session tests and the judge timing tests
 robust under load (both flaked at load ~20, pass alone).
-Next: merge A2, R1 as they report; then wave 1: B rest, S10 lane (RT0 first,
+Next: merge A2; then wave 1: S10 lane (RT0 first,
 ML1 -> ML3 -> ML4/ML5 -> ML6 code -> ML7-ML10; ML2 + D37 in the store lane;
 ML11 after B), C part 2; wave 2: D (+story text, D36, retention UI), S9 part 2;
 audio merges when ready; core-loop QA; ping alpha (D42).
