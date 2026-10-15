@@ -185,3 +185,24 @@ timer = "40m"
 		}
 	}
 }
+
+func TestLoadStrictKeysAndFileName(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) string {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	if _, err := rules.Load(write("typo.toml", "lifes = 5\n")); err == nil || !strings.Contains(err.Error(), "unknown keys lifes") {
+		t.Errorf("misspelt key: err %v, want unknown keys lifes", err)
+	}
+	r, err := rules.Load(write("short.toml", "lives = 2\n"))
+	if err != nil || r.Name != "short" || r.Lives != 2 {
+		t.Errorf("unnamed preset: %q lives %d, %v; want short, 2", r.Name, r.Lives, err)
+	}
+	if r, err := rules.Load(write("x.toml", "name = \"speed\"\n")); err != nil || r.Name != "speed" {
+		t.Errorf("named preset: %q, %v; want speed", r.Name, err)
+	}
+}

@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/charmbracelet/x/term"
 
 	"katharsis/internal/rules"
@@ -64,22 +63,9 @@ func (p *presets) add(path string) error {
 		}
 		return err
 	}
-	md, err := toml.DecodeFile(path, &rules.Rules{})
-	if err != nil {
-		return fmt.Errorf("%s: %w", path, err)
-	}
-	if keys := md.Undecoded(); len(keys) > 0 {
-		names := make([]string, len(keys))
-		for i, k := range keys {
-			names[i] = k.String()
-		}
-		return fmt.Errorf("%s: unknown keys %s", path, strings.Join(names, ", "))
-	}
-
-	name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-	if md.IsDefined("name") {
-		name = r.Name
-	}
+	// rules.Load rejects unknown keys and names a preset without a name
+	// key after its file.
+	name := r.Name
 	switch prev, taken := p.from[name]; {
 	case strings.TrimSpace(name) == "":
 		return fmt.Errorf("%s: empty preset name", path)

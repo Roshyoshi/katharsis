@@ -7,6 +7,8 @@ package rules
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -431,8 +433,24 @@ func Load(path string) (Rules, error) {
 	if _, ok := keys["ascension"]; ok {
 		r.Ascensions = nil
 	}
-	if err := toml.Unmarshal(b, &r); err != nil {
+	md, err := toml.Decode(string(b), &r)
+	if err != nil {
 		return r, fmt.Errorf("%s: %w", path, err)
+	}
+	// A key the rules do not have is an error, not a silent no-op: a
+	// misspelt override would play as standard while the player believes
+	// it changed.
+	if keys := md.Undecoded(); len(keys) > 0 {
+		names := make([]string, len(keys))
+		for i, k := range keys {
+			names[i] = k.String()
+		}
+		return r, fmt.Errorf("%s: unknown keys %s", path, strings.Join(names, ", "))
+	}
+	// Without a name key the preset is named after its file, so an error
+	// from Validate names the preset rather than "standard".
+	if !md.IsDefined("name") {
+		r.Name = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 	}
 	return r, r.Validate()
 }
