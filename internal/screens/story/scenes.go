@@ -143,12 +143,13 @@ func NewBossIntro(key string, seed uint64, first bool) *Scene {
 // then vanishes tail first and leaves the grin, which is the core dump:
 // bytes still on the problem titled title. The pacing shows it only after
 // a crash that left bytes (flavor.NextBeat); bytes "" leaves the dump
-// line out.
+// line out. The title is cut to 24 cells, as GRUB cuts the same line.
 func NewFirstCrash(bytes, title string) *Scene {
 	said := flavor.StoryBlock("story.first-crash")
 	var dump []string
 	if bytes != "" {
-		dump = []string{flavor.Fill(flavor.Story("grub.subtitle.coredump", 0), "bytes", bytes, "title", title)}
+		dump = []string{flavor.Fill(flavor.Story("grub.subtitle.coredump", 0),
+			"bytes", bytes, "title", ui.Clip(title, 24))}
 	}
 	return newScene("story.first-crash", 0, func(w, _ int) anim.Clip {
 		speech := typed(said, w)

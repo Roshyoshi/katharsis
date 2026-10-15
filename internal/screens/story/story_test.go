@@ -305,3 +305,17 @@ func TestResizeKeepsAShownPageShown(t *testing.T) {
 		t.Errorf("after narrowing, done %v:\n%s", s.p.Done(), v)
 	}
 }
+
+// TestFirstCrashClipsTheTitle: {title} is 24 cells at most, cut by the
+// caller (text.md's placeholder table), as GRUB cuts the same line. A long
+// Codeforces title otherwise ran the core dump line past 70 columns.
+func TestFirstCrashClipsTheTitle(t *testing.T) {
+	title := "Yet Another Problem About Counting Subsequences Modulo a Prime"
+	s := NewFirstCrash("15.2 KiB", title)
+	s.View(80, 24)
+	s.Seek(0, s.PageLen(0))
+	v := ansi.Strip(s.View(80, 24))
+	if want := "a grin without a cat · 15.2 KiB still on " + ui.Clip(title, 24); !strings.Contains(v, want) {
+		t.Errorf("the dump line is not %q:\n%s", want, v)
+	}
+}
