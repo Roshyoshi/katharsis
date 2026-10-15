@@ -2,12 +2,12 @@ package boot
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
 	"katharsis/internal/ui"
@@ -23,11 +23,17 @@ type revealMsg struct{ gen int }
 
 // Crash is the kernel panic. It reads as a real dmesg tail: the last log
 // lines, the cause, taint flags for the door's modifiers, the boot's doors
-// as a call trace, then a quote matched to the cause and the core dump.
+// as a call trace, then a quote matched to the cause, and under it the
+// debrief (retention RT1): the core dump's fate, what the boot kept, the
+// one lever and the next step.
+//
 // u emits screens.Upsolve, e screens.OpenEditorial (when the problem has
-// one), r screens.StartBoot, l screens.OpenLog and q screens.Quit. The
-// editorial is a key, not opened over the panic, so the panic is seen
-// first even after a :q!.
+// one), r screens.StartBoot, and an offered preset's key (s short, p
+// patch) one on that preset; with a live core dump a reboot key asks
+// twice, since the next crash destroys the dump (RT4). b reads the story
+// beat waiting (screens.ReadStory), l opens git log, g and q go to GRUB
+// (screens.OpenGrub, UX J12). The editorial is a key, not opened over the
+// panic, so the panic is seen first even after a :q!.
 type Crash struct {
 	env   Env
 	shown int // elements revealed so far; < 0 shows everything
@@ -36,6 +42,9 @@ type Crash struct {
 	// panic has depends on it (a short terminal drops old log lines and
 	// doors), and the reveal ends when they are all on screen.
 	size [2]int
+	// armed is the reboot key pressed once over a live core dump; the
+	// same key again reboots, any other disarms.
+	armed string
 }
 
 // NewCrash builds the panic fully printed. Call Init to play the reveal.
@@ -67,6 +76,8 @@ func (c *Crash) tick() tea.Cmd {
 
 func (c *Crash) crash() game.Crash { return *c.env.State.Crash }
 
+func (c *Crash) brief() game.Brief { return game.Debrief(c.env.State, &c.env.Meta) }
+
 func (c *Crash) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	switch msg := msg.(type) {
 	case revealMsg:
@@ -83,20 +94,31 @@ func (c *Crash) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 			c.shown = -1
 			return c, nil
 		}
-		st := c.env.State
-		switch msg.String() {
+		key := msg.String()
+		armed := c.armed
+		c.armed = ""
+		if b, ok := rebootKey(c.env, key); ok {
+			if c.brief().Dump.Kind == game.DumpLive && armed != key {
+				c.armed = key
+				return c, nil
+			}
+			return c, screens.Emit(b)
+		}
+		switch key {
 		case "u":
 			return c, screens.Emit(screens.Upsolve{Problem: c.crash().Door.Problem})
 		case "e":
 			if id := c.crash().Door.Problem; c.env.hasEditorial(id) {
 				return c, screens.Emit(screens.OpenEditorial{Problem: id})
 			}
-		case "r":
-			return c, screens.Emit(screens.StartBoot{Prestige: st.Prestige, Preset: st.Rules.Name})
+		case beatKey:
+			if id := beat(c.env); id != "" {
+				return c, screens.Emit(screens.ReadStory{Beat: id})
+			}
 		case "l":
 			return c, screens.Emit(screens.OpenLog{})
-		case "q":
-			return c, screens.Emit(screens.Quit{})
+		case "g", "q":
+			return c, screens.Emit(screens.OpenGrub{})
 		}
 	}
 	return c, nil
@@ -163,15 +185,13 @@ func (l dline) render(width int) []string {
 }
 
 // elements is the screen as reveal steps: each dmesg line, then the quote,
-// then the core dump. It fits height by dropping old log lines first, then
-// eliding the middle of the call trace.
+// then the debrief's blocks. The debrief and the quote come first: the
+// panic gets the rows they leave, down to its floor, and fits them by
+// dropping old log lines first, then eliding the middle of the call trace.
+// Story text and the beat's teaser give way before the floor does.
 func (c *Crash) elements(width, height int) [][]string {
 	st := c.env.State
 	cr := c.crash()
-	up := cr.Uptime
-	if up == 0 && !cr.At.IsZero() && !st.Started.IsZero() {
-		up = cr.At.Sub(st.Started)
-	}
 	title := "?"
 	if cr.Door.Problem != "" {
 		title = c.env.problem(cr.Door.Problem).Title
@@ -184,10 +204,20 @@ func (c *Crash) elements(width, height int) [][]string {
 	// across redraws and differ between crashes.
 	seed := st.Seed ^ uint64(cr.At.Unix())
 
-	quote := c.quote(cr, verdict, seed, width)
-	core := c.core(cr, title, width)
-	room := height - len(quote) - len(core)
+	floor := rows(c.panic(cr, verdict, title, seed, width, 0))
+	end := fit(c.end(cr, verdict, title, seed, width), height-floor)
+	return append(c.panic(cr, verdict, title, seed, width, height-rows(end)), end...)
+}
 
+// panic is the kernel's own lines, one element per dmesg line, fitted
+// into room rows as far as its floor allows: the panic line, the trace's
+// innermost frame, the door that crashed and the boot frame always stay.
+func (c *Crash) panic(cr game.Crash, verdict, title string, seed uint64, width, room int) [][]string {
+	st := c.env.State
+	up := cr.Uptime
+	if up == 0 && !cr.At.IsZero() && !st.Started.IsZero() {
+		up = cr.At.Sub(st.Started)
+	}
 	reason := fl.PanicReason(cr.Cause, verdict)
 	switch {
 	case cr.Cursed:
@@ -197,21 +227,37 @@ func (c *Crash) elements(width, height int) [][]string {
 	case reason == "":
 		reason = "unknown cause"
 	}
-	head := []dline{}
-	if pre := c.precursor(cr, verdict); pre != "" {
-		head = append(head, dline{at: up, text: pre})
+	// The head's lines in order; drop says which give way, and in what
+	// order, when even the shortest trace does not fit: the modules, the
+	// hardware, then the precursor (the debrief's lever says it again).
+	type headLine struct {
+		dline
+		drop int // 0 stays
 	}
-	head = append(head,
-		dline{at: up, text: fmt.Sprintf("Kernel panic - not syncing: %s in %q", reason, title), style: ui.Danger, bold: true},
-		dline{at: up, text: "CPU: 0 PID: 1 Comm: you " + taint(cr.Door)},
-		dline{at: up, text: fmt.Sprintf("Hardware name: katharsis %s, preset %s, seed %x",
-			prestigeLabel(st.Prestige), st.Rules.Name, st.Seed)},
+	var heads []headLine
+	if pre := c.precursor(cr, verdict); pre != "" {
+		heads = append(heads, headLine{dline{at: up, text: pre}, 3})
+	}
+	heads = append(heads,
+		headLine{dline{at: up, text: fmt.Sprintf("Kernel panic - not syncing: %s in %q", reason, title), style: ui.Danger, bold: true}, 0},
+		headLine{dline{at: up, text: "CPU: 0 PID: 1 Comm: you " + taint(cr.Door)}, 0},
+		headLine{dline{at: up, text: fmt.Sprintf("Hardware name: katharsis %s, preset %s, seed %x",
+			prestigeLabel(st.Prestige), st.Rules.Name, st.Seed)}, 2},
 	)
 	if mods := modules(st); mods != "" {
-		head = append(head, dline{at: up, text: "Modules linked in: " + mods})
+		heads = append(heads, headLine{dline{at: up, text: "Modules linked in: " + mods}, 1})
 	}
-	head = append(head, dline{at: up, text: "Call Trace:"})
+	heads = append(heads, headLine{dline{at: up, text: "Call Trace:"}, 0})
 	tail := []dline{{at: up, text: "---[ end Kernel panic ]---", style: ui.Danger}}
+	headOf := func(dropped int) []dline {
+		var out []dline
+		for _, h := range heads {
+			if h.drop == 0 || h.drop > dropped {
+				out = append(out, h.dline)
+			}
+		}
+		return out
+	}
 
 	lines := func(ds []dline) int {
 		n := 0
@@ -225,17 +271,21 @@ func (c *Crash) elements(width, height int) [][]string {
 		kernel = append(kernel, " "+f)
 	}
 	doors, boot := c.frames(cr, up)
-	fixed := lines(head) + lines(tail)
+	head := headOf(0)
 	rest := concat(doors, []string{boot})
-	tooTall := func() bool { return fixed+lines(dlines(up, concat(kernel, rest))) > room }
+	tooTall := func() bool { return lines(head)+lines(tail)+lines(dlines(up, concat(kernel, rest))) > room }
 	// Elide the oldest doors until the trace fits, then the outer kernel
-	// frames; the innermost frame, the door that crashed and the boot
-	// frame always stay.
+	// frames, then the head's lines that can go; the panic line, the
+	// innermost frame, the door that crashed and the boot frame always
+	// stay.
 	for k := len(doors) - 1; k >= 1 && tooTall(); k-- {
 		rest = concat(doors[:k], []string{fmt.Sprintf(" ... %d older doors", len(doors)-k), boot})
 	}
 	for k := len(kernel) - 1; k >= 1 && tooTall(); k-- {
 		kernel = kernel[:k]
+	}
+	for d := 1; d <= 3 && tooTall(); d++ {
+		head = headOf(d)
 	}
 	body := concat(head, dlines(up, concat(kernel, rest)), tail)
 
@@ -263,10 +313,132 @@ func (c *Crash) elements(width, height int) [][]string {
 	for _, d := range append(pre, body...) {
 		out = append(out, d.render(width))
 	}
-	if quote != nil {
-		out = append(out, quote)
+	return out
+}
+
+// end is everything under the panic, as pieces fit chooses from: the
+// quote and its epitaph, the core dump's fate as the headline (the earlier
+// dump this crash destroyed first, RT4), then kept, lever and next
+// (RT1), the session budget's nudge (RT12) and the keys. The keys keep
+// their brackets: a console prompt is the panic's idiom (C2p).
+func (c *Crash) end(cr game.Crash, verdict, title string, seed uint64, width int) []piece {
+	env := c.env
+	b := c.brief()
+	ps := []piece{
+		{lines: c.quote(cr, verdict, seed, width)},
+		{lines: voiceLines(c.epitaph(cr, verdict, seed), 5, width), pri: 2},
+		{lines: []string{""}},
 	}
-	return append(out, core)
+	if h := lostHeadline(env, b.Dump); h != "" {
+		ps = append(ps, piece{lines: []string{"  " + h}})
+		verse := tale.Block("coredump.lost")
+		for i, l := range verse {
+			verse[i] = flavor.Fill(l, "bytes", units.Bytes(b.Dump.Lost.Bytes))
+		}
+		ps = append(ps, piece{lines: voiceLines(verse, 4, width), pri: 4})
+	}
+	ps = append(ps, piece{lines: []string{"  " + ui.Clip(dumpItem(b.Dump, title), width-2)}})
+
+	kept := []string{ratingItem(b.Rating, "rating", true)}
+	if b.Topic != "" {
+		kept = append(kept, ratingItem(b.TopicRating, b.Topic, true))
+	}
+	kept = append(kept, ui.Muted.Render("bank ")+units.Bytes(b.Bank), regressionItem(b.Regression, env.Now))
+	kept = append(kept, easeItems(env.State)...)
+	kept = append(kept, brk, goalItem(env.End.Goal, b.Bank), brk, gateItem(b.Gate, env.Meta.Prestige))
+	ps = append(ps,
+		piece{lines: section("kept", kept, width)},
+		piece{lines: teaser(beat(env), width), pri: 1},
+		piece{lines: section("lever", []string{leverText(env, b.Lever)}, width)},
+		piece{lines: c.next(b, width)},
+		piece{lines: budgetLine(env.End, width), pri: 3},
+		piece{lines: c.keys(b, width)},
+	)
+	return ps
+}
+
+// next is the one highlighted step (RT1): upsolve a live dump, else
+// reboot. While a reboot key is armed it says what the reboot risks.
+func (c *Crash) next(b game.Brief, width int) []string {
+	env := c.env
+	var s string
+	switch {
+	case c.armed != "":
+		s = ui.Danger.Render("reboot leaves "+units.Bytes(b.Dump.Bytes)+" at risk") +
+			ui.Muted.Render(ui.G.Sep) + ui.Strong.Render(c.armed) + " again" +
+			ui.Muted.Render(ui.G.Sep) + ui.Strong.Render("u") + " upsolve first"
+	case b.Next.Kind == game.NextUpsolve:
+		s = upsolveText(env, b.Next, b.Dump)
+	default:
+		s = ui.Strong.Render("r") + " reboot at " + prestigeLabel(next(env)) + eta(env.End.ETA)
+	}
+	return nextSection(s, width)
+}
+
+// keys is the console prompt: every key but the highlighted one, as many
+// as fit on one line, then a second; git log and GRUB come last.
+func (c *Crash) keys(b game.Brief, width int) []string {
+	env := c.env
+	var pairs []string
+	// No upsolve key once the dump is banked (UX J31), nor twice when it
+	// is the highlighted step.
+	if b.Next.Kind != game.NextUpsolve && b.Dump.Kind != game.DumpRecovered {
+		pairs = append(pairs, "u", "upsolve")
+	}
+	if c.env.hasEditorial(c.crash().Door.Problem) {
+		pairs = append(pairs, "e", "editorial")
+	}
+	reb := rebootPairs(env)
+	if b.Next.Kind == game.NextReboot {
+		reb = reb[2:]
+	}
+	pairs = append(pairs, reb...)
+	if beat(env) != "" {
+		pairs = append(pairs, beatKey, "story")
+	}
+	pairs = append(pairs, "l", "git log", "g", "GRUB")
+	// One line: pairs give way from the end, whole, but GRUB, the way
+	// out, stays (as ui.Footer drops them). The story's key is also on its
+	// teaser, and git log is a GRUB entry.
+	line := func(ps []string) string {
+		s := ""
+		for i := 0; i+1 < len(ps); i += 2 {
+			s += "  " + ui.Strong.Render("["+ps[i]+"]") + " " + ps[i+1]
+		}
+		return s
+	}
+	n := len(pairs) / 2
+	for k := n; k > 1; k-- {
+		pick := append(append([]string(nil), pairs[:2*(k-1)]...), pairs[2*(n-1):]...)
+		if k == n {
+			pick = pairs
+		}
+		if s := line(pick); widthOf(s) <= width {
+			return []string{s}
+		}
+	}
+	return []string{ui.Clip(line(pairs[2*(n-1):]), width)}
+}
+
+// epitaph is the story's line under the quote (text.md, Crash): by cause,
+// the curse first, and out of lives by its verdict where it has one.
+func (c *Crash) epitaph(cr game.Crash, verdict string, seed uint64) []string {
+	hook := "crash.epitaph." + string(cr.Cause)
+	switch v := verdict; {
+	case cr.Cursed:
+		hook = "crash.epitaph.cursed"
+	case cr.Cause == game.OutOfLives && v != "":
+		if v == "OLE" {
+			v = "MLE" // as normVerdict folds it
+		}
+		if s := tale.Story(hook+"."+v, seed); s != "" {
+			return []string{s}
+		}
+	}
+	if s := tale.Story(hook, seed); s != "" {
+		return []string{s}
+	}
+	return nil
 }
 
 // echoes reports whether engine log line l only repeats what the screen
@@ -337,14 +509,6 @@ func (c *Crash) attempt(cr game.Crash) game.Attempt {
 		}
 	}
 	return game.Attempt{}
-}
-
-// upsolved reports whether the crashed door was upsolved after the crash,
-// which is what banks its core dump (game.Upsolve).
-func (c *Crash) upsolved(cr game.Crash) bool {
-	return slices.ContainsFunc(c.env.Meta.Solves, func(s game.Solve) bool {
-		return s.Upsolve && s.Problem == cr.Door.Problem && !s.At.Before(cr.At)
-	})
 }
 
 // taint maps door modifiers onto kernel taint flags, in the kernel's own
@@ -446,36 +610,4 @@ func (c *Crash) quote(cr game.Crash, verdict string, seed uint64, width int) []s
 		out = append(out, strings.Repeat(" ", max(right-widthOf(attr), 4))+ui.Muted.Render(attr))
 	}
 	return out
-}
-
-// core is the core dump line: what the crash left behind, and the keys.
-// The dump is offered only while Meta still holds it on this door.
-// Crash.Lost keeps what the crash dumped, but an upsolve from this screen
-// banks the dump and clears Meta.CoreDump, and the line must not keep
-// offering bytes that are gone. A trial crash loses its bytes without
-// leaving a dump. The keys keep their brackets: a console prompt is the
-// panic's idiom (C2p).
-func (c *Crash) core(cr game.Crash, title string, width int) []string {
-	keys := ui.Strong.Render("[u]") + " upsolve  "
-	if c.env.hasEditorial(cr.Door.Problem) {
-		keys += ui.Strong.Render("[e]") + " editorial  "
-	}
-	keys += ui.Strong.Render("[r]") + " reboot  " + ui.Strong.Render("[l]") + " git log"
-	var dump string
-	switch d := c.env.Meta.CoreDump; {
-	case d != nil && cr.Door.Problem != "" && d.Problem == cr.Door.Problem:
-		dump = "core dumped: " + ui.OK.Render(units.Bytes(d.Bytes)) + fmt.Sprintf(" on %q", title)
-	case cr.Lost > 0 && c.upsolved(cr):
-		dump = "core dump recovered: " + ui.OK.Render("+"+units.Bytes(cr.Lost)) + ui.Muted.Render(" banked")
-	case cr.Lost > 0 && c.env.State.Trial != nil:
-		dump = ui.Muted.Render("no core dump: a trial loses its " + units.Bytes(cr.Lost) + " outright")
-	case cr.Lost > 0:
-		dump = ui.Muted.Render("no core dump left to recover")
-	default:
-		dump = ui.Muted.Render("no core dump: nothing was uncommitted")
-	}
-	if line := "  " + dump + ui.Muted.Render(ui.G.Sep) + keys; widthOf(line) <= width {
-		return []string{"", line}
-	}
-	return []string{"", "  " + dump, "  " + keys}
 }

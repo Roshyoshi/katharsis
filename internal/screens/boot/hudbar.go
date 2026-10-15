@@ -44,6 +44,7 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 		status += reward
 	}
 	out = append(out, status)
+	out = append(out, dumpAtRisk(st, width)...) // ☠ the core dump a crash destroys (debrief.go, RT4)
 
 	// Modifiers, packed greedily into as few lines as fit.
 	var mods []string

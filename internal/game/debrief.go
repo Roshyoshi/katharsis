@@ -70,8 +70,9 @@ type Dump struct {
 	Kind    DumpKind
 	Problem catalog.ID
 	// Bytes is what the crash dumped. Independent is what upsolving it
-	// with the editorial never opened banks (Bytes times its Mult).
-	Bytes, Independent int64
+	// with the editorial never opened banks (Bytes times its Mult), and
+	// Recovered what the upsolve since banked (DumpRecovered).
+	Bytes, Independent, Recovered int64
 	// Lost is the earlier boot's dump this crash destroyed, nil for none.
 	// Its Bytes are what the crash says it destroyed (Crash.DumpLost).
 	Lost *CoreDump
@@ -214,23 +215,26 @@ func dumpOf(st *State, m *Meta, c *Crash) Dump {
 		out.Kind = DumpTrial
 	case cur != nil && cur.Problem == c.Door.Problem:
 		out.Kind, out.Bytes, out.Independent = DumpLive, cur.Bytes, cur.Recovers(Independent)
-	case upsolvedSince(m, c):
-		out.Kind = DumpRecovered
 	default:
 		out.Kind = DumpGone
+		if kind, ok := upsolvedSince(m, c); ok {
+			// The dump this crash wrote, as Upsolve read it.
+			dump := CoreDump{Bytes: c.Lost, Mult: st.Rules.DumpIndependentMult}
+			out.Kind, out.Recovered = DumpRecovered, dump.Recovers(kind)
+		}
 	}
 	return out
 }
 
-// upsolvedSince reports whether the crashed door was upsolved after the
-// crash, which is what banks its dump (Upsolve).
-func upsolvedSince(m *Meta, c *Crash) bool {
+// upsolvedSince is the first upsolve of the crashed door after the crash,
+// which is what banked its dump (Upsolve): its kind, ok false for none.
+func upsolvedSince(m *Meta, c *Crash) (SolveKind, bool) {
 	for _, s := range m.Solves {
 		if s.Upsolve && s.Problem == c.Door.Problem && !s.At.Before(c.At) {
-			return true
+			return s.Kind, true
 		}
 	}
-	return false
+	return "", false
 }
 
 // crashAttempt is the attempt that crashed the boot: still open in

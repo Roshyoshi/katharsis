@@ -2,10 +2,12 @@ package boot
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
+	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
 	"katharsis/internal/ui"
@@ -13,10 +15,16 @@ import (
 )
 
 // Cleared is the victory screen after the last boss: how long the boot ran,
-// what it banked, what it solved, and the prestige it unlocked or what
-// unlocking the next still needs (D31). r or enter emits
-// screens.StartBoot at the highest unlocked prestige, l screens.OpenLog,
-// q screens.Quit.
+// what it banked and solved, then the debrief (retention RT1): what the
+// boot kept (the rating's move, the prestige it unlocked or what the next
+// still needs (D31), apt's goal bar, first-time and best lines), the
+// clear's lever, and the next step. Story lines from the boss's defeat and
+// the prestige just cleared sit under the banner.
+//
+// r or enter emits screens.StartBoot at the highest unlocked prestige, an
+// offered preset's key (s short, p patch) one on that preset (RT7), b
+// reads the story beat waiting (screens.ReadStory), l opens git log, and
+// g or q goes to GRUB (screens.OpenGrub, UX J12).
 type Cleared struct{ env Env }
 
 func NewCleared(env Env) *Cleared { return &Cleared{env: env} }
@@ -24,36 +32,40 @@ func NewCleared(env Env) *Cleared { return &Cleared{env: env} }
 // Refresh swaps in new state and clock.
 func (c *Cleared) Refresh(env Env) { c.env = env }
 
-// next is the prestige a reboot starts at: the highest unlocked, which the
-// engine has already raised if this clear unlocked a new one.
-func (c *Cleared) next() int {
-	return min(max(c.env.Meta.Prestige, c.env.State.Prestige), game.MaxPrestige)
-}
-
 func (c *Cleared) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	k, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		return c, nil
 	}
 	// Raw keys: l is git log here, not the vim move keyName makes it.
-	switch k.String() {
-	case "r", "enter":
-		return c, screens.Emit(screens.StartBoot{Prestige: c.next(), Preset: c.env.State.Rules.Name})
+	key := k.String()
+	if key == "enter" {
+		key = "r"
+	}
+	if b, ok := rebootKey(c.env, key); ok {
+		return c, screens.Emit(b)
+	}
+	switch key {
+	case beatKey:
+		if id := beat(c.env); id != "" {
+			return c, screens.Emit(screens.ReadStory{Beat: id})
+		}
 	case "l":
 		return c, screens.Emit(screens.OpenLog{})
-	case "q":
-		return c, screens.Emit(screens.Quit{})
+	case "g", "q":
+		return c, screens.Emit(screens.OpenGrub{})
 	}
 	return c, nil
 }
 
 func (c *Cleared) View(width, height int) string {
-	st := c.env.State
-	ss := steps(st)
+	env := c.env
+	st := env.State
+	b := game.Debrief(st, &env.Meta)
 	var solves, hinted, retreats int
 	var boss string
-	end := c.env.Now
-	for _, s := range ss {
+	end := env.Now
+	for _, s := range steps(st) {
 		a := s.Attempt
 		switch a.Outcome {
 		case game.Cleared:
@@ -76,25 +88,32 @@ func (c *Cleared) View(width, height int) string {
 		uptime = 0
 	}
 
-	var body []string
-	if banner := fl.Banner("cleared"); banner != "" {
-		bl := strings.Split(banner, "\n")
+	var banner []string
+	if art := fl.Banner("cleared"); art != "" {
+		bl := strings.Split(art, "\n")
 		for i, l := range bl {
 			// systemd paints its OK green; the climax keeps it (E17).
 			bl[i] = strings.Replace(l, "[  OK  ]", "[  "+ui.OK.Render("OK")+"  ]", 1)
 		}
 		// The climax gets the double frame (§2.5).
-		if fw := maxWidth(bl) + 4; len(bl)+2 <= height/3 && fw <= width {
-			body = append(body, centerBlock(ui.Frame(ui.FrameBoss, fw, "", "", bl), width)...)
+		if fw := maxWidth(bl) + 4; fw <= width {
+			banner = centerBlock(ui.Frame(ui.FrameBoss, fw, "", "", bl), width)
 		}
 	}
 	// Green paints the glyph, the words are Strong (R2, R3).
-	body = append(body, "", ui.Center(ui.OK.Render(ui.G.Pass)+" "+ui.Strong.Render(fmt.Sprintf("Boot #%d cleared", st.Boot))+
-		ui.Muted.Render(ui.G.Sep)+prestigeLabel(st.Prestige), width))
+	head := []string{ui.Center(ui.OK.Render(ui.G.Pass)+" "+ui.Strong.Render(fmt.Sprintf("Boot #%d cleared", st.Boot))+
+		ui.Muted.Render(ui.G.Sep)+prestigeLabel(st.Prestige), width)}
 	if boss != "" {
-		body = append(body, ui.Center(ui.Modifier(ui.ModBoss, bossLabel(boss)), width))
+		head = append(head, ui.Center(ui.Modifier(ui.ModBoss, bossLabel(boss)), width))
 	}
-	body = append(body, "")
+	seed := st.Seed ^ uint64(end.Unix())
+	var defeat, said []string
+	if boss != "" {
+		defeat = centerVoice(tale.Story("boss.defeat."+boss, seed), width)
+	}
+	if st.Trial == nil {
+		said = centerVoice(c.clearedLine(seed), width)
+	}
 
 	sol := units.Plural(solves, "door")
 	if hinted > 0 {
@@ -103,38 +122,98 @@ func (c *Cleared) View(width, height int) string {
 	if retreats > 0 {
 		sol += ui.G.Sep + units.Plural(retreats, "retreat")
 	}
-	rows := [][2]string{
+	stats := [][2]string{
 		{"uptime", units.Clock(uptime)},
 		{"committed", ui.OK.Render(units.Bytes(st.Committed)) +
-			ui.Muted.Render(ui.G.Sep+"bank ") + units.Bytes(c.env.Meta.Bank)},
+			ui.Muted.Render(ui.G.Sep+"bank ") + units.Bytes(env.Meta.Bank)},
 		{"solved", sol},
 		{"lives left", ui.Hearts(st.Lives, st.MaxLives)},
 	}
 	var table []string
-	for _, r := range rows {
+	for _, r := range stats {
 		table = append(table, ui.Muted.Render(fmt.Sprintf("%-12s", r[0]))+r[1])
 	}
-	body = append(body, centerBlock(table, width)...)
 
 	// An achievement: the ★ is Warn, the words Strong (R2, R3).
 	star := ui.Warn.Render(ui.G.Star) + " "
-	switch g := game.NextPrestige(st.Rules, &c.env.Meta); {
-	case st.Unlocked > 0:
-		body = append(body, "", ui.Center(star+ui.Strong.Render("prestige unlocked: "+prestigeLabel(st.Unlocked)), width))
-	case st.Prestige >= game.MaxPrestige:
-		body = append(body, "", ui.Center(star+ui.Strong.Render("highest prestige cleared"), width))
-	case g.Next > 0 && st.Trial == nil:
-		body = append(body, "", ui.Center(ui.Muted.Render(screens.GateText(g, c.env.Meta.Prestige, prestigeLabel)), width))
+	kept := []string{ratingItem(b.Rating, "rating", false)}
+	switch {
+	case b.Unlocked > 0:
+		kept = append(kept, star+ui.Strong.Render("prestige unlocked: "+prestigeLabel(b.Unlocked)))
+	case b.Top:
+		kept = append(kept, star+ui.Strong.Render("highest prestige cleared"))
+	case !b.Trial:
+		kept = append(kept, gateItem(b.Gate, env.Meta.Prestige))
 	}
+	kept = append(kept, easeItems(st)...)
+	kept = append(kept, brk, goalItem(env.End.Goal, b.Bank), brk)
+	for _, f := range env.End.Firsts[:min(len(env.End.Firsts), 2)] {
+		kept = append(kept, star+ui.Strong.Render(f))
+	}
+	nextStep := ui.Strong.Render("r") + " reboot at " + prestigeLabel(next(env)) + eta(env.End.ETA)
+	// The debrief is one column, centered like the rest of the screen.
+	cw := min(width, debriefW)
+	col := func(ls []string) []string { return indent((width-cw)/2, ls) }
 
-	if mp := centerBlock(renderMap(st, width), width); len(body)+1+len(mp) <= height-1 {
-		body = append(body, "")
-		body = append(body, mp...)
+	pieces := []piece{
+		{lines: banner, pri: 6},
+		{lines: []string{""}, pri: 6},
+		{lines: head},
+		{lines: defeat, pri: 2},
+		{lines: said, pri: 4},
+		{lines: []string{""}},
+		{lines: centerBlock(table, width)},
+		{lines: []string{""}},
+		{lines: col(section("kept", kept, cw))},
+		{lines: col(teaser(beat(env), cw)), pri: 1},
+		{lines: col(section("lever", []string{leverText(env, b.Lever)}, cw))},
+		{lines: col(nextSection(nextStep, cw))},
+		{lines: col(budgetLine(env.End, cw)), pri: 3},
+	}
+	if mp := centerBlock(renderMap(st, width), width); len(mp) > 0 {
+		pieces = append(pieces, piece{lines: []string{""}, pri: 5}, piece{lines: mp, pri: 5})
+	}
+	var body []string
+	for _, p := range fit(pieces, height-1) {
+		body = append(body, p...)
 	}
 	if pad := (height - 1 - len(body)) / 2; pad > 0 {
 		body = append(make([]string, pad), body...)
 	}
-	// The keys sit at the left, as on every game screen (C2).
-	footer := ui.Footer(width, "r", "reboot at "+prestigeLabel(c.next()), "l", "git log", "q", "quit")
-	return ui.Layout(width, height, body, footer)
+	// The keys sit at the left, as on every game screen (C2); GRUB is the
+	// way out, kept last.
+	pairs := rebootPairs(env)
+	if beat(env) != "" {
+		pairs = append(pairs, beatKey, "story")
+	}
+	pairs = append(pairs, "l", "git log", "g", "GRUB")
+	return ui.Layout(width, height, body, ui.Footer(width, pairs...))
 }
+
+// clearedLine is the story's line for the prestige just cleared
+// (text.md, Cleared): its own pool, or past the table the beyond one with
+// its ring.
+func (c *Cleared) clearedLine(seed uint64) string {
+	p := c.env.State.Prestige
+	if s := tale.Story("cleared."+strconv.Itoa(p), seed); s != "" {
+		return s
+	}
+	ring, _ := flavor.Ring(p)
+	return flavor.Fill(tale.Story("cleared.beyond", seed), "ring", strconv.Itoa(ring))
+}
+
+// centerVoice is a story line in the flavor voice, centered, wrapped to
+// at most two lines.
+func centerVoice(s string, width int) []string {
+	var out []string
+	for _, part := range strings.Split(s, "\n") {
+		for _, l := range ui.WrapN(part, max(min(width-4, 72), 10), 2) {
+			out = append(out, ui.Center(ui.Voice.Render(ui.Muted.Render(l)), width))
+		}
+	}
+	return out
+}
+
+// debriefW is the widest the clear's debrief column grows: wider, its
+// lines run past where the eye takes in the centered stats.
+const debriefW = 96

@@ -588,9 +588,9 @@ func TestCrashKeys(t *testing.T) {
 	for k, want := range map[string]tea.Msg{
 		"u": screens.Upsolve{Problem: "usaco:644"},
 		"e": screens.OpenEditorial{Problem: "usaco:644"},
-		"r": screens.StartBoot{Prestige: 1, Preset: "standard"},
 		"l": screens.OpenLog{},
-		"q": screens.Quit{},
+		"g": screens.OpenGrub{}, // UX J12: q leaves for GRUB too, poweroff quits
+		"q": screens.OpenGrub{},
 	} {
 		_, cmd := c.Update(press(k))
 		if got := emitted(cmd); !reflect.DeepEqual(got, want) {
@@ -640,13 +640,13 @@ func TestCrashCoreDump(t *testing.T) {
 		setup func(e *Env)
 		want  string
 	}{
-		{"dump held", func(*Env) {}, `core dumped: 96 B on "Closing the Farm" · [u] upsolve`},
+		{"dump held", func(*Env) {}, `core dumped: 96 B on "Closing the Farm"`},
 		{"upsolved", func(e *Env) {
 			got := game.Upsolve(&e.Meta, "usaco:644", game.Editorial, time.Minute, e.State.Crash.At.Add(time.Hour))
 			if got != 96 {
 				t.Fatalf("game.Upsolve recovered %d, want 96", got)
 			}
-		}, "core dump recovered: +96 B banked · [u] upsolve"},
+		}, "core dump recovered: +96 B banked"},
 		{"trial", func(e *Env) {
 			e.Meta.CoreDump = nil
 			e.State.Trial = &game.TrialState{}
@@ -685,7 +685,8 @@ func TestCrashContent(t *testing.T) {
 		"[ 4650.337] ---[ end Kernel panic ]---",
 		`"It always takes longer than you expect`,
 		"— Douglas Hofstadter, GEB (1979)",
-		`core dumped: 96 B on "Closing the Farm" · [u] upsolve  [e] editorial  [r] reboot  [l] git log`,
+		`core dumped: 96 B on "Closing the Farm"`,
+		"[e] editorial  [r] reboot",
 		`[ 2642.000] door_4: AC "Moocast" +96 B`,
 	} {
 		if !strings.Contains(v, want) {
@@ -1218,8 +1219,8 @@ func TestClearedGate(t *testing.T) {
 		prestige, top, rated int
 		want                 string
 	}{
-		{1, 1, need - 26, fmt.Sprintf("Gold unlocks after %d rated doors (%d so far) and a clear at Silver", need, need-26)},
-		{0, 1, need, "Gold unlocks with a clear at Silver"},
+		{1, 1, need - 26, fmt.Sprintf("Gold ▓▓▓▓░░░░ %d/%d rated doors, then a clear", need-26, need)},
+		{0, 1, need, "Gold opens with a clear at Silver"},
 	}
 	for _, tc := range tests {
 		st := fixture.Cleared()

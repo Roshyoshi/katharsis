@@ -333,16 +333,25 @@ func Crash(cause game.Outcome) *game.State {
 		st.History = append(st.History, a)
 	}
 	st.Uncommitted = 0
+	st.AtStart = atStart()
 	rebase(st, crashAt.Sub(start))
 	return st
 }
 
+// atStart is the player as boot 42 began: rated a little higher than
+// Meta, before the boot's doors moved it.
+func atStart() *game.Start {
+	return &game.Start{Rating: 1214, TopicRating: map[string]float64{"dp": 1120, "data-structures": 1225, "graphs": 1240}, Bank: 2038}
+}
+
 // CrashMeta is Meta right after Crash(cause): the crash moved the
-// uncommitted bytes into a core dump on the crashing door.
+// uncommitted bytes into a core dump on the crashing door and scheduled
+// the door's return.
 func CrashMeta(cause game.Outcome) game.Meta {
 	cr := Crash(cause).Crash
 	m := Meta()
-	m.CoreDump = &game.CoreDump{Problem: cr.Door.Problem, Bytes: cr.Lost, Boot: 42, At: cr.At}
+	m.CoreDump = &game.CoreDump{Problem: cr.Door.Problem, Bytes: cr.Lost, Boot: 42, At: cr.At, Mult: 1.5}
+	m.Regressions = append(m.Regressions, game.Regression{Problem: cr.Door.Problem, Due: cr.At.AddDate(0, 0, 3)})
 	return m
 }
 
@@ -359,6 +368,7 @@ func Cleared() *game.State {
 	st.Doors = nil
 	st.Committed, st.Uncommitted = 1240, 0
 	st.Unlocked = 2 // Gold, as ClearedMeta has it
+	st.AtStart = atStart()
 	rebase(st, at(150, 30))
 	return st
 }
@@ -368,5 +378,6 @@ func ClearedMeta() game.Meta {
 	m := Meta()
 	m.Prestige = 2
 	m.Bank = 3390
+	m.Rating = 1262 // the clear's doors raised it from atStart's 1214
 	return m
 }

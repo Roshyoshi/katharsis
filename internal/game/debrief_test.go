@@ -80,7 +80,7 @@ func TestDebriefCrash(t *testing.T) {
 		// After an upsolve the dump reads as recovered and the next step
 		// is a reboot.
 		game.Upsolve(m, d.Problem, game.Editorial, time.Minute, h.now.Add(time.Hour))
-		if b := game.Debrief(h.s, m); b.Dump.Kind != game.DumpRecovered || b.Next.Kind != game.NextReboot {
+		if b := game.Debrief(h.s, m); b.Dump.Kind != game.DumpRecovered || b.Dump.Recovered != earned || b.Next.Kind != game.NextReboot {
 			t.Errorf("%s: after upsolve: dump %+v next %+v", cause, b.Dump, b.Next)
 		}
 	}

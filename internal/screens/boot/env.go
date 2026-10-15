@@ -30,6 +30,7 @@ type Env struct {
 	Meta   game.Meta
 	Lookup screens.Lookup
 	Now    time.Time
+	End    End // the app's figures for the end screens and the goal bar (debrief.go)
 }
 
 // flavorSource is the slice of internal/flavor the screens use. fl points at

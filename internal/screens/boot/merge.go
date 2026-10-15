@@ -158,6 +158,7 @@ func (m *Merge) View(width, height int) string {
 		secs = append(secs, label("commit")+ui.Muted.Render("nothing uncommitted"+ui.G.Sep)+
 			units.Bytes(st.Committed)+ui.Muted.Render(" committed this boot"+ui.G.Sep+"bank ")+units.Bytes(m.env.Meta.Bank))
 	}
+	secs = append(secs, mergeGoal(m.env)...) // apt's goal bar (debrief.go, RT3)
 
 	if st.PendingUpgrade && len(st.UpgradeOffers) > 0 {
 		note := ui.Muted.Render("a clear earned one; pick it before you leave")
