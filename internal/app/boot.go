@@ -158,7 +158,7 @@ func (m *Model) step(a game.Action) tea.Cmd {
 	cmd, err := m.try(a)
 	if err != nil {
 		m.refused(a) // the strip's word on it (dmesg.go)
-		return func() tea.Msg { return errMsg{err} }
+		return func() tea.Msg { return errMsg{errors.New(refusal(err))} }
 	}
 	return cmd
 }

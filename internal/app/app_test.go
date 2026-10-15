@@ -1636,3 +1636,17 @@ func TestResizeResetsScrollRegion(t *testing.T) {
 		}
 	})
 }
+
+// A refused action flashes the engine's reason as the player reads it,
+// without its "invalid action" prefix: the merge window said "invalid
+// action: dup costs 48 B, 2 B uncommitted".
+func TestRefusalFlashHasNoPrefix(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.send(game.Spend{Item: game.Dup}) // no merge window open
+		if h.m.flash == "" || strings.Contains(h.m.flash, game.ErrInvalid.Error()) {
+			t.Fatalf("refused spend flashed %q, want the reason alone", h.m.flash)
+		}
+	})
+}
