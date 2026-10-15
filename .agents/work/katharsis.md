@@ -242,6 +242,12 @@ D54 settled 10-15  Each boss bends one rule (user: "we can also ..."): off-by-on
       StartCycles (fsck can show 38/30); strip fail lines omit "N left"; R past the
       lock does nothing. Engine behaviour next, then full-boot QA.
 
+D55 settled 10-15  TIME+ (top's cumulative CPU-time column): lifetime in-door time across
+                   boots, upsolves and trials; in top (with a per-topic split), GRUB's
+                   status line and the debrief's kept block. User: "a total time in runs
+                   count as another motivator". A count, never a streak (GR1).
+                   Cycles display out of MaxCycles (50) by the user's call.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
