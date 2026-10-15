@@ -8,6 +8,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -44,22 +45,23 @@ func optionCards(opts []option, cursor, width int) []string {
 	bodies := make([][]string, n)
 	h := 0
 	for i, o := range opts {
-		b := []string{sBold.Render(o.name), ""}
-		for _, l := range wrapN(o.desc, cw-4, 3) {
-			b = append(b, sFaint.Render(l))
+		b := []string{ui.Strong.Render(o.name), ""}
+		for _, l := range ui.WrapN(o.desc, cw-4, 3) {
+			b = append(b, ui.Muted.Render(l))
 		}
 		bodies[i] = b
 		h = max(h, len(b))
 	}
 	blocks := make([][]string, n)
 	for i := range opts {
-		f, num := frameIdle, sFaint.Render(fmt.Sprint(i+1))
+		f, num := ui.FrameIdle, ui.Muted.Render(fmt.Sprint(i+1))
 		if i == cursor {
-			f, num = frameSelected, sCyan.Bold(true).Render(fmt.Sprintf("▸ %d", i+1))
+			f = ui.FrameSelected
+			num = f.Render(fmt.Sprintf("%s %d", ui.G.Cursor, i+1))
 		}
-		blocks[i] = box(f, cw, num, "", padLines(bodies[i], h))
+		blocks[i] = ui.Frame(f, cw, num, "", ui.PadLines(bodies[i], h))
 	}
-	return joinH(2, blocks...)
+	return ui.JoinH(2, blocks...)
 }
 
 // listWidth is how wide optionList draws opts when nothing is cut: the
@@ -76,8 +78,9 @@ func listWidth(opts []option) int {
 	return 2 + nameW + 2 + descW
 }
 
-// optionList draws options one per line. cursor < 0 hides the cursor, for
-// a list that does not have focus.
+// optionList draws options one per line (C4): a Focus cursor, the names
+// padded to the longest and Strong under the cursor, the descriptions
+// Muted. cursor < 0 hides the cursor, for a list that does not have focus.
 func optionList(opts []option, cursor, width int) []string {
 	nameW := 0
 	for _, o := range opts {
@@ -88,10 +91,10 @@ func optionList(opts []option, cursor, width int) []string {
 		mark := "  "
 		name := o.name
 		if i == cursor {
-			mark = sCyan.Bold(true).Render("▸ ")
-			name = sCyan.Bold(true).Render(name)
+			mark = ui.Focus.Render(ui.G.Cursor) + " "
+			name = ui.Strong.Render(name)
 		}
-		out[i] = clip(mark+fit(name, nameW)+"  "+sFaint.Render(o.desc), width)
+		out[i] = ui.Clip(mark+ui.Fit(name, nameW)+"  "+ui.Muted.Render(o.desc), width)
 	}
 	return out
 }
@@ -170,28 +173,30 @@ func (u *UpgradeScreen) View(width, height int) string {
 	var block []string
 	if a, ok := lastClear(st); ok {
 		p := u.env.problem(a.Door.Problem)
-		line := sGreen.Bold(true).Render("✓ AC") + "  " + sBold.Render(p.Title) +
-			sFaint.Render(fmt.Sprintf("  in %s of %s", units.Clock(elapsed(a, u.env.Now)), units.Clock(a.Door.Timer)))
+		// Green paints the glyph, the words stay plain (R2); -O3 is a
+		// reward, so OK, and not bold (R3).
+		line := ui.OK.Render(ui.G.Pass) + " AC  " + ui.Strong.Render(p.Title) +
+			ui.Muted.Render(fmt.Sprintf("  in %s of %s", units.Clock(elapsed(a, u.env.Now)), units.Clock(a.Door.Timer)))
 		if a.O3 {
-			line += "  " + sYellow.Bold(true).Render("-O3")
+			line += "  " + ui.OK.Render("-O3")
 		}
-		block = append(block, center(line, width),
-			center(sGreen.Render("+"+units.Bytes(a.Door.Bytes))+sFaint.Render(" uncommitted"), width), "")
+		block = append(block, ui.Center(line, width),
+			ui.Center(ui.OK.Render("+"+units.Bytes(a.Door.Bytes))+ui.Muted.Render(" uncommitted"), width), "")
 	}
-	ask := sBold.Render("Pick an upgrade.")
+	ask := ui.Strong.Render("Pick an upgrade.")
 	switch n, o3 := owedPicks(st); {
 	case n >= 2:
-		ask = sBold.Render("Pick an upgrade") + sFaint.Render(" · ") + picksNote(n, o3)
+		ask = ui.Strong.Render("Pick an upgrade") + ui.Muted.Render(ui.G.Sep) + picksNote(n, o3)
 	case n == 1 && o3:
-		ask = sBold.Render("Pick another upgrade") + sFaint.Render(" · ") + picksNote(n, o3)
+		ask = ui.Strong.Render("Pick another upgrade") + ui.Muted.Render(ui.G.Sep) + picksNote(n, o3)
 	}
-	block = append(block, center(ask, width), "")
+	block = append(block, ui.Center(ask, width), "")
 	if len(u.picker.offers) == 0 {
-		block = append(block, center(sFaint.Render("nothing on offer"), width))
+		block = append(block, ui.Center(ui.Muted.Render("nothing on offer"), width))
 	} else {
 		block = append(block, centerBlock(u.picker.lines(width), width)...)
 	}
-	return layout(width, height, centered(head, block, height), hint("←/→", "choose", "enter", "take upgrade"))
+	return ui.Layout(width, height, centered(head, block, height), ui.Footer(width, "←/→", "choose", "enter", "take upgrade"))
 }
 
 // owedPicks is how many upgrade picks the boot owes, and whether the last
@@ -217,7 +222,7 @@ func picksNote(n int, o3 bool) string {
 	if o3 {
 		s += " (-O3 earned an extra)"
 	}
-	return sFaint.Render(s)
+	return ui.Muted.Render(s)
 }
 
 // lastClear is the most recent cleared attempt of the boot.

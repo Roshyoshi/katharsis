@@ -20,33 +20,12 @@ var (
 	sGreen   = ui.OK.Style()
 	sYellow  = ui.Warn.Style()
 	sMagenta = ui.Special.Style()
-	sCyan    = ui.Focus.Style()
 )
 
-// Frames by what they say about a card or region (ui-system.md §2.5).
-const (
-	frameIdle      = ui.FrameIdle
-	frameSelected  = ui.FrameSelected
-	frameCursed    = ui.FrameCursed
-	frameCursedSel = ui.FrameCursedSelected
-	frameBoss      = ui.FrameBoss
-	frameBossSel   = ui.FrameBossSelected
-	frameDone      = ui.FrameDone
-	frameHere      = ui.FrameHere
-)
-
-func box(f ui.FrameKind, w int, title, tag string, body []string) []string {
-	return ui.Frame(f, w, title, tag, body)
-}
-
-func fit(s string, w int) string                 { return ui.Fit(s, w) }
-func clip(s string, w int) string                { return ui.Clip(s, w) }
-func spread(left, right string, w int) string    { return ui.Spread(left, right, w) }
-func center(s string, w int) string              { return ui.Center(s, w) }
-func wrapN(s string, w, n int) []string          { return ui.WrapN(s, w, n) }
-func joinH(gap int, blocks ...[]string) []string { return ui.JoinH(gap, blocks...) }
-func padLines(ls []string, n int) []string       { return ui.PadLines(ls, n) }
-func hearts(lives, maxLives int) string          { return ui.Hearts(lives, maxLives) }
+func spread(left, right string, w int) string { return ui.Spread(left, right, w) }
+func center(s string, w int) string           { return ui.Center(s, w) }
+func wrapN(s string, w, n int) []string       { return ui.WrapN(s, w, n) }
+func hearts(lives, maxLives int) string       { return ui.Hearts(lives, maxLives) }
 func layout(width, height int, body []string, footer string) string {
 	return ui.Layout(width, height, body, footer)
 }
