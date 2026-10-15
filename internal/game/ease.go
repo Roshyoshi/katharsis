@@ -288,7 +288,7 @@ func (e *engine) saveTimeout() bool {
 	}
 	e.emit(CloseProblem{Door: a.Door}, Sound{Name: "wa"})
 	s.Phase = PhaseDoors
-	e.rollRoom(false)
+	e.rollRoom(false, "timeout")
 	return true
 }
 
@@ -316,7 +316,7 @@ func (e *engine) declineEase() error {
 	s.MaxLives = max(s.Rules.MaxLives, s.Lives)
 	e.logf("ease: declined, %d lives, %d ducks", s.Lives, s.Ducks)
 	if s.Phase == PhaseDoors {
-		e.rollRoom(true)
+		e.rollRoom(true, "decline")
 	}
 	return nil
 }

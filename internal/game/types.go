@@ -269,6 +269,14 @@ type Attempt struct {
 	// is (Judging). Saved before the verdict, it lets a game that quit
 	// mid-judge judge that submit again on resume, from that time.
 	SubmitAt time.Time `json:",omitzero"`
+
+	// Offer is the index in State.Offers of the offer the door was chosen
+	// from; LivesAtOpen and DucksAtOpen are the boot's lives and ducks when
+	// it opened; Events lists what happened on it, in order (ml-pipeline
+	// §4.1). Attempts from before these fields read 0 and none.
+	Offer                    int
+	LivesAtOpen, DucksAtOpen int
+	Events                   []AttemptEvent `json:",omitempty"`
 }
 
 // Upgrade is picked after each cleared door.
@@ -396,6 +404,11 @@ type State struct {
 	// them listed for the record but turns them all off.
 	Ease     []Ease `json:",omitempty"`
 	Declined bool   `json:",omitempty"`
+
+	// Offers logs every set of doors and every route the boot put on
+	// offer, in order, with the propensity of each item: the data for
+	// evaluating another door policy off this one's (ml-pipeline §4, §5.3).
+	Offers []Offer `json:",omitempty"`
 }
 
 // Start is what the player had when a boot began (State.AtStart).
@@ -572,3 +585,75 @@ const FinalBoss = "halting-problem"
 
 // MaxPrestige is the highest prestige level (0 Bronze ... 4 Advanced).
 const MaxPrestige = 4
+
+// ---- logging (ml-pipeline §4.1, slice ML1) ----------------------------------
+
+// AttemptEvent is one thing that happened on an open door: a judged
+// submit, a quack, the timer running out under a soft timer.
+type AttemptEvent struct {
+	At        time.Time
+	Kind      string  // "submit", "quack", "overtime"
+	Verdict   Verdict `json:",omitempty"`
+	Passed    int     `json:",omitempty"`
+	Total     int     `json:",omitempty"`
+	FirstFail int     `json:",omitempty"` // 1-based first failing test; 0 unknown
+	Level     int     `json:",omitempty"` // quack level
+}
+
+// Offer is one set of doors, or of route topics, the engine put on offer,
+// with what weighing it later needs: each item's propensity (the chance
+// the draw offered it, given the state it was drawn in) and that state.
+type Offer struct {
+	Seq    int    // index in State.Offers
+	Kind   string // "doors" | "route"
+	Biome  int
+	Room   int // -1 for a route offer
+	At     time.Time
+	Policy string // how it was drawn: "elo-window/1"
+	// Reason is why it was drawn: "fresh" (a room or route reached),
+	// "retreat", "reroll" (a shuf), "decline" (DeclineEase), "timeout"
+	// (a timeout that cost a life).
+	Reason string
+	RNG    uint64  // State.RNG before the draw, for audits
+	Target float64 // the clear chance the biome aims at (AimClear)
+	Floor  float64 // the biome's MinClear
+	Mu, SD float64 // the rating its topic was aimed with, and its SD (0 under Elo)
+	Items  []OfferItem
+	// SetProp is the probability of the set, unordered: the product over
+	// the draw's steps of 1/C(eligible, drawn).
+	SetProp  float64
+	Chosen   int       // index into Items, -1 until chosen
+	ChosenAt time.Time `json:",omitzero"`
+}
+
+// OfferItem is one door, or route topic, of an Offer.
+type OfferItem struct {
+	Problem   catalog.ID     `json:",omitempty"`
+	Source    catalog.Source `json:",omitempty"`
+	RatingSrc string         `json:",omitempty"` // the problem's RatingSource
+	Topic     string
+	Rating    int `json:",omitempty"`
+	// Slot is how the draw found it: a rating window of the biome's topic
+	// or of any ("w100", "any250"), the nearest left past the windows
+	// ("near", "near-any"), or "review", "trial", "route".
+	Slot string
+	// P is the clear chance the engine expected with every stake (the
+	// timer bought back included), PBase without the buy-back.
+	P, PBase float64 `json:",omitempty"`
+	// Propensity is the chance the draw put it on offer, given the state:
+	// drawn / eligible within its step, 1 for a review or trial door.
+	Propensity float64
+	Eligible   int  // candidates in its step
+	Tier       int  // its step's index in the draw's order; -1 none
+	Blind      bool `json:",omitempty"`
+	Mystery    bool `json:",omitempty"`
+	Cursed     bool `json:",omitempty"`
+	Review     bool `json:",omitempty"`
+	// BlindWhy is why its tags are hidden: "" (they are not), "mastery",
+	// "roll" (the blind chance, prestige's included), "run" (BlindAll),
+	// "trial".
+	BlindWhy string        `json:",omitempty"`
+	Timer    time.Duration `json:",omitempty"`
+	Bytes    int64         `json:",omitempty"`
+	Position int           // display index
+}

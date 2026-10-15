@@ -104,6 +104,7 @@ func (e *engine) reroll() error {
 	}
 	s.Rerolls--
 	e.logf("shuf: room_%d.%d re-rolled, %d left", s.Biome, s.Room, s.Rerolls)
+	rng := s.RNG
 	doors := e.drawDoors(s.Doors)
 	if i >= 0 {
 		n := len(doors)
@@ -113,6 +114,6 @@ func (e *engine) reroll() error {
 		}
 		doors = append(doors, reg)
 	}
-	e.offer(doors)
+	e.offer(doors, "reroll", rng)
 	return nil
 }

@@ -371,6 +371,73 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 		fail("cleared with %d uncommitted", s.Uncommitted)
 	}
 	c.checkEase(s, m, a, err, fail)
+	checkLog(s, fail)
+}
+
+// checkLog asserts the offer and attempt logs (ml-pipeline §4.1): every
+// offer is well formed, the doors on offer are the latest doors offer's,
+// not yet chosen, and every attempt points at the item it was chosen as,
+// with one event per submit and quack it counted.
+func checkLog(s *game.State, fail func(string, ...any)) {
+	lastDoors := -1
+	for i, o := range s.Offers {
+		if o.Seq != i || o.Kind != "doors" && o.Kind != "route" || o.Chosen < -1 || o.Chosen >= len(o.Items) ||
+			!(o.SetProp > 0 && o.SetProp <= 1) || len(o.Items) == 0 {
+			fail("offer %d %+v", i, o)
+		}
+		for _, it := range o.Items {
+			if !(it.Propensity > 0 && it.Propensity <= 1) || it.Eligible < 1 {
+				fail("offer %d item %+v", i, it)
+			}
+		}
+		if o.Kind == "doors" {
+			lastDoors = i
+		}
+	}
+	if s.Phase == game.PhaseDoors {
+		if lastDoors < 0 {
+			fail("doors on offer with no doors offer logged")
+		}
+		o := s.Offers[lastDoors]
+		if o.Chosen != -1 || len(o.Items) != len(s.Doors) || o.Biome != s.Biome || o.Room != s.Room {
+			fail("latest offer %+v for doors %+v in room %d.%d", o, s.Doors, s.Biome, s.Room)
+		}
+		for j, d := range s.Doors {
+			if o.Items[j].Problem != d.Problem || o.Items[j].Position != j {
+				fail("offer item %d %+v for door %+v", j, o.Items[j], d)
+			}
+		}
+	}
+	atts := slices.Clone(s.History)
+	if s.Current != nil {
+		atts = append(atts, *s.Current)
+	}
+	for _, a := range atts {
+		if a.Offer < 0 || a.Offer >= len(s.Offers) || s.Offers[a.Offer].Kind != "doors" || a.LivesAtOpen < 1 {
+			fail("attempt %+v: offer %d of %d, lives at open %d", a.Door, a.Offer, len(s.Offers), a.LivesAtOpen)
+		}
+		if o := s.Offers[a.Offer]; o.Chosen < 0 || o.Items[o.Chosen].Problem != a.Door.Problem {
+			fail("attempt %+v chosen from offer %+v", a.Door, o)
+		}
+		submits, quacks := 0, 0
+		for j, ev := range a.Events {
+			switch ev.Kind {
+			case "submit":
+				submits++
+			case "quack":
+				quacks++
+			case "overtime":
+			default:
+				fail("attempt %+v event %+v", a.Door, ev)
+			}
+			if j > 0 && ev.At.Before(a.Events[j-1].At) {
+				fail("attempt %+v events out of order %+v", a.Door, a.Events)
+			}
+		}
+		if submits != a.Submits || quacks != a.Quacks {
+			fail("attempt %+v: %d submit and %d quack events, counted %d and %d", a.Door, submits, quacks, a.Submits, a.Quacks)
+		}
+	}
 }
 
 // checkEase asserts what the easing allows: only the floor easing's doors

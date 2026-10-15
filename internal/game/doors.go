@@ -141,6 +141,42 @@ func (t tier) fit(cs []cand, chosen map[catalog.ID]bool, need int) []cand {
 	return fit
 }
 
+// drawn is a problem pick put on offer, and how: the tier (step) it was
+// drawn in, by index and name, among how many, and the chance that step
+// drew it (ml-pipeline §4: the propensity OfferItem logs).
+type drawn struct {
+	p        *catalog.Problem
+	slot     string
+	tier     int
+	eligible int
+	prop     float64
+}
+
+// slot names a tier for the log: "w100" (the biome's topic within 100),
+// "any250", "near", "near-any".
+func (t tier) slot() string {
+	name := "near"
+	if !math.IsInf(t.w, 1) {
+		name = fmt.Sprintf("w%.0f", t.w)
+	}
+	if !t.in {
+		if name == "near" {
+			return "near-any"
+		}
+		return "any" + name[1:]
+	}
+	return name
+}
+
+// binomial is C(n, k) as a float.
+func binomial(n, k int) float64 {
+	c := 1.0
+	for i := range k {
+		c = c * float64(n-i) / float64(i+1)
+	}
+	return c
+}
+
 // pick fills n doors from cs, tier by tier: the biome's topic at each rating
 // window, then every topic at each window, then the nearest left at any
 // rating. Going off-topic before off-rating is deliberate: a dp door 1000
@@ -157,19 +193,24 @@ func (t tier) fit(cs []cand, chosen map[catalog.ID]bool, need int) []cand {
 // prestige offset stops at the floor, but a ±100 window around it would
 // still put half its doors under. Only the nearest leftovers may be that
 // hard, once nothing above the floor is left.
-func (e *engine) pick(cs []cand, n int) []*catalog.Problem {
+func (e *engine) pick(cs []cand, n int) []drawn {
 	chosen := map[catalog.ID]bool{}
-	var out []*catalog.Problem
-	for _, t := range e.tiers() {
+	var out []drawn
+	for ti, t := range e.tiers() {
 		if len(out) >= n {
 			break
 		}
 		fit := t.fit(cs, chosen, n-len(out))
+		// Each of fit is as likely as the next to be among the k drawn.
+		k := min(n-len(out), len(fit))
 		for _, c := range sample(e.rng, fit, n-len(out)) {
 			if !chosen[c.p.ID] { // a Union catalog can list an ID twice
 				chosen[c.p.ID] = true
-				out = append(out, c.p)
+				out = append(out, drawn{c.p, t.slot(), ti, len(fit), float64(k) / float64(len(fit))})
 			}
+		}
+		if k > 0 {
+			e.setProp /= binomial(len(fit), k)
 		}
 	}
 	// The closest tier fills first; shuffle so door 1 isn't always nearest.
@@ -202,8 +243,10 @@ func (e *engine) roomSize(b *BiomeState) int {
 }
 
 // rollRoom offers the current room's doors. fresh is false for the re-roll
-// after a retreat, which never injects the regression door again.
-func (e *engine) rollRoom(fresh bool) {
+// after a retreat, which never injects the regression door again; reason
+// is what the offer logs (Offer.Reason).
+func (e *engine) rollRoom(fresh bool, reason string) {
+	rng := e.s.RNG
 	doors := e.drawDoors(nil)
 	// A regression door needs a judgeable problem, so the room has a door
 	// for it to replace.
@@ -212,7 +255,7 @@ func (e *engine) rollRoom(fresh bool) {
 			doors[len(doors)-1] = d
 		}
 	}
-	e.offer(doors)
+	e.offer(doors, reason, rng)
 }
 
 // drawDoors draws the current room's doors, never none, and none of skip
@@ -226,9 +269,10 @@ func (e *engine) drawDoors(skip []Door) []Door {
 	b := &s.Biomes[s.Biome]
 	n := e.roomSize(b)
 
-	var ps []*catalog.Problem
+	e.setProp = 1
+	var ps []drawn
 	if s.Trial != nil {
-		ps = []*catalog.Problem{e.trialProblem()}
+		ps = []drawn{{p: e.trialProblem(), slot: "trial", tier: -1, eligible: 1, prop: 1}}
 	} else {
 		for i, ex := range []map[catalog.ID]bool{e.excluded(), e.attempted(), {}} {
 			for _, d := range skip {
@@ -236,6 +280,7 @@ func (e *engine) drawDoors(skip []Door) []Door {
 					ex[d.Problem] = true
 				}
 			}
+			e.setProp = 1
 			ps = e.pick(e.candidates(b.Topic, s.Biome, ex), n)
 			if len(ps) > 0 {
 				break
@@ -243,8 +288,10 @@ func (e *engine) drawDoors(skip []Door) []Door {
 		}
 	}
 	doors := make([]Door, 0, n)
-	for _, p := range ps {
-		doors = append(doors, e.makeDoor(p, s.Biome, b.Boss, false))
+	e.draws = map[catalog.ID]drawn{}
+	for _, d := range ps {
+		doors = append(doors, e.makeDoor(d.p, s.Biome, b.Boss, false))
+		e.draws[d.p.ID] = d
 	}
 	return doors
 }
@@ -252,11 +299,12 @@ func (e *engine) drawDoors(skip []Door) []Door {
 // offer puts doors on offer in the current room, logs them and has the app
 // fetch them ahead. The room's safe doors (Biome.Plain) and the floor
 // easing's timers are settled here, after any regression door joined.
-func (e *engine) offer(doors []Door) {
+func (e *engine) offer(doors []Door, reason string, rng uint64) {
 	s := e.s
 	e.plainDoors(doors)
 	e.buyTimers(doors)
 	s.Doors = doors
+	e.logOffer(doors, reason, rng)
 	ids := make([]catalog.ID, len(doors))
 	desc := make([]string, len(doors))
 	for i, d := range doors {
@@ -424,6 +472,7 @@ func (e *engine) doorBytes(d Door) int64 {
 // Topics not yet offered this boot go first. Mixed is the fallback, so a
 // route is never empty.
 func (e *engine) routeOffers(i, k int, used map[string]bool) []string {
+	rng := e.s.RNG
 	r := &e.s.Rules
 	rb := r.Biomes[i]
 	widest := float64(slices.Max(r.RatingWindows))
@@ -457,10 +506,32 @@ func (e *engine) routeOffers(i, k int, used map[string]bool) []string {
 		}
 	}
 	offers := sample(e.rng, fresh, k)
-	offers = append(offers, sample(e.rng, reused, k-len(offers))...)
-	if len(offers) == 0 {
-		offers = []string{Mixed}
+	nf := len(offers)
+	offers = append(offers, sample(e.rng, reused, k-nf)...)
+	// The log: each fresh topic is as likely as the next to be among the
+	// nf drawn, each reused one among the rest.
+	props, set := make([]float64, len(offers)), 1.0
+	for j := range offers {
+		if j < nf {
+			props[j] = float64(nf) / float64(len(fresh))
+		} else {
+			props[j] = float64(len(offers)-nf) / float64(len(reused))
+		}
 	}
+	if nf > 0 {
+		set /= binomial(len(fresh), nf)
+	}
+	if n := len(offers) - nf; n > 0 {
+		set /= binomial(len(reused), n)
+	}
+	if len(offers) == 0 {
+		offers, props = []string{Mixed}, []float64{1}
+	}
+	chosen := -1
+	if rb.Kind != rules.Choice {
+		chosen = 0
+	}
+	e.logRoute(i, offers, props, set, rng, chosen)
 	return offers
 }
 

@@ -37,6 +37,11 @@ type engine struct {
 	now  time.Time
 	rng  *rand.Rand
 	fx   []Effect
+
+	// draws are the doors drawDoors drew last, by problem, and setProp the
+	// chance of that set: what the next offer logs (logOffer).
+	draws   map[catalog.ID]drawn
+	setProp float64
 }
 
 func newEngine(s *State, m *Meta, pool []catalog.Problem, now time.Time) *engine {
@@ -178,10 +183,11 @@ func (e *engine) chooseRoute(i int) error {
 	if i < 0 || i >= len(b.Offers) {
 		return invalid("route %d of %d", i, len(b.Offers))
 	}
+	e.choose("route", i)
 	b.Topic = b.Offers[i]
 	e.logf("route: biome_%d takes %s", e.s.Biome, b.Topic)
 	e.s.Phase = PhaseDoors
-	e.rollRoom(true)
+	e.rollRoom(true, "fresh")
 	return nil
 }
 
@@ -202,7 +208,10 @@ func (e *engine) chooseDoor(i int) error {
 		e.logf("at: +%s on the next door", units.Clock(s.AtTime))
 		s.AtTime = 0
 	}
-	s.Current = &Attempt{Door: d, Opened: e.now, Deadline: e.now.Add(d.Timer), Biome: s.Biome}
+	s.Current = &Attempt{
+		Door: d, Opened: e.now, Deadline: e.now.Add(d.Timer), Biome: s.Biome,
+		Offer: e.choose("doors", i), LivesAtOpen: s.Lives, DucksAtOpen: s.Ducks,
+	}
 	s.Doors = nil
 	s.Phase = PhaseProblem
 	mods := doorMods(d)
@@ -248,6 +257,7 @@ func (e *engine) overtime(after time.Time) {
 		return
 	}
 	a.Overtime = true
+	e.event(AttemptEvent{Kind: "overtime"})
 	e.logf("%s: timer expired, overtime", e.door())
 }
 
@@ -272,6 +282,7 @@ func (e *engine) submit(v SubmitResult) error {
 		a.Total = v.Total
 	}
 	a.BestPass = max(a.BestPass, v.Passed)
+	e.event(AttemptEvent{Kind: "submit", Verdict: v.Verdict, Passed: v.Passed, Total: v.Total})
 	if v.Verdict == Accepted {
 		e.clear()
 		return nil
@@ -339,6 +350,7 @@ func (e *engine) quack() error {
 	s.Ducks--
 	a.Quacks++
 	a.Hint = level
+	e.event(AttemptEvent{Kind: "quack", Level: level})
 	what := map[int]string{1: "tags", 2: "technique"}[level]
 	e.logf("%s: quack %d (%s), %d ducks left", e.door(), a.Quacks, what, s.Ducks)
 	e.emit(RevealTags{Problem: a.Door.Problem, Level: level})
@@ -385,7 +397,7 @@ func (e *engine) retreat() error {
 	}
 	e.emit(CloseProblem{Door: a.Door})
 	s.Phase = PhaseDoors
-	e.rollRoom(false)
+	e.rollRoom(false, "retreat")
 	return nil
 }
 
@@ -471,7 +483,7 @@ func (e *engine) clear() {
 	e.owe(picks)
 	if more {
 		s.Phase = PhaseDoors
-		e.rollRoom(true)
+		e.rollRoom(true, "fresh")
 	} else {
 		e.enterMerge()
 	}
@@ -715,7 +727,7 @@ func (e *engine) enterBiome(i int) {
 		e.logf("boss: %s", b.Boss)
 		e.emit(Sound{Name: "boss"})
 	}
-	e.rollRoom(true)
+	e.rollRoom(true, "fresh")
 }
 
 // finish clears the boot: what is still uncommitted is banked, and beating
