@@ -113,6 +113,7 @@ func catalogue() string {
 		{"FG", FG}, {"Strong", Strong}, {"Muted", Muted}, {"Focus", Focus}, {"OK", OK},
 		{"Warn", Warn}, {"Danger", Danger}, {"Special", Special}, {"Life", Life},
 		{"Select", Select}, {"Field", Field}, {"Hit", Hit}, {"HitCurrent", HitCurrent},
+		{"Voice", Voice}, {"Alert", Alert},
 	} {
 		row(c.name, c.t.Render("text"))
 	}
@@ -200,6 +201,7 @@ func catalogue() string {
 			b.WriteString(tags(l) + "\n")
 		}
 	}
+	row("title selected", FrameSelected.Render(G.Cursor+" 1"))
 
 	section("text")
 	row("clip 8", Clip("Codeforces Round 172", 8))

@@ -13,6 +13,8 @@ Select                 «v»text«/»
 Field                  «K»«C-bg»text«/»
 Hit                    «u»«u»t«/»«u»«u»e«/»«u»«u»x«/»«u»«u»t«/»
 HitCurrent             «b»«v»text«/»
+Voice                  «i»text«/»
+Alert                  «v»«R»text«/»
 
 -- ratings --
 800                    «d»*800«/»
@@ -150,6 +152,7 @@ here:
 «C»|«/»                                      «C»|«/»
 «C»|«/» «d»*800«/»  ⏱ 17:00  «G»+41 B«/»                 «C»|«/»
 «C»+--------------------------------------+«/»
+title selected         «b»«C»> 1«/»
 
 -- text --
 clip 8                 Codef...

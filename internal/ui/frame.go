@@ -44,6 +44,16 @@ func (k FrameKind) border() (lipgloss.Border, lipgloss.Style) {
 	return G.Thin, Muted.Style()
 }
 
+// Render paints s the way k paints its edges, for a label that must match
+// them: the selected card's "▸ 1" in its top edge.
+func (k FrameKind) Render(s string) string {
+	if s == "" {
+		return ""
+	}
+	_, p := k.border()
+	return p.Render(s)
+}
+
 // Frame draws body inside a frame of kind k, exactly w cells wide, with one
 // cell of padding each side. title and tag sit in the top edge, left and
 // right, the way TUI dialogs label themselves. The tag names a danger, so

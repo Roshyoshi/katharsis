@@ -13,6 +13,8 @@ Select                 «v»text«/»
 Field                  «v»text«/»
 Hit                    «u»«u»t«/»«u»«u»e«/»«u»«u»x«/»«u»«u»t«/»
 HitCurrent             «b»«v»text«/»
+Voice                  «i»text«/»
+Alert                  «v»text«/»
 
 -- ratings --
 800                    «d»◆800«/»
@@ -150,6 +152,7 @@ here:
 │                                      │
 │ «d»◆800«/»  ⏱ 17:00  +41 B                 │
 ╰──────────────────────────────────────╯
+title selected         «b»▸ 1«/»
 
 -- text --
 clip 8                 Codefor…

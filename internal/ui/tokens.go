@@ -38,6 +38,8 @@ const (
 	Field                   // htop's cyan bar, top only
 	Hit                     // a search hit
 	HitCurrent              // the search hit the cursor is on
+	Voice                   // the flavor voice: route blurbs, boss lines, quotes, "tags hidden"
+	Alert                   // Danger in reverse, a banner that must stop the eye: the :q! confirm, an error banner
 
 	// The countdown's last two tones (calm and warn are OK and Warn) and
 	// the Codeforces rank ramp (newbie is Muted). Callers reach them
@@ -94,6 +96,8 @@ var looks = [numTokens]look{
 	Field:      {fg: black, bg: cyan},
 	Hit:        {underline: true},
 	HitCurrent: {bold: true, reverse: true},
+	Voice:      {italic: true},
+	Alert:      {fg: red, reverse: true},
 
 	// Low and critical carry a shape cue as well as red, so the timer's
 	// urgency reads without color: bold, then a reverse block. Never
