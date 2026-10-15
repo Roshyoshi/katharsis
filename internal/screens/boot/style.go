@@ -13,19 +13,15 @@ import (
 // screens migrate onto it (phase C part 2); they go once nothing calls
 // them.
 var (
-	sBold    = ui.Strong.Style()
-	sFaint   = ui.Muted.Style()
-	sItalic  = ui.Voice.Style()
-	sRed     = ui.Danger.Style()
-	sGreen   = ui.OK.Style()
-	sYellow  = ui.Warn.Style()
-	sMagenta = ui.Special.Style()
+	sBold   = ui.Strong.Style()
+	sFaint  = ui.Muted.Style()
+	sItalic = ui.Voice.Style()
+	sRed    = ui.Danger.Style()
+	sGreen  = ui.OK.Style()
 )
 
 func spread(left, right string, w int) string { return ui.Spread(left, right, w) }
-func center(s string, w int) string           { return ui.Center(s, w) }
 func wrapN(s string, w, n int) []string       { return ui.WrapN(s, w, n) }
-func hearts(lives, maxLives int) string       { return ui.Hearts(lives, maxLives) }
 func layout(width, height int, body []string, footer string) string {
 	return ui.Layout(width, height, body, footer)
 }
@@ -40,15 +36,6 @@ func indent(n int, ls []string) []string {
 		}
 	}
 	return out
-}
-
-// hint renders key help: pairs of key and what it does.
-func hint(pairs ...string) string {
-	var parts []string
-	for i := 0; i+1 < len(pairs); i += 2 {
-		parts = append(parts, sBold.Render(pairs[i])+" "+sFaint.Render(pairs[i+1]))
-	}
-	return strings.Join(parts, sFaint.Render(" · "))
 }
 
 // fmtMult renders a byte multiplier: ×2, ×1.5.

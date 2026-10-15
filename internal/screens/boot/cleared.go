@@ -8,6 +8,7 @@ import (
 
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -81,46 +82,43 @@ func (c *Cleared) View(width, height int) string {
 			body = append(body, centerBlock(bl, width)...)
 		}
 	}
-	body = append(body, "", center(sGreen.Bold(true).Render(fmt.Sprintf("Boot #%d cleared", st.Boot))+
-		sFaint.Render(" · ")+prestigeLabel(st.Prestige), width))
+	// Green paints the glyph, the words are Strong (R2, R3).
+	body = append(body, "", ui.Center(ui.OK.Render(ui.G.Pass)+" "+ui.Strong.Render(fmt.Sprintf("Boot #%d cleared", st.Boot))+
+		ui.Muted.Render(ui.G.Sep)+prestigeLabel(st.Prestige), width))
 	if boss != "" {
-		body = append(body, center(sMagenta.Render("⚔ "+bossLabel(boss)), width))
+		body = append(body, ui.Center(ui.Modifier(ui.ModBoss, bossLabel(boss)), width))
 	}
 	body = append(body, "")
 
-	sol := fmt.Sprintf("%d door", solves)
-	if solves != 1 {
-		sol += "s"
-	}
+	sol := units.Plural(solves, "door")
 	if hinted > 0 {
-		sol += fmt.Sprintf(" · %d hinted", hinted)
+		sol += ui.G.Sep + fmt.Sprintf("%d hinted", hinted)
 	}
 	if retreats > 0 {
-		sol += fmt.Sprintf(" · %d retreat", retreats)
-		if retreats != 1 {
-			sol += "s"
-		}
+		sol += ui.G.Sep + units.Plural(retreats, "retreat")
 	}
 	rows := [][2]string{
 		{"uptime", units.Clock(uptime)},
-		{"committed", sGreen.Bold(true).Render(units.Bytes(st.Committed)) +
-			sFaint.Render(" · bank ") + units.Bytes(c.env.Meta.Bank)},
+		{"committed", ui.OK.Render(units.Bytes(st.Committed)) +
+			ui.Muted.Render(ui.G.Sep+"bank ") + units.Bytes(c.env.Meta.Bank)},
 		{"solved", sol},
-		{"lives left", hearts(st.Lives, st.MaxLives)},
+		{"lives left", ui.Hearts(st.Lives, st.MaxLives)},
 	}
 	var table []string
 	for _, r := range rows {
-		table = append(table, sFaint.Render(fmt.Sprintf("%-12s", r[0]))+r[1])
+		table = append(table, ui.Muted.Render(fmt.Sprintf("%-12s", r[0]))+r[1])
 	}
 	body = append(body, centerBlock(table, width)...)
 
+	// An achievement: the ★ is Warn, the words Strong (R2, R3).
+	star := ui.Warn.Render(ui.G.Star) + " "
 	switch g := game.NextPrestige(st.Rules, &c.env.Meta); {
 	case st.Unlocked > 0:
-		body = append(body, "", center(sYellow.Bold(true).Render("★ prestige unlocked: "+prestigeLabel(st.Unlocked)), width))
+		body = append(body, "", ui.Center(star+ui.Strong.Render("prestige unlocked: "+prestigeLabel(st.Unlocked)), width))
 	case st.Prestige >= game.MaxPrestige:
-		body = append(body, "", center(sYellow.Bold(true).Render("★ highest prestige cleared"), width))
+		body = append(body, "", ui.Center(star+ui.Strong.Render("highest prestige cleared"), width))
 	case g.Next > 0 && st.Trial == nil:
-		body = append(body, "", center(sFaint.Render(screens.GateText(g, c.env.Meta.Prestige, prestigeLabel)), width))
+		body = append(body, "", ui.Center(ui.Muted.Render(screens.GateText(g, c.env.Meta.Prestige, prestigeLabel)), width))
 	}
 
 	if mp := centerBlock(renderMap(st, width), width); len(body)+1+len(mp) <= height-1 {
@@ -130,6 +128,7 @@ func (c *Cleared) View(width, height int) string {
 	if pad := (height - 1 - len(body)) / 2; pad > 0 {
 		body = append(make([]string, pad), body...)
 	}
-	footer := center(hint("r", "reboot at "+prestigeLabel(c.next()), "l", "git log", "q", "quit"), width)
-	return layout(width, height, body, footer)
+	// The keys sit at the left, as on every game screen (C2).
+	footer := ui.Footer(width, "r", "reboot at "+prestigeLabel(c.next()), "l", "git log", "q", "quit")
+	return ui.Layout(width, height, body, footer)
 }
