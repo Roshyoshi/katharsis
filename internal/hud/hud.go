@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -120,9 +121,12 @@ type Model struct {
 
 	sub      submission
 	dbg      debugger
-	closing  bool   // asked the editor to quit; waiting for it
-	leftOpen bool   // quit anyway, leaving the editor open on purpose
-	border   string // last text given to Options.Border
+	closing  bool // asked the editor to quit; waiting for it
+	leftOpen bool // quit anyway, leaving the editor open on purpose
+
+	border    string       // last text given to Options.Border
+	borderSeq uint64       // texts given so far
+	shown     *borderShown // the newest of them tmux has
 
 	watchErr error
 
@@ -131,7 +135,7 @@ type Model struct {
 
 func New(opt Options) *Model {
 	now := time.Now()
-	return &Model{opt: opt, started: now, now: now}
+	return &Model{opt: opt, started: now, now: now, shown: new(borderShown)}
 }
 
 // The HUD's own messages say which HUD and which pass they belong to. A
@@ -391,7 +395,10 @@ func (m *Model) firstFailure() int {
 }
 
 // updateBorder hands Options.Border the status line, as a tmux format, when
-// it changed.
+// it changed. Each write runs on a command goroutine of its own, so two can
+// reach tmux out of order; one older than the text tmux has is dropped, or
+// it would stay until the next change (for good under a clock that does
+// not move, an upsolve's "untimed").
 func (m *Model) updateBorder() tea.Cmd {
 	if m.opt.Border == nil {
 		return nil
@@ -401,11 +408,23 @@ func (m *Model) updateBorder() tea.Cmd {
 		return nil
 	}
 	m.border = text
-	show := m.opt.Border
+	m.borderSeq++
+	seq, shown, show := m.borderSeq, m.shown, m.opt.Border
 	return func() tea.Msg {
-		show(text)
+		shown.mu.Lock()
+		defer shown.mu.Unlock()
+		if seq > shown.seq {
+			shown.seq = seq
+			show(text)
+		}
 		return nil
 	}
+}
+
+// borderShown is the newest border write tmux has, by updateBorder's count.
+type borderShown struct {
+	mu  sync.Mutex
+	seq uint64
 }
 
 // statusText is one line for `ctl status`, plain text:

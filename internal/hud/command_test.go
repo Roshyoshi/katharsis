@@ -382,6 +382,24 @@ func TestBorderFollowsStatus(t *testing.T) {
 	}
 }
 
+// Each border write runs as a command on a goroutine of its own, so an
+// older one can reach tmux after a newer one. It must not undo it: with a
+// clock that does not move (an upsolve's "untimed") the stale text stayed
+// for the rest of the door.
+func TestBorderWritesKeepOrder(t *testing.T) {
+	m := fixture(t, 1)
+	var got []string
+	m.opt.Border = func(s string) { got = append(got, s) }
+	older := m.updateBorder()
+	m.rows[0] = row{done: true, res: judge.Result{Verdict: judge.AC}}
+	newer := m.updateBorder()
+	newer()
+	older()
+	if want := " up 00:00 · samples 1/1 "; len(got) == 0 || got[len(got)-1] != want {
+		t.Errorf("border writes %q; the last must be the newest, %q", got, want)
+	}
+}
+
 func TestQuitClosesEditorFirst(t *testing.T) {
 	setup := func(t *testing.T) (*Model, *bool, chan struct{}) {
 		m := fixture(t, 1)
