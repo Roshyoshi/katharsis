@@ -19,8 +19,8 @@ import (
 // is about), TRIAL (the unit doors in the order a trial boot plays them,
 // any the catalog tops up, the blind integration doors, and what passing
 // grants), SEE ALSO (prerequisites, authors), then the module's CC BY-NC-SA
-// attribution. r reads the module, t starts its trial, o opens it on
-// usaco.guide.
+// attribution. r reads the module, t starts its trial (when passing grants
+// a capability), o opens it on usaco.guide.
 type Module struct {
 	e      entry
 	prereq []string // prerequisites as display names
@@ -63,8 +63,9 @@ func (p *Module) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	case "r", "enter":
 		return p, screens.Emit(screens.OpenModule{Module: id})
 	case "t":
-		// A module with no topic grants nothing, so it has no trial to play.
-		if p.e.mod.Topic != "" {
+		// A trial that grants no capability unlocks nothing, so the app
+		// refuses to start one.
+		if p.e.trial.Capability != "" {
 			return p, screens.Emit(screens.StartTrial{Module: id})
 		}
 	case "o":
@@ -230,7 +231,7 @@ func (p *Module) passLine() string {
 // the bar is short.
 func (p *Module) footer(w, lines, rows int) string {
 	keys := []string{"r", "read"}
-	if p.e.mod.Topic != "" {
+	if p.e.trial.Capability != "" {
 		keys = append(keys, "t", "start trial")
 	}
 	if p.e.mod.URL != "" {

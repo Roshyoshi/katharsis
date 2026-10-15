@@ -594,9 +594,9 @@ func (b *Browser) lines(cols columns, w int) []string {
 				title = highlight(title, q)
 			}
 			unit := unitLabel(len(e.trial.Unit), e.short(), cols.compact)
-			if e.mod.Topic == "" {
-				// No topic: the "trial" is Userland filler, not a test of
-				// the module, so its size is not worth the eye.
+			if e.trial.Capability == "" {
+				// A trial that grants nothing cannot be started (see
+				// Module.Update), so its size is not worth the eye.
 				unit = ui.Muted.Render(ansi.Strip(unit))
 			}
 			line = cols.cells(title, e.biome, capCell(e.trial.Capability, b.caps[e.trial.Capability]),

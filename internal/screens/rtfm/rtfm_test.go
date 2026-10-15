@@ -260,7 +260,7 @@ func TestBrowserOpensModules(t *testing.T) {
 		want tea.Msg
 	}{
 		{"enter opens the first module; r reads it", []string{"enter", "r"}, screens.OpenModule{Module: "fast-io"}},
-		{"j moves to the next module", []string{"j", "j", "j", "enter", "t"}, screens.StartTrial{Module: "casework"}},
+		{"j moves to the next module", []string{"j", "j", "j", "enter", "r"}, screens.OpenModule{Module: "casework"}},
 		{"G is the last module", []string{"G", "enter", "t"}, screens.StartTrial{Module: "count-min"}},
 		{"g then down", []string{"g", "j", "j", "j", "j", "j", "j", "j", "j", "l", "t"}, screens.StartTrial{Module: "prefix-sums"}},
 		{"o opens the module online", []string{"j", "j", "j", "enter", "o"},
@@ -337,8 +337,8 @@ func TestBrowserFilterCancel(t *testing.T) {
 	// esc at the prompt drops the half-typed filter and the selection
 	// returns to where it was before /.
 	b := browser(t)
-	wantMsg(t, press(t, b, cat([]string{"j", "j", "j", "/"}, typed("matrix"), []string{"esc", "enter", "t"})...),
-		screens.StartTrial{Module: "casework"})
+	wantMsg(t, press(t, b, cat([]string{"j", "j", "j", "/"}, typed("matrix"), []string{"esc", "enter", "r"})...),
+		screens.OpenModule{Module: "casework"})
 	// Backspace edits the live filter.
 	b = browser(t)
 	press(t, b, cat([]string{"/"}, typed("prefixx"))...)
@@ -355,8 +355,8 @@ func TestBrowserFilterCancel(t *testing.T) {
 // where it is, even after an earlier filter moved it.
 func TestBrowserEmptyFilterKeepsSelection(t *testing.T) {
 	for _, k := range []string{"esc", "enter"} {
-		wantMsg(t, press(t, browser(t), "j", "j", "j", "/", k, "enter", "t"),
-			screens.StartTrial{Module: "casework"})
+		wantMsg(t, press(t, browser(t), "j", "j", "j", "/", k, "enter", "r"),
+			screens.OpenModule{Module: "casework"})
 	}
 	b := browser(t)
 	press(t, b, cat([]string{"/"}, typed("two"), []string{"enter", "esc"})...)
@@ -432,7 +432,7 @@ func TestBrowserOpenByID(t *testing.T) {
 	if v := plain(b.View(80, 24)); !strings.Contains(v, "Matrix Exponentiation") {
 		t.Errorf("q should land on the module's row, unfolded:\n%s", v)
 	}
-	wantMsg(t, press(t, b, "enter", "t"), screens.StartTrial{Module: "matrix-expo"})
+	wantMsg(t, press(t, b, "enter", "r"), screens.OpenModule{Module: "matrix-expo"})
 	if b.Open("no-such-module") {
 		t.Error("Open(no-such-module) = true")
 	}
@@ -485,6 +485,14 @@ func TestModuleKeys(t *testing.T) {
 	// No URL, no o.
 	bare := rtfm.NewModule(nil, curriculum.Module{ID: "x", Frequency: -1}, game.Meta{}, nil, nil)
 	wantMsg(t, press(t, bare, "o"), nil)
+	// Casework has a topic (mixed) but grants no capability, and the app
+	// refuses a trial that grants nothing: no t, and the bar does not offer
+	// it.
+	casework := module(t, "casework")
+	wantMsg(t, press(t, casework, "t"), nil)
+	if v := plain(casework.View(140, 40)); strings.Contains(v, "start trial") {
+		t.Errorf("casework offers a trial it cannot start:\n%s", v)
+	}
 }
 
 func TestModulePlan(t *testing.T) {
