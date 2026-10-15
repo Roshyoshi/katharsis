@@ -102,3 +102,12 @@ Codeforces problems, with statements, editorials and tests, come from the
 dataset (CC BY 4.0); statements and editorials are by their Codeforces
 authors. Each statement and editorial carries that credit
 (`codeforces.Attribution`).
+
+The story quotes Lewis Carroll's *Alice's Adventures in Wonderland* (1865)
+and *Through the Looking-Glass* (1871), which are in the public domain, and
+short passages of *Structure and Interpretation of Computer Programs*, 2nd
+ed., by Harold Abelson and Gerald Jay Sussman with Julie Sussman (MIT Press,
+1996), licensed under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Quotes
+are verbatim and credited; the story bible and its sources are in
+[docs/story/](docs/story/story-bible.md).
