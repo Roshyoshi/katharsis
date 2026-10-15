@@ -85,6 +85,10 @@ type Meta struct {
 	Solves       []Solve
 	Boots        int // boots started, for "Boot #N"
 
+	// Seen lists the one-time story scenes already shown, each once, in
+	// the order shown (MarkSeen). It is the story's reread log.
+	Seen []SeenScene
+
 	// TopicAttempts counts rated attempts per topic; a topic's rating aims
 	// doors once it reaches rules.TopicRatingMin.
 	TopicAttempts map[string]int
