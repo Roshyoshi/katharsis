@@ -31,7 +31,7 @@ func runGame(args []string) error {
 	fs := flag.NewFlagSet("katharsis", flag.ContinueOnError)
 	root := fs.String("root", filepath.Join(home, "cp", "runs"), "where door solutions are kept")
 	editor := fs.String("editor", "vim", "editor command line, run by sh; the source path is appended")
-	split := fs.Int("split", 65, "editor width in percent")
+	split := fs.Int("split", 0, "editor width in percent; 0 gives the HUD 35% of the window, 36 to 48 columns")
 	scale := fs.Float64("scale", 1, "multiply CPU time limits (below 1 is stricter than the judge)")
 	af := addAudioFlags(fs)
 	noPrompts := fs.Bool("no-prompts", false, "never ask: no first-launch rating question, no line under a boot's end")

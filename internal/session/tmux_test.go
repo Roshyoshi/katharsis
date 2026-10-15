@@ -159,6 +159,28 @@ func TestSplitEditor(t *testing.T) {
 
 // With remain-on-exit the pane outlives its command; that is not alive, and
 // KillPane still closes it.
+// With no width given, the game's pane gets HUDWidth columns of the window
+// (200 in the private server), the editor the rest (C8).
+func TestSplitEditorHUDWidth(t *testing.T) {
+	orig := privateTmux(t)
+	id, err := SplitEditor(t.TempDir(), "sol.cpp", []string{"sh", "-c", "sleep 30"}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ps := panes(t)
+	if got, want := ps[orig].width, HUDWidth(200); got != want {
+		t.Errorf("game pane is %d columns, want %d", got, want)
+	}
+	if ps[id].width+1+ps[orig].width != 200 {
+		t.Errorf("editor %d + game %d columns do not fill 200", ps[id].width, ps[orig].width)
+	}
+	for w, want := range map[int]int{80: 36, 120: 42, 137: 47, 200: 48, 60: 36} {
+		if got := HUDWidth(w); got != want {
+			t.Errorf("HUDWidth(%d) = %d, want %d", w, got, want)
+		}
+	}
+}
+
 func TestDeadPane(t *testing.T) {
 	privateTmux(t)
 	if _, err := tmux("set-option", "-w", "-t", "t:", "remain-on-exit", "on"); err != nil {
@@ -202,7 +224,7 @@ func TestSplitEditorErrors(t *testing.T) {
 		pct    int
 	}{
 		{"no editor", dir, nil, 60},
-		{"width 0", dir, sh, 0},
+		{"width -1", dir, sh, -1},
 		{"width 100", dir, sh, 100},
 		{"missing dir", filepath.Join(dir, "nope"), sh, 60},
 		{"dir is a file", file, sh, 60},

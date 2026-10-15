@@ -31,7 +31,7 @@ import (
 type TmuxRunner struct {
 	Root      string // solutions root, e.g. ~/cp/runs
 	Editor    string // a shell command line, e.g. "vim"; the file is appended
-	Split     int    // editor width in percent
+	Split     int    // editor width in percent; 0 sizes the HUD (session.HUDWidth)
 	Templates Templates
 	Scale     float64 // CPU limit multiplier (judge.Limits.Scale)
 

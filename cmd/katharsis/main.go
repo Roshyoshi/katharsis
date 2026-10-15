@@ -101,7 +101,7 @@ func runPractice(args []string) error {
 	fs := flag.NewFlagSet("practice", flag.ContinueOnError)
 	noTmux := fs.Bool("no-tmux", false, "HUD only; edit the source yourself")
 	editor := fs.String("editor", "vim", "editor command line, run by sh; the source path is appended")
-	split := fs.Int("split", 65, "editor width in percent")
+	split := fs.Int("split", 0, "editor width in percent; 0 gives the HUD 35% of the window, 36 to 48 columns")
 	tl := fs.Duration("tl", problem.DefaultTimeLimit, "time limit per test")
 	scale := fs.Float64("scale", 1, "multiply CPU time limits (below 1 is stricter than the judge)")
 	fs.Usage = func() { usage(fs) }

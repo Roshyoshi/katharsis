@@ -22,8 +22,10 @@ var tmuxArgs []string
 func InTmux() bool { return os.Getenv("TMUX") != "" }
 
 // SplitEditor opens `editor... file` in a new pane left of the game's pane
-// ($TMUX_PANE), with cwd dir, pct% of the window wide, and returns the new
-// pane's id (e.g. "%12"). The new pane takes focus.
+// ($TMUX_PANE), with cwd dir, and returns the new pane's id (e.g. "%12").
+// The new pane takes focus. pct is the editor's share of the window in
+// percent; 0 gives the game's pane HUDWidth columns and the editor the
+// rest.
 //
 // The pane gets the tmux server's environment, not the game's, so the editor
 // starts the way the user's shell would start it.
@@ -37,8 +39,29 @@ func SplitEditor(dir, file string, editor []string, pct int) (paneID string, err
 	}
 	// With file appended argv has two words or more, which tmux execs
 	// without a shell.
-	return splitPane(pane, dir, []string{"-h", "-b"}, pct, append(slices.Clone(editor), file))
+	argv := append(slices.Clone(editor), file)
+	if pct != 0 {
+		return splitPane(pane, dir, []string{"-h", "-b"}, pct, argv)
+	}
+	id, err := splitPane(pane, dir, []string{"-h", "-b"}, 65, argv)
+	if err != nil {
+		return "", err
+	}
+	// Best effort: a HUD that cannot be resized still works, only narrower.
+	if out, err := tmux("display-message", "-p", "-t", pane, "#{window_width}"); err == nil {
+		if w, err := strconv.Atoi(out); err == nil {
+			_, _ = tmux("resize-pane", "-t", pane, "-x", strconv.Itoa(HUDWidth(w)))
+		}
+	}
+	return id, nil
 }
+
+// HUDWidth is the game's pane width beside the editor in a window w columns
+// wide (C8): 35% of it, at least 36 columns, so the HUD and its key rows
+// read at 80, and at most 48, past which it only takes from the editor.
+// The width is absolute, not what is left of the editor's share: 65% of 80
+// left the HUD 27 columns (E12).
+func HUDWidth(w int) int { return max(36, min(48, w*35/100)) }
 
 // SplitBelow opens argv in a new pane below pane, pct% of its height, with
 // cwd dir, and returns the new pane's id. The new pane takes focus. argv
