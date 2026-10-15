@@ -188,21 +188,13 @@ func (d *Doors) cards(width, room int) []string {
 		cw := (width - 2*(n-1)) / n
 		if cw >= 28 {
 			cw = min(cw, 52)
-			// Each card pads its top half, so the stats rows line up
-			// across the row whatever the titles and tags wrap to (E13).
 			tops, bottoms := make([][]string, n), make([][]string, n)
-			th, h := 0, 0
 			for i, door := range doors {
 				tops[i], bottoms[i] = d.wideBody(door, cw-4)
-				th = max(th, len(tops[i]))
-			}
-			for i := range doors {
-				h = max(h, th+len(bottoms[i]))
 			}
 			blocks := make([][]string, n)
-			for i, door := range doors {
-				body := ui.PadLines(append(ui.PadLines(tops[i], th), bottoms[i]...), h)
-				blocks[i] = d.card(i, door, cw, body, false)
+			for i, body := range alignBodies(tops, bottoms) {
+				blocks[i] = d.card(i, doors[i], cw, body, false)
 			}
 			row := ui.JoinH(2, blocks...)
 			if len(row) <= room {

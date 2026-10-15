@@ -15,6 +15,7 @@ import (
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/boot/fixture"
+	"katharsis/internal/ui"
 )
 
 // engineBoot is a real boot on the simulator's pool, with a tracker that
@@ -176,6 +177,15 @@ func TestTrackerTimeoutCostsLife(t *testing.T) {
 	want := fmt.Sprintf("timeout: ⏱ timer ran out: -1 ♥, %d left · new doors", lives-1)
 	if b.st.Phase != game.PhaseDoors || plain(evs) != want {
 		t.Errorf("in %s, got\n%s\nwant %q", b.st.Phase, plain(evs), want)
+	}
+	// Yellow paints the glyph, the word stays plain (R2), here and on the
+	// map's row for the door.
+	word := ui.Warn.Render(ui.G.Timer) + "timer"
+	if len(evs) == 0 || !strings.HasPrefix(evs[0].Text, word) {
+		t.Errorf("the timeout line paints its word: %q", evs[0].Text)
+	}
+	if s := outcomeLabel(b.st.History[len(b.st.History)-1], false); !strings.HasPrefix(s, word) {
+		t.Errorf("the map row paints its word: %q", s)
 	}
 }
 

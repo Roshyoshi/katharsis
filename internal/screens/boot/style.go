@@ -47,6 +47,25 @@ func squeeze(s string, w int, rest ...string) string {
 	return ui.Clip(s, room)
 }
 
+// alignBodies stacks each card's top half on its bottom half for a row of
+// cards: the tops padded to the tallest, so the bottoms (the stats rows)
+// line up whatever the titles and blurbs wrap to (C3, E13), and every body
+// one height.
+func alignBodies(tops, bottoms [][]string) [][]string {
+	th, h := 0, 0
+	for _, t := range tops {
+		th = max(th, len(t))
+	}
+	for _, b := range bottoms {
+		h = max(h, th+len(b))
+	}
+	out := make([][]string, len(tops))
+	for i := range tops {
+		out[i] = ui.PadLines(slices.Concat(ui.PadLines(slices.Clone(tops[i]), th), bottoms[i]), h)
+	}
+	return out
+}
+
 // centerBlock indents lines as one block centered in width.
 func centerBlock(ls []string, width int) []string {
 	return indent(max((width-maxWidth(ls))/2, 0), ls)

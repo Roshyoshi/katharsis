@@ -1422,3 +1422,23 @@ func TestCrashEpitaphFoldsOLE(t *testing.T) {
 		t.Errorf("OLE epitaph %q, want the MLE one %q", got, want)
 	}
 }
+
+// Side by side, route cards pad above their stats, so the stats rows line
+// up across the row whatever the blurbs wrap to (C3), as the doors do.
+func TestRouteStatsLineUp(t *testing.T) {
+	for _, mk := range []func() *game.State{fixture.Route, fixture.Route3} {
+		r := NewRoute(env(mk()))
+		for _, sz := range goldenSizes {
+			v := ansi.Strip(r.View(sz[0], sz[1]))
+			if !strings.Contains(v, "┓  ╭") {
+				continue // stacked: a card a row
+			}
+			for _, l := range strings.Split(v, "\n") {
+				if n := strings.Count(l, " rooms"); n > 0 && n != len(r.offers()) {
+					t.Errorf("at %dx%d a stats row holds %d of %d cards:\n%s", sz[0], sz[1], n, len(r.offers()), v)
+					break
+				}
+			}
+		}
+	}
+}

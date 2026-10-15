@@ -282,7 +282,7 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 			// A timeout that ended the boot is the panic's to say; one that
 			// cost a life (D44) left the boot running, on new doors.
 			if n.phase != game.PhaseCrashed {
-				text := ui.Warn.Render(ui.G.Timer+"timer") + " ran out: " + livesLost(p.lives-n.lives, n.lives)
+				text := ui.Warn.Render(ui.G.Timer) + "timer ran out: " + livesLost(p.lives-n.lives, n.lives)
 				add(EvTimeout, text+ui.Muted.Render(ui.G.Sep+"new doors"), "")
 				livesSeen = true
 			}

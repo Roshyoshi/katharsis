@@ -67,15 +67,13 @@ func (r *Route) View(width, height int) string {
 	var cards []string
 	if cw >= 26 {
 		cw = min(cw, 44)
-		bodies := make([][]string, n)
-		h := 0
+		tops, bottoms := make([][]string, n), make([][]string, n)
 		for i, t := range offers {
-			bodies[i] = r.cardBody(t, cw-4)
-			h = max(h, len(bodies[i]))
+			tops[i], bottoms[i] = r.cardBody(t, cw-4)
 		}
 		blocks := make([][]string, n)
-		for i := range offers {
-			blocks[i] = r.card(i, cw, ui.PadLines(bodies[i], h))
+		for i, body := range alignBodies(tops, bottoms) {
+			blocks[i] = r.card(i, cw, body)
 		}
 		cards = centerBlock(ui.JoinH(2, blocks...), width)
 	}
@@ -148,24 +146,25 @@ func (r *Route) describe(topic string) route {
 	return out
 }
 
-// cardBody is a side-by-side card: room for the blurb to wrap.
-func (r *Route) cardBody(topic string, cw int) []string {
+// cardBody is a side-by-side card in two halves: the name and the blurb,
+// which wraps, then a blank line and the stats.
+func (r *Route) cardBody(topic string, cw int) (top, bottom []string) {
 	d := r.describe(topic)
-	out := []string{ui.Strong.Render(d.name)}
+	top = []string{ui.Strong.Render(d.name)}
 	if d.name != d.topic {
-		out = append(out, ui.Muted.Render(d.topic))
+		top = append(top, ui.Muted.Render(d.topic))
 	}
 	for _, l := range ui.WrapN(d.blurb, cw, 3) {
-		out = append(out, ui.Voice.Render(l))
+		top = append(top, ui.Voice.Render(l))
 	}
-	out = append(out, "", d.rooms)
+	bottom = []string{"", d.rooms}
 	if d.band != "" {
-		out = append(out, d.band)
+		bottom = append(bottom, d.band)
 	}
 	if d.mine != "" {
-		out = append(out, d.mine)
+		bottom = append(bottom, d.mine)
 	}
-	return out
+	return top, bottom
 }
 
 // stackedBody is a full-width card: three lines, the blurb clipped to one.

@@ -295,7 +295,7 @@ func outcomeLabel(a game.Attempt, last bool) string {
 		return s
 	case game.TimedOut:
 		if !last {
-			return ui.Warn.Render(ui.G.Timer+"timer") + " -" + ui.Life.Render(ui.G.Life)
+			return ui.Warn.Render(ui.G.Timer) + "timer -" + ui.Life.Render(ui.G.Life)
 		}
 		return ui.Danger.Render(ui.G.Crash + " timer")
 	case game.OutOfLives:
