@@ -143,6 +143,13 @@ D46 settled 10-15  Alpha feedback, boot #1: "the timer shouldnt run in between l
                    time); Userland 15 min in every preset; TimerFitLo 0.8, TimerHeadroom
                    1.5; nice -20 costs bytes (x0.8), not lives; audit the other perks.
 
+D47 open 10-15     Meta research before any change to lives: "3 lives seems a little harsh";
+                   "a pool of 30 lives, and each time out costs like 10"; "pvz 1 has a
+                   great meta"; "we need to consider the meta do some research first in
+                   a thread". Thread: docs/research/meta.md (health economies in Dead
+                   Cells, PvZ1, Hades, StS, Into the Breach; ICPC/CF scoring; error-cost
+                   learning science; 2-3 candidates prototyped in the sim only).
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
