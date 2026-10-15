@@ -224,9 +224,6 @@ func (d *Doors) wideBody(door game.Door, cw int) (top, bottom []string) {
 	}
 	top = append(top, tagLines(t, cw, 2)...)
 	bottom = []string{"", doorStats(door)}
-	if c := clearChance(door); c != "" {
-		bottom = append(bottom, c)
-	}
 	return top, append(bottom, d.modifiers(door, cw, hiddenShort)...)
 }
 
@@ -238,7 +235,7 @@ func (d *Doors) stackedBody(door game.Door, cw int) []string {
 		return d.bossBody(door, cw)
 	}
 	t := d.env.doorText(door)
-	stats, chance := doorStats(door), clearChance(door)
+	stats := doorStats(door)
 	var out []string
 	title := titleToken(door).Render(t.Title)
 	if widthOf(title)+2+widthOf(stats) <= cw {
@@ -250,7 +247,7 @@ func (d *Doors) stackedBody(door game.Door, cw int) []string {
 	if h, ok := d.hiddenMod(door, hiddenLong); ok {
 		tags = h.line()
 	}
-	out = append(out, ui.Spread(tags, chance, cw))
+	out = append(out, ui.Clip(tags, cw))
 	return append(out, d.modifiers(door, cw, hiddenNone)...)
 }
 
@@ -271,18 +268,13 @@ func tagLines(t doorText, cw, n int) []string {
 	return ui.WrapN(strings.Join(t.Tags, ui.G.Sep), cw, n)
 }
 
+// doorStats is the card's stats row: rating, timer, reward. The engine's clear
+// chance (Door.SolveP) stays off the card (D36): shown before the pick, the
+// pick stops measuring the player's own read of the door; the end of the
+// boot shows it afterwards, as calibration.
 func doorStats(door game.Door) string {
 	return ui.Rating(door.Rating) + "  " + ui.G.Timer + units.Clock(door.Timer) +
 		"  " + ui.OK.Render("+"+units.Bytes(door.Bytes))
-}
-
-// clearChance is the engine's estimate that the player clears door, "" when
-// it has none.
-func clearChance(door game.Door) string {
-	if door.SolveP <= 0 {
-		return ""
-	}
-	return ui.Muted.Render(fmt.Sprintf("%s%d%% clear", ui.G.Approx, int(door.SolveP*100+0.5)))
 }
 
 func withMult(s string, m float64) string {
@@ -404,9 +396,6 @@ func (d *Doors) bossBody(door game.Door, cw int) []string {
 		out = append(out, ui.Center(l, cw))
 	}
 	out = append(out, ui.Center(doorStats(door), cw))
-	if c := clearChance(door); c != "" {
-		out = append(out, ui.Center(c, cw))
-	}
 	for _, l := range d.modifiers(door, cw, hiddenShort) {
 		out = append(out, ui.Center(l, cw))
 	}
