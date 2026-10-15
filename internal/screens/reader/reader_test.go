@@ -296,3 +296,105 @@ func TestConvertedSkipsTeX(t *testing.T) {
 		t.Errorf("a statement's math was left as TeX: %q", got)
 	}
 }
+
+// Glamour prints the backslash of some markdown escapes: a price in a
+// Codeforces statement showed as \$99.99. Those escapes become character
+// references; code spans keep theirs.
+func TestPrepareEscapesGlamourShows(t *testing.T) {
+	in := "only \\$99.99, \\~5 and \\* \\[x\\] `a \\$ b`\n"
+	want := "only &#36;99.99, &#126;5 and \\* \\[x\\] `a \\$ b`\n"
+	if got := prepare(in, true); got != want {
+		t.Errorf("prepare:\n got %q\nwant %q", got, want)
+	}
+	page, err := render(prepare(in, true), 80)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(ansi.Strip(page)); got != "only $99.99, ~5 and * [x] a \\$ b" {
+		t.Errorf("page reads %q", got)
+	}
+}
+
+// An image without alt text came out as a bare URL; it is named a figure.
+func TestPrepareNamesFigures(t *testing.T) {
+	page, err := render(prepare("![](https://usaco.org/fig.png)\n", true), 80)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(ansi.Strip(page)); !strings.HasPrefix(got, "Image: figure") {
+		t.Errorf("page reads %q, want an Image: figure label", got)
+	}
+}
+
+// Glamour breaks a code line wider than its block out of the margin and
+// adds a blank line after, so one line of sample input read as two. The
+// reader breaks it first, at a space when one is near, after a ↪.
+func TestRenderBreaksWideCode(t *testing.T) {
+	var nums []string
+	for i := 1; i <= 40; i++ {
+		nums = append(nums, fmt.Sprint(i))
+	}
+	sample := strings.Join(nums, " ")
+	md := prepare("```\n3\n"+sample+"\n    x := frobnicate(alpha, beta, gamma, delta, epsilon, zeta, eta, theta)\n```\n", true)
+	for _, wrap := range []int{36, 80} {
+		page, err := render(md, wrap)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines := strings.Split(ansi.Strip(page), "\n")
+		var joined []string
+		for _, l := range lines {
+			if w := ansi.StringWidth(l); w > wrap {
+				t.Errorf("at %d: line of %d cells: %q", wrap, w, l)
+			}
+			t := strings.TrimSpace(l)
+			if rest, ok := strings.CutPrefix(t, "↪ "); ok && len(joined) > 0 {
+				joined[len(joined)-1] += " " + rest
+			} else if t != "" {
+				joined = append(joined, t)
+			}
+		}
+		want := []string{"3", sample, "x := frobnicate(alpha, beta, gamma, delta, epsilon, zeta, eta, theta)"}
+		if !reflect.DeepEqual(joined, want) {
+			t.Errorf("at %d the code reads back as\n%q\nwant\n%q", wrap, joined, want)
+		}
+	}
+}
+
+func TestBreakLine(t *testing.T) {
+	tests := []struct {
+		line  string
+		width int
+		want  string
+	}{
+		{"1 2 3", 10, "1 2 3"},
+		{"10 20 30 40", 8, "10 20\n↪ 30 40"},
+		{"  foo(bar, baz)", 12, "  foo(bar,\n  ↪ baz)"},
+		{"abcdefghijkl", 8, "abcdefgh\n↪ ijkl"},
+	}
+	for _, tt := range tests {
+		if got := breakLine(tt.line, tt.width); got != tt.want {
+			t.Errorf("breakLine(%q, %d) = %q, want %q", tt.line, tt.width, got, tt.want)
+		}
+	}
+}
+
+// Lip Gloss can carry a run of break characters past the wrap width in a
+// list item ("al + 1, ...,"); the viewport cut it off. No line of a page is
+// wider than the wrap.
+func TestRenderKeepsProseInWidth(t *testing.T) {
+	md := "- The query format is \"1 l r k\". In reply to this query you should print the maximum sum of at most k non-intersecting subsegments of sequence al, al + 1, ..., ar. Formally, you should choose\n"
+	page, err := render(prepare(md, true), 80)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := strings.Join(strings.Fields(ansi.Strip(page)), " ")
+	if !strings.Contains(text, "al + 1, ..., ar.") {
+		t.Errorf("text lost: %q", text)
+	}
+	for _, l := range strings.Split(page, "\n") {
+		if w := ansi.StringWidth(l); w > 80 {
+			t.Errorf("line of %d cells: %q", w, ansi.Strip(l))
+		}
+	}
+}

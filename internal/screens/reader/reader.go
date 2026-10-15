@@ -7,7 +7,9 @@ package reader
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
@@ -37,8 +39,7 @@ type Doc struct {
 type OpenURL struct{ URL string }
 
 // maxMeasure caps the wrap width. Prose wider than about 100 columns is hard
-// to follow line to line; code blocks are not wrapped and may use the full
-// width.
+// to follow line to line. Code is broken at the same width (wrapCode).
 const maxMeasure = 100
 
 type Model struct {
@@ -69,7 +70,8 @@ func New(doc Doc) *Model {
 // the content, and a sample grid of #s and .s can come out coloured as
 // some unrelated language. Tabs must go because nothing downstream agrees on their width:
 // Glamour pads lines counting a tab as zero cells, Lip Gloss turns it into
-// four spaces, and the terminal jumps to the next multiple of eight.
+// four spaces, and the terminal jumps to the next multiple of eight. Prose
+// gets what Glamour misdraws rewritten (glamourProse).
 func prepare(md string, tex bool) string {
 	if tex {
 		md = TeXToUnicode(md)
@@ -77,7 +79,7 @@ func prepare(md string, tex bool) string {
 	var b strings.Builder
 	for _, seg := range splitFences(md) {
 		if !seg.code {
-			b.WriteString(seg.text)
+			b.WriteString(glamourProse(seg.text))
 			continue
 		}
 		first, rest, _ := strings.Cut(seg.text, "\n")
@@ -92,9 +94,122 @@ func prepare(md string, tex bool) string {
 	return b.String()
 }
 
+// glamourProse rewrites markdown prose, outside code spans, for two things
+// Glamour 2.0.1 draws wrong. It prints the backslash of some escapes
+// (\$5 shows as \$5, \~ as \~), so those become character references, as
+// plain as the character and as inert. And an image without alt text
+// comes out as a bare URL, so it gets one.
+func glamourProse(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); {
+		switch c := s[i]; {
+		case c == '`':
+			n := runLen(s, i, '`')
+			end := findRun(s, i+n, '`', n)
+			if end < 0 {
+				b.WriteString(s[i : i+n])
+				i += n
+				continue
+			}
+			b.WriteString(s[i : end+n])
+			i = end + n
+		case c == '\\' && i+1 < len(s):
+			if strings.IndexByte(shownEscapes, s[i+1]) >= 0 {
+				fmt.Fprintf(&b, "&#%d;", s[i+1])
+			} else {
+				b.WriteString(s[i : i+2])
+			}
+			i += 2
+		case c == '!' && emptyAltRE.MatchString(s[i:]):
+			i += len(emptyAltRE.FindString(s[i:]))
+			b.WriteString("![figure](")
+		default:
+			b.WriteByte(c)
+			i++
+		}
+	}
+	return b.String()
+}
+
+// shownEscapes are the ASCII punctuation characters whose markdown escape
+// Glamour prints with the backslash; it drops it for the rest.
+const shownEscapes = `"$%&,/:;=?@^~`
+
+var emptyAltRE = regexp.MustCompile(`^!\[\s*\]\(`)
+
 // tabWidth is the tab stop for code blocks: C++ in USACO Guide modules is
 // tab-indented, and 4 keeps nested loops on screen at 80 columns.
 const tabWidth = 4
+
+// wrapCode breaks the lines of fenced code wider than width cells, which
+// Glamour would break itself, out of the block's margin and with a blank
+// line after: a line of sample input read as two lines. A line broken here
+// goes on after a ↪ at its own indent, so the break shows.
+func wrapCode(md string, width int) string {
+	var b strings.Builder
+	for _, seg := range splitFences(md) {
+		if !seg.code {
+			b.WriteString(seg.text)
+			continue
+		}
+		lines := strings.SplitAfter(seg.text, "\n")
+		ch, n, _ := fenceLine(lines[0])
+		for i, l := range lines {
+			if c, k, info := fenceLine(l); i == 0 || c == ch && k >= n && strings.TrimSpace(info) == "" {
+				b.WriteString(l)
+				continue
+			}
+			body := strings.TrimSuffix(l, "\n")
+			b.WriteString(breakLine(body, width) + l[len(body):])
+		}
+	}
+	return b.String()
+}
+
+// breakLine cuts line into lines of at most width cells, after a space when
+// there is one late enough, so a number in sample input stays whole.
+func breakLine(line string, width int) string {
+	if ansi.StringWidth(line) <= width {
+		return line
+	}
+	indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
+	rest := line[len(indent):]
+	prefix := indent
+	if len(indent) > width/2 {
+		indent = "" // the continuation needs the room more
+	}
+	var out []string
+	for {
+		room := max(width-ansi.StringWidth(prefix), 8)
+		if ansi.StringWidth(rest) <= room {
+			return strings.Join(append(out, prefix+rest), "\n")
+		}
+		cut := fit(rest, room)
+		out = append(out, prefix+strings.TrimRight(rest[:cut], " "))
+		rest = strings.TrimLeft(rest[cut:], " ")
+		prefix = indent + "↪ "
+	}
+}
+
+// fit is how many bytes of s fit in room cells: up to the last space in
+// the second half, else as many as fit, and at least one character.
+func fit(s string, room int) int {
+	w, hard := 0, len(s)
+	for i, r := range s {
+		if w += ansi.StringWidth(string(r)); w > room {
+			hard = i
+			break
+		}
+	}
+	if sp := strings.LastIndexByte(s[:hard], ' '); sp > 0 && sp >= hard/2 {
+		return sp + 1
+	}
+	if hard == 0 {
+		_, n := utf8.DecodeRuneInString(s)
+		return n
+	}
+	return hard
+}
 
 // expandTabs replaces each tab with spaces to the next multiple of w,
 // counting columns per line.
@@ -253,13 +368,17 @@ func (m *Model) layout(width, height int) {
 func render(md string, wrap int) (string, error) {
 	// The style is built from the palette, so the page follows the
 	// terminal's theme rather than Glamour's fixed 256-color "dark" one.
+	style := ui.StyleConfig()
 	r, err := glamour.NewTermRenderer(
-		glamour.WithStyles(ui.StyleConfig()),
+		glamour.WithStyles(style),
 		glamour.WithWordWrap(wrap),
 	)
 	var out string
 	if err == nil {
-		out, err = r.Render(md)
+		// A code line fits inside the document's margin on both sides
+		// and the block's own.
+		inset := 2*deref(style.Document.Margin) + deref(style.CodeBlock.Margin)
+		out, err = r.Render(wrapCode(md, wrap-int(inset)))
 	}
 	if err != nil {
 		return ansi.Wrap(md, wrap, ""), err
@@ -272,7 +391,43 @@ func render(md string, wrap int) (string, error) {
 		strings.TrimSpace(ansi.Strip(lines[1])) == "" {
 		lines = lines[1:]
 	}
-	return strings.Join(lines, "\n"), nil
+	return strings.Join(rewrapWide(lines, wrap), "\n"), nil
+}
+
+// rewrapWide wraps again, at their own indent, the lines Glamour leaves
+// wider than wrap, which the viewport would cut off: Lip Gloss can carry a
+// break character past the limit ("al + 1, ...," in a list item, "= -" at
+// the end of a line). The word wrap here hangs a hyphen the same way, so
+// what is still too wide is cut. A table's rows are Glamour's own layout
+// and stay as they are.
+func rewrapWide(lines []string, wrap int) []string {
+	var out []string
+	for _, l := range lines {
+		w := ansi.StringWidth(l)
+		if w <= wrap || strings.Contains(l, "│") {
+			out = append(out, l)
+			continue
+		}
+		plain := ansi.Strip(l)
+		indent := len(plain) - len(strings.TrimLeft(plain, " "))
+		pad, room := strings.Repeat(" ", indent), max(wrap-indent, 1)
+		for _, piece := range strings.Split(ansi.Wrap(ansi.Cut(l, indent, w), room, ""), "\n") {
+			if ansi.StringWidth(piece) > room {
+				piece = ansi.Hardwrap(piece, room, false)
+			}
+			for _, p := range strings.Split(piece, "\n") {
+				out = append(out, pad+p)
+			}
+		}
+	}
+	return out
+}
+
+func deref(u *uint) uint {
+	if u == nil {
+		return 0
+	}
+	return *u
 }
 
 func (m *Model) View(width, height int) string {
