@@ -104,8 +104,13 @@ func (c *Cleared) View(width, height int) string {
 			banner = centerBlock(ui.Frame(ui.FrameBoss, fw, "", "", bl), width)
 		}
 	}
-	// Green paints the glyph, the words are Strong (R2, R3).
-	head := []string{ui.Center(ui.OK.Render(ui.G.Pass)+" "+ui.Strong.Render(fmt.Sprintf("Boot #%d cleared", st.Boot))+
+	// Green paints the glyph, the words are Strong (R2, R3). A trial is a
+	// boot in the store, but the player started a trial, not boot #N.
+	what := fmt.Sprintf("Boot #%d cleared", st.Boot)
+	if st.Trial != nil {
+		what = st.Trial.Title + " trial cleared"
+	}
+	head := []string{ui.Center(ui.OK.Render(ui.G.Pass)+" "+ui.Strong.Render(what)+
 		ui.Muted.Render(ui.G.Sep)+prestigeLabel(st.Prestige), width)}
 	if boss != "" {
 		head = append(head, ui.Center(ui.Modifier(ui.ModBoss, bossLabel(boss)), width))

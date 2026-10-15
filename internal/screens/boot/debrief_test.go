@@ -396,6 +396,17 @@ func TestClearedTrialLine(t *testing.T) {
 	}
 }
 
+// A cleared trial names the trial it was, not the boot number the store
+// gave it: "✓ Boot #42 cleared" read as a boot the player never booted.
+func TestClearedTrialTitle(t *testing.T) {
+	for _, sz := range [][2]int{{80, 24}, {140, 40}} {
+		v := ansi.Strip(NewCleared(trialClearedEnv("CAP_DP")).View(sz[0], sz[1]))
+		if !strings.Contains(v, "Introduction to DP trial cleared") || strings.Contains(v, "Boot #") {
+			t.Errorf("at %dx%d the trial clear does not name the trial:\n%s", sz[0], sz[1], v)
+		}
+	}
+}
+
 // A trial's crash has the Gryphon's line for its epitaph, whatever ended
 // it; a boot's keeps its own.
 func TestCrashTrialEpitaph(t *testing.T) {
