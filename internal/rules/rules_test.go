@@ -238,14 +238,14 @@ func TestLoadStrictKeysAndFileName(t *testing.T) {
 // boots may come only once the ladder under it has lasted 40 boots of the
 // weaker player. Boots are counted at what the sim's model players bank
 // per boot over their first 40 boots at prestige 0 (commits and upsolved
-// core dumps): sim TestAptLadder measures them (203 and 249 B when these
-// were set, with RT0's floor reading and D44) and holds the catalog to the
-// same rules at the real rates.
+// core dumps): sim TestAptLadder measures them (219 and 245 B when these
+// were set, with RT0's floor reading, D44 and the alpha's longer timers)
+// and holds the catalog to the same rules at the real rates.
 func TestPackageLadder(t *testing.T) {
 	t.Parallel()
 	const (
-		weak   = 203 // B a boot, the 1000-rated model
-		strong = 249 // B a boot, the 1600-rated model
+		weak   = 219 // B a boot, the 1000-rated model
+		strong = 245 // B a boot, the 1600-rated model
 	)
 	ps := rules.Standard().Packages
 	if len(ps) < 14 {
@@ -302,7 +302,7 @@ func TestBuiltIns(t *testing.T) {
 		}
 		return sum, doors
 	}
-	if sum, doors := timers(rules.Short()); sum != 65*time.Minute || doors != 4 {
+	if sum, doors := timers(rules.Short()); sum != 75*time.Minute || doors != 4 {
 		t.Errorf("short: %d doors, %v of timers", doors, sum)
 	}
 	p := rules.Patch()
@@ -311,7 +311,7 @@ func TestBuiltIns(t *testing.T) {
 	}
 	sum, doors := timers(p)
 	kinds := []rules.BiomeKind{p.Biomes[0].Kind, p.Biomes[1].Kind, p.Biomes[2].Kind}
-	if doors != 3 || sum != 50*time.Minute ||
+	if doors != 3 || sum != 55*time.Minute ||
 		!slices.Equal(kinds, []rules.BiomeKind{rules.Fixed, rules.Choice, rules.Boss}) ||
 		!p.Biomes[0].TimeoutLife || p.Biomes[2].TargetClear != 0.6 {
 		t.Errorf("patch: %d doors, %v of timers, biomes %+v", doors, sum, p.Biomes)

@@ -69,6 +69,7 @@ func TestQuantile(t *testing.T) {
 func TestFitTimer(t *testing.T) {
 	t.Parallel()
 	r := rules.Standard()
+	r.TimerHeadroom = 1.25 // the cases are 20 min of q85 × 1.25, whatever the default
 	solves := func(n int, gap float64, d time.Duration) []Solve {
 		var ss []Solve
 		for range n {
