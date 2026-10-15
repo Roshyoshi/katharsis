@@ -14,7 +14,7 @@ fixed rule. Settings are locked for the length of a boot.
 |---|---|
 | Language | Go 1.26 |
 | TUI | Bubble Tea v2, Bubbles v2, Lip Gloss v2, Glamour v2 (`charm.land/*`) |
-| Judge compiler | clang 22 (pinned in `flake.nix`; 21.1.8's ASan hangs on macOS 26.5) |
+| Judge compiler | g++ 14 judges `:Submit` and builds `:Debug`; saves run clang 22 ASan against GCC's libstdc++ (pinned in `flake.nix`, D28; clang 21.1.8's ASan hangs on macOS 26.5) |
 | Editor, layout, debugger | the user's vim, tmux and `/usr/bin/lldb` (not pinned) |
 | Storage | SQLite via `modernc.org/sqlite` (no cgo) |
 | Settings | TOML rule presets |
@@ -93,11 +93,11 @@ label only; doors draw from every local source by difficulty.
 ```
 :w sol.cpp
 └─ file watcher → judge samples
-   ├─ clang++ -std=gnu++23 -O1 -g -fsanitize=address,undefined -Wl,-stack_size,0x20000000
+   ├─ clang++ on libstdc++ -std=gnu++23 -O1 -g -fsanitize=address,undefined -D_GLIBCXX_ASSERTIONS
    ├─ run each sample (wall-clock kill, wait4 → cpu ms, peak RSS)
    └─ HUD: S1 ✓ 3ms   S2 ✗ line 2: want 7, got 6
 :Submit  (vim command → control socket)
-└─ judge full tests: -O2, parallel → HP bar; first failure costs a life
+└─ judge full tests: g++ -O2, parallel → HP bar; first failure costs a life
 :Debug S2 → lldb pane under vim, stdin = S2 (or copied to <name>.in)
 :q!      → crash, editorial opens
 ```

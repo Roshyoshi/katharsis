@@ -370,8 +370,8 @@ func (r *TmuxRunner) template(p catalog.Problem) string {
 	return stdioTemplate
 }
 
-// cppHeaders opens both built-in templates: libc++ has no <bits/stdc++.h>,
-// so they list headers as the ~/cp templates do.
+// cppHeaders opens both built-in templates, listing headers as the ~/cp
+// templates do; <bits/stdc++.h> works as well.
 const cppHeaders = `#include <algorithm>
 #include <array>
 #include <cmath>
@@ -390,7 +390,7 @@ using namespace std;
 using ll = long long;
 `
 
-const stdioTemplate = "// libc++ has no <bits/stdc++.h>; list headers as the ~/cp templates do.\n" +
+const stdioTemplate = "// Headers as the ~/cp templates list them; <bits/stdc++.h> works too.\n" +
 	cppHeaders + `
 int main() {
     ios::sync_with_stdio(false);

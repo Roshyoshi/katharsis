@@ -225,15 +225,16 @@ run with `CleanEnv`, which drops `NIX_*` (a login shell here exports
 - The QA's profile list has clang's Full only. A temp copy with g++'s Full
   added failed on a subset of clang Full's failures, and passed `gnu_pb_ds`,
   which clang fails.
+- Follow-up, 2026-10-15: those three expectations take either wording and
+  still check the line, and the QA lists `O2 (g++)`. It fails only where
+  `O2` fails (x86 `long double`, CF-Windows `long`, file-I/O stems,
+  untouched-memory MLE, INT_MIN / -1, stack-overflow wording, wall-clock
+  TLE, CE paths) and passes `gnu_pb_ds`. `stderr_64MiB_then_answer` gets a
+  4 s limit: writing 64 MiB of stderr costs 1.0-1.1 s of CPU.
 - `nix build` and `nix flake check --all-systems` pass.
 
 ## Open items
 
-- `qa/judge` expectations name ASan's words for the sample profile; they
-  need the libstdc++ assertion form, and g++'s Full in the profile list.
-- `DESIGN.md` still says clang 22 judges (the stack table and the pipeline
-  sketch), and `internal/app`'s built-in templates still say libc++ has no
-  `<bits/stdc++.h>`.
 - No PCH for `:Debug` (g++ -O0 -g: 140-204 MB more cache for the rarest
   build, 0.4-0.7 s each), nor for g++ sources that open with `#pragma GCC
   optimize`, which applies to the headers after it.
