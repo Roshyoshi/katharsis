@@ -152,14 +152,23 @@ func (m *Merge) View(width, height int) string {
 		need = max(need, listWidth(upgradeOptions(st.UpgradeOffers, st.Rules)))
 	}
 	cw := min(width, max(76, 4+need))
-	// The intro goes when the window is too short for it, and waits for a
-	// window with room. It sits over the offers, so a pick that took them
-	// takes it too.
+	// The story lines over the sections go when the window is too short
+	// for them: the daemon intro first, since it waits for a window with
+	// room, while a boss's defeat line has only this one. The intro sits
+	// over the offers, so a pick that took them takes it too.
 	intro := m.intro && len(st.DaemonOffers) > 0
-	secs := m.sections(width, cw, cur, intro)
-	m.drawn = intro && len(head)+1+len(secs) <= height-1
-	if intro && !m.drawn {
-		secs = m.sections(width, cw, cur, false)
+	defeat := bossDefeat(st)
+	var secs []string
+	m.drawn = false
+	for _, c := range []struct {
+		intro  bool
+		defeat string
+	}{{intro, defeat}, {false, defeat}, {intro, ""}, {false, ""}} {
+		secs = m.sections(width, cw, cur, c.intro, c.defeat)
+		if len(head)+1+len(secs) <= height-1 {
+			m.drawn = c.intro
+			break
+		}
 	}
 	// The Hatter's line over the table when there is room: the table's
 	// word on the bytes it holds (merge.line), or on none (merge.nothing).
@@ -203,10 +212,26 @@ func (m *Merge) Shown() []string {
 	return nil
 }
 
+// bossDefeat is the defeat line of the boss whose clear owes the pending
+// upgrade (boss.defeat.<key>), for the pick it earned; "" when the pick is
+// owed to another door, or none is. Only a boss mid-boot leads to a pick:
+// the boot's last one ends it, and the cleared screen has its line.
+func bossDefeat(st *game.State) string {
+	if !st.PendingUpgrade {
+		return ""
+	}
+	a, ok := lastClear(st)
+	if !ok || a.Door.Boss == "" {
+		return ""
+	}
+	return fl.Story("boss.defeat."+a.Door.Boss, st.Seed^uint64(a.Closed.Unix()))
+}
+
 // sections are the window's rows in a column cw wide, centered in width:
-// commit, upgrade, spend, daemon (under the intro block when intro is set;
-// what is held and merge.full when every seat is taken), leave.
-func (m *Merge) sections(width, cw int, cur mergeRow, intro bool) []string {
+// commit, upgrade (under defeat, a boss's line, when it is set), spend,
+// daemon (under the intro block when intro is set; what is held and
+// merge.full when every seat is taken), leave.
+func (m *Merge) sections(width, cw int, cur mergeRow, intro bool, defeat string) []string {
 	st := m.env.State
 	opts := daemonOptions(st.DaemonOffers, st)
 	var secs []string
@@ -228,7 +253,13 @@ func (m *Merge) sections(width, cw int, cur mergeRow, intro bool) []string {
 		if n, o3 := owedPicks(st); n >= 2 || n == 1 && o3 {
 			note = picksNote(n, o3) + ui.Muted.Render("; pick before you leave")
 		}
-		secs = append(secs, "", label("upgrade")+note)
+		secs = append(secs, "")
+		if defeat != "" {
+			for _, l := range strings.Split(defeat, "\n") {
+				secs = append(secs, "  "+ui.Voice.Render(ui.Muted.Render(ui.Clip(l, cw-2))))
+			}
+		}
+		secs = append(secs, label("upgrade")+note)
 		secs = append(secs, indent(4, m.up.list(cw-4, cur.kind == rowUpgrade))...)
 	}
 

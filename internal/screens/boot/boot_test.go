@@ -176,6 +176,8 @@ func cases() []screenCase {
 		// Every daemon seat taken: what runs, and the Hatter's "No room!"
 		// where the offers would be (merge.full).
 		{"merge_full", func() screens.Screen { return NewMerge(env(fullMerge())) }},
+		// The pick a mid-boot boss earned, under its defeat line.
+		{"merge_boss", func() screens.Screen { return NewMerge(env(fixture.MidBoss())) }},
 		{"upgrade", func() screens.Screen { return NewUpgradeScreen(env(fixture.Upgrade())) }},
 		{"crash_timer", func() screens.Screen { return NewCrash(crashEnv(game.TimedOut)) }},
 		{"crash_lives", func() screens.Screen { return NewCrash(crashEnv(game.OutOfLives)) }},
@@ -537,6 +539,33 @@ func TestMergeFull(t *testing.T) {
 	m.Refresh(e)
 	if v := ansi.Strip(m.View(140, 40)); !strings.Contains(v, line) || strings.Contains(v, "daemon.intro") {
 		t.Errorf("after the last pick:\n%s", v)
+	}
+}
+
+// The upgrade a mid-boot boss earned is picked under the boss's defeat
+// line, which goes with the pick. A pick owed to any other door has none.
+// Short of room the line outlasts the daemon intro, which waits for
+// another window; this boss has only this one.
+func TestMergeBossDefeat(t *testing.T) {
+	const line = "Stub line for boss.defeat.heisenbug."
+	view := func(st *game.State, h int) string { return ansi.Strip(NewMerge(env(st)).View(140, h)) }
+	v := view(fixture.MidBoss(), 40)
+	if i := strings.Index(v, line); i < 0 || i > strings.Index(v, "upgrade  a clear earned one") {
+		t.Errorf("no defeat line over the pick:\n%s", v)
+	}
+	picked := fixture.MidBoss()
+	picked.PendingUpgrade, picked.UpgradePicks = false, 0
+	for name, st := range map[string]*game.State{"picked": picked, "not a boss": fixture.Merge()} {
+		if v := view(st, 40); strings.Contains(v, "boss.defeat") {
+			t.Errorf("%s: a defeat line:\n%s", name, v)
+		}
+	}
+	m := NewMerge(env(fixture.MidBoss()))
+	if v := ansi.Strip(m.View(140, 25)); !strings.Contains(v, line) || strings.Contains(v, "daemon.intro") || len(m.Shown()) != 0 {
+		t.Errorf("25 rows: want the defeat line and no intro (shown %v):\n%s", m.Shown(), v)
+	}
+	if realFlavor.Story("boss.defeat.heisenbug", 1) == "" {
+		t.Error("flavor has no heisenbug defeat line")
 	}
 }
 

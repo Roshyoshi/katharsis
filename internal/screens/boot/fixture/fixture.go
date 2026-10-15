@@ -261,6 +261,30 @@ func Boss() *game.State {
 	return st
 }
 
+// MidBoss is a preset with a biome past the boss, which no built-in has:
+// the merge window right after the Heisenbug fell, its upgrade to pick and
+// three daemons on offer. A boss biome has one room, so the pick a boss
+// earns is always a merge window's.
+func MidBoss() *game.State {
+	st := Boss()
+	start := st.Started
+	st.Rules.Biomes = append(st.Rules.Biomes,
+		rules.Biome{Kind: rules.Choice, Rooms: 2, Choices: 2, TargetClear: 0.6, Timer: rules.Duration{Duration: 35 * time.Minute}})
+	st.Biomes = append(st.Biomes, game.BiomeState{Kind: rules.Choice, Rooms: 2, Offers: []string{"dp", "math"}})
+	boss := st.Doors[0]
+	st.History = append(st.History, attempt(start, boss, at(113, 30), at(149, 52), game.Cleared))
+	st.Phase = game.PhaseMerge
+	st.Biome, st.Room = 3, 1
+	st.Doors = nil
+	st.Uncommitted += boss.Bytes
+	st.PendingUpgrade, st.UpgradePicks = true, 1
+	st.UpgradeOffers = []game.Upgrade{game.Overclock, game.ECC, game.Duck}
+	st.DaemonOffers = []game.Daemon{game.Nice, game.Fork, game.DevRandom}
+	st.Log = append(st.Log, game.LogLine{At: start.Add(at(149, 52)), Text: `door_8: AC "Cow Poetry" +576 B`})
+	rebase(st, at(150, 30))
+	return st
+}
+
 // Userland is the same boot at its start, 40 s in, at the doors of
 // Userland's first room, whose timeout costs a life (D44). The engine
 // eased it two ways (RT8): five days away aim Userland higher, and the
