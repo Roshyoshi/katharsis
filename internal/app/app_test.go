@@ -1214,3 +1214,24 @@ func TestShopInstallKeepsGrubCursor(t *testing.T) {
 		t.Errorf("GRUB's cursor left apt after the install:\n%s", h.m.stack[0].View(100, 30))
 	}
 }
+
+// The editor border's clock is a tmux format in the HUD's tones (E15):
+// reverse red in the last two minutes, the lost hearts drawn too.
+func TestBorderClock(t *testing.T) {
+	h := newHarness(t)
+	if got := h.m.BorderClock(); got != "⏱ untimed" {
+		t.Errorf("BorderClock outside a door = %q", got)
+	}
+	h.send(screens.StartBoot{Preset: "standard"})
+	cur := h.enterDoor()
+	h.clock.t = cur.Deadline.Add(-90 * time.Second)
+	got := h.m.BorderClock()
+	for _, want := range []string{"#[fg=colour1,reverse]⏱ 01:30#[default]", "#[fg=colour1]♥", "🦆"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("BorderClock = %q, want %q in it", got, want)
+		}
+	}
+	if p, n := h.m.Best(); p != cur.BestPass || n != cur.Total {
+		t.Errorf("Best = %d/%d, want the attempt's %d/%d", p, n, cur.BestPass, cur.Total)
+	}
+}

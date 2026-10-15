@@ -11,10 +11,11 @@ import (
 	"katharsis/internal/units"
 )
 
-// HUDBar is the top of the in-problem HUD pane (35 to 60 columns): the
-// countdown, lives, ducks and bytes; the door's modifiers; the tags as far
-// as the ducks have revealed them; and the HP bar, the best full-test
-// submit so far. Every line fits width.
+// HUDBar is the top of the in-problem HUD pane (35 to 60 columns), its
+// vitals: the countdown, lives, ducks and bytes; the door's modifiers; the
+// tags as far as the ducks have revealed them. Every line fits width. The
+// pane's one HP bar is the HUD's, or the problem screen's without a HUD
+// (C6).
 func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) string {
 	if width <= 0 {
 		width = 40
@@ -87,58 +88,10 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 		out = append(out, ui.Muted.Render("technique ")+ui.Strong.Render(prob.Topic))
 	}
 
-	out = append(out, hpBar(att, width))
 	for i, l := range out {
 		out[i] = ui.Clip(l, width)
 	}
 	return strings.Join(out, "\n")
-}
-
-// hpBar is the problem's health from the player's side: tests passed by
-// the best submit, out of the full set.
-func hpBar(att game.Attempt, width int) string {
-	// A submit being judged (Attempt.SubmitAt) shows here too: the HUD
-	// below read "judging 5/10" while this bar said "not submitted".
-	judging := !att.SubmitAt.IsZero()
-	count := "not submitted"
-	switch {
-	case att.Total > 0:
-		count = fmt.Sprintf("%d/%d", att.BestPass, att.Total)
-	case judging:
-		count = "judging…"
-	}
-	// The bar gives way to the word that a submit is in flight.
-	room := width - widthOf(count) - 1
-	if judging && att.Total > 0 {
-		room -= widthOf("  judging…")
-	}
-	bw := min(max(room, 6), 20)
-	filled := 0
-	if att.Total > 0 {
-		filled = min(max(att.BestPass, 0)*bw/att.Total, bw)
-	}
-	bar := ui.OK.Render(strings.Repeat(ui.G.Fill, filled)) + ui.Muted.Render(strings.Repeat(ui.G.Empty, bw-filled))
-	s := bar + " " + count
-	if att.Total == 0 {
-		s = bar + " " + ui.Muted.Render(count)
-	}
-	more := ""
-	if att.Submits > 0 {
-		more = "  " + units.Plural(att.Submits, "submit")
-		if att.LastVerdict != "" {
-			more += ui.G.Sep + string(att.LastVerdict)
-		}
-	}
-	if judging && att.Total > 0 {
-		// The submit in flight comes first when both do not fit.
-		if more += ui.G.Sep + "judging…"; widthOf(s)+widthOf(more) > width {
-			more = "  judging…"
-		}
-	}
-	if more != "" && widthOf(s)+widthOf(more) <= width {
-		s += ui.Muted.Render(more)
-	}
-	return s
 }
 
 // pack joins parts with sep into lines no wider than width.

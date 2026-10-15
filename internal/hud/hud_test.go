@@ -279,8 +279,13 @@ func TestEmbeddedDropsChrome(t *testing.T) {
 	if len(lines) != 10 {
 		t.Errorf("view is %d lines, pane is 10:\n%s", len(lines), s)
 	}
-	if !strings.Contains(lines[0], "2/2") || !strings.Contains(lines[0], "ALL PASS") {
-		t.Errorf("first line should be the judge status, got %q", lines[0])
+	// The pane's one HP bar comes first, even before a submit, then the
+	// samples (C6, C8).
+	if !strings.HasPrefix(lines[0], "HP ") || !strings.Contains(lines[0], "not submitted") {
+		t.Errorf("first line should be the HP bar, got %q", lines[0])
+	}
+	if !strings.Contains(lines[1], "2/2") || !strings.Contains(lines[1], "ALL PASS") {
+		t.Errorf("second line should be the judge status, got %q", lines[1])
 	}
 	for _, gone := range []string{"milk2", "12:34", "⏱", "q quit", ":Submit"} {
 		if strings.Contains(s, gone) {

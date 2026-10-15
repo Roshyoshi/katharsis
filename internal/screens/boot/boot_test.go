@@ -1023,7 +1023,7 @@ func TestHUDBar(t *testing.T) {
 	golden(t, "hudbar", sb.String())
 
 	open := ansi.Strip(HUDBar(fixture.Problem(), prob, fixture.Now, 48))
-	for _, want := range []string{"⏱ 23:41", "♥♡♡", "🦆1", "96 B", "▓", "37/52", "Functional Graphs"} {
+	for _, want := range []string{"⏱ 23:41", "♥♡♡", "🦆1", "96 B", "Functional Graphs"} {
 		if !strings.Contains(open, want) {
 			t.Errorf("hud missing %q:\n%s", want, open)
 		}
@@ -1041,12 +1041,11 @@ func TestHUDBar(t *testing.T) {
 	if s := ansi.Strip(HUDBar(variants[3].st(), prob, fixture.Now, 48)); !strings.Contains(s, "technique graphs") {
 		t.Errorf("two quacks reveal the technique:\n%s", s)
 	}
-	// A submit in flight shows at every width, never as not submitted.
-	for _, v := range variants[len(variants)-2:] {
-		for _, w := range []int{35, 48, 60} {
-			if s := ansi.Strip(HUDBar(v.st(), prob, fixture.Now, w)); !strings.Contains(s, "judging…") || strings.Contains(s, "not submitted") {
-				t.Errorf("%s at %d should read judging:\n%s", v.name, w, s)
-			}
+	// The HP bar is the HUD's, or the problem screen's without one (C6):
+	// the vitals never draw a second.
+	for _, v := range variants {
+		if s := ansi.Strip(HUDBar(v.st(), prob, fixture.Now, 48)); strings.ContainsAny(s, "▓░") {
+			t.Errorf("%s: the vitals draw an HP bar:\n%s", v.name, s)
 		}
 	}
 }

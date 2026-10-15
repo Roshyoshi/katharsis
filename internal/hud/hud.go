@@ -453,12 +453,13 @@ func (m *Model) View() tea.View {
 		line(ui.Spread(ui.Strong.Render(name), m.headerClock(), w))
 		help = 1
 	}
+	// Judgement first, the HP bar, then the samples (C8).
+	for _, l := range m.submitLines(w) {
+		line(l)
+	}
 	line(m.statusLine())
 	if m.closing {
 		line(ui.Warn.Render("closing vim: answer it there · q again leaves it open"))
-	}
-	for _, l := range m.submitLines(w) {
-		line(l)
 	}
 	rule()
 

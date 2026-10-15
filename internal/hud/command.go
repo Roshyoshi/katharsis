@@ -253,7 +253,8 @@ func firstError(log string) string {
 // submitLines is the HP bar, the one per pane (C6): the latest submit's
 // tests passed of the full set, live while it is judged, and its verdict;
 // "· best b/N" when an earlier submit passed more. Before this HUD's first
-// submit it shows the host's best (Options.Best), if any:
+// submit it shows the host's best (Options.Best), or, embedded in a boot,
+// whose pane has no other bar, "not submitted":
 //
 //	HP ▓▓▓▓▓▓▓▓▓░░░░░░░░░░░ 14/30  judging 22/30…
 //	HP ▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░ 16/30  WA #17 line 1 · best 20/30
@@ -264,8 +265,11 @@ func (m *Model) submitLines(w int) []string {
 		bp, bt = m.opt.Best()
 	}
 	if !s.started {
-		if bt > 0 {
+		switch {
+		case bt > 0:
 			return []string{ui.HP(w, bp, bt, ui.Muted.Render("best"))}
+		case m.opt.Embedded:
+			return []string{ui.HP(w, 0, 0, "")}
 		}
 		return nil
 	}

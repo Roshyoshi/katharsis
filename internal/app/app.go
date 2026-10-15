@@ -24,6 +24,7 @@ import (
 	"katharsis/internal/screens"
 	"katharsis/internal/session"
 	"katharsis/internal/store"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -445,4 +446,33 @@ func (m *Model) Clock() string {
 		t = "+" + units.Clock(-left) + " over"
 	}
 	return fmt.Sprintf("%s · %s · %s", t, units.Hearts(s.Lives, s.MaxLives), ducks(s))
+}
+
+// BorderClock is Clock as a tmux format for the editor pane's border, the
+// timer the player watches while typing (E15, fix 3): the countdown in its
+// tone (ui.BorderTimer: bold in the last fifth, reverse under two minutes),
+// a soft timer's overrun in Danger, and the hearts drawn as the HUD draws
+// them, ♥♥♡, lost lives included.
+func (m *Model) BorderClock() string {
+	s := m.state
+	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil || (m.open != nil && m.open.Upsolve) {
+		return ui.TmuxEscape(ui.G.Timer + "untimed")
+	}
+	left := s.Current.Deadline.Sub(m.d.Now())
+	t := ui.BorderTimer(left, s.Current.Door.Timer)
+	if left < 0 && s.SoftTimer() {
+		t = ui.Danger.Tmux(ui.G.Timer + "+" + units.Clock(-left) + " over")
+	}
+	return t + " · " + ui.BorderHearts(s.Lives, s.MaxLives) + " · " + ui.TmuxEscape(ducks(s))
+}
+
+// Best is the open door's best full-test submit, passed of total, for the
+// HUD's HP bar: a door resumed with a fresh HUD keeps it (hud.Options.Best).
+// An upsolve, or no door, has none.
+func (m *Model) Best() (passed, total int) {
+	s := m.state
+	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil || (m.open != nil && m.open.Upsolve) {
+		return 0, 0
+	}
+	return s.Current.BestPass, s.Current.Total
 }

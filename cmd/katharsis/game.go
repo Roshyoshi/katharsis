@@ -159,6 +159,8 @@ func runGame(args []string) error {
 	runner.Send = p.Send
 	runner.Conceal = m.Conceal
 	runner.Clock = m.Clock
+	runner.BorderClock = m.BorderClock
+	runner.Best = m.Best
 	hud.SweepDebugDirs() // :Debug dirs a killed game left in $TMPDIR
 	if err := runner.Listen(); err != nil {
 		return err

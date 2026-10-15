@@ -15,6 +15,7 @@ import (
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/session"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -152,7 +153,6 @@ var (
 	faint = lipgloss.NewStyle().Faint(true)
 	bold  = lipgloss.NewStyle().Bold(true)
 	red   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	green = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 )
 
 func (s *problemScreen) View(w, h int) string {
@@ -211,26 +211,32 @@ func (s *problemScreen) View(w, h int) string {
 	return b.String()
 }
 
-// headless is the body without a HUD: the last full-test result.
+// headless is the body without a HUD: the pane's one HP bar (C6), the
+// door's best full-test submit, or in an upsolve the last one judged here,
+// over what the pane is waiting for.
 func (s *problemScreen) headless(w int) string {
-	line := faint.Render("samples rejudge on :w · :Submit for the full tests")
+	passed, total, verdict := s.last.passed, s.last.total, s.last.verdict
+	if c := s.m.state; !s.upsolve && c != nil && c.Current != nil {
+		passed, total = c.Current.BestPass, c.Current.Total
+		if verdict == "" {
+			verdict = string(c.Current.LastVerdict)
+		}
+	}
+	note := ""
 	switch {
-	case s.m.open == nil:
+	case s.m.judging:
+		note = ui.Muted.Render("judging full tests…")
+	case verdict != "":
+		note = ui.Verdict(verdict).Render(verdict)
+	}
+	line := "samples rejudge on :w · :Submit for the full tests"
+	if s.m.open == nil {
 		line = "fetching " + string(s.door.Problem) + "…"
 		if !s.upsolve {
 			line += " · e retries" // in an upsolve e is the editorial
 		}
-		line = faint.Render(line)
-	case s.m.judging:
-		line = faint.Render("judging full tests…")
-	case s.last.verdict != "":
-		st := red
-		if s.last.verdict == "AC" {
-			st = green
-		}
-		line = st.Render(fmt.Sprintf("%s  %d/%d tests", s.last.verdict, s.last.passed, s.last.total))
 	}
-	return ansi.Truncate(line, w, "…") + "\n"
+	return ui.HP(w, passed, total, note) + "\n" + ui.Clip(ui.Muted.Render(line), w) + "\n"
 }
 
 // onRequest handles a command from the editor. The game's own commands

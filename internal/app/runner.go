@@ -39,6 +39,10 @@ type TmuxRunner struct {
 	Send    func(tea.Msg)
 	Conceal func() bool   // hide full tests (a boot without strace)
 	Clock   func() string // the HUD clock and border: countdown, lives, ducks
+	// BorderClock is Clock as a tmux format, toned, for the editor's
+	// border; Best the door's best full-test submit (hud.Options).
+	BorderClock func() string
+	Best        func() (passed, total int)
 
 	srv     *session.Server
 	sock    string
@@ -142,6 +146,8 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 		EditorAlive: func() bool { return session.PaneAlive(pane) },
 		CloseEditor: func() error { return session.CloseEditor(pane) },
 		Clock:       r.Clock,
+		BorderClock: r.BorderClock,
+		Best:        r.Best,
 		// The problem screen draws the boot bar and the keys around it.
 		Embedded: true,
 	}
