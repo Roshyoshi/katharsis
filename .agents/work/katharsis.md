@@ -197,6 +197,13 @@ D51 settled 10-15  DOOM-style title at launch (user: "a DOOM style title screen 
                    Defaults: bright ANSI 9/11/15 as an homage exception; no off flag.
                    QA: qa/chaos kc_through does not know the title (waits it out).
 
+D52 settled 10-15  "go": build docs/design/map.md's defaults (three acts, the exit picks
+                   the boss, cycles with act multipliers, bosses I-II retry -20, final
+                   one-shot, P1-P8, kexec once per act, overclock 5 cycles a pick capped
+                   at 2, fountain +5 to P4, boss aims 0.55/0.45/0.50, D31 gate) with the
+                   map hub, suspend/resume and the cycles rename. Lanes: build-engine
+                   (contract first), story-map (text), then the UI/app lane.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
