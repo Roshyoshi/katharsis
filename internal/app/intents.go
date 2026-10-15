@@ -17,11 +17,13 @@ import (
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/screens/story"
 	"katharsis/internal/store"
-	"katharsis/internal/units"
 )
 
 // intent handles navigation messages; ok is false for anything else.
 func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
+	if cmd, ok := m.debriefIntent(msg); ok { // GRUB, story beats (debrief.go)
+		return cmd, true
+	}
 	switch msg := msg.(type) {
 	case screens.Quit:
 		return m.quit(), true
@@ -289,7 +291,7 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 		return nil // the banner says so
 	}
 	if got > 0 {
-		return note("core dump recovered: +%s banked", units.Bytes(got))
+		return note("%s", recoveredNote(got)) // coredump.recovered (debrief.go)
 	}
 	return nil
 }

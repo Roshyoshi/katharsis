@@ -1131,7 +1131,7 @@ func TestQuitMidDoorConfirms(t *testing.T) {
 	h.send(screens.StartBoot{Preset: "standard"})
 	h.enterDoor()
 	ctrlC := tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
-	if _, cmd := h.m.Update(ctrlC); cmd != nil || !strings.Contains(h.m.flash, "keeps running") {
+	if _, cmd := h.m.Update(ctrlC); cmd != nil || !strings.Contains(h.m.flash, "won't stop his watch") { // quit.warn
 		t.Fatalf("first ctrl+c: cmd %v, flash %q; want a warning and no quit", cmd != nil, h.m.flash)
 	}
 	h.m.Update(key("j"))
@@ -1147,7 +1147,7 @@ func TestQuitMidDoorConfirms(t *testing.T) {
 	}
 	h.clock.t = h.clock.t.Add(10 * time.Minute)
 	h.restart()
-	if !strings.Contains(h.m.flash, "kept running") || !strings.Contains(h.m.flash, "left") {
+	if !strings.Contains(h.m.flash, "kept time") || !strings.Contains(h.m.flash, "left") { // resume.note
 		t.Errorf("resumed door: flash %q, want how long it has left", h.m.flash)
 	}
 }

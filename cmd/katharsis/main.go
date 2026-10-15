@@ -41,6 +41,10 @@ func main() {
 			run, args = runPractice, args[1:]
 		case "audio":
 			run, args = runAudio, args[1:]
+		case "motd":
+			// A new shell runs it: one line or nothing, and fast (motd.go).
+			pickUI(os.Getenv)
+			os.Exit(runMotd(args[1:], os.Stdout, os.Stderr))
 		}
 	}
 	pickUI(os.Getenv)
@@ -82,6 +86,7 @@ func usage(fs *flag.FlagSet) {
        katharsis practice [flags] <dir>
        katharsis ctl <submit|debug [n]|quack|giveup|retreat|status>
        katharsis audio fetch|list|credits
+       katharsis motd                   one line when something is due, for ~/.zshrc
 
 <dir> holds <dir>.cpp (or sol.cpp) and tests/N.in + tests/N.out.
 ctl talks to the game whose socket $KATHARSIS_SOCK names; the game's vim

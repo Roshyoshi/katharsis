@@ -58,7 +58,7 @@ func (m *Model) baseKey() baseKey {
 }
 
 func (m *Model) env() bootui.Env {
-	return bootui.Env{State: m.state, Meta: m.meta, Lookup: m.d.Catalog.Get, Now: m.d.Now()}
+	return bootui.Env{State: m.state, Meta: m.meta, Lookup: m.d.Catalog.Get, Now: m.d.Now(), End: m.endInfo()}
 }
 
 // startBoot begins a new boot. A boot still running is given up first.

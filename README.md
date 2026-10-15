@@ -36,9 +36,18 @@ start.
 | `--motion` | `full` | `reduced` draws every story scene at once; any key skips a scene, esc leaves the story |
 | `--fps` | `30` | frame-rate cap for the story animations |
 | `--preset` | | also load a rules preset file (repeatable); presets in `~/.config/katharsis/presets` load automatically. `presets/short.toml` is a ~1 h boot |
+| `--session-budget` | `settings.toml`, else `3h` | past this much play in a day, the end of a boot says so in one line; `0` is off |
 
 `katharsis practice <dir>` is the training room: any folder with
 `<dir>.cpp` and `tests/N.in`/`tests/N.out`, no timer and no stakes.
+
+`katharsis motd` prints one line when something is due (regressions, a core
+dump, a nightly not yet played) and nothing otherwise. It reads the saves
+without writing them. To see it in each new shell, add to `~/.zshrc`:
+
+```sh
+command -v katharsis >/dev/null && katharsis motd
+```
 
 ## Play
 
@@ -67,7 +76,8 @@ GRUB ─enter→ boot ─→ doors ─enter→ problem (vim + HUD) ─AC→ upgr
 | Doors | `←/→` or `1-3` select · `enter` open · `m` map |
 | Problem pane | `s` submit · `t` statement · `?` duck · `R` retreat · `Q Q` give up · `e` reopen a closed editor |
 | Merge window | `c` commit bytes · `↑/↓` + `enter` pick an upgrade or daemon, then leave |
-| Kernel panic | `u` upsolve the problem · `r` reboot · `l` git log · `q` quit |
+| Kernel panic | `u` upsolve the problem · `e` editorial · `r` reboot (twice over a live core dump) · `s` short · `p` patch · `b` read the story beat · `l` git log · `g` GRUB |
+| Cleared | `r` reboot · `s` short · `p` patch · `b` story beat · `l` git log · `g` GRUB |
 | Reader | `j/k` · `space/b` · `g/G` · `/` search, `n/N` · `o` open in the browser · `q` back |
 | git log | `j/k` · `enter` expand a boot · `f` filter · `q` back |
 | top | `s` sort topics · `q` back |
@@ -97,6 +107,7 @@ In a tmux session the game starts, `g++` and `clang++` on PATH are these.
 | `~/Library/Caches/katharsis/` | problems, tests, editorials, builds |
 | `~/.config/katharsis/presets/*.toml` | custom rules (each overrides the standard rules) |
 | `~/.config/katharsis/audio.toml` | volumes, fades, ducking, the timer warning ([settings](internal/audio/settings.go)) |
+| `~/.config/katharsis/settings.toml` | `session_budget = "3h"` (see `--session-budget`) |
 | `~/.config/katharsis/music/<pool or topic>/` | your own mp3, ogg, wav or VGS mml files for that pool or biome |
 | `~/Library/Caches/katharsis/music/` | downloaded music |
 

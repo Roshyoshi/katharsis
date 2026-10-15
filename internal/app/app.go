@@ -91,6 +91,9 @@ type Deps struct {
 	// Sources, when set, is a note on content sources not serving yet
 	// ("Codeforces indexing… 40%"), which GRUB shows as it changes.
 	Sources func() string
+	// Budget is the session budget (retention RT12): past this much play
+	// today, the end of a boot says so in one line. 0 turns it off.
+	Budget time.Duration
 }
 
 // Model is the root tea.Model.
@@ -151,6 +154,8 @@ type Model struct {
 	zoomed screens.Screen
 
 	story storyState // story.go
+
+	end endCache // the end screens' figures (debrief.go)
 }
 
 func New(d Deps) (*Model, error) {
@@ -206,7 +211,7 @@ func (m *Model) Init() tea.Cmd {
 			return tea.Batch(tick(), m.step(game.Tick{}))
 		}
 		if left, ok := m.doorLeft(); ok {
-			m.flash = "the door's timer kept running while katharsis was closed: " + leftText(left)
+			m.flash = resumeNote(left) // debrief.go
 		}
 		return tea.Batch(tick(), m.initTop(), m.openDoor(s.Current.Door, false))
 	}
@@ -277,8 +282,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// pause it, so a quit with a door open asks twice.
 			if left, ok := m.doorLeft(); ok && !armed {
 				m.quitArmed = true
-				m.flash = "the door's timer keeps running while katharsis is closed (" +
-					leftText(left) + ") · ctrl+c again to quit"
+				m.flash = quitWarn(left) // debrief.go
 				return m, nil
 			}
 			return m, m.quit()

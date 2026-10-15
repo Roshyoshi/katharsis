@@ -38,6 +38,7 @@ func runGame(args []string) error {
 	noPrompts := fs.Bool("no-prompts", false, "never ask: no first-launch rating question, no line under a boot's end")
 	motion := fs.String("motion", "full", "story animations: full, or reduced (every scene drawn at once)")
 	fps := fs.Int("fps", 0, fmt.Sprintf("frame-rate cap for the story animations (0 is %d)", anim.DefaultFPS))
+	budget := fs.Duration("session-budget", -1, "the day's play past which the end of a boot says so; 0 is off (default: settings.toml, else 3h)")
 	stdioT := fs.String("template", filepath.Join(home, "cp", "atcoder", "template.cpp"), "C++ template for stdin/stdout problems")
 	fileT := fs.String("template-fileio", filepath.Join(home, "cp", "template.cpp"), "C++ template for file-I/O problems (\"problem\" becomes the file stem)")
 	var presetFiles []string
@@ -89,6 +90,7 @@ func runGame(args []string) error {
 		return session.ExecInTmux("katharsis", append([]string{self}, args...))
 	}
 	warnPresets(ps.loadDir(dir))
+	prefs := openSettings(*budget)
 	sink, audioSet, credits, audioErrs := openAudio(af)
 	warnAudio(audioErrs)
 
@@ -160,6 +162,7 @@ func runGame(args []string) error {
 		Prompts:       !*noPrompts,
 		Story:         true,
 		Sources:       cfNote,
+		Budget:        prefs.SessionBudget.Duration,
 	})
 	if err != nil {
 		return err

@@ -121,8 +121,8 @@ func TestEventsFromADoorSession(t *testing.T) {
 	for _, want := range []string{
 		"app_start screen:grub screen:",
 		"screen:doors",
-		"screen:problem samples_judged screen:crashed editorial_open editorial_close " +
-			"upsolve_open upsolve_judged upsolve_judged upsolve_close app_quit",
+		"screen:problem samples_judged screen:crashed boot_end_action editorial_open editorial_close " +
+			"boot_end_action upsolve_open upsolve_judged upsolve_judged upsolve_close app_quit", // debrief.go logs the end screen's choices
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("events\n  %s\nlack the run\n  %s", got, want)
