@@ -397,6 +397,11 @@ The Dormouse is asleep again. It's a daemon. That's the job.
 Linus closes his merge window after two weeks. This one stays at six.
 rc1 is at six o'clock. So is rc2. Time stopped at tea.
 `),
+	// SPONGE: merge.full promises a swap the engine lacks: at MaxDaemons a
+	//         window offers no daemons and has no swap (game/engine.go:653),
+	//         and no screen shows this hook yet. A draft for the
+	//         storyteller, A19 kept verbatim:
+	//         "No room! No room!" Every daemon seat is taken till reboot.
 	"merge.full":        fixedOf(`"No room! No room!" Every daemon seat is taken. Swap one, or don't.`),
 	"merge.nothing":     fixedOf(`"I don't see any bytes." "There aren't any," says the March Hare.`),
 	"merge.commit":      fixedOf(`Committed. The Dormouse murmurs "Treacle," and goes back to sleep.`),
@@ -507,6 +512,8 @@ A grin in the tree, then a Cat around it. Ducks refilled: {n}
 	"o3.bonus":          fixedOf("Twice as fast as that! The Red Queen nods, once. Free upgrade."),
 
 	// ---- Regressions (the White Queen) ----
+	// SPONGE: "Solve it to-day." reads as mild date pressure (retention
+	//         GR2); the storyteller's call. No screen shows this hook yet.
 	"regression.door": poolOf(`
 "You again?" This door remembers you. You remember it, a bit.
 "It's a poor sort of memory that only works backwards." Again, then.
