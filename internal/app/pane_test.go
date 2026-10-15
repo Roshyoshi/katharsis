@@ -50,7 +50,7 @@ func TestPaneStatementFirst(t *testing.T) {
 		}
 		h.send(tea.KeyPressMsg{Code: tea.KeyEnter})
 		h.send(key("h"))
-		if v := view(h); !strings.Contains(v, "any key closes this") || !strings.Contains(v, "retreat for a life") {
+		if v := view(h); !strings.Contains(v, "any key closes this") || !strings.Contains(v, "retreat for 1 cycle") {
 			t.Fatalf("h shows no keys:\n%s", v)
 		}
 		h.send(key("s")) // closes the help, and submits nothing

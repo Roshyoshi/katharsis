@@ -429,13 +429,17 @@ func (d *Doors) modifiers(door game.Door, cw int, form hiddenForm) []string {
 	if door.Cursed {
 		mods = append(mods, modLine{mod: ui.ModCursed, text: withMult("no ducks"+ui.G.Sep+"1 WA = crash", r.CursedMult)})
 	}
-	if t, ok := timeoutNote(d.env.State); ok {
+	// What a timeout or :q! burns here (D47); a boss's card says its own
+	// rule over the problem (bossRules).
+	if t, ok := failNote(d.env.State); ok && door.Boss == "" {
 		mods = append(mods, modLine{text: ui.G.Timer + t, mastered: true}) // Muted, no modifier
 	}
 	if door.Regression {
-		txt := "regression: crashed you before"
+		// Under cycles a door comes back whether it crashed the boot or
+		// only lost its room: it beat you either way.
+		txt := "regression: beat you before"
 		if n, ok := d.env.regressionAge(door.Problem); ok {
-			txt = "regression: crashed you " + daysAgo(n)
+			txt = "regression: beat you " + daysAgo(n)
 		}
 		mods = append(mods, modLine{mod: ui.ModRegression, text: txt})
 	}
@@ -454,16 +458,22 @@ func daysAgo(n int) string {
 }
 
 // bossBody is the boss door: the named bug large and centered, its blurb,
-// then the problem like any other door.
+// its rules (bossRules), then the problem like any other door.
 func (d *Doors) bossBody(door game.Door, cw int) []string {
+	st := d.env.State
 	name := strings.ToUpper(bossLabel(door.Boss))
 	if big := spaced(name); widthOf(big) <= cw {
 		name = big
 	}
 	out := []string{"", ui.Center(ui.Special.Render(ui.Clip(name, cw)), cw)}
 	// The entrance line goes under the name (story text, boss.enter.*): a
-	// pool, one entry per boot, a 2-line entry for the Jabberwock.
-	if enter := fl.Story("boss.enter."+door.Boss, d.env.State.Seed); enter != "" {
+	// pool, one entry per boot, a 2-line entry for the Jabberwock. The
+	// boss door dealt after a failed one says so instead (boss.retry).
+	enter := fl.Story("boss.enter."+door.Boss, st.Seed)
+	if bossRetried(st) {
+		enter = fl.Story("boss.retry", st.Seed^uint64(len(st.History)))
+	}
+	if enter != "" {
 		for _, e := range strings.Split(enter, "\n") {
 			for _, l := range ui.WrapN(e, cw-4, 2) {
 				out = append(out, ui.Center(ui.Voice.Render(ui.Muted.Render(l)), cw))
@@ -473,6 +483,12 @@ func (d *Doors) bossBody(door game.Door, cw int) []string {
 	}
 	for _, l := range ui.WrapN(fl.BossBlurb(door.Boss), cw-4, 2) {
 		out = append(out, ui.Center(ui.Voice.Render(l), cw))
+	}
+	if rs := bossRules(st, door, cw-4); len(rs) > 0 {
+		out = append(out, "")
+		for _, l := range rs {
+			out = append(out, ui.Center(l, cw))
+		}
 	}
 	t := d.env.doorText(door)
 	out = append(out, "", ui.Center(titleToken(door).Render(ui.Clip(t.Title, cw)), cw))
@@ -487,6 +503,49 @@ func (d *Doors) bossBody(door game.Door, cw int) []string {
 		out = append(out, ui.Center(l, cw))
 	}
 	return append(out, "")
+}
+
+// bossRules are a boss door's rules under cycles, w cells wide (map.md
+// §(g), D54): the rule its twist bends in the boss's voice
+// (boss.rule.<key>) over the mechanic in numbers, then what a fail or :q!
+// costs, and for a one-shot boss the story's word on it (boss.oneshot).
+func bossRules(st *game.State, door game.Door, w int) []string {
+	var out []string
+	if door.Twist != "" {
+		for _, l := range ui.WrapN(fl.Story("boss.rule."+door.Twist, st.Seed), w, 2) {
+			out = append(out, ui.Voice.Render(ui.Muted.Render(l)))
+		}
+		if t := twistNote(st, door); t != "" {
+			out = append(out, ui.ModifierLines(ui.ModBoss, t, w, 2)...)
+		}
+	}
+	price, tone := BossPrice(st), ui.Warn
+	if st.OneShot() {
+		tone = ui.Danger
+	}
+	for _, l := range ui.WrapN(price, w, 2) {
+		out = append(out, tone.Render(l))
+	}
+	if st.OneShot() {
+		for _, l := range ui.WrapN(fl.Story("boss.oneshot", st.Seed), w, 2) {
+			out = append(out, ui.Voice.Render(ui.Muted.Render(l)))
+		}
+	}
+	return out
+}
+
+// bossRetried reports whether the boss biome the boot stands in has dealt
+// a new boss door after a failed one (a timeout or :q! that left cycles).
+func bossRetried(st *game.State) bool {
+	if !inBoss(st) {
+		return false
+	}
+	for _, s := range steps(st) {
+		if o := s.Attempt.Outcome; s.Biome == st.Biome && (o == game.TimedOut || o == game.GaveUp) {
+			return true
+		}
+	}
+	return false
 }
 
 // spaced letter-spaces a word for the boss banner: HEISENBUG → H E I S …

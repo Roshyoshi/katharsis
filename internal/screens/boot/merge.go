@@ -127,6 +127,12 @@ func (m *Merge) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		if st.Uncommitted > 0 {
 			return m, screens.Emit(game.Commit{})
 		}
+	case "f":
+		// fsck at a key, as the sketch has it (map.md §(g)): the heal the
+		// boot pays for, whatever row the cursor is on.
+		if slices.Contains(onSale(st), game.Fsck) {
+			return m, screens.Emit(game.Spend{Item: game.Fsck})
+		}
 	case "prev", "next":
 		m.cur = move(key, min(m.cur, len(m.rows())-1), len(m.rows()))
 		m.sync()
@@ -158,7 +164,7 @@ func (m *Merge) View(width, height int) string {
 	need := listWidth(opts)
 	need = max(need, listWidth(itemOptions(st)))
 	if st.PendingUpgrade {
-		need = max(need, listWidth(upgradeOptions(st.UpgradeOffers, st.Rules)))
+		need = max(need, listWidth(upgradeOptions(st.UpgradeOffers, st)))
 	}
 	cw := min(width, max(76, 4+need))
 	// The story lines over the sections go when the window is too short
@@ -201,8 +207,72 @@ func (m *Merge) View(width, height int) string {
 	if mp := centerBlock(renderMap(st, width), width); len(head)+2+len(mp)+1+len(secs) <= height-1 {
 		block = append(append(mp, ""), secs...)
 	}
-	footer := ui.Footer(width, "↑/↓", "move", "enter", "pick, buy or leave", "c", "commit")
-	return ui.Layout(width, height, centered(head, block, height), footer)
+	keys := []string{"↑/↓", "move", "enter", "pick, buy or leave", "c", "commit"}
+	if slices.Contains(onSale(st), game.Fsck) {
+		keys = append(keys, "f", "fsck")
+	}
+	return ui.Layout(width, height, centered(head, block, height), ui.Footer(width, keys...))
+}
+
+// Fountain is a merge window's fountain (map.md §(e)): what it heals here
+// (rules.FountainCycles with the ascensions' cut, free, up to the boot's
+// starting cycles), and here, whether this window has one by
+// rules.FountainWhere. A fountain here that heals nothing is dry: gone at
+// the prestige that takes it (P5).
+func Fountain(st *game.State) (heal int, here bool) {
+	r := &st.Rules
+	if r.FountainCycles <= 0 || st.Trial != nil || st.Phase != game.PhaseMerge {
+		return 0, false
+	}
+	b := st.Biome
+	boss := func(i int) bool { return i >= 0 && i < len(st.Biomes) && st.Biomes[i].Kind == rules.Boss }
+	switch r.FountainWhere {
+	case rules.FountainAct:
+		here = boss(b)
+	case rules.FountainBoss:
+		here = boss(b + 1)
+	default:
+		here = true
+	}
+	return max(r.FountainCycles+r.Ascend(st.Prestige).FountainCycles, 0), here
+}
+
+// fountainRow is the window's fountain line, in the label column: what it
+// gave (State.Fountain, "+5 cycles, free, between acts ✓ 17 → 22"), that
+// it gave none (the cycles at the line, fountain.full), or that it is dry
+// (fountain.dry). nil in a window without one.
+func fountainRow(st *game.State, label func(string) string) []string {
+	heal, here := Fountain(st)
+	if !here {
+		return nil
+	}
+	start := st.StartCycles()
+	var s string
+	switch {
+	case heal == 0:
+		s = ui.Muted.Render("dry at " + prestigeLabel(st.Prestige) + ": no heal between acts")
+	case st.Fountain > 0:
+		s = fmt.Sprintf("+%d cycles", st.Fountain) + ui.Muted.Render(", free, up to "+fmt.Sprint(start)) + "  " +
+			ui.OK.Render(ui.G.Pass) + fmt.Sprintf(" %d %s %d", st.Cycles-st.Fountain, ui.G.Arrow, st.Cycles)
+	default:
+		s = ui.Muted.Render(fmt.Sprintf("+%d cycles up to %d: yours are at the line, none taken", heal, start))
+	}
+	return []string{label("fountain") + s}
+}
+
+// fountainHook is the story's line for the window's fountain
+// (fountain.drink, .full, .dry), "" for none.
+func fountainHook(st *game.State) string {
+	heal, here := Fountain(st)
+	switch {
+	case !here:
+		return ""
+	case heal == 0:
+		return "fountain.dry"
+	case st.Fountain > 0:
+		return "fountain.drink"
+	}
+	return "fountain.full"
 }
 
 // introHook is the merge window's one-time block, a story scene.
@@ -254,6 +324,8 @@ func (m *Merge) sections(width, cw int, cur mergeRow, intro bool, defeat string)
 	var secs []string
 
 	label := func(s string) string { return "  " + ui.Strong.Render(fmt.Sprintf("%-9s", s)) }
+	// Between acts the fountain comes first: it has already poured.
+	secs = append(secs, fountainRow(st, label)...)
 	// The bytes at stake are plain: a crash loses them. The footer has the
 	// c key, so the line does not repeat it (C2).
 	if st.Uncommitted > 0 {
@@ -355,11 +427,11 @@ func onSale(st *game.State) []game.Item {
 func itemOptions(st *game.State) []option {
 	var out []option
 	for _, it := range onSale(st) {
-		name, desc := itemText(it, st.Rules)
+		name, desc := itemText(it, st)
 		desc += ui.G.Sep + units.Bytes(st.Price(it))
 		switch {
 		case it == game.Fsck && st.Cycles >= st.MaxCycles:
-			desc += ui.G.Sep + "lives full"
+			desc += ui.G.Sep + fmt.Sprintf("cycles full at %d", st.MaxCycles)
 		case st.Uncommitted < st.Price(it):
 			desc += ui.G.Sep + units.Bytes(st.Price(it)-st.Uncommitted) + " short"
 		}

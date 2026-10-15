@@ -91,7 +91,7 @@ func (s *problemScreen) helpLines(w int) []string {
 	} else {
 		pairs = append(pairs,
 			[2]string{"?", "duck: tags, then technique"},
-			[2]string{"R", "retreat for a life (asks)"},
+			[2]string{"R", s.retreatHelp()},
 			[2]string{"e", "reopen the editor"},
 			[2]string{"Q", "give up, :q! (asks)"})
 	}

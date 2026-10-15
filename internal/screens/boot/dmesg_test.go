@@ -105,7 +105,7 @@ func TestTrackerTellsTheBoot(t *testing.T) {
 	b.tr.Judged(6, 30)
 	b.now = b.now.Add(2 * time.Minute)
 	evs = b.step(game.SubmitResult{Verdict: "WA", Passed: 6, Total: 30})
-	want := fmt.Sprintf("verdict: judge: WA 6/30 · -1 ♥, %d left", lives-1)
+	want := fmt.Sprintf("verdict: judge: WA 6/30 · burned 1 cycle, %d left", lives-1)
 	if len(evs) == 0 || plain(evs[:1]) != want || evs[0].Hook != "verdict.WA" {
 		t.Errorf("failed submit: got\n%s\nwant %q with the Queen's line", plain(evs), want)
 	}
@@ -150,7 +150,7 @@ func TestTrackerRetreat(t *testing.T) {
 	b.toDoors()
 	b.step(game.ChooseDoor{})
 	evs := b.step(game.Retreat{})
-	if len(evs) == 0 || evs[0].Kind != EvRetreat || !strings.Contains(plain(evs), "-1 ♥") {
+	if len(evs) == 0 || evs[0].Kind != EvRetreat || !strings.Contains(plain(evs), "burned 1 cycle") {
 		t.Errorf("retreat: got\n%s", plain(evs))
 	}
 	b.st.Daemons = append(b.st.Daemons, game.Kexec)
@@ -171,10 +171,9 @@ func TestTrackerTimeoutCostsLife(t *testing.T) {
 	if !b.st.TimeoutCostsLife() {
 		t.Fatal("the standard Userland door's timeout ends the boot")
 	}
-	lives := b.st.Cycles
 	b.now = b.st.Current.Deadline.Add(time.Second)
 	evs := b.step(game.Tick{})
-	want := fmt.Sprintf("timeout: ⏱ timer ran out: -1 ♥, %d left · new doors", lives-1)
+	want := "timeout: ⏱ timer ran out: burned 1 cycle · new doors"
 	if b.st.Phase != game.PhaseDoors || plain(evs) != want {
 		t.Errorf("in %s, got\n%s\nwant %q", b.st.Phase, plain(evs), want)
 	}

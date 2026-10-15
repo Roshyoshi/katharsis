@@ -34,7 +34,7 @@ func TestDmesgStrip(t *testing.T) {
 		if h.m.state.Cycles != lives-1 {
 			t.Fatalf("lives %d after a WA, want %d", h.m.state.Cycles, lives-1)
 		}
-		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "judge: WA 3/10") || !strings.Contains(v, "-1 ♥") {
+		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "judge: WA 3/10") || !strings.Contains(v, "burned 1 cycle") {
 			t.Fatalf("the pane does not say what the WA cost:\n%s", v)
 		}
 		h.verdict = "AC"

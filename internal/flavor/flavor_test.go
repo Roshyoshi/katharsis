@@ -264,7 +264,7 @@ func TestUpgradesAndDaemons(t *testing.T) {
 	r.ForkDoors, r.DoorsPerRoom, r.DevRandomMult = 5, 2, 1.5
 	checks = append(checks, []struct{ got, want string }{
 		{second(UpgradeTextFor(game.Overclock, r)), "+10% timer"},
-		{second(DaemonTextFor(game.Nice, r)), "+35% timer; a failed submit costs 2 lives."},
+		{second(DaemonTextFor(game.Nice, r)), "+35% timer; a failed submit burns 2x."},
 		{second(DaemonTextFor(game.Fork, r)), "5 doors per room after an AC (normally 2)"},
 		{second(DaemonTextFor(game.DevRandom, r)), "pay 1.5x bytes"},
 	}...)
@@ -334,8 +334,9 @@ func TestKernelHelpers(t *testing.T) {
 		{game.OutOfLives, " tle", "softlockup: hung tasks", "watchdog_timer_fn"},
 		{game.OutOfLives, "OLE", "System is deadlocked on memory", "oom_kill_process"},
 		{game.OutOfLives, "RE", "Fatal exception", "page_fault_oops"},
-		{game.OutOfLives, "WA", "out of lives", "do_exit"},
+		{game.OutOfLives, "WA", "out of cycles", "do_exit"},
 		{game.GaveUp, "RE", "Attempted to kill init! exitcode=0x00000009", "panic"},
+		{game.Abandoned, "", "Attempted to kill init! exitcode=0x0000000f", "panic"},
 	} {
 		if got := PanicReason(tc.cause, tc.verdict); got != tc.reason {
 			t.Errorf("PanicReason(%q, %q) = %q, want %q", tc.cause, tc.verdict, got, tc.reason)

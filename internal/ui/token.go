@@ -7,16 +7,15 @@ import (
 	"katharsis/internal/units"
 )
 
-// Hearts is lives as hearts, units.Hearts painted: the lives left Life,
-// the lost ones Muted. "♥♥♡"
+// Hearts is the cycles pool, units.Hearts painted Life: "♥ 24/30" (D48).
 func Hearts(lives, maxLives int) string { return hearts(lives, maxLives, Token.Render) }
 
 // BorderHearts is Hearts for a tmux format, such as the editor pane's
 // border.
 func BorderHearts(lives, maxLives int) string { return hearts(lives, maxLives, Token.Tmux) }
 
-// hearts splits units.Hearts, which owns when to draw and when to count,
-// into the lives left and lost, in the glyphs in use.
+// hearts paints units.Hearts, which owns the form, in the glyphs in use;
+// a hollow heart, which the count form no longer draws, would be Muted.
 func hearts(lives, maxLives int, paint func(Token, string) string) string {
 	h := units.Hearts(lives, maxLives)
 	left := strings.TrimRight(h, "♡")

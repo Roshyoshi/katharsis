@@ -144,7 +144,7 @@ func catalogue() string {
 	}
 
 	section("hearts")
-	for _, c := range [][2]int{{3, 3}, {2, 5}, {0, 3}, {7, 12}} {
+	for _, c := range [][2]int{{30, 30}, {24, 30}, {0, 30}, {38, 30}} {
 		row(fmt.Sprintf("%d of %d", c[0], c[1]), Hearts(c[0], c[1]))
 		row("  border", BorderHearts(c[0], c[1]))
 	}
@@ -374,7 +374,7 @@ func TestTmux(t *testing.T) {
 	if got, want := BorderTimer(100*time.Second, 30*time.Minute), "#[fg=colour1,reverse]⏱ 01:40#[default]"; got != want {
 		t.Errorf("BorderTimer = %q, want %q", got, want)
 	}
-	if got, want := BorderHearts(2, 5), "#[fg=colour1]♥♥#[default]#[dim]♡♡♡#[default]"; got != want {
+	if got, want := BorderHearts(24, 30), "#[fg=colour1]♥ 24/30#[default]"; got != want {
 		t.Errorf("BorderHearts = %q, want %q", got, want)
 	}
 	if got, want := Strong.Tmux("#17 #[x]"), "#[bold]##17 ##[x]#[default]"; got != want {

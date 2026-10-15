@@ -12,6 +12,7 @@ import (
 
 	"katharsis/internal/game"
 	"katharsis/internal/hud"
+	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/reader"
@@ -66,7 +67,7 @@ func guard(cmd tea.Cmd) tea.Cmd {
 
 // problemScreen is the pane beside the editor while a door is open: the
 // boot HUD bar on top, the sample/submit HUD below, and the keys for the
-// door. In an upsolve it shows the problem without a timer or lives.
+// door. In an upsolve it shows the problem without a timer or cycles.
 type problemScreen struct {
 	m       *Model
 	upsolve bool
@@ -154,6 +155,11 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		if s.upsolve {
 			break
 		}
+		// Past the door's lock no swap is left, kexec's included: the
+		// strip says so (door.retreat.locked) and nothing is stepped.
+		if s.m.retreatRefused() {
+			return s, nil
+		}
 		if ask, ok := s.m.retreatAsk(); ok && !asked {
 			s.confirm, s.ask = key, ask
 			return s, nil
@@ -165,7 +171,7 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 			return s, screens.Emit(screens.Back{})
 		}
 		if !asked {
-			s.confirm, s.ask = key, "Q again: :q! crashes the boot"
+			s.confirm, s.ask = key, "Q again: "+giveUpPrice(s.m.state)
 			return s, nil
 		}
 		return s, screens.Emit(game.GiveUp{})
@@ -251,7 +257,81 @@ func (s *problemScreen) View(w, h int) string {
 		}
 	}
 	b.WriteString(ui.Clip(help, w))
-	return b.String()
+	out := b.String()
+	if story, rules, ok := s.m.quitShown(); ok && !s.upsolve {
+		out = overlayQuit(out, quitLines(story, rules, w), len(top))
+	}
+	return out
+}
+
+// quitLines are the ctrl+c refusal as the pane draws it, w cells wide:
+// the Rabbit's line (the story half), then the ways out with their prices
+// in the confirm's tone, nearest the keys.
+func quitLines(story, rules string, w int) []string {
+	var out []string
+	if story != "" {
+		for _, l := range ui.WrapN(story, max(w-2, 10), 0) {
+			out = append(out, ui.Voice.Render(ui.Muted.Render(" "+l)))
+		}
+	}
+	for _, l := range ui.WrapN(rules, max(w-2, 10), 0) {
+		out = append(out, ui.Alert.Render(ui.Fit(" "+l, w)))
+	}
+	return out
+}
+
+// overlayQuit puts the refusal's lines over the pane's body, just above
+// its two footer rows, so nothing under it moves; the vitals (the first
+// keep lines) stay in view, and what does not fit under them is cut.
+func overlayQuit(view string, ls []string, keep int) string {
+	lines := strings.Split(view, "\n")
+	end := len(lines) - 2 // the editor's commands, then the pane's keys
+	start := max(end-len(ls), keep, 0)
+	for i := start; i < end; i++ {
+		lines[i] = ls[len(ls)-(end-start)+i-start]
+	}
+	return strings.Join(lines, "\n")
+}
+
+// quitShown is the ctrl+c refusal inside a boot door (D47: no quitting
+// inside one; hub.go sets Model.doorQuit), its story half (quit.warn) and
+// rules half, up until the next key; ok is false when none is.
+func (m *Model) quitShown() (story, rules string, ok bool) {
+	q := m.doorQuit
+	return q.Story, q.Rules, q != (quitRefusal{})
+}
+
+// retreatRefused reports whether a retreat of the open door is past its
+// lock (rules.RetreatLock), and if so puts the strip's
+// door.retreat.locked line up: no swap is left, kexec's included.
+func (m *Model) retreatRefused() bool {
+	if m.state == nil || !m.inBootDoor() {
+		return false
+	}
+	ev, ok := bootui.RetreatRefused(m.state, m.d.Now())
+	if ok {
+		m.dmesg.Add(ev)
+		m.refresh()
+	}
+	return ok
+}
+
+// giveUpPrice is the Q confirm's word on a :q! (D47): what it burns and
+// where the boot goes, or that it ends the boot.
+func giveUpPrice(st *game.State) string {
+	c, ok := st.FailCost(game.GaveUp)
+	boss := st.Biome < len(st.Biomes) && st.Biomes[st.Biome].Kind == rules.Boss
+	switch {
+	case !ok && st.OneShot() && boss:
+		return ":q! ends the boot (one shot)"
+	case !ok:
+		return ":q! ends the boot"
+	case boss:
+		return fmt.Sprintf(":q! burns %s, %d left · a new boss door", units.Plural(c, "cycle"), st.Cycles-c)
+	case st.Rules.FailMoveOn:
+		return fmt.Sprintf(":q! burns %s, %d left · room lost", units.Plural(c, "cycle"), st.Cycles-c)
+	}
+	return fmt.Sprintf(":q! burns %s, %d left · new doors", units.Plural(c, "cycle"), st.Cycles-c)
 }
 
 // openPage opens the problem's page online (o), for what the terminal
@@ -273,6 +353,17 @@ func (s *problemScreen) openPage() tea.Cmd {
 func (s *problemScreen) online() bool {
 	p, _ := s.m.d.Catalog.Get(s.door.Problem)
 	return p.URL != "" && (s.upsolve || !s.door.Mystery)
+}
+
+// retreatKey is R's label on the keys row: "retreat" until the door's
+// lock shuts it (rules.RetreatLock, 2:30 in), then "locked".
+func (s *problemScreen) retreatKey() string {
+	if st := s.m.state; st != nil {
+		if _, locked := bootui.RetreatLocked(st, s.m.d.Now()); locked {
+			return "locked"
+		}
+	}
+	return "retreat"
 }
 
 // footers are the two key rows (C8): the editor's commands, then this
@@ -311,11 +402,11 @@ func (s *problemScreen) footers(w int) (vim, keys string) {
 			row([]string{"e", "editorial"}, web, []string{"Q", "leave"})
 	case narrow:
 		return ui.Muted.Render(":w :Submit :Debug n :Quack :Retreat :q!"),
-			row([]string{"?", "duck"}, web, []string{"R", "retreat"})
+			row([]string{"?", "duck"}, web, []string{"R", s.retreatKey()})
 	}
 	return ui.Footer(w, ":w", "samples", ":Submit", "judge", ":Debug n", "debug", ":Quack", "duck",
 			":Retreat", "retreat", ":q!", "give up"),
-		row([]string{"?", "duck"}, web, []string{"R", "retreat", "Q", "give up"})
+		row([]string{"?", "duck"}, web, []string{"R", s.retreatKey(), "Q", "give up"})
 }
 
 // headless is the body without a HUD: the pane's one HP bar (C6), the
@@ -357,6 +448,11 @@ func (m *Model) onRequest(req session.Request) tea.Cmd {
 	case session.CmdGiveUp:
 		a = game.GiveUp{}
 	case session.CmdRetreat:
+		if m.retreatRefused() {
+			after, _ := bootui.RetreatLocked(m.state, m.d.Now())
+			req.Answer(session.Reply{Text: "retreat locked " + units.Clock(after) + " in: solve it, or :q!"})
+			return nil
+		}
 		a = game.Retreat{}
 	case session.CmdStatus:
 		req.Answer(session.Reply{OK: true, Text: m.statusLine()})
@@ -424,8 +520,11 @@ func (m *Model) statusLine() string {
 	if c == nil {
 		return "no door open"
 	}
-	left := max(c.Deadline.Sub(m.d.Now()), 0)
-	return fmt.Sprintf("%s left · %s · %s", units.Countdown(left), units.Hearts(s.Cycles, s.MaxCycles), ducks(s))
+	t := units.Countdown(max(c.Deadline.Sub(m.d.Now()), 0)) + " left"
+	if bootui.HiddenClock(s) {
+		t = "clock hidden" // The Halting Problem's twist (D54)
+	}
+	return fmt.Sprintf("%s · %s · %s", t, units.Cycles(s.Cycles, s.StartCycles()), ducks(s))
 }
 
 // ducks is the duck count, or ✗ on a cursed door, which takes none.
@@ -466,4 +565,21 @@ func overlayBanner(body, msg string, w, rows int) string {
 	i := max(len(lines)-1-max(rows, 1), 0)
 	lines[i] = ui.Alert.Render(ui.Clip(" "+msg+" ", w))
 	return strings.Join(lines, "\n")
+}
+
+// retreatHelp is R in the pane's help (h): what a retreat burns, or that
+// kexec swaps free, and how long into a door it stands.
+func (s *problemScreen) retreatHelp() string {
+	st := s.m.state
+	if st == nil {
+		return "retreat (asks)"
+	}
+	t := "retreat for " + units.Plural(st.Rules.RetreatPrice(), "cycle")
+	if _, free := st.RetreatCost(); free {
+		t = "retreat, free once per " + kexecSpan(st) + " (kexec)"
+	}
+	if lock := st.Rules.RetreatLock.Duration; lock > 0 {
+		t += ", the first " + units.Clock(lock)
+	}
+	return t + " (asks)"
 }

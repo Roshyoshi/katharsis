@@ -19,14 +19,14 @@ import (
 )
 
 // The dmesg strip (UX J5): the last few things that changed the player's
-// lives, ducks, bytes or build, in the kernel log's idiom, under the
+// cycles, ducks, bytes or build, in the kernel log's idiom, under the
 // header's status line on every boot screen. It is never modal: a line
 // stays until newer ones push it out. The app keeps one Tracker per game,
 // shows it the state after every update, and hands its events back
 // through Env.Events.
 //
 //	Boot #1 · Bronze · merge window                           uptime 02:46
-//	♥♥♥♡♡  🦆1  83 B uncommitted · 0 B committed
+//	♥ 24/30 cycles  🦆1  83 B uncommitted · 0 B committed
 //	[  166.2] judge: ✓ AC "Matrix Rotation" in 00:42 of 17:00 · +41 B
 //	[  166.2] merge window: ducks refilled 🦆0 → 🦆1
 //	          "Did you say pig, or fig?" The Cat is back on its branch.
@@ -53,27 +53,32 @@ type Event struct {
 
 // Event kinds.
 const (
-	EvVerdict    = "verdict"    // a failed submit and its cost
+	EvVerdict    = "verdict"    // a failed submit and its cost, in cycles or (ECC) clock
 	EvFree       = "free"       // a failed submit that cost nothing (a CE)
 	EvAC         = "ac"         // a door cleared
 	EvRegression = "regression" // a regression door cleared
-	EvRetreat    = "retreat"    // a door swapped, for a life or kexec
-	EvTimeout    = "timeout"    // a door's timer ran out and cost a life (D44)
-	EvShuf       = "shuf"       // a room re-rolled with a shuf
-	EvQuack      = "quack"      // a duck spent
-	EvDuckRefuse = "duck-refused"
-	EvUpgrade    = "upgrade"
-	EvDaemon     = "daemon"
-	EvSpend      = "spend"
-	EvRefill     = "refill" // ducks refilled at a merge window
-	EvCommit     = "commit"
-	EvLeave      = "leave" // left a merge window
-	EvLib        = "lib"   // a // lib: block saved from an AC
-	EvDoor       = "door"  // a door with modifiers opened
-	EvTimer      = "timer" // 5:00 or 1:00 left on the open door
-	EvLives      = "lives" // lives changed for a reason the strip has no line for
-	EvTip        = "tip"   // a one-time onboarding line
-	EvEase       = "ease"  // an easing the engine made (RT8), announced, or declined
+	EvRetreat    = "retreat"    // a door swapped, for cycles or kexec
+	// EvRetreatLocked is an R or :Retreat past the door's lock
+	// (RetreatRefused).
+	EvRetreatLocked = "retreat-locked"
+	EvTimeout       = "timeout" // a door's timer ran out, and the boot went on
+	EvGaveUp        = "gave-up" // :q! on a door, and the boot went on (D47)
+	EvFountain      = "fountain"
+	EvShuf          = "shuf"  // a room re-rolled with a shuf
+	EvQuack         = "quack" // a duck spent
+	EvDuckRefuse    = "duck-refused"
+	EvUpgrade       = "upgrade"
+	EvDaemon        = "daemon"
+	EvSpend         = "spend"
+	EvRefill        = "refill" // ducks refilled at a merge window
+	EvCommit        = "commit"
+	EvLeave         = "leave"  // left a merge window
+	EvLib           = "lib"    // a // lib: block saved from an AC
+	EvDoor          = "door"   // a door with modifiers opened
+	EvTimer         = "timer"  // 5:00 or 1:00 left on the open door
+	EvCycles        = "cycles" // cycles changed for a reason the strip has no line for
+	EvTip           = "tip"    // a one-time onboarding line
+	EvEase          = "ease"   // an easing the engine made (RT8), announced, or declined
 )
 
 // keepEvents is how many events a Tracker keeps; the strip shows at most
@@ -104,10 +109,10 @@ type Tracker struct {
 type snapshot struct {
 	boot                          int
 	phase                         game.Phase
-	lives, ducks                  int
+	cycles, ducks                 int
 	hist                          int
 	door                          catalog.ID // the open attempt
-	opened                        time.Time
+	opened, deadline              time.Time
 	submits, quacks               int
 	uncommitted, committed, spent int64
 	upgrades, daemons, rerolls    int
@@ -121,13 +126,13 @@ type snapshot struct {
 
 func snap(st *game.State, m *game.Meta, now time.Time) snapshot {
 	s := snapshot{
-		boot: st.Boot, phase: st.Phase, lives: st.Cycles, ducks: st.Ducks, hist: len(st.History),
+		boot: st.Boot, phase: st.Phase, cycles: st.Cycles, ducks: st.Ducks, hist: len(st.History),
 		uncommitted: st.Uncommitted, committed: st.Committed, spent: st.Spent,
 		upgrades: len(st.Upgrades), daemons: len(st.Daemons), rerolls: st.Rerolls, at: st.AtTime,
 		kexec: st.KexecUsed, declined: st.Declined, biome: st.Biome, room: st.Room, libs: map[string]string{},
 	}
 	if c := st.Current; c != nil {
-		s.door, s.opened, s.submits, s.quacks = c.Door.Problem, c.Opened, c.Submits, c.Quacks
+		s.door, s.opened, s.deadline, s.submits, s.quacks = c.Door.Problem, c.Opened, c.Deadline, c.Submits, c.Quacks
 		s.warned = timerMark(st, now)
 	}
 	for _, l := range m.Libs {
@@ -224,7 +229,8 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 		out = append(out, Event{At: now, Kind: kind, Text: text, Hook: hook, Fill: fill, Seed: st.Seed ^ uint64(now.Unix())})
 		return &out[len(out)-1]
 	}
-	livesSeen := false // a line below accounts for a change in lives
+	cyclesSeen := false // a line below accounts for a change in cycles
+	sep := ui.Muted.Render(ui.G.Sep)
 
 	// Libs come from accepted code and are saved before the clear is
 	// stepped, so their lines go first.
@@ -235,25 +241,38 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 		}
 	}
 
-	// A failed submit on the door that is still open.
+	// A failed submit on the door that is still open: the cycles it
+	// burned, or under ECC the clock it took (D47).
 	if n.door != "" && n.door == p.door && n.opened.Equal(p.opened) && n.submits > p.submits && n.phase == game.PhaseProblem {
 		v := string(st.Current.LastVerdict)
 		text := "judge: " + ui.Verdict(v).Render(v)
 		if judged[1] > 0 {
 			text += fmt.Sprintf(" %d/%d", judged[0], judged[1])
 		}
-		kind := EvVerdict
-		if lost := p.lives - n.lives; lost > 0 {
-			text += ui.Muted.Render(ui.G.Sep) + livesLost(lost, n.lives)
-			livesSeen = true
-		} else {
+		// The flavor line keys on the fold, an OLE on the MLE line.
+		kind, hook := EvVerdict, "verdict."+flavor.NormVerdict(v)
+		switch lost, clock := p.cycles-n.cycles, p.deadline.Sub(n.deadline); {
+		case lost > 0:
+			text += sep + Burned(lost, n.cycles)
+			if k := st.Rules.Twists.OffByOne; k > 1 && st.Current.Door.Twist == "off-by-one" && judged[1]-judged[0] == 1 {
+				text += sep + "one test short " + fmtMult(float64(k))
+			}
+			cyclesSeen = true
+		case clock > 0:
+			// ECC turns the burn into the door's clock (verdict.WA.ecc).
+			text += sep + "ECC: -" + units.Clock(clock) + " on the clock"
+			if !HiddenClock(st) {
+				text += ", " + units.Countdown(n.deadline.Sub(now)) + " left"
+			}
+			hook = "verdict.WA.ecc"
+		default:
 			kind, text = EvFree, text+ui.Muted.Render(ui.G.Sep+"no charge")
 		}
-		// The flavor line keys on the fold, an OLE on the MLE line.
-		add(kind, text, "verdict."+flavor.NormVerdict(v))
+		add(kind, text, hook)
 	}
 
-	// Doors that closed since: a clear, a swap, or a timeout.
+	// Doors that closed since: a clear, a swap, or a failure the boot
+	// survived (a timeout or :q!, D47).
 	for _, a := range st.History[min(p.hist, len(st.History)):] {
 		switch a.Outcome {
 		case game.Cleared:
@@ -274,20 +293,19 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 			}
 		case game.Retreated:
 			text := ui.Warn.Render(ui.G.Retreat) + " retreat: "
-			if n.kexec && !p.kexec && n.lives >= p.lives {
-				text += "kexec swapped it free" + ui.Muted.Render(ui.G.Sep+"used for this biome")
+			if n.kexec && !p.kexec && n.cycles >= p.cycles {
+				text += "kexec swapped it free" + ui.Muted.Render(ui.G.Sep+"used for this "+kexecSpan(st))
 			} else {
-				text += livesLost(p.lives-n.lives, n.lives)
-				livesSeen = true
+				text += Burned(p.cycles-n.cycles, n.cycles)
+				cyclesSeen = true
 			}
-			add(EvRetreat, text+ui.Muted.Render(ui.G.Sep+"new doors"), "")
-		case game.TimedOut:
-			// A timeout that ended the boot is the panic's to say; one that
-			// cost a life (D44) left the boot running, on new doors.
+			add(EvRetreat, text+ui.Muted.Render(ui.G.Sep+"new doors"), "door.retreat")
+		case game.TimedOut, game.GaveUp:
+			// A failure that ended the boot is the panic's to say; one the
+			// boot survived burned cycles (D47; D44's timeout before them).
 			if n.phase != game.PhaseCrashed {
-				text := ui.Warn.Render(ui.G.Timer) + "timer ran out: " + livesLost(p.lives-n.lives, n.lives)
-				add(EvTimeout, text+ui.Muted.Render(ui.G.Sep+"new doors"), "")
-				livesSeen = true
+				add(failEvent(st, a, p.cycles-n.cycles, n.cycles))
+				cyclesSeen = true
 			}
 		}
 	}
@@ -296,9 +314,9 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 	// back, and the room drawn again without it.
 	if n.declined && !p.declined {
 		text := "easing declined"
-		if lost := p.lives - n.lives; lost > 0 {
-			text += ui.Muted.Render(ui.G.Sep) + livesLost(lost, n.lives)
-			livesSeen = true
+		if lost := p.cycles - n.cycles; lost > 0 {
+			text += sep + Burned(lost, n.cycles)
+			cyclesSeen = true
 		}
 		if n.phase == game.PhaseDoors {
 			text += ui.Muted.Render(ui.G.Sep + "new doors")
@@ -322,19 +340,24 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 		add(EvQuack, "duck: "+what+ui.Muted.Render(ui.G.Sep)+fmt.Sprintf("%s%d left", ui.G.Duck, n.ducks), hook, fill...)
 	}
 
-	// Picks.
+	// Picks. An Overclock is bought with cycles (D50): the burn rides on
+	// its line.
 	for _, u := range st.Upgrades[min(p.upgrades, len(st.Upgrades)):] {
-		name, desc := upgradeText(u, st.Rules)
+		name, desc := upgradeText(u, st)
 		text := "upgrade: " + ui.Strong.Render(name)
 		if d := strings.TrimSuffix(desc, "."); d != "" {
 			text += ui.Muted.Render(ui.G.Sep + d)
+		}
+		if lost := p.cycles - n.cycles; u == game.Overclock && lost > 0 && !cyclesSeen {
+			text += sep + Burned(lost, n.cycles)
+			cyclesSeen = true
 		}
 		ev := add(EvUpgrade, text, "upgrade."+string(u))
 		if u == game.Overclock {
 			ev.Fill = []string{"pct", pct(st.Rules.OverclockFrac)}
 		}
 		if u == game.ECC {
-			livesSeen = true
+			cyclesSeen = true
 		}
 	}
 	for _, d := range st.Daemons[min(p.daemons, len(st.Daemons)):] {
@@ -350,8 +373,8 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 	if n.spent > p.spent {
 		var it game.Item
 		switch {
-		case n.lives > p.lives:
-			it, livesSeen = game.Fsck, true
+		case n.cycles > p.cycles:
+			it, cyclesSeen = game.Fsck, true
 		case n.ducks > p.ducks:
 			it = game.Dup
 		case n.rerolls > p.rerolls:
@@ -359,18 +382,41 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 		case n.at > p.at:
 			it = game.At
 		}
-		text := "spend: " + units.Bytes(n.spent-p.spent)
+		text, hook := "spend: "+units.Bytes(n.spent-p.spent), ""
 		if it != "" {
-			name, desc := itemText(it, st.Rules)
+			name, desc := itemText(it, st)
 			text = "spend: " + ui.Strong.Render(name) + ui.Muted.Render(ui.G.Sep+desc+ui.G.Sep) + units.Bytes(n.spent-p.spent)
 		}
-		add(EvSpend, text, "")
+		if it == game.Fsck {
+			// The King's men run fsck (item.fsck).
+			text += sep + ui.Life.Render(ui.G.Life) + fmt.Sprintf(" %d %s %d", p.cycles, ui.G.Arrow, n.cycles)
+			hook = "item.fsck"
+		}
+		add(EvSpend, text, hook)
 	}
 
-	// The merge window: ducks refilled on the way in, a commit, leaving.
+	// The merge window: ducks refilled on the way in, then its fountain
+	// (between acts, map.md §(e)), a commit, leaving.
 	if n.phase == game.PhaseMerge && p.phase != game.PhaseMerge && n.ducks > p.ducks {
 		add(EvRefill, fmt.Sprintf("merge window: ducks refilled %s%d %s %s%d", ui.G.Duck, p.ducks, ui.G.Arrow, ui.G.Duck, n.ducks),
 			"duck.refill", "n", strconv.Itoa(n.ducks))
+	}
+	if n.phase == game.PhaseMerge && p.phase != game.PhaseMerge {
+		if hook := fountainHook(st); hook != "" {
+			heal, _ := Fountain(st)
+			text := "fountain: "
+			switch hook {
+			case "fountain.drink":
+				text += fmt.Sprintf("+%d cycles, free", st.Fountain) + sep +
+					ui.Life.Render(ui.G.Life) + fmt.Sprintf(" %d %s %d", st.Cycles-st.Fountain, ui.G.Arrow, st.Cycles)
+				cyclesSeen = true
+			case "fountain.full":
+				text += fmt.Sprintf("cycles at %d or more", st.StartCycles()) + ui.Muted.Render(fmt.Sprintf(": its +%d not taken", heal))
+			default:
+				text += "dry" + ui.Muted.Render(" at "+prestigeLabel(st.Prestige))
+			}
+			add(EvFountain, text, hook)
+		}
 	}
 	if n.committed > p.committed {
 		add(EvCommit, "commit: "+units.Bytes(n.committed-p.committed)+" banked"+
@@ -402,16 +448,51 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 		add(EvTimer, tone.Render(ui.G.Timer+units.Countdown(left))+" left on this door", hook)
 	}
 
-	// Lives that changed for a reason no line above names.
-	if !livesSeen && n.lives != p.lives && n.phase != game.PhaseCrashed && n.phase != game.PhaseCleared {
-		add(EvLives, "lives: "+ui.Hearts(n.lives, st.MaxCycles), "")
+	// Cycles that changed for a reason no line above names.
+	if !cyclesSeen && n.cycles != p.cycles && n.phase != game.PhaseCrashed && n.phase != game.PhaseCleared {
+		add(EvCycles, "cycles: "+cyclesShort(st), "")
 	}
 	return out
 }
 
-// livesLost is the cost of a failed submit or a retreat: "-1 ♥, 3 left".
-func livesLost(lost, left int) string {
-	return fmt.Sprintf("-%d ", lost) + ui.Life.Render(ui.G.Life) + fmt.Sprintf(", %d left", left)
+// failEvent is the strip's line for attempt a, a timeout or a give-up the
+// boot survived (D47): what it burned and where the boot goes, "⏱ timer
+// ran out: burned 10 cycles · room lost · the boot goes on". A room is
+// lost and the boot goes on (rules.FailMoveOn), or before cycles' move-on
+// the room is drawn again (D44); a boss deals a new boss door, with what
+// is left to fight it, in the story's words for it (boss.retry), not the
+// door's. The header's status line has the cycles left.
+func failEvent(st *game.State, a game.Attempt, lost, left int) (kind, text, hook string) {
+	kind, hook = EvTimeout, "door.timeout"
+	text = ui.Warn.Render(ui.G.Timer) + "timer ran out"
+	if a.Outcome == game.GaveUp {
+		kind, hook = EvGaveUp, "door.gave-up"
+		text = ui.Warn.Render(ui.G.Fail) + " gave up"
+	}
+	burned := ""
+	if lost > 0 {
+		burned = ": burned " + units.Plural(lost, "cycle")
+	}
+	sep := ui.Muted.Render(ui.G.Sep)
+	switch {
+	case a.Door.Boss != "":
+		if lost > 0 {
+			burned = ": " + Burned(lost, left)
+		}
+		return kind, text + burned + sep + "a new boss door", "boss.retry"
+	case st.Rules.FailMoveOn:
+		return kind, text + burned + sep + "room lost" + sep + "the boot goes on", hook
+	}
+	return kind, text + burned + sep + "new doors", hook
+}
+
+// kexecSpan is how long kexec's free swap lasts: an act under
+// rules.KexecPerAct, else a biome.
+func kexecSpan(st *game.State) string {
+	if st.Rules.KexecPerAct {
+		return "act"
+	}
+	return "biome"
 }
 
 // doorMods is the line for a door's modifiers as it opens, the most
@@ -590,23 +671,24 @@ func tips(st *game.State, m *game.Meta, now time.Time, out []Event) []Event {
 	has := func(kind string) bool {
 		return slices.ContainsFunc(out, func(e Event) bool { return e.Kind == kind })
 	}
+	price := SubmitPrice(st) // "a fail burns 2 cycles"
 	for _, t := range []struct {
 		id, text string
 		due      bool
 	}{
 		{"tip.doors", "doors: aimed at your rating, and the aim adapts as you play",
 			st.Phase == game.PhaseDoors && !st.PendingUpgrade},
-		{"tip.door", ":w judges samples" + ui.G.Sep + ":Submit all tests, a fail costs " + ui.Life.Render(ui.G.Life) + ui.G.Sep + ":q! gives up",
+		{"tip.door", ":w samples" + ui.G.Sep + ":Submit all tests, " + price + ui.G.Sep + ":q! gives up",
 			st.Phase == game.PhaseProblem && st.Current != nil},
 		{"tip.upgrade", "upgrades last the boot" + ui.G.Sep + "AC under half the timer (-O3): a second pick",
 			st.PendingUpgrade},
 		{"tip.bytes", "bytes: a crash loses the uncommitted" + ui.G.Sep + "commit them at a merge window",
 			st.Phase == game.PhaseDoors && !st.PendingUpgrade && st.Uncommitted > 0},
-		{"tip.fail", "a failed submit costs " + ui.Life.Render(ui.G.Life) + ", a CE nothing" + ui.G.Sep + "red samples need :Submit!",
+		{"tip.fail", "a failed submit " + strings.TrimPrefix(price, "a fail ") + ", a CE none" + ui.G.Sep + "red samples ask :Submit!",
 			has(EvVerdict)},
 		{"tip.duck", "ducks: the 1st quack shows hidden tags, the 2nd the technique",
 			has(EvQuack)},
-		{"tip.regression", ui.Warn.Render(ui.G.Regression) + " a door that crashed you returns; each clear sends it further out",
+		{"tip.regression", ui.Warn.Render(ui.G.Regression) + " a door that beat you returns; each clear sends it further out",
 			st.Phase == game.PhaseDoors && slices.ContainsFunc(st.Doors, func(d game.Door) bool { return d.Regression })},
 	} {
 		if t.due && !game.HasSeen(m, t.id) {

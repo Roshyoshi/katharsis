@@ -73,7 +73,7 @@ func (c *Cleared) View(width, height int) string {
 	env := c.env
 	st := env.State
 	b := game.Debrief(st, &env.Meta)
-	var solves, hinted, retreats, timeouts int
+	var solves, hinted, retreats, lost, retried int
 	var boss string
 	end := env.Now
 	for _, s := range steps(st) {
@@ -89,8 +89,14 @@ func (c *Cleared) View(width, height int) string {
 			}
 		case game.Retreated:
 			retreats++
-		case game.TimedOut: // it cost a life, or the boot would not be cleared (D44)
-			timeouts++
+		case game.TimedOut, game.GaveUp:
+			// The boot survived it, or it would not be cleared: a room lost
+			// (D47; D44 drew it again), or a boss door dealt anew.
+			if a.Door.Boss != "" {
+				retried++
+			} else {
+				lost++
+			}
 		}
 		if !a.Closed.IsZero() {
 			end = a.Closed
@@ -143,15 +149,22 @@ func (c *Cleared) View(width, height int) string {
 	if retreats > 0 {
 		sol += ui.G.Sep + units.Plural(retreats, "retreat")
 	}
-	if timeouts > 0 {
-		sol += ui.G.Sep + units.Plural(timeouts, "timeout")
+	if lost > 0 {
+		sol += ui.G.Sep + fmt.Sprintf("%d lost", lost)
+	}
+	if retried > 0 {
+		sol += ui.G.Sep + units.Plural(retried, "boss retry")
+	}
+	cycles := Cycles(st)
+	if st.Fountained > 0 {
+		cycles += ui.Muted.Render(ui.G.Sep + fmt.Sprintf("fountains +%d", st.Fountained))
 	}
 	stats := [][2]string{
 		{"uptime", units.Clock(uptime)},
 		{"committed", ui.OK.Render(units.Bytes(st.Committed)) +
 			ui.Muted.Render(ui.G.Sep+"bank ") + units.Bytes(env.Meta.Bank)},
 		{"solved", sol},
-		{"lives left", ui.Hearts(st.Cycles, st.MaxCycles)},
+		{"cycles left", cycles},
 	}
 	var table []string
 	for _, r := range stats {

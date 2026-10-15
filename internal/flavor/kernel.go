@@ -10,13 +10,16 @@ import (
 // screen, before ` in "<title>"`. Where a real Linux panic fits the crash
 // it is quoted verbatim (kernel/exit.c, kernel/watchdog.c, mm/oom_kill.c,
 // arch/x86/kernel/dumpstack.c); :q! is init taking SIGKILL, hence exit
-// code 9.
+// code 9, and a boot abandoned for a new one (D47) init taking the SIGTERM
+// of a shutdown, exit code 15.
 func PanicReason(cause game.Outcome, verdict string) string {
 	switch cause {
 	case game.TimedOut:
 		return "timer expired"
 	case game.GaveUp:
 		return "Attempted to kill init! exitcode=0x00000009"
+	case game.Abandoned:
+		return "Attempted to kill init! exitcode=0x0000000f"
 	case game.OutOfLives:
 		switch normVerdict(verdict) {
 		case "TLE":
@@ -26,7 +29,7 @@ func PanicReason(cause game.Outcome, verdict string) string {
 		case "RE":
 			return "Fatal exception"
 		}
-		return "out of lives"
+		return "out of cycles"
 	}
 	return "unknown cause " + string(cause)
 }
@@ -51,7 +54,7 @@ var (
 func CallTrace(cause game.Outcome, verdict string, seed uint64) []string {
 	var syms []string
 	switch v := normVerdict(verdict); {
-	case cause == game.GaveUp:
+	case cause == game.GaveUp, cause == game.Abandoned:
 		syms = framesQuit
 	case v == "TLE":
 		syms = framesTLE

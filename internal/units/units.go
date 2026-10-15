@@ -84,16 +84,17 @@ func HM(d time.Duration) string {
 	return fmt.Sprintf("%d:%02d", int(d.Hours()), int(d.Minutes())%60)
 }
 
-// Hearts draws lives as filled hearts and the missing ones as hollow:
-// "♥♥♡". Past ten, a row of hearts would crowd the line, so it counts
-// instead: "♥ 7/12".
-func Hearts(lives, maxLives int) string {
-	lives = max(lives, 0)
-	if lives > 10 || maxLives > 10 {
-		return fmt.Sprintf("♥ %d/%d", lives, maxLives)
-	}
-	return strings.Repeat("♥", lives) + strings.Repeat("♡", max(maxLives-lives, 0))
+// Hearts is the cycles pool (D48: lives renamed cycles, still drawn as ♥)
+// as one heart and a count, "♥ 24/30": a row of 30 hearts fits no line.
+// of is what the count is out of, the pool the boot was dealt; a heal can
+// take n past it, "♥ 38/30".
+func Hearts(n, of int) string {
+	return fmt.Sprintf("♥ %d/%d", max(n, 0), of)
 }
+
+// Cycles is Hearts with its unit, "♥ 24/30 cycles", for a line with room
+// for the word.
+func Cycles(n, of int) string { return Hearts(n, of) + " cycles" }
 
 // Plural counts n of a regular English noun: "1 boot", "2 boots",
 // "3 matches", "2 crashes", "4 entries". Irregular nouns (life, lives)

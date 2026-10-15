@@ -1,5 +1,5 @@
 Boot #42 · Silver · merge window                                  uptime 1:03:37
-♥♥♡  🦆1  176 B uncommitted · 112 B committed                     daemons strace
+♥ 2/3 cycles  🦆1  176 B uncommitted · 112 B committed            daemons strace
 ────────────────────────────────────────────────────────────────────────────────
 
     commit   176 B uncommitted: a crash loses it, the bank keeps it
@@ -7,18 +7,18 @@ Boot #42 · Silver · merge window                                  uptime 1:03:
 
     upgrade  a clear earned one; pick it before you leave
       ▸ Overclock  +15% timer on every later door
-        ECC        +1 life
+        ECC        +10 cycles
         Duck       +1 rubber duck
 
     spend    uncommitted bytes, for this boot only
-        fsck  +1 life now · 64 B
+        fsck  +10 cycles now · 64 B
         dup   +1 rubber duck · 48 B
         shuf  re-roll one room's doors · 32 B
 
     daemon   pick one, it runs for the rest of the boot · held 1/3: strace
-        nice -20     +20% timer, but a WA costs 2 lives
+        nice -20     +20% timer, but every door pays 0.8x
         fork         4 doors per room after an AC
         /dev/random  mystery doors pay 2x
 
     leave → biome 3: route choice
-↑/↓ move · enter pick, buy or leave · c commit
+↑/↓ move · enter pick, buy or leave · c commit · f fsck

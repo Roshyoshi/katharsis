@@ -480,8 +480,10 @@ func (m *Model) Conceal() bool {
 	return !m.state.ShowsFailingInput()
 }
 
-// Clock is the HUD's clock in a boot: the countdown with lives and ducks,
-// e.g. "23:41 · ♥♥ · 🦆1". Outside a boot it counts up, as in practice.
+// Clock is the HUD's clock in a boot: the countdown with cycles and ducks,
+// e.g. "23:41 · ♥ 24/30 cycles · 🦆1"; on The Halting Problem's doors the
+// countdown is hidden (bootui.HiddenClock). Outside a boot it counts up,
+// as in practice.
 func (m *Model) Clock() string {
 	s, c := m.state, m.attempt()
 	if c == nil {
@@ -489,20 +491,24 @@ func (m *Model) Clock() string {
 	}
 	left := c.Deadline.Sub(m.d.Now())
 	t := units.Countdown(left)
-	// A trial's timer is soft: past the deadline the door goes on at half
-	// pay, so show how far over it is instead of a frozen 00:00.
-	if left < 0 && s.SoftTimer() {
+	switch {
+	case bootui.HiddenClock(s):
+		t = bootui.ClockHidden
+	case left < 0 && s.SoftTimer():
+		// A trial's timer is soft: past the deadline the door goes on at
+		// half pay, so show how far over it is instead of a frozen 00:00.
 		t = "+" + units.Clock(-left) + " over"
 	}
-	return fmt.Sprintf("%s · %s · %s", t, units.Hearts(s.Cycles, s.MaxCycles), ducks(s))
+	return fmt.Sprintf("%s · %s · %s", t, units.Cycles(s.Cycles, s.StartCycles()), ducks(s))
 }
 
 // BorderClock is Clock as a tmux format for the editor pane's border, the
 // timer the player watches while typing (E15, fix 3): the countdown in its
 // tone (ui.BorderTimer: bold in the last fifth, reverse under two minutes),
-// a soft timer's overrun in Danger, the hearts drawn as the HUD draws
-// them, ♥♥♡, lost lives included, and for a moment the strip's timer
-// warning (borderWarn).
+// or hidden on The Halting Problem's doors; a soft timer's overrun in
+// Danger; the cycles as the HUD draws them, "♥ 24/30 cycles"; and for a
+// moment the strip's timer warning (borderWarn), which a hidden clock
+// still gives.
 func (m *Model) BorderClock() string {
 	s, c := m.state, m.attempt()
 	if c == nil {
@@ -510,10 +516,14 @@ func (m *Model) BorderClock() string {
 	}
 	left := c.Deadline.Sub(m.d.Now())
 	t := ui.BorderTimer(left, c.Door.Timer)
-	if left < 0 && s.SoftTimer() {
+	switch {
+	case bootui.HiddenClock(s):
+		t = ui.Muted.Tmux(ui.G.Timer + bootui.ClockHidden)
+	case left < 0 && s.SoftTimer():
 		t = ui.Danger.Tmux(ui.G.Timer + "+" + units.Clock(-left) + " over")
 	}
-	return t + " · " + ui.BorderHearts(s.Cycles, s.MaxCycles) + " · " + ui.TmuxEscape(ducks(s)) + m.borderWarn(left)
+	return t + " · " + ui.BorderHearts(s.Cycles, s.StartCycles()) + ui.Muted.Tmux(" cycles") + " · " +
+		ui.TmuxEscape(ducks(s)) + m.borderWarn(left)
 }
 
 // borderWarnFor is how long the border says the open door's timer passed

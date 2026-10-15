@@ -6,7 +6,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"katharsis/internal/game"
-	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/ui"
 	"katharsis/internal/units"
@@ -15,10 +14,10 @@ import (
 // option is one pickable upgrade or daemon as the player sees it.
 type option struct{ name, desc string }
 
-func upgradeOptions(us []game.Upgrade, r rules.Rules) []option {
+func upgradeOptions(us []game.Upgrade, st *game.State) []option {
 	out := make([]option, len(us))
 	for i, u := range us {
-		out[i].name, out[i].desc = upgradeText(u, r)
+		out[i].name, out[i].desc = upgradeText(u, st)
 	}
 	return out
 }
@@ -105,12 +104,12 @@ func optionList(opts []option, cursor, width int) []string {
 type picker struct {
 	offers []game.Upgrade
 	cursor int
-	rules  rules.Rules // the boot's rules, which the descriptions quote
+	st     *game.State // the boot, whose numbers the descriptions quote
 }
 
-// set takes the offers and rules from st, keeping the cursor in range.
+// set takes the offers from st, keeping the cursor in range.
 func (p *picker) set(st *game.State) {
-	p.offers, p.rules = st.UpgradeOffers, st.Rules
+	p.offers, p.st = st.UpgradeOffers, st
 	p.cursor = move("", p.cursor, len(p.offers))
 }
 
@@ -128,7 +127,7 @@ func (p *picker) update(msg tea.Msg) tea.Cmd {
 
 // lines draws the offers as cards when they fit width, else as a list.
 func (p *picker) lines(width int) []string {
-	opts := upgradeOptions(p.offers, p.rules)
+	opts := upgradeOptions(p.offers, p.st)
 	if ls := optionCards(opts, p.cursor, width); ls != nil {
 		return ls
 	}
@@ -141,7 +140,7 @@ func (p *picker) list(width int, active bool) []string {
 	if active {
 		cur = p.cursor
 	}
-	return optionList(upgradeOptions(p.offers, p.rules), cur, width)
+	return optionList(upgradeOptions(p.offers, p.st), cur, width)
 }
 
 // UpgradeScreen is the upgrade pick right after a cleared door, outside a

@@ -94,15 +94,18 @@ func TestHM(t *testing.T) {
 
 func TestHearts(t *testing.T) {
 	for _, c := range []struct {
-		lives, max int
-		want       string
+		n, of int
+		want  string
 	}{
-		{2, 3, "♥♥♡"}, {3, 3, "♥♥♥"}, {0, 3, "♡♡♡"}, {-1, 2, "♡♡"},
-		{4, 3, "♥♥♥♥"}, {7, 12, "♥ 7/12"}, {11, 3, "♥ 11/3"},
+		{24, 30, "♥ 24/30"}, {30, 30, "♥ 30/30"}, {0, 30, "♥ 0/30"}, {-4, 30, "♥ 0/30"},
+		{38, 30, "♥ 38/30"}, {2, 3, "♥ 2/3"},
 	} {
-		if got := Hearts(c.lives, c.max); got != c.want {
-			t.Errorf("Hearts(%d, %d) = %q, want %q", c.lives, c.max, got, c.want)
+		if got := Hearts(c.n, c.of); got != c.want {
+			t.Errorf("Hearts(%d, %d) = %q, want %q", c.n, c.of, got, c.want)
 		}
+	}
+	if got := Cycles(24, 30); got != "♥ 24/30 cycles" {
+		t.Errorf("Cycles(24, 30) = %q", got)
 	}
 }
 

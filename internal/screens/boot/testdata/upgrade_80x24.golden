@@ -1,5 +1,5 @@
 Boot #42 · Silver · upgrade                                         uptime 40:03
-♥♥♡  🦆1  96 B uncommitted · 112 B committed                      daemons strace
+♥ 2/3 cycles  🦆1  96 B uncommitted · 112 B committed             daemons strace
 ────────────────────────────────────────────────────────────────────────────────
 
 
@@ -13,7 +13,7 @@ Boot #42 · Silver · upgrade                                         uptime 40:
 ┏━ ▸ 1 ━━━━━━━━━━━━━━━━━┓  ╭─ 2 ───────────────────╮  ╭─ 3 ───────────────────╮
 ┃ Overclock             ┃  │ ECC                   │  │ Duck                  │
 ┃                       ┃  │                       │  │                       │
-┃ +15% timer on every   ┃  │ +1 life               │  │ +1 rubber duck        │
+┃ +15% timer on every   ┃  │ +10 cycles            │  │ +1 rubber duck        │
 ┃ later door            ┃  │                       │  │                       │
 ┗━━━━━━━━━━━━━━━━━━━━━━━┛  ╰───────────────────────╯  ╰───────────────────────╯
 

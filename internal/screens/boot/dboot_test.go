@@ -137,7 +137,7 @@ func TestCopyGuardrails(t *testing.T) {
 // biome without the rule, and in a trial, none does.
 func TestTimeoutNote(t *testing.T) {
 	st := fixture.Userland()
-	const note = "⏱ a timeout costs ♥, not the boot"
+	const note = "⏱ a timeout burns 1 cycle, not the boot"
 	for _, sz := range goldenSizes {
 		if v := ansi.Strip(NewDoors(env(st)).View(sz[0], sz[1])); strings.Count(v, note) != len(st.Doors) {
 			t.Errorf("%dx%d: want the D44 line on each of %d cards:\n%s", sz[0], sz[1], len(st.Doors), v)
@@ -155,7 +155,7 @@ func TestTimeoutNote(t *testing.T) {
 	trial := fixture.Userland()
 	trial.Trial = &game.TrialState{}
 	for name, st := range map[string]*game.State{"last life": last, "the Heap": fixture.Doors(), "trial": trial} {
-		if txt, ok := timeoutNote(st); ok {
+		if txt, ok := failNote(st); ok {
 			t.Errorf("%s: %q", name, txt)
 		}
 	}
@@ -170,7 +170,7 @@ func TestEasing(t *testing.T) {
 	lines, decline := easing(st)
 	want := []string{
 		"Userland aim retuned (first boot in 5 days)",
-		"+1 ♥ (Userland's easiest doors in the pool are rated 800)",
+		"+1 cycle (Userland's easiest doors in the pool are rated 800)",
 	}
 	if got := stripAll(lines); !slices.Equal(got, want) || decline != (game.DeclineEase{}) {
 		t.Fatalf("easing = %q, %#v; want %q and DeclineEase", got, decline, want)
@@ -229,10 +229,10 @@ func TestEasingCopy(t *testing.T) {
 			t.Errorf("kept item %q", l)
 		}
 	}
-	if got, want := ansi.Strip(items[2]), "eased: aims 90%/70%/60%/50% → 95%/78%/65%/55%, +1 ♥ (the last 2 boots ended in Userland)"; got != want {
+	if got, want := ansi.Strip(items[2]), "eased: aims 90%/70%/60%/50% → 95%/78%/65%/55%, +1 cycle (the last 2 boots ended in Userland)"; got != want {
 		t.Errorf("governor kept item\n got %q\nwant %q", got, want)
 	}
-	if got, want := ansi.Strip(items[3]), "eased: +2 ♥, +🦆1, longer timers on Userland's floor doors (Userland's easiest doors in the pool are rated 800)"; got != want {
+	if got, want := ansi.Strip(items[3]), "eased: +2 cycles, +🦆1, longer timers on Userland's floor doors (Userland's easiest doors in the pool are rated 800)"; got != want {
 		t.Errorf("floor kept item\n got %q\nwant %q", got, want)
 	}
 }

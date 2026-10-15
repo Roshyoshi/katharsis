@@ -1,5 +1,5 @@
 Boot #42 · Silver · Userland · room 1/2                                                                                         uptime 00:00
-♥♥♥♥♡  🦆1  0 B uncommitted · 0 B committed
+♥ 4/3 cycles  🦆1  0 B uncommitted · 0 B committed
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -12,7 +12,7 @@ Boot #42 · Silver · Userland · room 1/2                                      
 
 
                                                 Userland aim retuned (first boot in 5 days)
-                                         +1 ♥ (Userland's easiest doors in the pool are rated 800)
+                                       +1 cycle (Userland's easiest doors in the pool are rated 800)
 
 ┏━ ▸ 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  ╭─ 2 ───────────────────────────────────────╮  ╭─ 3 ───────────────────────────────────────╮
 ┃ CF Beta Round 4 (Div. 2)                  ┃  │ USACO · 2017 January, Bronze P3           │  │ USACO · 2012 January, Bronze P1           │
@@ -20,7 +20,7 @@ Boot #42 · Silver · Userland · room 1/2                                      
 ┃ Brute Force · Math                        ┃  │ Greedy · Simulation                       │  │ Prefix Sums · Difference Arrays           │
 ┃                                           ┃  │                                           │  │                                           │
 ┃ ◆≤800  ⏱ 15:00  +32 B                     ┃  │ ◆1000  ⏱ 15:00  +48 B                     │  │ ◆1050  ⏱ 15:00  +48 B                     │
-┃ ⏱ a timeout costs ♥, not the boot         ┃  │ ⏱ a timeout costs ♥, not the boot         │  │ ⏱ a timeout costs ♥, not the boot         │
+┃ ⏱ a timeout burns 1 cycle, not the boot   ┃  │ ⏱ a timeout burns 1 cycle, not the boot   │  │ ⏱ a timeout burns 1 cycle, not the boot   │
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ╰───────────────────────────────────────────╯  ╰───────────────────────────────────────────╯
 
                                             ╭─ Userland ─╮   ╭─ ? ─╮   ╭─ ? ─╮   ╭─ Heisenbug ─╮

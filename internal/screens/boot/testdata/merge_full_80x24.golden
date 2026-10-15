@@ -1,5 +1,5 @@
 Boot #42 · Silver · merge window                                  uptime 1:03:37
-♥♥♡  🦆1  176 B uncommitted · 112 B committed       daemons strace nice -20 fork
+♥ 2/3 cycles  🦆1  176 B uncommitted · 112 B committed
 ────────────────────────────────────────────────────────────────────────────────
 
                            Stub line for merge.line.
@@ -8,11 +8,11 @@ Boot #42 · Silver · merge window                                  uptime 1:03:
 
     upgrade  a clear earned one; pick it before you leave
       ▸ Overclock  +15% timer on every later door
-        ECC        +1 life
+        ECC        +10 cycles
         Duck       +1 rubber duck
 
     spend    uncommitted bytes, for this boot only
-        fsck  +1 life now · 64 B
+        fsck  +10 cycles now · 64 B
         dup   +1 rubber duck · 48 B
         shuf  re-roll one room's doors · 32 B
 
@@ -21,4 +21,4 @@ Boot #42 · Silver · merge window                                  uptime 1:03:
 
     leave → biome 3: route choice
 
-↑/↓ move · enter pick, buy or leave · c commit
+↑/↓ move · enter pick, buy or leave · c commit · f fsck

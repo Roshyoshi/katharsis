@@ -95,7 +95,11 @@ func (m *Model) doorQuitText() quitRefusal {
 	var q quitRefusal
 	if left, ok := m.doorLeft(); ok && left > 0 {
 		if s := flavor.Story("quit.warn", 0); s != "" {
-			q.Story = flavor.Fill(s, "time", units.Countdown(left))
+			t := units.Countdown(left)
+			if bootui.HiddenClock(st) {
+				t = bootui.ClockHidden // The Halting Problem hides it (D54)
+			}
+			q.Story = flavor.Fill(s, "time", t)
 		}
 	}
 	parts := []string{"no quitting inside a door: solve"}

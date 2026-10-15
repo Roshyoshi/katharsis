@@ -12,8 +12,10 @@ import (
 )
 
 // HUDBar is the top of the in-problem HUD pane (35 to 60 columns), its
-// vitals: the countdown, lives, ducks and bytes; the door's modifiers; the
-// tags as far as the ducks have revealed them. Every line fits width. The
+// vitals: the countdown (hidden on The Halting Problem's doors), cycles,
+// ducks and bytes; the door's modifiers, a boss's twist among them; what a
+// timeout or :q! burns; the tags as far as the ducks have revealed them.
+// Every line fits width. The
 // pane's one HP bar is the HUD's, or the problem screen's without a HUD
 // (C6).
 func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) string {
@@ -28,13 +30,18 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	door := att.Door
 	var out []string
 
-	// Countdown, lives, ducks, bytes; the pending reward goes first when
-	// the pane is too narrow. The bytes at stake are plain: they are lost
-	// on a crash, so they must not read as a gain; the reward is one.
+	// Countdown, cycles, ducks, bytes; the pending reward goes first when
+	// the pane is too narrow, then the word "cycles". The bytes at stake
+	// are plain: they are lost on a crash, so they must not read as a
+	// gain; the reward is one.
 	var timer string
 	switch left := att.Deadline.Sub(now); {
 	case !open:
 		timer = ui.Muted.Render(ui.G.Timer + "--:--")
+	case HiddenClock(st):
+		// The Halting Problem hides its clock (D54): you cannot tell
+		// whether it will finish. The strip still warns at 5:00 and 1:00.
+		timer = ui.Muted.Render(ui.G.Timer + ClockHidden)
 	case left < 0 && st.SoftTimer():
 		// A soft timer (a trial) goes on past its deadline at less pay:
 		// how far over, as the editor pane's border says it.
@@ -46,7 +53,11 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	if door.Cursed {
 		ducks = ui.Muted.Render(ui.G.Duck + ui.G.Fail)
 	}
-	status := timer + "  " + ui.Hearts(st.Cycles, st.MaxCycles) + "  " + ducks + "  " + units.Bytes(st.Uncommitted)
+	rest := "  " + ducks + "  " + units.Bytes(st.Uncommitted)
+	status := timer + "  " + Cycles(st) + rest
+	if widthOf(status) > width {
+		status = timer + "  " + cyclesShort(st) + rest
+	}
 	if reward := " " + ui.OK.Render("+"+units.Bytes(door.Bytes)); door.Bytes > 0 && widthOf(status+reward) <= width {
 		status += reward
 	}
@@ -56,7 +67,11 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	// Modifiers, packed greedily into as few lines as fit.
 	var mods []string
 	if door.Boss != "" {
-		mods = append(mods, ui.Modifier(ui.ModBoss, bossLabel(door.Boss)))
+		boss := bossLabel(door.Boss)
+		if t := twistNote(st, door); t != "" {
+			boss += ": " + t
+		}
+		mods = append(mods, ui.Modifier(ui.ModBoss, boss))
 	}
 	if door.Cursed {
 		mods = append(mods, ui.Modifier(ui.ModCursed, "cursed: 1 WA = crash"))
@@ -69,10 +84,19 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	if door.Regression {
 		mods = append(mods, ui.Modifier(ui.ModRegression, ""))
 	}
-	if t, ok := timeoutNote(st); ok && open {
-		mods = append(mods, ui.Muted.Render(ui.G.Timer+t))
+	// A part too wide to pack (a boss's twist) wraps on lines of its own.
+	if len(mods) > 0 && door.Boss != "" && widthOf(mods[0]) > width {
+		boss := bossLabel(door.Boss) + ": " + twistNote(st, door)
+		out = append(out, ui.ModifierLines(ui.ModBoss, boss, width, 2)...)
+		mods = mods[1:]
 	}
 	out = append(out, pack(mods, ui.Muted.Render(ui.G.Sep), width)...)
+	// What a timeout or :q! burns, the act's price (D47), or a boss's rule.
+	if t, ok := failNote(st); ok && open {
+		for _, l := range ui.WrapN(ui.G.Timer+t, width, 2) {
+			out = append(out, ui.Muted.Render(l))
+		}
+	}
 
 	// Tags: hidden on blind doors and mastered topics until the duck reveals
 	// them (level 1); level 2 adds the technique. This keys on Hint, the

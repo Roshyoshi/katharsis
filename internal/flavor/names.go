@@ -33,6 +33,22 @@ var biomes = map[string]named{
 	"mixed":           {"Userland", "Ring 3: anything can show up, and nothing has privileges."},
 }
 
+// nodes are the map nodes (rules.MapNodes) whose route blurb is not their
+// topic's. Kernel Space is act III's mixed biome, Userland's topic one
+// ring down, so it has a line of its own.
+var nodes = map[string]string{
+	"kernel": "Any topic, every privilege, and no MMU to catch you.",
+}
+
+// NodeBlurb is a map node's line on its exit card: its own (Kernel Space),
+// else its topic's (BiomeBlurb).
+func NodeBlurb(id, topic string) string {
+	if b, ok := nodes[id]; ok {
+		return b
+	}
+	return BiomeBlurb(topic)
+}
+
 // bosses covers game.BossKeys and game.FinalBoss.
 var bosses = map[string]named{
 	"off-by-one":         {"Off-by-One", "It waits at index n. Your loop stops at n-1. Or n+1. It knows which."},
@@ -52,9 +68,21 @@ var prestiges = []string{"Bronze", "Silver", "Gold", "Platinum", "Advanced"}
 func UpgradeTextFor(u game.Upgrade, r rules.Rules) (name, desc string) {
 	switch u {
 	case game.Overclock:
-		return "Overclock", "+" + pct(r.OverclockFrac) + " timer on later doors."
+		desc := "+" + pct(r.OverclockFrac) + " timer on later doors"
+		if r.OverclockMax > 0 {
+			// Time is bought (D50): additive, capped, and paid in cycles.
+			desc += "; "
+			if r.OverclockCycles > 0 {
+				desc += plural(r.OverclockCycles, "cycle", "cycles") + " a pick, "
+			}
+			desc += strconv.Itoa(r.OverclockMax) + " at most"
+		}
+		return "Overclock", desc + "."
 	case game.ECC:
-		return "ECC", "+1 life."
+		if p := r.ECCPenalty.Duration; p > 0 {
+			return "ECC", "A failed submit costs " + units.Clock(p) + " of the door's clock, not cycles."
+		}
+		return "ECC", "+" + plural(r.ECCHeal(), "cycle", "cycles") + "."
 	case game.Duck:
 		return "Rubber Duck", "+1 duck (one hint charge)."
 	case game.ShufPick:
@@ -76,7 +104,7 @@ func DaemonTextFor(d game.Daemon, r rules.Rules) (name, desc string) {
 			desc += "; every door pays " + mult(1-r.NiceBytesFrac) + " bytes"
 		}
 		if r.NiceLifeCost > 1 {
-			desc += "; a failed submit costs " + plural(r.NiceLifeCost, "life", "lives")
+			desc += "; a failed submit burns " + mult(float64(r.NiceLifeCost))
 		}
 		return "nice -20", desc + "."
 	case game.Fork:
@@ -85,7 +113,11 @@ func DaemonTextFor(d game.Daemon, r rules.Rules) (name, desc string) {
 	case game.DevRandom:
 		return "/dev/random", "Mystery doors pay " + mult(r.DevRandomMult) + " bytes."
 	case game.Kexec:
-		return "kexec", "One free door swap per biome; a swap normally costs a life."
+		span := "biome"
+		if r.KexecPerAct {
+			span = "act"
+		}
+		return "kexec", "One free door swap per " + span + "; a swap normally burns " + plural(r.RetreatPrice(), "cycle", "cycles") + "."
 	case game.Cron:
 		return "cron", "A regression door pays " + mult(r.CronMult) + " bytes."
 	case game.Chrt:
@@ -113,7 +145,7 @@ func plural(n int, one, many string) string {
 func ItemTextFor(it game.Item, r rules.Rules) (name, desc string) {
 	switch it {
 	case game.Fsck:
-		return "fsck", "+1 life now."
+		return "fsck", "+" + plural(r.FsckHeal(), "cycle", "cycles") + " now."
 	case game.Dup:
 		return "dup", "+1 rubber duck."
 	case game.Shuf:

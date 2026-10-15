@@ -52,7 +52,7 @@ var stubFlavor = flavorSource{
 		case game.Overclock:
 			return "Overclock", "+15% timer on every later door"
 		case game.ECC:
-			return "ECC", "+1 life"
+			return "ECC", "+10 cycles"
 		case game.Duck:
 			return "Duck", "+1 rubber duck"
 		}
@@ -63,7 +63,7 @@ var stubFlavor = flavorSource{
 		case game.Strace:
 			return "strace", "the failing test's input is shown"
 		case game.Nice:
-			return "nice -20", "+20% timer, but a WA costs 2 lives"
+			return "nice -20", "+20% timer, but every door pays 0.8x"
 		case game.Fork:
 			return "fork", "4 doors per room after an AC"
 		case game.DevRandom:
@@ -74,7 +74,7 @@ var stubFlavor = flavorSource{
 	// Full stops as flavor writes them: a spend row drops them.
 	ItemText: func(it game.Item, r rules.Rules) (string, string) {
 		return string(it), map[game.Item]string{
-			game.Fsck: "+1 life now.", game.Dup: "+1 rubber duck.", game.Shuf: "re-roll one room's doors.",
+			game.Fsck: "+10 cycles now.", game.Dup: "+1 rubber duck.", game.Shuf: "re-roll one room's doors.",
 			game.At: "+" + units.Clock(r.AtTime.Duration) + " on the next door's timer.",
 		}[it]
 	},
@@ -327,7 +327,7 @@ func TestDoorsKeys(t *testing.T) {
 func TestDoorsContent(t *testing.T) {
 	v := ansi.Strip(NewDoors(env(fixture.Doors())).View(140, 40))
 	for _, want := range []string{
-		"Boot #42", "Silver", "The Heap · room 2/2", "♥♥♡", "🦆1", "96 B uncommitted", "112 B committed",
+		"Boot #42", "Silver", "The Heap · room 2/2", "♥ 2/3 cycles", "🦆1", "96 B uncommitted", "112 B committed",
 		"uptime 40:03", "daemons strace",
 		"The Bovine Shuffle", "Functional Graphs · Cycle Detection", "◆1300", "⏱ 30:00", "+80 B",
 		"☠ cursed", "tags hidden", "☠ no ducks · 1 WA = crash · ×2", "◌ blind · ×1.5",
@@ -356,7 +356,7 @@ func TestDoorsContent(t *testing.T) {
 	}
 
 	v = ansi.Strip(NewDoors(env(fixture.DoorsFork())).View(80, 24))
-	if !strings.Contains(v, "↺ regression: crashed you 3 days ago") {
+	if !strings.Contains(v, "↺ regression: beat you 3 days ago") {
 		t.Errorf("fork doors missing the regression line:\n%s", v)
 	}
 	v = ansi.Strip(NewDoors(env(fixture.Boss())).View(140, 40))
@@ -523,7 +523,7 @@ func TestMergeSpendRows(t *testing.T) {
 	st := fixture.Merge()
 	st.Uncommitted, st.Cycles, st.Rerolls = 40, st.MaxCycles, 1
 	v := ansi.Strip(NewMerge(env(st)).View(140, 40))
-	for _, want := range []string{"spend", "1 shuf held", "fsck", "64 B · lives full", "48 B · 8 B short", "shuf"} {
+	for _, want := range []string{"spend", "1 shuf held", "fsck", "64 B · cycles full at 3", "48 B · 8 B short", "shuf"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("merge window missing %q:\n%s", want, v)
 		}
@@ -638,12 +638,12 @@ func TestMergeDaemonSlotsFromRules(t *testing.T) {
 }
 
 func TestUpgradePicker(t *testing.T) {
-	p := picker{offers: []game.Upgrade{game.Overclock, game.ECC, game.Duck}, rules: fixture.Rules()}
+	p := picker{offers: []game.Upgrade{game.Overclock, game.ECC, game.Duck}, st: &game.State{Rules: fixture.Rules()}}
 	p.update(press("right"))
 	if got := emitted(p.update(press("enter"))); got != (game.PickUpgrade{Upgrade: game.ECC}) {
 		t.Errorf("right, enter: got %#v", got)
 	}
-	if v := ansi.Strip(strings.Join(p.lines(100), "\n")); !strings.Contains(v, "▸ 2") || !strings.Contains(v, "+1 life") {
+	if v := ansi.Strip(strings.Join(p.lines(100), "\n")); !strings.Contains(v, "▸ 2") || !strings.Contains(v, "+10 cycles") {
 		t.Errorf("cards view:\n%s", v)
 	}
 	if v := ansi.Strip(strings.Join(p.lines(40), "\n")); !strings.Contains(v, "▸ ECC") {
@@ -1177,7 +1177,7 @@ func TestHUDBar(t *testing.T) {
 	golden(t, "hudbar", sb.String())
 
 	open := ansi.Strip(HUDBar(fixture.Problem(), prob, fixture.Now, 48))
-	for _, want := range []string{"⏱ 23:41", "♥♡♡", "🦆1", "96 B", "Functional Graphs"} {
+	for _, want := range []string{"⏱ 23:41", "♥ 1/3 cycles", "🦆1", "96 B", "Functional Graphs"} {
 		if !strings.Contains(open, want) {
 			t.Errorf("hud missing %q:\n%s", want, open)
 		}

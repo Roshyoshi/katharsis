@@ -127,18 +127,45 @@ func bossLabel(key string) string {
 	return key
 }
 
-func upgradeText(u game.Upgrade, r rules.Rules) (string, string) {
-	name, desc := fl.UpgradeText(u, r)
+// upgradeText is an upgrade's name and effect in the boot's numbers. A
+// capped Overclock (rules.OverclockMax) counts the picks taken, so the cap
+// is in view before it bites: "...; 1 of 2 taken".
+func upgradeText(u game.Upgrade, st *game.State) (string, string) {
+	name, desc := fl.UpgradeText(u, heals(st))
 	if name == "" {
 		name = string(u)
+	}
+	if most := st.Rules.OverclockMax; u == game.Overclock && most > 0 {
+		if n := count(st.Upgrades, game.Overclock); n > 0 {
+			desc = strings.TrimSuffix(desc, ".") + fmt.Sprintf("; %d of %d taken", n, most)
+		}
 	}
 	return name, desc
 }
 
+// count is how many of xs are x.
+func count[T comparable](xs []T, x T) int {
+	n := 0
+	for _, y := range xs {
+		if y == x {
+			n++
+		}
+	}
+	return n
+}
+
+// heals is the boot's rules with what fsck and ECC restore at its
+// prestige (State.FsckHeal: P2 cuts both), for the texts that quote them.
+func heals(st *game.State) rules.Rules {
+	r := st.Rules
+	r.FsckCycles, r.ECCCycles = st.FsckHeal(), st.ECCHeal()
+	return r
+}
+
 // itemText is an item on sale's name and effect in the boot's numbers,
 // the effect without its full stop: it is one part of a " · " line.
-func itemText(it game.Item, r rules.Rules) (string, string) {
-	name, desc := fl.ItemText(it, r)
+func itemText(it game.Item, st *game.State) (string, string) {
+	name, desc := fl.ItemText(it, heals(st))
 	if name == "" {
 		name = string(it)
 	}
@@ -316,8 +343,8 @@ func sourceLabel(p catalog.Problem, contest bool) string {
 	}
 }
 
-// regressionAge is how many days ago the regression on id crashed the
-// player. Regression keeps only the due date and stage, so the crash is
+// regressionAge is how many days ago the regression on id beat the
+// player. Regression keeps only the due date and stage, so the failure is
 // inferred as Due minus that stage's delay.
 func (e Env) regressionAge(id catalog.ID) (int, bool) {
 	days := e.State.Rules.RegressionDays
@@ -332,7 +359,7 @@ func (e Env) regressionAge(id catalog.ID) (int, bool) {
 }
 
 // header is the top of every boot screen: who and where on the first line,
-// lives, ducks and bytes on the second, the dmesg strip once the boot has
+// cycles, ducks and bytes on the second, the dmesg strip once the boot has
 // events (stripRows for a screen height tall), then a rule.
 func (e Env) header(where string, width, height int) []string {
 	st := e.State
@@ -345,7 +372,7 @@ func (e Env) header(where string, width, height int) []string {
 	right := ui.Muted.Render("uptime ") + units.Clock(st.Uptime(e.Now))
 
 	// The bytes at stake are plain, not OK: a crash loses them.
-	status := ui.Hearts(st.Cycles, st.MaxCycles) + "  " + fmt.Sprintf("%s%d", ui.G.Duck, st.Ducks) + "  " +
+	status := Cycles(st) + "  " + fmt.Sprintf("%s%d", ui.G.Duck, st.Ducks) + "  " +
 		units.Bytes(st.Uncommitted) + ui.Muted.Render(" uncommitted") + dot +
 		units.Bytes(st.Committed) + ui.Muted.Render(" committed")
 	var ds []string

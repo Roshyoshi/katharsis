@@ -51,14 +51,14 @@ no total 17:00         «G»T-17:00«/»
   border               #[fg=colour2]T-17:00#[default]
 
 -- hearts --
-3 of 3                 «R»###«/»
-  border               #[fg=colour1]#######[default]
-2 of 5                 «R»##«/»«d»---«/»
-  border               #[fg=colour1]#####[default]#[dim]---#[default]
-0 of 3                 «d»---«/»
-  border               #[dim]---#[default]
-7 of 12                «R»# 7/12«/»
-  border               #[fg=colour1]## 7/12#[default]
+30 of 30               «R»# 30/30«/»
+  border               #[fg=colour1]## 30/30#[default]
+24 of 30               «R»# 24/30«/»
+  border               #[fg=colour1]## 24/30#[default]
+0 of 30                «R»# 0/30«/»
+  border               #[fg=colour1]## 0/30#[default]
+38 of 30               «R»# 38/30«/»
+  border               #[fg=colour1]## 38/30#[default]
 
 -- modifiers --
 regression R           «Y»R«/» regression

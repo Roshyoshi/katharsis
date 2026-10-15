@@ -2,27 +2,197 @@ package boot
 
 import (
 	"fmt"
+	"math"
 	"strings"
+	"time"
 
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 	"katharsis/internal/ui"
+	"katharsis/internal/units"
 )
 
-// The engine's notices, in the door's own terms: D44's timeout rule and
-// RT8's easing. Each is placed on the screens already (the door cards'
-// modifier lines, the HUD bar, the lines above the cards, the strip, the
-// end screens' kept block), so these functions only say what the engine
-// decided.
+// The engine's notices, in the door's own terms: the prices of cycles
+// (D47), D44's timeout rule and RT8's easing. Each is placed on the
+// screens already (the door cards' modifier lines, the HUD bar, the lines
+// above the cards, the strip, the end screens' kept block), so these
+// functions only say what the engine decided. Every price is read from the
+// engine's queries (game/cycles.go), so a screen never quotes one the
+// engine does not charge, and each is said before it is paid.
 
-// timeoutNote is the D44 line for the doors of a biome whose timeout costs
-// a life rather than the boot (State.TimeoutCostsLife): never "easy mode"
-// (GR9). ok is false everywhere else, and once the life a timeout would
-// take is the last one, since then it ends the boot.
-func timeoutNote(st *game.State) (text string, ok bool) {
-	if !st.TimeoutCostsLife() {
-		return "", false
+// Cycles is the pool on a status line, "♥ 24/30 cycles" (D48: lives
+// renamed cycles, still a heart): one heart and a count out of the pool
+// the boot was dealt (State.StartCycles), the word Muted as the other
+// labels are.
+func Cycles(st *game.State) string {
+	return cyclesShort(st) + ui.Muted.Render(" cycles")
+}
+
+// cyclesShort is Cycles without its word, for a line short of room.
+func cyclesShort(st *game.State) string { return ui.Hearts(st.Cycles, st.StartCycles()) }
+
+// Burned is a burn as it happened, for the strip and vim's :Submit reply:
+// "burned 2 cycles, 22 left".
+func Burned(n, left int) string {
+	return "burned " + units.Plural(n, "cycle") + fmt.Sprintf(", %d left", max(left, 0))
+}
+
+// SubmitPrice is what a failed full submit of the open door will cost,
+// said before it is made (the samples' confirm, the door's tip): "a fail
+// burns 2 cycles"; under ECC's conversion "a fail costs 05:00 of the clock
+// (ECC)"; on Off-by-One's door the near miss too, "a fail burns 2 cycles,
+// 4 one test short"; and where it ends the boot, why: "(cursed)", "(2
+// cycles left)".
+func SubmitPrice(st *game.State) string {
+	cyc, clock := st.SubmitCost(0)
+	near, nearClock := st.SubmitCost(1)
+	switch {
+	case st.Current != nil && st.Current.Door.Cursed:
+		return "a fail ends the boot (cursed)"
+	case clock > 0:
+		s := "a fail costs " + units.Clock(clock) + " of the clock (ECC)"
+		if nearClock > clock {
+			s += ", " + units.Clock(nearClock) + " one test short"
+		}
+		return s
+	case cyc >= st.Cycles:
+		return "a fail ends the boot (" + units.Plural(st.Cycles, "cycle") + " left)"
 	}
-	return "a timeout costs " + ui.G.Life + ", not the boot", true
+	s := "a fail burns " + units.Plural(cyc, "cycle")
+	if near > cyc {
+		s += fmt.Sprintf(", %d one test short", near)
+	}
+	return s
+}
+
+// inBoss reports whether the boot stands in a boss biome.
+func inBoss(st *game.State) bool {
+	return st.Biome >= 0 && st.Biome < len(st.Biomes) && st.Biomes[st.Biome].Kind == rules.Boss
+}
+
+// failNote is what running out the open door's clock, or :q!, will cost,
+// for the door cards and the HUD bar: under cycles the room is lost and
+// the boot goes on (D47), "a timeout or :q! burns 12 cycles", the act's
+// price; before cycles D44's Userland rule, "a timeout burns 1 cycle, not
+// the boot"; and when the burn would take the last cycles, that it ends
+// the boot. A boss says BossPrice. ok is false where both end the boot
+// whatever is left, which goes without saying: a boot saved before D44.
+func failNote(st *game.State) (text string, ok bool) {
+	if inBoss(st) {
+		return BossPrice(st), true
+	}
+	tc, tok := st.FailCost(game.TimedOut)
+	gc, gok := st.FailCost(game.GaveUp)
+	switch {
+	case tok && gok && tc == gc:
+		return "a timeout or :q! burns " + units.Plural(tc, "cycle"), true
+	case tok:
+		return "a timeout burns " + units.Plural(tc, "cycle") + ", not the boot", true
+	case tc > 0 && tc == gc:
+		return "last cycles: a timeout or :q! ends the boot", true
+	}
+	return "", false
+}
+
+// BossPrice is a boss's rule under cycles, on its door card, its scene
+// card and in the HUD bar (map.md §(f)): "a fail or :q! burns 20 cycles
+// and deals a new boss door (22 left)"; a one-shot boss's, the final's and
+// every boss's before cycles, "one shot: a fail or :q! ends the boot".
+func BossPrice(st *game.State) string {
+	c, ok := st.FailCost(game.TimedOut)
+	switch {
+	case st.OneShot() || c == 0:
+		return "one shot: a fail or :q! ends the boot"
+	case !ok:
+		return fmt.Sprintf("a fail or :q! burns %d cycles, the last: it ends the boot", c)
+	}
+	return fmt.Sprintf("a fail or :q! burns %d cycles and deals a new boss door (%d left)", c, st.Cycles-c)
+}
+
+// BossTwist reports whether a door of the boss biome bends its boss's rule
+// (game.Door.Twist), so its card names the rule (boss.rule.<key>). The
+// engine sets the twist on the doors it carries it out on; a boot without
+// twists names none.
+func BossTwist(st *game.State) (key string, ok bool) {
+	doors := st.Doors
+	if c := st.Current; c != nil {
+		doors = append([]game.Door{c.Door}, doors...)
+	}
+	for _, d := range doors {
+		if d.Twist != "" {
+			return d.Twist, true
+		}
+	}
+	return "", false
+}
+
+// twistNote is the rule a boss door bends (D54), in the boot's numbers,
+// for the HUD bar and under the boss's own line on its card (the story's
+// boss.rule.<key> says it in the boss's voice; this is the mechanic):
+// "memory limit ×0.5". "" for a door that bends none.
+func twistNote(st *game.State, d game.Door) string {
+	t := st.Rules.Twists
+	switch d.Twist {
+	case "off-by-one":
+		return "one test short burns " + fmtMult(float64(max(t.OffByOne, 1)))
+	case "oom-killer":
+		if d.MemMult > 0 {
+			return "memory limit " + fmtMult(d.MemMult)
+		}
+	case "heisenbug":
+		return "samples say only pass or fail"
+	case "race-condition":
+		if t.RaceClock > 0 {
+			s := "clock " + fmtMult(math.Round(100/t.RaceClock)/100) + " fast"
+			if t.RacePay > 0 {
+				s += ", pays " + fmtMult(t.RacePay)
+			}
+			return s
+		}
+	case "undefined-behavior":
+		return "samples run without sanitizers"
+	case "halting-problem":
+		return "clock hidden, warned at 05:00 and 01:00"
+	}
+	return ""
+}
+
+// HiddenClock reports whether the open door hides its countdown (The
+// Halting Problem's twist): the HUD bar, the editor's border and its
+// message line show ClockHidden instead. The strip's 5:00 and 1:00
+// warnings still fire.
+func HiddenClock(st *game.State) bool {
+	return st.Current != nil && st.Current.Door.HiddenClock && st.Phase == game.PhaseProblem
+}
+
+// ClockHidden stands in for a hidden countdown: "??:??".
+const ClockHidden = "??:??"
+
+// RetreatLocked reports whether the open door's retreat has shut
+// (rules.RetreatLock: kexec's free swap too), and how far into the door
+// it shuts, for the keys row and the strip's door.retreat.locked.
+func RetreatLocked(st *game.State, now time.Time) (after time.Duration, locked bool) {
+	at := st.RetreatLockAt()
+	if at.IsZero() || st.Current == nil || st.Phase != game.PhaseProblem {
+		return 0, false
+	}
+	return at.Sub(st.Current.Opened), !now.Before(at)
+}
+
+// RetreatRefused is the strip's line for an R or a :Retreat past the
+// open door's lock (door.retreat.locked, {time} the lock): no swap is
+// left, kexec's included. ok is false while a retreat stands.
+func RetreatRefused(st *game.State, now time.Time) (ev Event, ok bool) {
+	after, locked := RetreatLocked(st, now)
+	if !locked {
+		return Event{}, false
+	}
+	t := units.Clock(after)
+	return Event{
+		At: now, Kind: EvRetreatLocked, Seed: st.Seed ^ uint64(now.Unix()),
+		Text: ui.Warn.Render(ui.G.Retreat) + " retreat: locked " + t + " in" + ui.Muted.Render(ui.G.Sep+"solve it, or :q!"),
+		Hook: "door.retreat.locked", Fill: []string{"time", t},
+	}, true
 }
 
 // easing is the boot's announced easing (RT8): one line per State.Ease,
@@ -64,7 +234,7 @@ func easeTerms(st *game.State, es game.Ease, after bool) []string {
 	}
 	out = append(out, aimTerms(st, es, after)...)
 	if es.Cycles > 0 {
-		out = append(out, fmt.Sprintf("+%d ", es.Cycles)+ui.Life.Render(ui.G.Life))
+		out = append(out, "+"+units.Plural(es.Cycles, "cycle"))
 	}
 	if es.Ducks > 0 {
 		out = append(out, "+"+ui.G.Duck+fmt.Sprint(es.Ducks))

@@ -14,7 +14,6 @@ import (
 	"katharsis/internal/judge"
 	"katharsis/internal/screens"
 	"katharsis/internal/session"
-	"katharsis/internal/ui"
 )
 
 // samplesFailed is a boot door whose samples were judged and fail: the
@@ -54,7 +53,7 @@ func TestSubmitBangOverFailingSamples(t *testing.T) {
 	req, reply = session.NewRequest(session.Command{Cmd: session.CmdSubmit, Args: []string{session.ArgForce}})
 	_, cmd := h.m.Update(req)
 	h.pump(cmd, func() bool { return !h.m.judging })
-	cost := fmt.Sprintf(" · -1 %s, %d left", ui.G.Life, lives-1)
+	cost := fmt.Sprintf(" · burned 1 cycle, %d left", lives-1)
 	if rep, _ := answer(reply); !strings.HasPrefix(rep.Text, "WA 0/1") || !strings.HasSuffix(rep.Text, cost) {
 		t.Errorf(":Submit! answered %+v, want its verdict and %q", rep, cost)
 	}
@@ -98,7 +97,7 @@ func TestRetreatAsks(t *testing.T) {
 		h.send(tea.WindowSizeMsg{Width: 60, Height: 30})
 		lives, door := h.m.state.Cycles, h.m.state.Current.Door.Problem
 		h.send(key("R"))
-		if last := h.lastLine(); !strings.Contains(last, "retreat: -1 ♥") || !strings.Contains(last, "R again") {
+		if last := h.lastLine(); !strings.Contains(last, "retreat: burns 1 cycle") || !strings.Contains(last, "R again") {
 			t.Fatalf("keys row %q after R, want what the retreat costs", last)
 		}
 		if h.m.state.Current == nil || h.m.state.Current.Door.Problem != door {
@@ -122,12 +121,12 @@ func TestChargedNamesTheCrash(t *testing.T) {
 		lives := h.m.doorLives()
 		h.verdict = "WA"
 		h.send(submitMsg{})
-		if got, want := h.m.charged(lives), "-1 "+ui.G.Life+", kernel panic"; h.m.state.Phase != game.PhaseCrashed || got != want {
+		if got, want := h.m.charged(lives), "burned 1 cycle, 0 left · kernel panic"; h.m.state.Phase != game.PhaseCrashed || got != want {
 			t.Fatalf("phase %s, charged %q; want a crash and %q", h.m.state.Phase, got, want)
 		}
 		h.send(screens.Upsolve{Problem: h.m.state.Crash.Door.Problem})
-		if lives := h.m.doorLives(); lives != -1 || h.m.charged(lives) != "" {
-			t.Errorf("an upsolve: doorLives %d, charged %q; want -1 and nothing", lives, h.m.charged(lives))
+		if lives := h.m.doorLives(); lives.ok || h.m.charged(lives) != "" {
+			t.Errorf("an upsolve: doorLives %+v, charged %q; want none and nothing", lives, h.m.charged(lives))
 		}
 	})
 }
