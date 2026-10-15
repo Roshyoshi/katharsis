@@ -1,26 +1,25 @@
 RTFM(7)                                                USACO Guide · CC BY-NC-SA 4.0                                                 RTFM(7)
        MODULE                               BIOME               CAPABILITY    TRIAL          FREQ
-       Reeling and Writhing .......... fast I/O
-       Ambition ...................... addition, and its overflow
-       Distraction ................... subtraction, and off-by-one
-       Uglification .................. multiplication, mod 1e9+7
-       Derision ...................... division, truncated toward zero
-       Mystery, ancient and modern ... the editorial
-       Seaography .................... geometry
-       Drawling, Stretching .......... grids and ASCII art
-       Fainting in Coils ............. painting in oils: flood fill
-       Laughing and Grief ............ Latin and Greek: strings
-
-EXAMPLES
-       The White Knight explains his song, K&R-style:
-         song          "A-sitting On A Gate"   what the song really is
-         *called       "Ways and Means"        what the song is called
-         *name         "The Aged Aged Man"     what the name really is
-         **name_called "Haddocks' Eyes"        what the name is called
-       "It's my own invention."
-
-BUGS
-       "And how did you manage on the twelfth?" Unsigned: 4294967295 hours.
+▾ GENERAL                                                                                1 module
+   ▾ Language-Specific
+       Fast Input & Output                  Userland                          1+3 topped up
+▾ BRONZE                                                                                 1 module
+   ▾ Additional
+       Casework                             Userland                          4 doors        ★★☆☆
+▾ SILVER                                                                        2 modules · ■ 1/2
+   ▾ Prefix Sums
+       Introduction to Prefix Sums          The Accumulator     □ CAP_PREFIX  4 doors        ★★★★
+   ▾ Sorting & Searching
+       Two Pointers                         The Sliding Window  ■ CAP_TWOPTR  4 doors        ★★☆☆
+▾ GOLD                                                                           1 module · ■ 0/1
+   ▾ Additional Topics
+       (Optional) Hashmaps                  The Heap            □ CAP_DS      1+3 topped up  ★☆☆☆
+▾ PLATINUM                                                                               1 module
+   ▾ Misc. Topics
+       Matrix Exponentiation                The ALU                           1+3 topped up  ★☆☆☆
+▾ ADVANCED                                                                       1 module · ■ 0/1
+   ▾ Data Structures
+       Counting Minimums with Segment Tree  The Heap            □ CAP_DS      0+4 topped up  ☆☆☆☆
 
 COLOPHON
        Learn mode content is adapted from the USACO Guide (https://usaco.guide,
@@ -37,4 +36,5 @@ COLOPHON
        Music, licenses and sources: press c in the GRUB menu.
 
 katharsis                                                                                 RTFM(7)
- Manual page rtfm(7) line 30/66 (END) · ■ 1/3 held                                                enter open · tab fold · / filter · q quit
+
+ Manual page rtfm(7) line 1/36 (END) · ■ 1/3 held                                                 enter open · tab fold · / filter · q quit

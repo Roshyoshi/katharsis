@@ -10,10 +10,10 @@
  │ katharsis (other presets…)                                                 │
  │ regressions due: 2                                                         │
  │ apt install rng-tools (256 B, affordable)                                  │
- │ cat /proc/story                                                            │
  │ git log                                                                    │
  │ top                                                                        │
  │ poweroff                                                                   │
+ │                                                                            │
  │                                                                            │
  └────────────────────────────────────────────────────────────────────────────┘
            stub grub.subtitle.prestige.2, a line in the story's voice

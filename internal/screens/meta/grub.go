@@ -60,10 +60,8 @@ type GrubConfig struct {
 	// so goldens do not churn whenever flavor text changes.
 	PrestigeName func(int) string
 	Banner       func(kind string) string
-	// Story and StoryLog are the story's text and the reread log; they
-	// default to flavor.Story and flavor.StoryLog.
-	Story    func(hook string, seed uint64) string
-	StoryLog func(m *game.Meta) []flavor.LogEntry
+	// Story is the story's text; it defaults to flavor.Story.
+	Story func(hook string, seed uint64) string
 }
 
 // Menu is a GRUB 2 style text menu: a boxed list with one highlighted
@@ -88,7 +86,6 @@ type Menu struct {
 type page struct {
 	entries  []entry
 	pick     bool // entries upsolve rather than boot, for the help text
-	story    bool // entries read story beats, for the help text
 	sel, top int
 }
 
@@ -115,9 +112,6 @@ func NewGrub(c GrubConfig) *Menu {
 	}
 	if c.Story == nil {
 		c.Story = flavor.Story
-	}
-	if c.StoryLog == nil {
-		c.StoryLog = flavor.StoryLog
 	}
 	now := c.Now
 	if now.IsZero() {
@@ -221,20 +215,6 @@ func NewGrub(c GrubConfig) *Menu {
 	}
 	if len(c.Packages) > 0 {
 		es = append(es, entry{label: aptLabel(c.Packages, c.Meta.Bank), msg: screens.OpenShop{}})
-	}
-	// The reread log (RT6): every beat seen, newest first, each opening
-	// its page (story.Read). Nothing the story says is missable.
-	if log := c.StoryLog(&c.Meta); len(log) > 0 {
-		page := &page{story: true}
-		for i := len(log) - 1; i >= 0; i-- {
-			b := log[i]
-			when := fmt.Sprintf("boot %d", b.Boot)
-			if b.Boot == 0 {
-				when = "before boot 1"
-			}
-			page.entries = append(page.entries, entry{label: b.Title + " (" + when + ")", msg: story.Read{ID: b.ID}})
-		}
-		es = append(es, entry{label: "cat /proc/story", sub: page})
 	}
 	es = append(es,
 		entry{label: "git log", msg: screens.OpenLog{}, note: sub("gitlog")},
@@ -527,10 +507,7 @@ var (
 	helpMenu = "Use the ↑ and ↓ keys to select which entry is highlighted. " +
 		"Press enter to boot the selected entry, `e' to edit the commands, " +
 		"`c' for credits."
-	helpSub   = helpMenu + " ESC to return previous menu."
-	helpStory = "Use the ↑ and ↓ keys to select which entry is highlighted. " +
-		"Press enter to read the selected beat again, or ESC to return " +
-		"previous menu."
+	helpSub  = helpMenu + " ESC to return previous menu."
 	helpPick = "Use the ↑ and ↓ keys to select which entry is highlighted. " +
 		"Press enter to upsolve the selected problem, or ESC to return " +
 		"previous menu."
@@ -548,8 +525,6 @@ func (m *Menu) View(width, height int) string {
 		help = helpEdit
 	case m.cur().pick:
 		help = helpPick
-	case m.cur().story:
-		help = helpStory
 	case len(m.stack) > 1:
 		help = helpSub
 	}

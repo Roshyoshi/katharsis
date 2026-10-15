@@ -15,54 +15,19 @@ import (
 	"katharsis/internal/screens/story"
 )
 
-// storyGrub is GRUB for a player with two beats seen, today's nightly
-// played once to a clear, and the session budget passed.
-func storyGrub() *meta.Menu {
+// nightlyGrub is GRUB for a player with today's nightly played once to a
+// clear, and the session budget passed.
+func nightlyGrub() *meta.Menu {
 	c := fixture.GrubConfig()
-	c.Meta.Seen = []game.SeenScene{{ID: "story.prologue", Boot: 0}, {ID: "story.first-crash", Boot: 3}}
-	c.StoryLog = func(m *game.Meta) []flavor.LogEntry {
-		var out []flavor.LogEntry
-		for _, s := range m.Seen {
-			out = append(out, flavor.LogEntry{ID: s.ID, Title: "stub title of " + s.ID, Boot: s.Boot})
-		}
-		return out
-	}
 	c.Nightly = &meta.NightlyBest{Played: 1, Cleared: true, Uptime: 92*time.Minute + 10*time.Second}
 	c.Today, c.Budget = 3*time.Hour+12*time.Minute, 3*time.Hour
 	return meta.NewGrub(c)
 }
 
-func TestGrubEndGoldens(t *testing.T) {
-	for _, c := range []struct {
-		name string
-		keys []string
-	}{
-		{"grub_story", nil},
-		{"grub_story_log", []string{"down", "down", "down", "down", "down", "down", "down", "down", "down", "enter"}},
-	} {
-		for _, sz := range sizes {
-			name := fmt.Sprintf("%s_%dx%d", c.name, sz[0], sz[1])
-			t.Run(name, func(t *testing.T) {
-				var s screens.Screen = storyGrub()
-				for _, k := range c.keys {
-					s, _ = s.Update(key(k))
-					s.View(sz[0], sz[1])
-				}
-				golden(t, name, s.View(sz[0], sz[1]))
-			})
-		}
-	}
-}
-
-// The reread log lists the beats newest first, each opening its page.
-func TestGrubStoryLog(t *testing.T) {
-	g := storyGrub()
-	log := []string{"down", "down", "down", "down", "down", "down", "down", "down", "down", "enter"}
-	wantMsg(t, press(t, g, append(log, "enter")...), story.Read{ID: "story.first-crash"})
-	wantMsg(t, press(t, storyGrub(), append(log, "down", "enter")...), story.Read{ID: "story.prologue"})
-	// Without a beat seen there is no log to open.
-	if v := plain(grub().View(140, 40)); strings.Contains(v, "/proc/story") {
-		t.Errorf("an empty log has an entry:\n%s", v)
+func TestGrubNightlyGolden(t *testing.T) {
+	for _, sz := range sizes {
+		name := fmt.Sprintf("grub_nightly_%dx%d", sz[0], sz[1])
+		t.Run(name, func(t *testing.T) { golden(t, name, nightlyGrub().View(sz[0], sz[1])) })
 	}
 }
 
@@ -81,7 +46,7 @@ func TestGrubSubtitles(t *testing.T) {
 
 // Past the budget the status line says so; under it, nothing (RT12).
 func TestGrubBudget(t *testing.T) {
-	if v := plain(storyGrub().View(140, 40)); !strings.Contains(v, "today 3:12 of 3:00") {
+	if v := plain(nightlyGrub().View(140, 40)); !strings.Contains(v, "today 3:12 of 3:00") {
 		t.Errorf("no budget note:\n%s", v)
 	}
 	if v := plain(grub().View(140, 40)); strings.Contains(v, "today ") {

@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/curriculum"
-	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
 	"katharsis/internal/ui"
@@ -611,8 +610,7 @@ func (b *Browser) View(width, height int) string {
 	return ui.Layout(w, h, append(out, body...), b.bar(w, total))
 }
 
-// lines renders every visible row, then the page's tail (storyTail) and
-// the colophon; row i is line i.
+// lines renders every visible row, then the colophon; row i is line i.
 func (b *Browser) lines(cols columns, w int) []string {
 	var out []string
 	q := b.active
@@ -643,7 +641,6 @@ func (b *Browser) lines(cols columns, w int) []string {
 		}
 		out = append(out, line)
 	}
-	out = append(out, storyTail(min(w, 80))...)
 	out = append(out, "", ui.Strong.Render("COLOPHON"))
 	for _, l := range wrap(curriculum.Attribution(), modIndent, min(w, 80)) {
 		out = append(out, ui.Muted.Render(l))
@@ -658,44 +655,6 @@ func (b *Browser) lines(cols columns, w int) []string {
 		out = append(out, ui.Muted.Render(l))
 	}
 	out = append(out, "", ui.Spread("katharsis", manName, min(cols.width(), w)))
-	return out
-}
-
-// storyTail is the odd sections a man page keeps at its tail, before the
-// colophon (text.md, RTFM): the words the game bends (WORDS), the Mock
-// Turtle's syllabus (CURRICULUM), the one example on offer, since the
-// prologue's man page "has no EXAMPLES section" (EXAMPLES), and the one
-// known bug (BUGS). Prose wraps to w; the syllabus and the song are set
-// in columns, so a line too long for w is cut instead.
-func storyTail(w int) []string {
-	var out []string
-	for _, s := range []struct {
-		head  string
-		lines []string
-		pre   bool
-	}{
-		{"WORDS", flavor.StoryBlock("help.vocab"), false},
-		{"CURRICULUM", flavor.StoryBlock("rtfm.syllabus"), true},
-		{"EXAMPLES", flavor.StoryBlock("white-knight.song"), true},
-		{"BUGS", []string{flavor.Story("rtfm.underflow", 0)}, false},
-	} {
-		var body []string
-		for _, l := range s.lines {
-			if l == "" {
-				continue
-			}
-			ls := wrap(l, modIndent, w)
-			if s.pre {
-				ls = []string{strings.Repeat(" ", modIndent) + ui.Clip(l, max(w-modIndent, 1))}
-			}
-			for _, l := range ls {
-				body = append(body, ui.Voice.Render(ui.Muted.Render(l)))
-			}
-		}
-		if len(body) > 0 {
-			out = append(append(out, "", ui.Strong.Render(s.head)), body...)
-		}
-	}
 	return out
 }
 

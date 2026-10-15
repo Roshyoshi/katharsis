@@ -578,50 +578,34 @@ func TestModuleIntroLine(t *testing.T) {
 	}
 }
 
-// The index page's tail keeps a man page's odd sections before COLOPHON,
-// at the paragraph indent: WORDS, CURRICULUM, EXAMPLES (the prologue's
-// man page had none) and BUGS. On a narrow terminal the prose wraps with
-// nothing lost.
-func TestBrowserStoryTail(t *testing.T) {
-	v := plain(browser(t).View(100, 300))
-	prev := -1
-	for _, h := range []string{"\nWORDS\n", "\nCURRICULUM\n", "\nEXAMPLES\n", "\nBUGS\n", "\nCOLOPHON\n"} {
-		i := strings.Index(v, h)
-		if i < prev {
-			t.Fatalf("%q missing or out of order:\n%s", h, v)
-		}
-		prev = i
-	}
-	for _, b := range [][]string{
-		flavor.StoryBlock("help.vocab"), flavor.StoryBlock("rtfm.syllabus"),
-		flavor.StoryBlock("white-knight.song"), {flavor.Story("rtfm.underflow", 0)},
-	} {
-		if len(b) == 0 || b[0] == "" {
-			t.Fatal("a tail hook has no text")
-		}
-		for _, l := range b {
-			if !strings.Contains(v, "\n       "+l+"\n") {
-				t.Errorf("tail lacks %q at the indent", l)
-			}
-		}
-	}
-	narrow := plain(browser(t).View(40, 400))
-	i, j := strings.Index(narrow, "\nWORDS\n"), strings.Index(narrow, "\nCURRICULUM\n")
-	if i < 0 || j < i {
-		t.Fatalf("no WORDS at 40 columns:\n%s", narrow)
-	}
-	want := strings.Fields(strings.Join(flavor.StoryBlock("help.vocab"), " "))
-	if got := strings.Fields(narrow[i:j])[1:]; !slices.Equal(got, want) {
-		t.Errorf("WORDS at 40 columns lost words:\n%s", narrow[i:j])
-	}
-}
-
 // Past the last module the index scrolls on through its tail to the
 // colophon, as man's does, with the last module still selected; scrolled
-// back until it shows, up moves the selection again.
+// back until it shows, up moves the selection again. The terminal is as
+// tall as the colophon (tailH), so the last module goes off screen in the
+// tail.
 func TestBrowserScrollsTail(t *testing.T) {
+	full := strings.Split(plain(browser(t).View(80, 200)), "\n")
+	from := slices.Index(full, "COLOPHON")
+	to := slices.IndexFunc(full, func(l string) bool { return strings.HasPrefix(l, "katharsis ") })
+	if from < 0 || to < from {
+		t.Fatalf("no colophon:\n%s", strings.Join(full, "\n"))
+	}
+	tailH := to - from + 1 + 3 // the man header, the column header, the bar
+	// tap is press on a terminal tailH tall: press views at 80x24.
+	tap := func(b *rtfm.Browser, keys ...string) tea.Msg {
+		var msg tea.Msg
+		for _, k := range keys {
+			var cmd tea.Cmd
+			msg = nil
+			if _, cmd = b.Update(key(k)); cmd != nil {
+				msg = cmd()
+			}
+			b.View(80, tailH)
+		}
+		return msg
+	}
 	line := func(b *rtfm.Browser) int {
-		v := plain(b.View(80, 24))
+		v := plain(b.View(80, tailH))
 		i := strings.LastIndex(v, " line ")
 		var n int
 		if _, err := fmt.Sscanf(v[i:], " line %d/", &n); err != nil {
@@ -630,30 +614,30 @@ func TestBrowserScrollsTail(t *testing.T) {
 		return n
 	}
 	b := browser(t)
-	press(t, b, "G")
+	tap(b, "G")
 	end := line(b)
-	if v := plain(b.View(80, 24)); !strings.Contains(v, "COLOPHON") || !strings.Contains(v, "(END)") {
+	if v := plain(b.View(80, tailH)); !strings.Contains(v, "COLOPHON") || !strings.Contains(v, "(END)") {
 		t.Fatalf("G does not reach the colophon:\n%s", v)
 	}
-	press(t, b, "k")
+	tap(b, "k")
 	if got := line(b); got != end-1 {
 		t.Errorf("k in the tail: line %d, want %d", got, end-1)
 	}
-	press(t, b, "b", "b")
-	v := plain(b.View(80, 24))
+	tap(b, "b")
+	v := plain(b.View(80, tailH))
 	if rows := strings.Split(v, "\n"); !strings.Contains(rows[2], "Counting Minimums") {
 		t.Fatalf("paging back stops on the last module:\n%s", v)
 	}
 	at := line(b)
-	press(t, b, "j")
+	tap(b, "j")
 	if got := line(b); got != at+1 {
 		t.Errorf("j on the last module: line %d, want %d", got, at+1)
 	}
-	wantMsg(t, press(t, b, "enter", "t"), screens.StartTrial{Module: "count-min"})
+	wantMsg(t, tap(b, "enter", "t"), screens.StartTrial{Module: "count-min"})
 
 	b = browser(t)
-	press(t, b, "G", "b", "b", "k", "enter") // the chapter over it, folded
-	if v := plain(b.View(80, 24)); strings.Contains(v, "Counting Minimums") {
+	tap(b, "G", "b", "k", "enter") // the chapter over it, folded
+	if v := plain(b.View(80, tailH)); strings.Contains(v, "Counting Minimums") {
 		t.Errorf("k on screen should select the chapter, and enter fold it:\n%s", v)
 	}
 }

@@ -558,8 +558,8 @@ func TestShopGoal(t *testing.T) {
 // ---- layout and glyphs ------------------------------------------------------
 
 // flavor's real GRUB art fits at 80x24 over the fixture's twelve entries,
-// giving up blank rows if it must. A menu too long for it keeps every entry
-// on screen and the plain version line instead.
+// and over the longest menu, giving up blank rows if it must, with every
+// entry on screen.
 func TestGrubRealBannerAt80x24(t *testing.T) {
 	art := strings.Split(flavor.Banner("grub"), "\n")
 	view := func(c meta.GrubConfig) string {
@@ -582,17 +582,11 @@ func TestGrubRealBannerAt80x24(t *testing.T) {
 			t.Errorf("art line %q missing at 80x24:\n%s", a, v)
 		}
 	}
-	// Every prestige unlocked and every optional entry there: 15 entries.
+	// Every prestige unlocked and every optional entry there: 14 entries.
 	c := fixture.GrubConfig()
 	c.Meta.Prestige, c.Gate = game.MaxPrestige, game.PrestigeGate{}
-	c.StoryLog = func(*game.Meta) []flavor.LogEntry {
-		return []flavor.LogEntry{{ID: "story.prologue", Title: "Prologue"}}
-	}
 	v = view(c)
-	if strings.Contains(v, art[0]) {
-		t.Errorf("a 15-entry menu has no room for the art at 80x24:\n%s", v)
-	}
-	for _, want := range []string{"prestige 0", "/proc/story", "poweroff"} {
+	for _, want := range append([]string{"prestige 0", "poweroff"}, art...) {
 		if !strings.Contains(v, want) {
 			t.Errorf("%q missing:\n%s", want, v)
 		}
