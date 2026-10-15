@@ -1,6 +1,7 @@
 package flavor
 
 import (
+	"strconv"
 	"strings"
 
 	"katharsis/internal/game"
@@ -121,21 +122,41 @@ type beat struct {
 // triggered beats show at the boot end that earned them, in this order
 // when two are due. Each also needs a real boot, not a trial: a trial
 // unlocks no prestige and leaves no core dump to talk about.
-var triggered = []beat{
+var triggered = triggeredUpTo(game.MaxPrestige)
+
+// revealLevels are the prestige levels that open a new ring, each with its
+// reveal (reveal.prestige.<level>) and the reread log's heading. Rings -2
+// and -3 take two levels each (Ring), so 6 and 8 have none.
+var revealLevels = []struct {
+	level int
+	title string
+}{
+	{1, "through the looking-glass"},
+	{2, "the wood where things have no names"},
+	{3, "the Court of Hearts"},
+	{4, "the Red King's dream"},
+	{5, "the Walrus's beach"},
+	{7, "the riverbank"},
+}
+
+// triggeredUpTo is the triggered beats of a game whose top prestige is
+// top: a reveal past it is left out, since no clear can earn it.
+func triggeredUpTo(top int) []beat {
 	// The Cat's speech is about the bytes left on the problem, so it waits
 	// for a crash that left some (tone rule 5: never lie about mechanics).
-	{"story.first-crash", "the Cat keeps your grin", func(st *game.State, _ *game.Meta) bool {
+	out := []beat{{"story.first-crash", "the Cat keeps your grin", func(st *game.State, _ *game.Meta) bool {
 		return st.Phase == game.PhaseCrashed && st.Trial == nil && st.Crash != nil && st.Crash.Lost > 0
-	}},
+	}}}
 	// Reveals are win cues, so never on a crash (GR3). A save that already
 	// holds a prestige gets each one at its next clears, lowest first.
-	{"reveal.prestige.1", "through the looking-glass", reveal(1)},
-	{"reveal.prestige.2", "the wood where things have no names", reveal(2)},
-	{"reveal.prestige.3", "the Court of Hearts", reveal(3)},
-	{"reveal.prestige.4", "the Red King's dream", reveal(4)},
-	{"reveal.final-clear", "which dreamed it", func(st *game.State, _ *game.Meta) bool {
-		return cleared(st) && st.Prestige == game.MaxPrestige
-	}},
+	for _, r := range revealLevels {
+		if r.level <= top {
+			out = append(out, beat{"reveal.prestige." + strconv.Itoa(r.level), r.title, reveal(r.level)})
+		}
+	}
+	return append(out, beat{"reveal.final-clear", "which dreamed it", func(st *game.State, _ *game.Meta) bool {
+		return cleared(st) && st.Prestige == top
+	}})
 }
 
 func reveal(p int) func(*game.State, *game.Meta) bool {
@@ -274,5 +295,9 @@ var scenes = []beat{
 	{"story.first-boss", "begin at the beginning", nil},    // the first boss door
 	{"story.first-regression", "the White Queen", nil},     // the first regression door
 	{"story.first-rtfm", "the Mock Turtle's school", nil},  // the first RTFM visit
+	{"story.first-locked", "the Gryphon's padlock", nil},   // the first exit a capability locks
+	{"story.first-act2", "the little door", nil},           // the first act II, past Boss I
+	{"story.first-act3", "the far end of the garden", nil}, // the first act III, past Boss II
+	{"story.first-skip", "by railway", nil},                // the first skip past act III's room
 	{"reveal.final-boss", "the Jabberwock", nil},           // the first halting-problem door
 }

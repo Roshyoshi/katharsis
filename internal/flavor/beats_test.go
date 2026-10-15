@@ -111,9 +111,7 @@ func TestNextBeatTriggered(t *testing.T) {
 		// No win cue on a crash (retention GR3), even one that is owed.
 		{"reveal never on a crash", crashed(12, 40),
 			&game.Meta{Boots: 12, Prestige: 2, Seen: []game.SeenScene{{ID: "story.first-crash", Boot: 1}}}, ""},
-		{"final clear", clearedAt(80, game.MaxPrestige), seenAt(80, map[string]int{
-			"reveal.prestige.1": 10, "reveal.prestige.2": 20, "reveal.prestige.3": 30, "reveal.prestige.4": 40,
-		}), "reveal.final-clear"},
+		{"final clear", clearedAt(80, game.MaxPrestige), seenAt(80, everyReveal()), "reveal.final-clear"},
 	}
 	tests[10].m.Prestige = 3
 	tests[12].m.Prestige = game.MaxPrestige
@@ -121,6 +119,54 @@ func TestNextBeatTriggered(t *testing.T) {
 		// A huge gap keeps milestones out, so only triggered beats show.
 		if got := next(tc.st, tc.m, 1<<20); got != tc.want {
 			t.Errorf("%s: NextBeat = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// everyReveal is every prestige reveal the game can earn, each seen at a
+// boot of its own, for a save that has heard them all.
+func everyReveal() map[string]int {
+	seen := map[string]int{}
+	for i, b := range triggered {
+		if strings.HasPrefix(b.id, "reveal.prestige.") {
+			seen[b.id] = 10 * (i + 1)
+		}
+	}
+	return seen
+}
+
+// TestRevealLevels: a reveal opens each new ring and only those (Ring
+// gives rings -2 and -3 two levels each), whatever game.MaxPrestige is
+// today, so the ladder can reach P8 (map.md (d)) with its text written:
+// every reveal has its lines and a teaser that fits.
+func TestRevealLevels(t *testing.T) {
+	var want, got []int
+	for p := 1; p < len(rings); p++ {
+		if r, _ := Ring(p); r != rings[p-1].ring {
+			want = append(want, p)
+		}
+	}
+	for _, r := range revealLevels {
+		got = append(got, r.level)
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("reveals at %v, want one per new ring: %v", got, want)
+	}
+	for _, b := range triggeredUpTo(len(rings) - 1) {
+		ls := BeatLines(b.id)
+		if len(ls) == 0 || b.title == "" {
+			t.Errorf("%s: lines %q, title %q", b.id, ls, b.title)
+			continue
+		}
+		if w := ansi.StringWidth(ls[0]); w > teaserWidth && b.id != "story.first-crash" {
+			t.Errorf("%s: teaser %q is %d columns, want <= %d", b.id, ls[0], w, teaserWidth)
+		}
+	}
+	for _, b := range triggered {
+		if n, ok := strings.CutPrefix(b.id, "reveal.prestige."); ok {
+			if p, _ := strconv.Atoi(n); p > game.MaxPrestige {
+				t.Errorf("%s is past MaxPrestige %d: no clear can earn it", b.id, game.MaxPrestige)
+			}
 		}
 	}
 }

@@ -47,7 +47,14 @@ one entry per line
 | `{time}` | 5 | `14:41` |
 
 `{place}` by ring: 3 `Userland`, 2 `the looking-glass`, 1 `the nameless
-wood`, 0 `the Court of Hearts`, -1 `the Red King's dream`.
+wood`, 0 `the Court of Hearts`, -1 `the Red King's dream`, -2 `the Walrus's
+beach` (P5–P6), -3 `the riverbank` (P7–P8). Below ring -1 a ring takes two
+prestige levels, and ring -3 is the floor (`flavor.Ring`).
+
+**Cycles.** The pool is **cycles** (D48), drawn ♥ by the screens. Story
+lines say "cycles" and "burn", never "life" or "lives", and name no cost:
+the mechanic text beside them says the number ("burned 10 cycles, 14
+left"), so a preset that changes a cost cannot make a story line lie.
 
 ## Quote register
 
@@ -120,6 +127,9 @@ anchors `#chap01` … `#chap12`.
 | A53 | You're nothing but a pack of cards! | Alice | [XII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap12) |
 | A54 | Wake up, Alice dear! | her sister | [XII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap12) |
 | A55 | Curiouser and curiouser! | Alice | [II](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap02) |
+| A56 | the loveliest garden you ever saw | narration (through the little door) | [I](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap01) |
+| A57 | Take some more tea, | March Hare | [VII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap07) |
+| A58 | all would change to dull reality | narration (Alice's sister on the bank) | [XII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap12) |
 
 **Through the Looking-Glass** (Lewis Carroll, 1871). Public domain.
 Base: <https://www.gutenberg.org/cache/epub/12/pg12-images.html>, anchors
@@ -160,6 +170,15 @@ Base: <https://www.gutenberg.org/cache/epub/12/pg12-images.html>, anchors
 | G31 | The name of the song is called 'Haddocks' Eyes.' | White Knight | [VIII](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0008) |
 | G32 | Which do you think it was? | narration | [XII](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0012) |
 | G33 | Life, what is it but a dream? | closing poem | [after XII](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0012) |
+| G34 | .YKCOWREBBAJ / sevot yhtils eht dna, gillirb sawT' | the Looking-glass book, as printed | [I](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0001) |
+| G35 | It seems very pretty, … but it's rather hard to understand! | Alice | [I](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0001) |
+| G36 | So you'll go very quickly through the Third Square—by railway, I should think— | Red Queen | [II](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0002) |
+| G37 | so that the Carpenter couldn't count how many he took | Tweedledee | [IV](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0004) |
+
+A56–A58 and G34–G37 were found verbatim in the Gutenberg plain text
+(`pg11.txt`, `pg12.txt`) on 2026-10-15. G34 is the mirrored title and
+first line as the eBook types them, its closing ’ typed as `'`. G35 and G36
+drop italics ("_rather_", "_very_").
 
 **SICP** (Abelson and Sussman with Julie Sussman, 2nd ed., MIT Press,
 1996). CC BY-SA 4.0, per the copyright page `book-Z-H-2.html`. Base:
@@ -221,17 +240,21 @@ The Wizards are still passing the ball. Eval. Apply. Eval.
 ```
 
 ### grub.subtitle.prestige
-where: a faint second line under each `katharsis, prestige N` entry (`prestigeNote`, `./internal/screens/meta/grub.go:252`) · when: every · pick: fixed, line N for prestige N (0 to 4) · uses: G10 (paraphrase)
+where: a faint second line under each `katharsis, prestige N` entry (`prestigeNote`, `./internal/screens/meta/grub.go:252`) · when: every · pick: fixed, line N for prestige N (0 to 8; 5 to 8 wait for `game.MaxPrestige` 8, map.md (h)) · uses: G10 (paraphrase); 5 and 6 allude to "The Walrus and the Carpenter" (ch. IV), 7 and 8 to Wonderland's riverbank (ch. I, XII) · lines 5–8 are a **draft**: no one has played that deep
 ```text
 ring 3 · Userland · down the rabbit-hole
 ring 2 · through the looking-glass · things go the other way
 ring 1 · the wood where things have no names
 ring 0 · the Court of Hearts · sentence first, verdict afterwards
 ring -1 · the Red King's dream · beware the Jabberwock
+ring -2 · the Walrus's beach · the sun shines at midnight
+ring -2 · the Walrus's beach · nobody counts the oysters
+ring -3 · the riverbank · something here never sleeps
+ring -3 · the riverbank · where the fall began
 ```
 
 ### grub.subtitle.prestige.beyond
-where: as above, prestige 5 and up (`prestigeNote`'s fallback) · when: every · pick: fixed
+where: as above, past the ring table (prestige 9 and up; `prestigeNote`'s fallback) · when: every · pick: fixed
 ```text
 ring {ring} · nobody who went there wrote it down
 ```
@@ -287,6 +310,12 @@ where: `poweroff` (`grub.go:241`) · when: every · pick: fixed · uses: A54
 ---
 
 ## Story beats
+
+The story shows only at game events: scenes, boss cards, biome falls,
+strip lines and boot-end beats (user, 10-15: "keep the story non visible
+outside of actual game events keep it esoteric"). So a beat is terse and
+cryptic, not an explanation, and nothing is written for a reread or lore
+page.
 
 ### story.prologue
 where: `story.NewPrologue` (`./internal/screens/story/scenes.go:82`), before boot #1's first route (`./internal/app/story.go:96`); any key continues · when: once (`Meta.Boots == 0`) · pick: block · uses: A1, A3; line 3 parodies ch. I ("what is the use of a book … without pictures or conversations?")
@@ -358,12 +387,41 @@ Uglification, and Derision."
 ```
 
 ### story.first-regression
-where: the doors screen, over the first room that offers a regression door (`./internal/screens/boot/doors.go:146`), or the first time GRUB's regressions submenu opens (`./internal/screens/meta/grub.go:383`), whichever comes first · when: once · pick: block · uses: G17
+where: the doors screen, over the first room that offers a regression door (`./internal/screens/boot/doors.go:146`), or the first time GRUB's regressions submenu opens (`./internal/screens/meta/grub.go:383`), whichever comes first · when: once · pick: block · uses: G17. Line 4 says "beat you", not "crashed you": under cycles a door you fail returns whether or not it ended the boot (meta.md (b))
 ```text
 A Queen in a shawl sticks plaster on a finger she hasn't pricked.
 "...one's memory works both ways," says the White Queen, kindly.
 She remembers best the things that happen the week after next.
-This door crashed you. It's back, with a blank file. Then again.
+This door beat you once. It's back, with a blank file. Then again.
+```
+
+### story.first-act2
+where: new: the first route of act II, after Boss I and its merge window (map.md (g) "first act II"), as a `story.NewBeat` page over the route · when: once · pick: block · uses: A56; ch. I's "little door about fifteen inches high" and ch. VIII's painted roses (allusions)
+```text
+The bug steps aside. Behind it, a door fifteen inches high.
+Through it, "the loveliest garden you ever saw." Act II.
+The gardeners are painting the white roses red.
+```
+
+### story.first-act3
+where: new: the first route of act III, after Boss II and its merge window · when: once · pick: block · uses: G1's poem, "burbled as it came" (allusion). It names no room count: act III may be one room or the skip
+```text
+Act III: the far end of the garden, past the croquet-ground.
+Beyond the hedges something burbles as it comes. It is last.
+```
+
+### story.first-skip
+where: new: the first time the player takes act III's skip exit, before the final's card · when: once · pick: block · uses: G36. True to the skip: no room, none of its bytes, picks instead (map.md (c), `Picks`); the line names no count
+```text
+"So you'll go very quickly through the Third Square—by railway,
+I should think—" says the Red Queen. No room. No bytes. Picks.
+```
+
+### story.first-locked
+where: new: the route screen, the first time an exit is locked by a capability (not by prestige: the Gryphon points at RTFM, so a prestige lock must not fire it) · when: once · pick: block · uses: A46 (the Gryphon interrupts the lessons, then sends you to them)
+```text
+A padlocked exit, and asleep on the padlock, a Gryphon.
+"That's enough about lessons," it yawns, and points at RTFM anyway.
 ```
 
 ### reveal.prestige.1
@@ -405,17 +463,33 @@ Long ago they set Exercise 4.15: write halts?, then show you can't.
 It got loose. It has jaws that bite and claws that catch.
 ```
 
-### reveal.final-boss
-where: `story.NewBossIntro` (`scenes.go:114`), before the first `halting-problem` room (`./internal/app/story.go:179`); later visits use `boss.enter.halting-problem` · when: once · pick: block · uses: G2
+### reveal.prestige.5
+where: as `reveal.prestige.1`, the clear that unlocks P5 (ring -2; P6 is the same ring and has no reveal) · when: once · pick: block · uses: G37; the poem's "sun was shining … The middle of the night" (allusion). Line 2 is true from P5, where the fountain is gone (map.md (e)) · **draft**: waits for `game.MaxPrestige` 8 (`revealLevels` leaves it out until then)
 ```text
-The last door. Something burbles in the tulgey wood.
-"Beware the Jabberwock, my son!
-The jaws that bite, the claws that catch!"
+Ring -2: a beach under the dream, sunny at midnight.
+The fountain is dry. The Walrus drank it behind his handkerchief,
+"so that the Carpenter couldn't count how many he took".
+```
+
+### reveal.prestige.7
+where: as above, the clear that unlocks P7 (ring -3, the floor) · when: once · pick: block · uses: A58; the ring is the riverbank where *Alice* begins and ends (ch. I, XII), so the bottom of the machine is where the fall started · **draft**: waits for `game.MaxPrestige` 8
+```text
+Ring -3: a riverbank on a hot afternoon. It looks familiar.
+A sister reads on the bank, awake with the power off, eyes shut.
+One blink and "all would change to dull reality". She doesn't blink.
+```
+
+### reveal.final-boss
+where: `story.NewBossIntro` (`scenes.go:114`), before the first `halting-problem` room (`./internal/app/story.go:179`); later visits use `boss.enter.halting-problem` · when: once · pick: block · uses: G34, G35. The final is The Halting Problem at every prestige (map.md decision 1), so this fires at ring 3, long before ring -1 explains where it came from. Alice meets the poem the same way, in Looking-Glass chapter I: mirrored, and "rather hard to understand", until Humpty Dumpty explains it in chapter VI
+```text
+The last door. On it, a poem in looking-glass print: .YKCOWREBBAJ
+sevot yhtils eht dna, gillirb sawT'
+"It seems very pretty, but it's rather hard to understand!"
 It is the Halting Problem. You can't win in general. Win this once.
 ```
 
 ### reveal.final-clear
-where: a boot-end beat, as `reveal.prestige.N` · when: once, the first clear at max prestige · pick: block · uses: G5, G32, G33
+where: a boot-end beat, as `reveal.prestige.N` · when: once, the first clear at max prestige (P8, ring -3, once the ladder is built; P4 until then) · pick: block · uses: G5, G32, G33
 ```text
 "O frabjous day! Callooh! Callay!" The Jabberwock is down.
 You didn't solve the Halting Problem. You halted. Turing allows that.
@@ -591,7 +665,14 @@ On its back, in an old terse hand: hello, world. Which came first?
 ## Biomes
 
 ### biome.intro.<topic>
-where: the drop into each biome, `story.NewBiome` (`./internal/screens/story/scenes.go:185`), queued at its first room (`./internal/app/story.go:188`); `BiomeBlurb` stays on the route card · when: every biome start · pick: fixed, one per topic · uses: listed per line
+where: the drop into each biome, `story.NewBiome` (`./internal/screens/story/scenes.go:185`), queued at its first room (`./internal/app/story.go:188`); `BiomeBlurb` stays on the route card · when: every biome start · pick: fixed, one per topic, plus one per map node that shares a topic with another: Kernel Space is mixed like Userland, so it is `biome.intro.kernel` (its node id in map.md's prototype). A screen tries `biome.intro.<node id>` first, then `biome.intro.<topic>` · uses: listed per line
+
+Every topic biome on map.md's graph already had its line: Brute Force
+Bunker, The Emulator, The Scheduler, The Accumulator (act I); Bisect Bridge,
+The Sliding Window, The ALU, The Heap, The Lexer (act II); Routing Table,
+The Cache, Union Hall, Dijkstra's Reach, The Filesystem, The Framebuffer
+(act III). Kernel Space is the one new biome, act III's mixed one: the
+Queen's croquet-ground, where every game is mixed.
 
 | Hook | Uses |
 |---|---|
@@ -611,6 +692,7 @@ where: the drop into each biome, `story.NewBiome` (`./internal/screens/story/sce
 | `biome.intro.data-structures` | A38 |
 | `biome.intro.geometry` | G6 |
 | `biome.intro.mixed` | A16 (fragment) |
+| `biome.intro.kernel` | ch. VIII, the hedgehog balls and flamingo mallets (allusion) |
 
 The lines, in table order:
 
@@ -631,6 +713,7 @@ One of the trees has a door in it. cd in, and remember the way out.
 "The more there is of mine, the less there is of yours." -- malloc
 "Only the things go the other way." Mirrors flip every cross product.
 "We're all mad here." Ring 3: every topic, no privileges, no excuses.
+Kernel croquet: flamingo mallets, hedgehog balls, any topic, no MMU.
 ```
 
 ---
@@ -644,8 +727,20 @@ The entrance line goes on the boss door card under the spaced name
 defeat line goes on the cleared screen for the boot's last boss
 (`./internal/screens/boot/cleared.go:116`), and over the upgrade pick a
 mid-boot boss earns, which is always a merge window's: a boss biome has one
-room (`bossDefeat`, `./internal/screens/boot/merge.go:219`). No built-in
-preset has a mid-boot boss. The pick is a pool for both.
+room (`bossDefeat`, `./internal/screens/boot/merge.go:219`). The map has
+two mid-boot bosses, acts I and II; the linear presets have none. The pick
+is a pool for both.
+
+Each boss sits in the act its costume suits (map.md (c)):
+
+| Act | Boss | Costume | Fits because |
+|---|---|---|---|
+| I | Off-by-One | Tweedledum and Tweedledee | the first fence you count wrong |
+| I | OOM Killer | the Rabbit's house, and Bill | *Wonderland* ch. IV: still in the Rabbit's part of the story |
+| II | Heisenbug | the Sheep's shop | it looks right until you look hard |
+| II | Race Condition | the Caucus-race | the first boss with more than one runner |
+| II | Undefined Behavior | the Duchess's kitchen | opens from P1, through the glass |
+| III | The Halting Problem | the Jabberwock | the final at every prestige, one shot |
 
 ### boss.enter.off-by-one
 uses: G12, G13 (fragment)
@@ -746,6 +841,21 @@ He went galumphing back.
 You didn't decide halting. You decided this one. The proof survives.
 ```
 
+### boss.retry
+where: new: the dmesg strip, or over the new boss card, when a boss timeout, give-up or failed hidden-test burn leaves cycles and a new boss door is drawn (Bosses I and II; map.md (f)). Not on a one-shot boss · when: every · pick: pool · uses: none. The mechanic line beside it carries the burn ("burned 20 cycles, 22 left · a new boss door")
+```text
+The Queen shuffles the pack and deals the same bug a new door.
+The bug picks itself up and backs into a fresh door. Your move.
+Same bug, new door, fewer cycles to spend on it.
+```
+
+### boss.oneshot
+where: new: the boss card, under the entrance line, for a one-shot boss: the final always; Boss II from P6 and every boss at P8 (map.md (d)). The card's rule line stays the truth ("one shot: a fail or :q! ends the boot") · when: every · pick: pool · uses: none
+```text
+One shot, no second door. Either it halts, or you do.
+The Queen deals this hand once. Lose it and the boot is hers.
+```
+
 ---
 
 ## Merge window
@@ -794,6 +904,20 @@ where: the dmesg strip, leaving the window with nothing uncommitted (`dmesg.go:3
 "At any rate I'll never go there again!" Next biome. Same table.
 ```
 
+### fountain.drink / fountain.full / fountain.dry
+where: new: the merge window's fountain row (map.md (g)), only in the two windows between acts. The fountain is the March Hare's tea, a flask-style refill: free, a few cycles, never past the starting pool ("the line"). `fountain.drink` when it gives cycles; `fountain.full` when the pool is already at the line or over, so it gives none; `fountain.dry` from P5, where it is gone (the Walrus drank it, `reveal.prestige.5`) · when: every · pick: fixed · uses: A57; A21 (`fountain.dry`)
+```text
+"Take some more tea," says the March Hare. Never past the line.
+No more tea: your cup's already at the line. The Hare looks hurt.
+More tea? "There isn't any," says the March Hare. The Walrus had it.
+```
+
+### item.fsck
+where: new: the dmesg strip, after `f` buys fsck in a merge window, under `ItemTextFor`'s line ("+10 cycles now.") · when: every · pick: fixed · uses: G28 (first line; the rhyme says they couldn't, so here it holds)
+```text
+"All the King's horses and all the King's men" run fsck. It holds.
+```
+
 ---
 
 ## Crash
@@ -801,9 +925,12 @@ where: the dmesg strip, leaving the window with nothing uncommitted (`dmesg.go:3
 Epitaphs sit under the sourced quote on the kernel panic screen
 (`epitaph`, `./internal/screens/boot/crash.go:426`, drawn at `:330`), in
 faint text. They add to the quote and do not replace it. `cause` is
-`game.Crash.Cause`. A cursed-door crash (`Crash.Cursed`) uses
-`crash.epitaph.cursed` instead of out-of-lives. Out-of-lives with a known
-last verdict prefers the verdict pool and falls back to the general one.
+`game.Crash.Cause`. Under cycles a crash is the burn that empties the pool:
+a timeout, a give-up or failed submits. Out of cycles keeps the stored
+outcome and the hook key `out-of-lives` (meta.md (i): no migration). A
+cursed-door crash (`Crash.Cursed`) uses `crash.epitaph.cursed` instead.
+Out of cycles with a known last verdict prefers the verdict pool and falls
+back to the general one.
 
 ### crash.epitaph.timed-out
 pick: pool · uses: A2, A26 (allusion)
@@ -829,7 +956,7 @@ pick: fixed per verdict (`TLE`, `MLE`, `RE`, `WA`; OLE folds into MLE, `crash.go
 "He's murdering the time! Off with his head!" As charged.
 Rule Forty-two. All persons more than a mile high to leave the court.
 The executioner needs a body to cut the head from. You had a null.
-"Off with its head!" Wrong answer, and no heads left to spare.
+"Off with its head!" Wrong answer, and no cycles left to burn.
 ```
 
 ### crash.epitaph.gave-up
@@ -914,8 +1041,36 @@ Life, what is it but a dream? exit 0.
 There's talk of a ring -2. The Wizards change the subject.
 ```
 
+### cleared.5
+uses: G37 (allusion) · **draft** for 5–8: they wait for `game.MaxPrestige` 8
+```text
+Ring -2 cleared. The Walrus weeps into his hanky and counts nothing.
+SMM survived. The firmware will swear you were never here.
+```
+
+### cleared.6
+uses: the Walrus poem's midnight sun and eaten oysters (allusion)
+```text
+The beach, cleared at midnight in full sun. Nobody upstairs noticed.
+Ring -2, the whole beach. The oysters would cheer, if any were left.
+```
+
+### cleared.7
+uses: ch. XII, the sister on the bank (allusion)
+```text
+Ring -3 cleared. The sister turns a page and doesn't look up.
+The Management Engine logs your clear. Nobody can read its logs.
+```
+
+### cleared.8
+uses: ch. I, the bank and the Rabbit (allusion)
+```text
+The bottom ring, cleared. Below it is only the bank you fell from.
+Ring -3, twice. The sister's book has a rabbit in it. Of course.
+```
+
 ### cleared.beyond
-where: prestige 5 and up, if `MaxPrestige` ever rises (`cleared.go:208`)
+where: past the ring table, prestige 9 and up, if `MaxPrestige` ever rises that far (`cleared.go:208`); `Ring` keeps such a level at ring -3
 ```text
 Ring {ring}. The Management Engine waves. Nobody knows what it does.
 Eval hands the ball to Apply. Apply hands it back. Again?
@@ -978,7 +1133,7 @@ stays the truth (bible tone rule 5), so a line here names no number a
 preset can change. Pick: fixed per key.
 
 ### daemon.<key>
-uses: G30 (allusion); nice parodies the Knight's upside-down box and cron his mouse-trap "in case they do come" (ch. VIII)
+uses: G30 (allusion); nice parodies the Knight's upside-down box and cron his mouse-trap "in case they do come" (ch. VIII). kexec names no count: it swaps once an act on the map and once a biome in the linear presets (map.md (d)), and boots a new kernel without a reboot, as the real one does
 
 | Hook | Line |
 |---|---|
@@ -995,13 +1150,13 @@ The Knight's invention: a window onto the test that tripped you.
 Carried upside-down so the rain can't get in. The bytes fall out.
 He rides two horses at once and falls off both. More doors, though.
 A box of mystery doors. He invented it. He's never opened it.
-Swap the door without getting off the horse. Once per biome.
+A new kernel without a reboot: swap the door and stay on the horse.
 A mousetrap on the saddle, in case old doors come back. They pay more.
 The horse gets real-time priority. The ground comes up faster, too.
 ```
 
 ### upgrade.<key>
-uses: G8
+uses: G8. Overclock now burns cycles a pick ("it burns", map.md (d)); ECC turns a failed submit's cycles into clock for the rest of the boot, so the Queen never hears and the clock pays
 
 | Hook | Line |
 |---|---|
@@ -1011,8 +1166,8 @@ uses: G8
 | `upgrade.shuf` | line 4 |
 
 ```text
-"You must run at least twice as fast as that!" Or {pct} faster.
-One flipped bit forgiven. The Queen is not informed.
+"You must run at least twice as fast as that!" Or {pct}, and it burns.
+Flipped bits corrected, and the Queen never hears. The clock does.
 Another grin in the trees. Somebody's Cat. Yours now.
 New doors for one room, pulled from a hat. The Hatter wants it back.
 ```
@@ -1171,7 +1326,7 @@ where: the dmesg strip at 5:00 and 1:00 left (`./internal/screens/boot/dmesg.go:
 ```
 
 ### quit.warn / resume.note
-where: the app's flash on quitting with a door open, and on resuming one (`./internal/app/debrief.go:205`, `:214`; D31: the door keeps running while the game is closed) · pick: fixed
+where: `quit.warn` is the story half of the in-door ctrl+c refusal (D47: no quitting inside a door; `quitWarn`, `./internal/app/debrief.go:253`), beside its mechanic half, which the screens build from the rules' costs: "no quitting inside a door: solve · R retreat −5 · :q! give up −10 · closing the terminal does not stop the clock". `resume.note` is the flash on reopening a door after an involuntary exit (kill -9, a lost terminal), whose deadline stayed absolute (`resumeNote`, `:262`). Resuming a boot from the map is `map.resume` · pick: fixed
 ```text
 The Rabbit won't stop his watch for you. {time} left on this door.
 Welcome back. The Rabbit kept time: {time} left.
@@ -1193,4 +1348,67 @@ neither more nor less." lib {name}, saved.
 
 "When I make a word do a lot of work like that, I always pay it
 extra." lib {name}, linked.
+```
+
+---
+
+## Inside a door
+
+D47's rule: no quitting inside a door. The ways out are solve, `R`
+retreat and `:q!` give up. A timeout or a give-up loses the room and the
+boot goes on, unless the burn empties the pool, which is a crash and the
+epitaphs above. Each line sits on the dmesg strip under the engine's own
+line, which carries the burn ("timer expired, burned 10 cycles, 14 left ·
+room lost"). On a boss door, a burn that deals a new boss door shows
+`boss.retry` instead.
+
+### door.timeout
+where: new: the dmesg strip, when a door's timer runs out and the boot goes on · when: every · pick: pool · uses: none
+```text
+The Rabbit's watch runs out. The room is lost; the boot is not.
+Time. The Queen takes the door and her cycles. The hall goes on.
+```
+
+### door.gave-up
+where: new: the dmesg strip, after a `:q!` that leaves cycles (the door only; the boot goes on) · when: every · pick: pool · uses: none. Line 2 holds only while a given-up door returns as a regression (meta.md (b): every failed door does)
+```text
+You walk out. The Queen keeps the door, and her cut of your cycles.
+:q!, and the door shuts behind you. The White Queen pencils it in.
+```
+
+### door.retreat / door.retreat.locked
+where: new: the dmesg strip on `R`: `door.retreat` as the room's doors are drawn again; `door.retreat.locked` when `R` comes after the lock (`retreat_lock`, 2:30 in map.md), `{time}` that lock. Show `.locked` only when no swap is left at all, kexec's included · when: every · pick: fixed · uses: G9 (`door.retreat`); `.locked` alludes to it
+```text
+"I should advise you to walk the other way," says the Rose. New doors.
+{time} in, the door has shut behind you. No walking the other way now.
+```
+
+### verdict.WA.ecc
+where: new: the dmesg strip, in place of `verdict.WA` when ECC turns a failed hidden-test submit into clock (`ecc_penalty`, 5:00 off the door's clock, map.md (d)) · when: every · pick: fixed · uses: A33 (allusion: the Queen gets no head)
+```text
+ECC corrects the bit. No head for the Queen; the Rabbit's watch pays.
+```
+
+---
+
+## The map
+
+The map is the hub (D47, map.md (g)). A boot is suspended between doors
+only, resumed from the map, and a new boot over a suspended one ends it as
+a crash. The route's exits show their gates; a locked one names what opens
+it.
+
+### map.suspend / map.resume / map.abandon
+where: new: `map.suspend` as the boot is saved on `q` or ctrl+c between doors; `map.resume` on `enter` from the map, `{boot}` the suspended boot; `map.abandon` in the map's `n` confirm, `{boot}` the boot it ends, beside the mechanic text ("ends boot #42 as a crash: 46 B lost, the core dump on Bovine Shuffle destroyed") · when: every · pick: fixed · uses: A31 (`map.abandon`: the Hatter moves everyone to clean cups, and the dirty ones stay behind). No line counts the time away (GR2, GR8): the clock runs only inside doors, so nothing ran
+```text
+Suspended. The Rabbit pockets his watch: it only ticks behind doors.
+fg: boot #{boot} picks up where it stopped. Nothing ran while it slept.
+"Let's all move one place on." Boot #{boot} stays behind, as a crash.
+```
+
+### route.locked / route.locked.prestige
+where: new: the route screen, when the player picks a locked exit, under the card's own gate text (map.md (g): "locked: CAP_TWOPTR · RTFM › Silver › Two Pointers (t)"). `route.locked` for a capability gate, `{module}` the RTFM module whose trial grants it; it says the trial opens the lock, not that only the trial does (`apt git` also opens Bisect Bridge). `route.locked.prestige` for a prestige gate, `{ring}` the ring the exit opens at (Undefined Behavior from ring 2, The Framebuffer from ring 1) · when: every · pick: fixed · uses: none; the glass is `milestone.gate.*`'s
+```text
+The Gryphon guards this lock. {module} opens it.
+The glass won't let you by yet. This exit opens from ring {ring} down.
 ```

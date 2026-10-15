@@ -1,9 +1,10 @@
 # katharsis story bible
 
-Status: draft for wiring, 2026-10-14. The in-game lines are in
-[text.md](text.md), keyed by hook. Sources and licenses are at the end of
-this file. Nothing here changes a rule. Story is a layer of words over
-mechanics that already exist.
+Status: draft for wiring, 2026-10-14; the map pass (D52: three acts,
+cycles, P5–P8) 2026-10-15. The in-game lines are in [text.md](text.md),
+keyed by hook. Sources and licenses are at the end of this file. Nothing
+here changes a rule. Story is a layer of words over mechanics that already
+exist.
 
 ## Premise
 
@@ -39,7 +40,8 @@ more you may do. The White Queen calls this living backwards.
 
 ## The machine: prestige is a ring
 
-`ring = 3 - prestige`
+`ring = 3 - prestige` down to ring -1; below it a ring takes two levels,
+and ring -3 is the floor (`flavor.Ring`, map.md (d))
 
 ```
 GRUB                         firmware: the old gods' country (K&R relics)
@@ -47,15 +49,17 @@ GRUB                         firmware: the old gods' country (K&R relics)
 ├─ 1 Silver    ring 2   through the looking-glass: same rooms, reversed
 ├─ 2 Gold      ring 1   the wood where things have no names (symbols stripped)
 ├─ 3 Platinum  ring 0   the Court of Hearts: root; Queen Alice, eighth square
-├─ 4 Advanced  ring -1  the Red King's dream (hypervisor); eval/apply; Jabberwock
-└─ 5+          ring -2  rumour only (SMM, then the ME at -3)
+├─ 4 Advanced  ring -1  the Red King's dream (hypervisor); eval/apply; Exercise 4.15
+├─ 5–6         ring -2  the Walrus's beach (SMM): the OS can't see in
+└─ 7–8         ring -3  the riverbank (the ME): awake with the power off
 ```
 
 These are real terms, not invented ones. x86 has rings 0 to 3, and most
 kernels use only rings 0 and 3. OS/2 used ring 2 for code with I/O
 privilege. "Ring -1" (hypervisor), "-2" (SMM) and "-3" (the Management
-Engine) are the security community's informal names, so the game treats
-them as rumour.
+Engine) are the security community's informal names. Nobody outside the
+firmware quite knows what runs down there, so the story keeps them odd: a
+beach sunny at midnight, and a sister who never sleeps.
 
 The Looking-Glass is the prestige mechanic in costume. Prestige holds the mid
 biome at clear >= 0.6 and adds risk (D22). The doors learn you and you
@@ -72,16 +76,18 @@ Each unlock is one more step through the glass.
 | Queen of Hearts | the judge | verdict first, trial never | "Off with its head!" (parody of "Off with his head!"); "Sentence first—verdict afterwards." |
 | King of Hearts | the statement, the spec, CE | pedantic | "Begin at the beginning … then stop." |
 | Cheshire Cat | the rubber duck; keeps core dumps | grin first, cat later | "we're all mad here."; a core dump is "a grin without a cat" |
-| Hatter, March Hare, Dormouse | the merge window | always tea-time | "It's always six o'clock now." |
-| Mock Turtle, Gryphon | RTFM | sighing; brisk | "Reeling and Writhing, of course, to begin with" |
+| Hatter, March Hare, Dormouse | the merge window; the fountain is the March Hare's tea | always tea-time | "It's always six o'clock now." |
+| Mock Turtle, Gryphon | RTFM; the Gryphon sits on locked exits | sighing; brisk | "Reeling and Writhing, of course, to begin with" |
 | Caterpillar | `top`; Bisect Bridge | languid | "Who are you?" |
 | Duchess | crash epitaphs ("morals"); the UB kitchen | a moral for everything | "Everything's got a moral, if only you can find it." |
 | Humpty Dumpty | naming: libs, vocabulary, LGTM | scornful | "When I use a word, it means just what I choose it to mean" |
 | White Queen | regressions (spaced repetition) | lives backwards | "one's memory works both ways." |
-| Red Queen | prestige treadmill, Overclock, -O3 | running | "you must run at least twice as fast as that!" |
+| Red Queen | prestige treadmill, Overclock, -O3, the skip | running | "you must run at least twice as fast as that!" |
 | White Knight | daemons: his inventions | earnest, falls off | "It's my own invention." |
 | Red King | the hypervisor; dreams the machine | asleep | "you're only a sort of thing in his dream!" (Tweedledee) |
 | Eval and Apply, the Wizards | the metacircular evaluator, the heart | s-expressions | "The evaluator … is just another program." (SICP ch. 4) |
+| the Walrus and the Carpenter | ring -2, System Management Mode | weeping, eating | "so that the Carpenter couldn't count how many he took" |
+| Alice's sister | ring -3, the Management Engine | awake, eyes shut | "all would change to dull reality" |
 | the old gods, K&R | relics only, never met | lowercase, terse, never `!` | hello, world |
 
 Two pairings carry most of the comedy, so they should not drift:
@@ -97,35 +103,78 @@ Two pairings carry most of the comedy, so they should not drift:
 
 ## Bosses (keys and names unchanged; the costume is new)
 
-| Key | Name | Costume | Why |
-|---|---|---|---|
-| off-by-one | Off-by-One | Tweedledum and Tweedledee | two of them, one gap; "Contrariwise" |
-| heisenbug | Heisenbug | the Sheep's shop | "whenever she looked hard at any shelf … that particular shelf was always quite empty" |
-| oom-killer | OOM Killer | the Rabbit's house, and Bill | you grew to fill the house; the Rabbit sends in a little Bill down the chimney |
-| race-condition | Race Condition | the Caucus-race | runners "began running when they liked, and left off when they liked" |
-| undefined-behavior | Undefined Behavior | the Duchess's kitchen | pepper means sneezing means nasal demons; the baby becomes a pig |
-| halting-problem | The Halting Problem | the Jabberwock | SICP Exercise 4.15, escaped from the Wizards |
+| Key | Name | Act | Costume | Why |
+|---|---|---|---|---|
+| off-by-one | Off-by-One | I | Tweedledum and Tweedledee | two of them, one gap; "Contrariwise" |
+| oom-killer | OOM Killer | I | the Rabbit's house, and Bill | you grew to fill the house; the Rabbit sends in a little Bill down the chimney |
+| heisenbug | Heisenbug | II | the Sheep's shop | "whenever she looked hard at any shelf … that particular shelf was always quite empty" |
+| race-condition | Race Condition | II | the Caucus-race | runners "began running when they liked, and left off when they liked" |
+| undefined-behavior | Undefined Behavior | II, from ring 2 | the Duchess's kitchen | pepper means sneezing means nasal demons; the baby becomes a pig |
+| halting-problem | The Halting Problem | final, every ring | the Jabberwock | SICP Exercise 4.15, escaped from the Wizards |
+
+The exit you take picks the boss (map.md (c)). Bosses I and II retry: a
+fail burns cycles and the Queen deals the same bug a new door
+(`boss.retry`). The final is one shot (`boss.oneshot`), and deeper rings
+make Boss II and then every boss one shot too. Because the final is the
+Jabberwock at every ring (map.md decision 1), you meet it at ring 3 the
+way Alice meets the poem in Looking-Glass chapter I: mirrored, "rather
+hard to understand", explained by nobody (`reveal.final-boss`). Humpty
+Dumpty sits at the edge of ring 1, and the Wizards own up to it at ring -1.
 
 ## Biomes (names unchanged; the scene is new)
 
-| Topic | Name | Scene |
-|---|---|---|
-| complete-search | Brute Force Bunker | the hall of locked doors; Alice tried every one |
-| simulation | The Emulator | the King's spec: begin, go on, stop |
-| sorting-greedy | The Scheduler | "it's very easy to take more than nothing" |
-| prefix-sums | The Accumulator | lessons: ten hours, nine, eight… |
-| binary-search | Bisect Bridge | the Caterpillar's mushroom: one side taller, one shorter |
-| two-pointers | The Sliding Window | "let's all move one place on" |
-| graphs | Routing Table | the Cat: "where you want to get to" |
-| trees | The Filesystem | a tree with a door in it |
-| shortest-paths | Dijkstra's Reach | the Rose: "walk the other way" |
-| dsu | Union Hall | the Lion and the Unicorn; "it's my crown all the while!" |
-| dp | The Cache | "I know who I was when I got up this morning" |
-| math | The ALU | Ambition, Distraction, Uglification, and Derision |
-| strings | The Lexer | "'Twas brillig, and the slithy toves" |
-| data-structures | The Heap | "The more there is of mine, the less there is of yours." |
-| geometry | The Framebuffer | Looking-glass House: "only the things go the other way" |
-| mixed | Userland | "we're all mad here." |
+| Topic | Name | Act | Scene |
+|---|---|---|---|
+| mixed | Userland | start | "we're all mad here." |
+| complete-search | Brute Force Bunker | I | the hall of locked doors; Alice tried every one |
+| simulation | The Emulator | I | the King's spec: begin, go on, stop |
+| sorting-greedy | The Scheduler | I | "it's very easy to take more than nothing" |
+| prefix-sums | The Accumulator | I | lessons: ten hours, nine, eight… |
+| binary-search | Bisect Bridge | II | the Caterpillar's mushroom: one side taller, one shorter |
+| two-pointers | The Sliding Window | II | "let's all move one place on" |
+| math | The ALU | II | Ambition, Distraction, Uglification, and Derision |
+| data-structures | The Heap | II | "The more there is of mine, the less there is of yours." |
+| strings | The Lexer | II | "'Twas brillig, and the slithy toves" |
+| graphs | Routing Table | III | the Cat: "where you want to get to" |
+| dp | The Cache | III | "I know who I was when I got up this morning" |
+| dsu | Union Hall | III | the Lion and the Unicorn; "it's my crown all the while!" |
+| shortest-paths | Dijkstra's Reach | III | the Rose: "walk the other way" |
+| trees | The Filesystem | III | a tree with a door in it |
+| geometry | The Framebuffer | III, from ring 1 | Looking-glass House: "only the things go the other way" |
+| mixed | Kernel Space | III | the Queen's croquet-ground: flamingo mallets, hedgehog balls, every game mixed |
+
+Kernel Space is the map's one new biome. It is mixed like Userland, so its
+line is keyed by its node (`biome.intro.kernel`), not its topic.
+
+## The map: three acts
+
+A boot on the map runs Userland, three acts and the last door, and Alice's
+route through Wonderland runs the same way: the hall of doors, the little
+door, the garden, the croquet-ground.
+
+```
+Userland      the hall of doors; the first door says hello, world
+act I         one topic biome, then ⚔ Off-by-One or OOM Killer
+  └─ the little door, fifteen inches high      story.first-act2
+act II        the garden; ⚔ Heisenbug, Race Condition or Undefined Behavior
+  └─ past the Queen's croquet-ground          story.first-act3
+act III       one topic biome, Kernel Space, or the train over the Third
+              Square (the skip, story.first-skip); then the Jabberwock
+```
+
+- **Between acts** the merge window is still the Hatter's table, and the
+  fountain is the March Hare's "Take some more tea": a few cycles, never
+  past the line you started at. From ring -2 the Walrus has drunk it.
+- **A locked exit** has the Gryphon asleep on its padlock. He interrupts
+  lessons and sends you to them (`story.first-locked`, `route.locked`). A
+  prestige gate is the looking-glass, not yet soft enough.
+- **Inside a door** there is no quitting: the Rabbit won't stop his watch.
+  You solve it, walk the other way (retreat: new doors, same room, until
+  the door shuts behind you), or walk out on the Queen (`:q!`). A give-up
+  or a timeout loses the room, not the boot.
+- **Between doors** the Rabbit pockets his watch: suspend, and `fg` from the
+  map. A new boot over a suspended one is the Hatter's "let's all move one
+  place on": the old boot stays behind, as a crash.
 
 ## Tone rules
 
@@ -174,6 +223,11 @@ Two pairings carry most of the comedy, so they should not drift:
 11. **Rotation.** A pool never shows the same line twice in a row, and a
     pick is stable per seed (reuse `QuoteFor`'s stride walk). A Carroll
     quote appears in at most two hooks.
+12. **Cycles, burned.** The pool is cycles (D48), drawn ♥ by the screens.
+    Story text says "cycles" and "burn", never "life" or "lives", and
+    names no cost or count a preset sets (kexec's swaps, the fountain's
+    refill, Overclock's price). The mechanic line beside it says the
+    number: "burned 10 cycles, 14 left".
 
 ## How the story unfolds
 
@@ -193,17 +247,23 @@ cutscene longer than five lines.
 | dump lost | crash before upsolving | Humpty can't be put back | `coredump.lost` (every) |
 | first RTFM | first `OpenLearn` | the Mock Turtle's school; lessons lessen | `story.first-rtfm` |
 | first regression | first regression door on offer | the White Queen remembers forwards | `story.first-regression` |
+| first locked exit | first exit a capability locks | the Gryphon guards it; RTFM opens it | `story.first-locked` |
+| first act II | first route past Boss I | the little door opens on the garden | `story.first-act2` |
+| first act III | first route past Boss II | something burbles behind the last door | `story.first-act3` |
+| first skip | first skip exit taken | the train goes over the Third Square | `story.first-skip` |
 | every clear | cleared screen | where you are, in ring terms | `cleared.<p>` (every) |
-| prestige unlock p | `Meta.Prestige` rises to p | the next ring's secret | `reveal.prestige.<p>` |
-| final boss, first time | first `halting-problem` door | the Red King's dream; Exercise 4.15 escaped | `reveal.final-boss` |
+| prestige unlock p | `Meta.Prestige` rises to p, the first level of a ring (1–5, 7) | the next ring's secret | `reveal.prestige.<p>` |
+| final boss, first time | first `halting-problem` door, at ring 3 on the map | a poem you can't read yet, and it is the Halting Problem | `reveal.final-boss` |
 | final clear, first time | first clear at max prestige | which dreamed it; the last door says hello, world | `reveal.final-clear` |
 
 What each ring reveals:
 
 - **ring 3 (Bronze).** It looks like Wonderland. You meet the Rabbit (the
   timer), the Queen (the judge), the Cat (hints), the Hatter (commits) and
-  the bugs. The question is only how to get out. Clearing shows a clean
-  shutdown, then the mirror over the mantel goes soft.
+  the bugs. The question is only how to get out. The last door has a poem
+  on it in looking-glass print, and nobody explains it: it is the Halting
+  Problem, and it waits at the end of every boot on the map. Clearing
+  shows a clean shutdown, then the mirror over the mantel goes soft.
 - **ring 2 (Silver).** Through the glass. The rooms are the same, only the
   things go the other way. The Red Queen explains why the doors got harder.
   You learn that the game is a treadmill on purpose.
@@ -219,11 +279,22 @@ What each ring reveals:
 - **ring -1 (Advanced).** The Red King is asleep, and the Wizards keep his
   dream running. Tweedledee: "you're only a sort of thing in his dream!" The
   Wizards once set Exercise 4.15 (write `halts?`, then show you can't). It
-  got loose, and it has jaws. Every Advanced boot ends at the Jabberwock.
+  got loose, and it has jaws: the thing behind the map's last door since
+  ring 3. The cleared screen starts rumouring ring -2.
+- **ring -2 (P5–P6).** Under the dream, a beach in the sun at midnight:
+  System Management Mode, which the OS can't see into. The Walrus drank
+  the fountain behind his handkerchief, "so that the Carpenter couldn't
+  count how many he took". From here on there is no tea between acts.
+- **ring -3 (P7–P8), the floor.** A riverbank on a hot afternoon, which
+  looks familiar: it is where the fall began. Alice's sister sits there
+  with a book. She is the Management Engine, awake with the power off, eyes
+  shut, and she knows one blink and "all would change to dull reality". She
+  doesn't blink.
 - **after the final clear.** The answer to the fall: you halted, this once.
   The last door bears the same inscription as the first, `hello, world`.
-  The cleared screen starts rumouring ring -2. The story stays in the loop,
-  because the dream does: "Life, what is it but a dream?"
+  Below the bottom ring there is only the bank you fell from. The story
+  stays in the loop, because the dream does: "Life, what is it but a
+  dream?"
 
 ## RTFM: the Mock Turtle's school
 
@@ -275,7 +346,9 @@ rule 5).
   Project Gutenberg eBooks #11 (<https://www.gutenberg.org/ebooks/11>) and
   #12 (<https://www.gutenberg.org/ebooks/12>). The game quotes Carroll and
   credits Carroll. It does not use the Project Gutenberg name, which is a
-  trademark tied to their eBook files.
+  trademark tied to their eBook files. The map pass's seven new quotes
+  (text.md A56–A58, G34–G37) were checked against the same eBooks' plain
+  text on 2026-10-15.
 - **Abelson and Sussman with Julie Sussman**, *Structure and Interpretation
   of Computer Programs*, 2nd ed., MIT Press, 1996. The copyright page
   (<https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-2.html>)
@@ -292,6 +365,8 @@ rule 5).
 - **Real systems facts** used as jokes: `Run /sbin/init as init process`,
   `random: crng init done` and `Calibrating delay loop` are real Linux boot
   messages. The Linux merge window is about two weeks. "Nasal demons" comes
-  from comp.std.c, 1992. These are allusions, not quotes, so they need no
-  credit line.
+  from comp.std.c, 1992. `kexec` boots a new kernel without a firmware
+  reboot; SMM runs below the OS, which cannot see it; the Management Engine
+  runs while the machine is in standby. These are allusions, not quotes,
+  so they need no credit line.
 - **Disney**: not used (tone rule 9).

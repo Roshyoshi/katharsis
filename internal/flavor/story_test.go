@@ -292,6 +292,9 @@ var register = map[string]string{
 	"A53": "You're nothing but a pack of cards!",
 	"A54": "Wake up, Alice dear!",
 	"A55": "Curiouser and curiouser!",
+	"A56": "the loveliest garden you ever saw",
+	"A57": "Take some more tea,",
+	"A58": "all would change to dull reality",
 
 	"G1":  "'Twas brillig, and the slithy toves",
 	"G2":  "Beware the Jabberwock, my son! / The jaws that bite, the claws that catch!",
@@ -326,6 +329,10 @@ var register = map[string]string{
 	"G31": "The name of the song is called 'Haddocks' Eyes.'",
 	"G32": "Which do you think it was?",
 	"G33": "Life, what is it but a dream?",
+	"G34": ".YKCOWREBBAJ / sevot yhtils eht dna, gillirb sawT'",
+	"G35": "It seems very pretty, … but it's rather hard to understand!",
+	"G36": "So you'll go very quickly through the Third Square—by railway, I should think—",
+	"G37": "so that the Carpenter couldn't count how many he took",
 
 	"S1": "to the spirit that lives in the computer.",
 	"S2": "In effect, we conjure the spirits of the computer with our spells.",
@@ -359,7 +366,17 @@ var quoted = map[string][]use{
 	"reveal.prestige.2":              {{"G11", ""}},
 	"reveal.prestige.3":              {{"A53", "nothing but a pack of cards"}, {"S3", ""}},
 	"reveal.prestige.4":              {{"G15", ""}},
-	"reveal.final-boss":              {{"G2", ""}},
+	"reveal.prestige.5":              {{"G37", ""}},
+	"reveal.prestige.7":              {{"A58", ""}},
+	"reveal.final-boss":              {{"G34", ""}, {"G35", ""}},
+	"story.first-act2":               {{"A56", ""}},
+	"story.first-skip":               {{"G36", ""}},
+	"story.first-locked":             {{"A46", ""}},
+	"fountain.drink":                 {{"A57", ""}},
+	"fountain.dry":                   {{"A21", ""}},
+	"item.fsck":                      {{"G28", "All the King's horses and all the King's men"}},
+	"door.retreat":                   {{"G9", ""}},
+	"map.abandon":                    {{"A31", ""}},
 	"reveal.final-clear":             {{"G5", ""}, {"G32", ""}, {"G33", ""}},
 	"biome.intro.sorting-greedy":     {{"A29", ""}},
 	"biome.intro.prefix-sums":        {{"A43", ""}},
@@ -422,9 +439,10 @@ var quoted = map[string][]use{
 }
 
 // alludedOnly are register quotes no line carries verbatim: text.md marks
-// every use of them as an allusion or a parody (A21's "There aren't any"),
-// or names the quote only as a source (A37, the Duchess's morals).
-var alludedOnly = []string{"A4", "A21", "A36", "A37", "A44", "G16", "G21", "G22"}
+// every use of them as an allusion or a parody (A44's Gryphon line with a
+// module in it), or names the quote only as a source (A37, the Duchess's
+// morals).
+var alludedOnly = []string{"A4", "A36", "A37", "A44", "G16", "G21", "G22"}
 
 // TestStoryQuotesVerbatim is the bible's tone rule 6: a line that quotes
 // Carroll or SICP carries the words exactly. Only the first letter's case
@@ -556,15 +574,30 @@ func TestRegisterMatchesText(t *testing.T) {
 	}
 }
 
+// TestRing is text.md's {place} by ring, and map.md (d)'s ladder: one level
+// a ring to ring -1, then P5-P6 ring -2 and P7-P8 ring -3, the floor.
 func TestRing(t *testing.T) {
-	if r, p := Ring(0); r != 3 || p != "Userland" {
-		t.Errorf("Ring(0) = %d, %q", r, p)
+	for p, want := range []struct {
+		ring  int
+		place string
+	}{
+		{3, "Userland"}, {2, "the looking-glass"}, {1, "the nameless wood"},
+		{0, "the Court of Hearts"}, {-1, "the Red King's dream"},
+		{-2, "the Walrus's beach"}, {-2, "the Walrus's beach"},
+		{-3, "the riverbank"}, {-3, "the riverbank"},
+	} {
+		if r, place := Ring(p); r != want.ring || place != want.place {
+			t.Errorf("Ring(%d) = %d, %q; want %d, %q", p, r, place, want.ring, want.place)
+		}
 	}
-	if r, p := Ring(game.MaxPrestige); r != -1 || p != "the Red King's dream" {
-		t.Errorf("Ring(max) = %d, %q", r, p)
+	if r, p := Ring(len(rings)); r != -3 || p != "" {
+		t.Errorf("Ring past the table = %d, %q; want the floor, no place", r, p)
 	}
-	if r, p := Ring(5); r != -2 || p != "" {
-		t.Errorf("Ring(5) = %d, %q", r, p)
+	if r, p := Ring(game.MaxPrestige); p == "" || r < -3 {
+		t.Errorf("Ring(MaxPrestige %d) = %d, %q: the top level has no place", game.MaxPrestige, r, p)
+	}
+	if r, p := Ring(-1); r != 4 || p != "" {
+		t.Errorf("Ring(-1) = %d, %q", r, p)
 	}
 }
 
@@ -583,7 +616,9 @@ func TestStoryFamilies(t *testing.T) {
 	add("boss.enter.", bosses...)
 	add("boss.defeat.", bosses...)
 	add("crash.epitaph.", string(game.TimedOut), string(game.OutOfLives), string(game.GaveUp), "cursed")
-	for p := 0; p <= game.MaxPrestige; p++ {
+	// Every level the ring table names, so the ladder can grow to P8
+	// (map.md (d)) without a level that falls back to the beyond lines.
+	for p := 0; p <= max(game.MaxPrestige, len(rings)-1); p++ {
 		add("", fmt.Sprintf("cleared.%d", p), fmt.Sprintf("grub.subtitle.prestige.%d", p))
 	}
 	for _, d := range game.AllDaemons {
@@ -598,6 +633,13 @@ func TestStoryFamilies(t *testing.T) {
 	for i := range rules.Standard().RegressionDays {
 		add("", fmt.Sprintf("regression.stage.%d", i+1))
 	}
+	// The map's hooks (docs/design/map.md (g)), named in text.md for the
+	// screens to wire: one-time scenes, then the lines shown every time.
+	add("story.first-", "act2", "act3", "skip", "locked")
+	add("", "biome.intro.kernel", "boss.retry", "boss.oneshot", "fountain.drink", "fountain.full",
+		"fountain.dry", "item.fsck", "door.timeout", "door.gave-up", "door.retreat",
+		"door.retreat.locked", "verdict.WA.ecc", "map.suspend", "map.resume", "map.abandon",
+		"route.locked", "route.locked.prestige", "quit.warn")
 	for _, h := range hooks {
 		if _, ok := story[h]; !ok {
 			t.Errorf("%s has no text", h)

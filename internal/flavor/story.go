@@ -113,6 +113,10 @@ The Wizards are still passing the ball. Eval. Apply. Eval.
 	"grub.subtitle.prestige.2":      fixedOf("ring 1 · the wood where things have no names"),
 	"grub.subtitle.prestige.3":      fixedOf("ring 0 · the Court of Hearts · sentence first, verdict afterwards"),
 	"grub.subtitle.prestige.4":      fixedOf("ring -1 · the Red King's dream · beware the Jabberwock"),
+	"grub.subtitle.prestige.5":      fixedOf("ring -2 · the Walrus's beach · the sun shines at midnight"),
+	"grub.subtitle.prestige.6":      fixedOf("ring -2 · the Walrus's beach · nobody counts the oysters"),
+	"grub.subtitle.prestige.7":      fixedOf("ring -3 · the riverbank · something here never sleeps"),
+	"grub.subtitle.prestige.8":      fixedOf("ring -3 · the riverbank · where the fall began"),
 	"grub.subtitle.prestige.beyond": fixedOf("ring {ring} · nobody who went there wrote it down"),
 	"grub.subtitle.nightly":         fixedOf("an un-birthday present: one seed, the same for everyone"),
 	"grub.subtitle.rtfm":            fixedOf("the Mock Turtle's school · Reeling and Writhing, to begin with"),
@@ -174,7 +178,26 @@ Uglification, and Derision."
 A Queen in a shawl sticks plaster on a finger she hasn't pricked.
 "...one's memory works both ways," says the White Queen, kindly.
 She remembers best the things that happen the week after next.
-This door crashed you. It's back, with a blank file. Then again.
+This door beat you once. It's back, with a blank file. Then again.
+`),
+	// The map's act boundaries and gates (docs/design/map.md (g)): scenes
+	// the screens show once, at their moment.
+	"story.first-act2": blockOf(`
+The bug steps aside. Behind it, a door fifteen inches high.
+Through it, "the loveliest garden you ever saw." Act II.
+The gardeners are painting the white roses red.
+`),
+	"story.first-act3": blockOf(`
+Act III: the far end of the garden, past the croquet-ground.
+Beyond the hedges something burbles as it comes. It is last.
+`),
+	"story.first-skip": blockOf(`
+"So you'll go very quickly through the Third Square—by railway,
+I should think—" says the Red Queen. No room. No bytes. Picks.
+`),
+	"story.first-locked": blockOf(`
+A padlocked exit, and asleep on the padlock, a Gryphon.
+"That's enough about lessons," it yawns, and points at RTFM anyway.
 `),
 	"reveal.prestige.1": blockOf(`
 The mantel mirror goes soft, like gauze. You step through.
@@ -203,10 +226,25 @@ The Wizards keep his dream running: eval, apply, eval, apply.
 Long ago they set Exercise 4.15: write halts?, then show you can't.
 It got loose. It has jaws that bite and claws that catch.
 `),
+	// Rings -2 and -3 take two prestige levels each, so only their first
+	// level has a reveal (beats.go, revealLevels).
+	"reveal.prestige.5": blockOf(`
+Ring -2: a beach under the dream, sunny at midnight.
+The fountain is dry. The Walrus drank it behind his handkerchief,
+"so that the Carpenter couldn't count how many he took".
+`),
+	"reveal.prestige.7": blockOf(`
+Ring -3: a riverbank on a hot afternoon. It looks familiar.
+A sister reads on the bank, awake with the power off, eyes shut.
+One blink and "all would change to dull reality". She doesn't blink.
+`),
+	// The final is the Halting Problem at every prestige (map.md decision
+	// 1), so this fires at ring 3: the poem as Alice first meets it in
+	// Looking-Glass chapter I, mirrored, before anyone explains it.
 	"reveal.final-boss": blockOf(`
-The last door. Something burbles in the tulgey wood.
-"Beware the Jabberwock, my son!
-The jaws that bite, the claws that catch!"
+The last door. On it, a poem in looking-glass print: .YKCOWREBBAJ
+sevot yhtils eht dna, gillirb sawT'
+"It seems very pretty, but it's rather hard to understand!"
 It is the Halting Problem. You can't win in general. Win this once.
 `),
 	"reveal.final-clear": blockOf(`
@@ -318,6 +356,9 @@ On its back, in an old terse hand: hello, world. Which came first?
 	"biome.intro.data-structures": fixedOf(`"The more there is of mine, the less there is of yours." -- malloc`),
 	"biome.intro.geometry":        fixedOf(`"Only the things go the other way." Mirrors flip every cross product.`),
 	"biome.intro.mixed":           fixedOf(`"We're all mad here." Ring 3: every topic, no privileges, no excuses.`),
+	// Kernel Space is mixed too, so it is keyed by its map node, not its
+	// topic: biome.intro.mixed is Userland's, and says ring 3.
+	"biome.intro.kernel": fixedOf("Kernel croquet: flamingo mallets, hedgehog balls, any topic, no MMU."),
 
 	// ---- Bosses: entrance on the door card, defeat after the clear ----
 	"boss.enter.off-by-one": poolOf(`
@@ -384,6 +425,17 @@ He went galumphing back.
 
 You didn't decide halting. You decided this one. The proof survives.
 `),
+	// A boss fail that leaves cycles deals a new boss door; a one-shot
+	// boss (the final, and more of them deeper down) ends the boot.
+	"boss.retry": poolOf(`
+The Queen shuffles the pack and deals the same bug a new door.
+The bug picks itself up and backs into a fresh door. Your move.
+Same bug, new door, fewer cycles to spend on it.
+`),
+	"boss.oneshot": poolOf(`
+One shot, no second door. Either it halts, or you do.
+The Queen deals this hand once. Lose it and the boot is hers.
+`),
 
 	// ---- Merge window ----
 	"merge.line": poolOf(`
@@ -404,6 +456,12 @@ rc1 is at six o'clock. So is rc2. Time stopped at tea.
 	"merge.commit":      fixedOf(`Committed. The Dormouse murmurs "Treacle," and goes back to sleep.`),
 	"merge.uncommitted": fixedOf("The Hatter waves a cup at your pockets: {bytes} still uncommitted."),
 	"merge.leave":       fixedOf(`"At any rate I'll never go there again!" Next biome. Same table.`),
+	// The fountain is the March Hare's tea, only in the windows between
+	// acts, and never past the starting pool ("the line").
+	"fountain.drink": fixedOf(`"Take some more tea," says the March Hare. Never past the line.`),
+	"fountain.full":  fixedOf("No more tea: your cup's already at the line. The Hare looks hurt."),
+	"fountain.dry":   fixedOf(`More tea? "There isn't any," says the March Hare. The Walrus had it.`),
+	"item.fsck":      fixedOf(`"All the King's horses and all the King's men" run fsck. It holds.`),
 
 	// ---- Crash ----
 	"crash.epitaph.timed-out": poolOf(`
@@ -421,7 +479,7 @@ And the moral of that is: the samples are not the test data.
 	"crash.epitaph.out-of-lives.TLE": fixedOf(`"He's murdering the time! Off with his head!" As charged.`),
 	"crash.epitaph.out-of-lives.MLE": fixedOf("Rule Forty-two. All persons more than a mile high to leave the court."),
 	"crash.epitaph.out-of-lives.RE":  fixedOf("The executioner needs a body to cut the head from. You had a null."),
-	"crash.epitaph.out-of-lives.WA":  fixedOf(`"Off with its head!" Wrong answer, and no heads left to spare.`),
+	"crash.epitaph.out-of-lives.WA":  fixedOf(`"Off with its head!" Wrong answer, and no cycles left to burn.`),
 	"crash.epitaph.gave-up": poolOf(`
 "You're nothing but a pack of cards!" The whole pack rose up. Fair.
 "Wake up, Alice dear!" The editorial is open. Nobody's judging. Yet.
@@ -468,6 +526,22 @@ Which dreamed it: you, or the Red King? git log says you.
 Life, what is it but a dream? exit 0.
 There's talk of a ring -2. The Wizards change the subject.
 `),
+	"cleared.5": poolOf(`
+Ring -2 cleared. The Walrus weeps into his hanky and counts nothing.
+SMM survived. The firmware will swear you were never here.
+`),
+	"cleared.6": poolOf(`
+The beach, cleared at midnight in full sun. Nobody upstairs noticed.
+Ring -2, the whole beach. The oysters would cheer, if any were left.
+`),
+	"cleared.7": poolOf(`
+Ring -3 cleared. The sister turns a page and doesn't look up.
+The Management Engine logs your clear. Nobody can read its logs.
+`),
+	"cleared.8": poolOf(`
+The bottom ring, cleared. Below it is only the bank you fell from.
+Ring -3, twice. The sister's book has a rabbit in it. Of course.
+`),
 	"cleared.beyond": poolOf(`
 Ring {ring}. The Management Engine waves. Nobody knows what it does.
 Eval hands the ball to Apply. Apply hands it back. Again?
@@ -502,11 +576,11 @@ A grin in the tree, then a Cat around it. Ducks refilled: {n}
 	"daemon.nice":       fixedOf("Carried upside-down so the rain can't get in. The bytes fall out."),
 	"daemon.fork":       fixedOf("He rides two horses at once and falls off both. More doors, though."),
 	"daemon.dev-random": fixedOf("A box of mystery doors. He invented it. He's never opened it."),
-	"daemon.kexec":      fixedOf("Swap the door without getting off the horse. Once per biome."),
+	"daemon.kexec":      fixedOf("A new kernel without a reboot: swap the door and stay on the horse."),
 	"daemon.cron":       fixedOf("A mousetrap on the saddle, in case old doors come back. They pay more."),
 	"daemon.chrt":       fixedOf("The horse gets real-time priority. The ground comes up faster, too."),
-	"upgrade.overclock": fixedOf(`"You must run at least twice as fast as that!" Or {pct} faster.`),
-	"upgrade.ecc":       fixedOf("One flipped bit forgiven. The Queen is not informed."),
+	"upgrade.overclock": fixedOf(`"You must run at least twice as fast as that!" Or {pct}, and it burns.`),
+	"upgrade.ecc":       fixedOf("Flipped bits corrected, and the Queen never hears. The clock does."),
 	"upgrade.duck":      fixedOf("Another grin in the trees. Somebody's Cat. Yours now."),
 	"upgrade.shuf":      fixedOf("New doors for one room, pulled from a hat. The Hatter wants it back."),
 	"o3.bonus":          fixedOf("Twice as fast as that! The Red Queen nods, once. Free upgrade."),
@@ -580,6 +654,28 @@ The White Knight explains his song, K&R-style:
 	"door.blind":    fixedOf("Tags hidden, as in the nameless wood. Bytes extra for the trouble."),
 	"door.mystery":  fixedOf("Sometimes like a doll and sometimes like a work-box. Title hidden."),
 	"door.cursed":   fixedOf("The Queen is judging this one herself. No Cat. One WA."),
+
+	// ---- Inside a door: what each way out burns ----
+	// No quitting inside a door (D47): the ways out are solve, R retreat
+	// and :q! give up. A timeout or a give-up loses the room, not the boot.
+	"door.timeout": poolOf(`
+The Rabbit's watch runs out. The room is lost; the boot is not.
+Time. The Queen takes the door and her cycles. The hall goes on.
+`),
+	"door.gave-up": poolOf(`
+You walk out. The Queen keeps the door, and her cut of your cycles.
+:q!, and the door shuts behind you. The White Queen pencils it in.
+`),
+	"door.retreat":        fixedOf(`"I should advise you to walk the other way," says the Rose. New doors.`),
+	"door.retreat.locked": fixedOf("{time} in, the door has shut behind you. No walking the other way now."),
+	"verdict.WA.ecc":      fixedOf("ECC corrects the bit. No head for the Queen; the Rabbit's watch pays."),
+
+	// ---- The map: the hub between doors ----
+	"map.suspend":           fixedOf("Suspended. The Rabbit pockets his watch: it only ticks behind doors."),
+	"map.resume":            fixedOf("fg: boot #{boot} picks up where it stopped. Nothing ran while it slept."),
+	"map.abandon":           fixedOf(`"Let's all move one place on." Boot #{boot} stays behind, as a crash.`),
+	"route.locked":          fixedOf("The Gryphon guards this lock. {module} opens it."),
+	"route.locked.prestige": fixedOf("The glass won't let you by yet. This exit opens from ring {ring} down."),
 	"lib.saved": pool2Of(`
 "When I use a word, it means just what I choose it to mean—
 neither more nor less." lib {name}, saved.
@@ -589,16 +685,30 @@ extra." lib {name}, linked.
 `),
 }
 
-// places are the story's {place} by prestige: ring 3 down to ring -1
-// (docs/story/text.md, the placeholder table).
-var places = []string{"Userland", "the looking-glass", "the nameless wood", "the Court of Hearts", "the Red King's dream"}
+// rings are the story's privilege ring and {place} by prestige
+// (docs/story/text.md, the placeholder table): one level a ring from ring 3
+// down to ring -1, then two levels each for ring -2 (SMM) and ring -3 (the
+// Management Engine), the floor (docs/design/map.md (d)).
+var rings = []struct {
+	ring  int
+	place string
+}{
+	{3, "Userland"}, {2, "the looking-glass"}, {1, "the nameless wood"},
+	{0, "the Court of Hearts"}, {-1, "the Red King's dream"},
+	{-2, "the Walrus's beach"}, {-2, "the Walrus's beach"},
+	{-3, "the riverbank"}, {-3, "the riverbank"},
+}
 
-// Ring is the privilege ring prestige p puts you in (ring = 3 - p) and its
-// {place}. Past the table the place is "", and a line that needs it should
-// not be shown: the story has no name for a ring nobody reached.
+// Ring is the privilege ring prestige p puts you in and its {place}. Past
+// the table the ring stays at the floor and the place is "", and a line
+// that needs it should not be shown: the story has no name for a level
+// nobody reached. A negative p reads as 3 - p, with no place.
 func Ring(p int) (ring int, place string) {
-	if p >= 0 && p < len(places) {
-		place = places[p]
+	switch {
+	case p < 0:
+		return 3 - p, ""
+	case p >= len(rings):
+		return rings[len(rings)-1].ring, ""
 	}
-	return 3 - p, place
+	return rings[p].ring, rings[p].place
 }
