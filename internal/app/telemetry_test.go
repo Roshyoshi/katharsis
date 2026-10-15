@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -154,7 +155,9 @@ func TestEventsFromADoorSession(t *testing.T) {
 	if p := payload(t, byKind[store.EventUpsolveClose][0]); p["verdict"] != "AC" || p["elapsed_ms"] != float64(10*time.Minute/time.Millisecond) {
 		t.Errorf("upsolve_close payload %v", p)
 	}
-	if p := payload(t, evs[0]); p["tmux"] != false || len(p["presets"].([]any)) != 1 {
+	// The harness's preset set grows with other tests' needs; the payload
+	// must list every one of them, standard included.
+	if p := payload(t, evs[0]); p["tmux"] != false || !slices.Contains(p["presets"].([]any), any("standard")) {
 		t.Errorf("app_start payload %v", p)
 	}
 }
