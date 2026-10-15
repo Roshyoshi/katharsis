@@ -177,9 +177,11 @@ func (t *Top) meters(w int) []string {
 	}
 
 	ind, hint, ed := st.Solves[game.Independent], st.Solves[game.Hinted], st.Solves[game.Editorial]
-	solveBar := meterBar("Solves", w, []barPart{
-		{ind, ui.OK}, {hint, ui.Warn}, {ed, ui.Danger},
-	}, fmt.Sprint(ind+hint+ed))
+	// Each kind has a glyph of its own, htop's monochrome bar characters in
+	// order, so the parts read apart without color (R1).
+	solves := []barPart{
+		{ind, ui.OK, "|", "independent"}, {hint, ui.Warn, "#", "hinted"}, {ed, ui.Danger, "*", "editorial"},
+	}
 
 	delta := ""
 	if n := len(t.ratings); n > 1 {
@@ -196,8 +198,8 @@ func (t *Top) meters(w int) []string {
 		label("Boots") + val(fmt.Sprint(st.Boots)) + ", " + counted(st.FullClears, "full clear") + ", " +
 			counted(crashes, "crash"),
 		label("Crashes") + strings.Join(causes, ", "),
-		solveBar,
-		legend(w, ind, hint, ed),
+		meterBar("Solves", w, solves, fmt.Sprint(ind+hint+ed)),
+		legend(w, solves),
 		label("Uptime") + val(uptime(st.Uptime)),
 		label("Bytes") + val(units.Bytes(st.LifetimeBytes)) + " lifetime, " + val(units.Bytes(st.Bank)) + " bank",
 		label("Trend") + ui.Focus.Render(sparkline(t.ratings, max(min(w-20, 30), 0))) + delta + ui.Muted.Render(" last 10"),
@@ -211,24 +213,31 @@ func (t *Top) meters(w int) []string {
 	return out
 }
 
-// legend explains the solves bar's colours, indented under the bar when
-// there is room.
-func legend(w, ind, hint, ed int) string {
-	s := ui.OK.Render(fmt.Sprint(ind)) + " independent · " +
-		ui.Warn.Render(fmt.Sprint(hint)) + " hinted · " + ui.Danger.Render(fmt.Sprint(ed)) + " editorial"
+// legend names a meter's parts, each by its glyph and count ("|88
+// independent, #30 hinted"), indented under the bar when there is room.
+func legend(w int, parts []barPart) string {
+	items := make([]string, len(parts))
+	for i, p := range parts {
+		items[i] = p.style.Render(p.glyph+fmt.Sprint(p.n)) + " " + p.name
+	}
+	s := strings.Join(items, ", ")
 	if indent := len("Solves["); ansi.StringWidth(s)+indent <= w {
 		return strings.Repeat(" ", indent) + s
 	}
 	return s
 }
 
+// barPart is one part of a meter: its count, and the color, glyph and
+// name it is drawn and named with.
 type barPart struct {
-	n     int
-	style ui.Token
+	n           int
+	style       ui.Token
+	glyph, name string
 }
 
-// meterBar is an htop meter: "Name[|||||||||      text]", each part's
-// share of the bar in its own colour, the text right-aligned inside.
+// meterBar is an htop meter: "Name[|||||##**      text]", each part's
+// share of the bar in its own color and glyph, the text right-aligned
+// inside.
 func meterBar(name string, w int, parts []barPart, text string) string {
 	inner := w - len(name) - 2
 	if inner < len(text)+1 {
@@ -247,7 +256,7 @@ func meterBar(name string, w int, parts []barPart, text string) string {
 			sum += p.n
 			n = (sum*(inner-len(text)-1)+total/2)/total - used
 		}
-		b.WriteString(p.style.Render(strings.Repeat("|", n)))
+		b.WriteString(p.style.Render(strings.Repeat(p.glyph, n)))
 		used += n
 	}
 	fill := inner - used - len(text)

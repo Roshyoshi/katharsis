@@ -79,19 +79,13 @@ func (r *Retention) alarmText(name string) string {
 	case alarmHoursVsWorth:
 		b, a := r.Fortnights[0], r.Fortnights[1]
 		return fmt.Sprintf("play went %s → %s a fortnight while worth-it went %s → %s",
-			hm(b.Play), hm(a.Play), share(b.Worth), share(a.Worth))
+			units.HM(b.Play), units.HM(a.Play), share(b.Worth), share(a.Worth))
 	}
 	return name
 }
 
 func share(w Worth) string {
 	return fmt.Sprintf("%.0f%%", 100*float64(w.Yes)/float64(max(w.Yes+w.No, 1)))
-}
-
-// hm is play time as hours and minutes: "3:54".
-func hm(d time.Duration) string {
-	d = d.Round(time.Minute)
-	return fmt.Sprintf("%d:%02d", int(d.Hours()), int(d.Minutes())%60)
 }
 
 // span is a duration said briefly: "57m", "40h40m", "19d16h".
@@ -238,7 +232,7 @@ func (t *Top) weeks() []string {
 	out := []string{ui.Muted.Render("week of  days  sessions  play")}
 	for i := len(r.Weeks) - 1; i >= 0; i-- {
 		wk := r.Weeks[i]
-		out = append(out, fmt.Sprintf("%s  %4d  %8d  %4s", wk.Start.Format("01-02"), wk.Days, wk.Sessions, hm(wk.Play)))
+		out = append(out, fmt.Sprintf("%s  %4d  %8d  %4s", wk.Start.Format("01-02"), wk.Days, wk.Sessions, units.HM(wk.Play)))
 	}
 	return out
 }

@@ -298,9 +298,12 @@ type attemptLayout struct {
 }
 
 var (
-	narrowAttempt = attemptLayout{title: 18, topic: 19}
-	wideAttempt   = attemptLayout{title: 28, topic: 21, timer: true}
+	narrowAttempt = attemptLayout{title: 18, topic: 13}
+	wideAttempt   = attemptLayout{title: 28, topic: 15, timer: true}
 )
+
+// ratingW is the rating column of an attempt line: "◆1720".
+const ratingW = 5
 
 func attemptLine(a AttemptRow, lay attemptLayout) string {
 	mark := ui.Danger.Render(ui.G.Fail)
@@ -312,12 +315,12 @@ func attemptLine(a AttemptRow, lay attemptLayout) string {
 	case "": // still open
 		mark = ui.Focus.Render(ui.G.Here)
 	}
-	// The door's difficulty follows its topic (D27). When both do not fit
-	// the column, the topic is cut, never the numeral (§2.6).
-	topic := a.Topic
+	// The door's difficulty (D27) has a column of its own after the topic,
+	// right-aligned as numerals are, so a long topic is cut, never the
+	// rating (§2.6).
+	rating := ""
 	if a.Rating > 0 {
-		r := ui.Rating(a.Rating)
-		topic = ui.Clip(a.Topic, lay.topic-1-ansi.StringWidth(r)) + " " + r
+		rating = ui.Rating(a.Rating)
 	}
 	t := ui.AlignRight(units.Clock(a.Elapsed), 5)
 	if lay.timer {
@@ -350,8 +353,8 @@ func attemptLine(a AttemptRow, lay attemptLayout) string {
 	if len(tags) > 0 {
 		end += ui.Muted.Render(" [" + strings.Join(tags, ", ") + "]")
 	}
-	return fmt.Sprintf("%s %s %s %s %s %s%d %s", mark, ui.Fit(a.Title, lay.title), ui.Fit(topic, lay.topic),
-		t, ui.Fit(subs, 8), ui.G.Duck, a.Quacks, end)
+	return fmt.Sprintf("%s %s %s %s %s %s %s%d %s", mark, ui.Fit(a.Title, lay.title), ui.Fit(a.Topic, lay.topic),
+		ui.AlignRight(rating, ratingW), t, ui.Fit(subs, 8), ui.G.Duck, a.Quacks, end)
 }
 
 // markNightlies tags the nightly builds among boots (newest first): a

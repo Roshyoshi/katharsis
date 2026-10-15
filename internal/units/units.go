@@ -1,8 +1,8 @@
 // Package units formats the game's numbers the one way every screen and log
 // shows them (docs/design/ui-system.md, "Number formats"): the byte
-// currency, memory, clocks, countdowns and hearts. It imports nothing from
-// the game, so the engine can use it as well as the screens. Plural counts
-// nouns the same way everywhere ("1 boot", "2 boots").
+// currency, memory, clocks, countdowns, long spans and hearts. It imports
+// nothing from the game, so the engine can use it as well as the screens.
+// Plural counts nouns the same way everywhere ("1 boot", "2 boots").
 package units
 
 import (
@@ -75,6 +75,13 @@ func Countdown(left time.Duration) string {
 		left += time.Second - r
 	}
 	return Clock(left)
+}
+
+// HM formats a long span, a day's play or a session budget, as hours and
+// minutes: "3:12". It counts whole minutes gone, as Clock counts seconds.
+func HM(d time.Duration) string {
+	d = max(d, 0).Truncate(time.Minute)
+	return fmt.Sprintf("%d:%02d", int(d.Hours()), int(d.Minutes())%60)
 }
 
 // Hearts draws lives as filled hearts and the missing ones as hollow:

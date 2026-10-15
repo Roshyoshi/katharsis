@@ -139,3 +139,13 @@ func TestGrubFirstRegression(t *testing.T) {
 	game.MarkSeen(&c.Meta, "story.first-regression")
 	wantMsg(t, press(t, meta.NewGrub(c), regs...), nil)
 }
+
+// GRUB counts today's play in whole minutes gone, as the end screens'
+// budget line does, so the two never disagree: 3:12:40 is 3:12.
+func TestGrubBudgetWholeMinutes(t *testing.T) {
+	c := fixture.GrubConfig()
+	c.Today, c.Budget = 3*time.Hour+12*time.Minute+40*time.Second, 3*time.Hour
+	if v := plain(meta.NewGrub(c).View(140, 40)); !strings.Contains(v, "today 3:12 of 3:00") {
+		t.Errorf("3:12:40 should read 3:12:\n%s", v)
+	}
+}

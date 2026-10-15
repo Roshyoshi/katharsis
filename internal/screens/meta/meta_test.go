@@ -3,9 +3,11 @@ package meta_test
 import (
 	"flag"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -549,5 +551,94 @@ func TestShopGoal(t *testing.T) {
 	c.Packages = nil
 	if s := plain(meta.NewGrub(c).View(100, 30)); strings.Contains(s, "apt") {
 		t.Errorf("GRUB lists apt with no packages:\n%s", s)
+	}
+}
+
+// ---- layout and glyphs ------------------------------------------------------
+
+// flavor's real GRUB art fits at 80x24 over the fixture's twelve entries,
+// giving up blank rows if it must. A menu too long for it keeps every entry
+// on screen and the plain version line instead.
+func TestGrubRealBannerAt80x24(t *testing.T) {
+	art := strings.Split(flavor.Banner("grub"), "\n")
+	view := func(c meta.GrubConfig) string {
+		c.Banner = nil
+		v := plain(meta.NewGrub(c).View(80, 24))
+		if n := strings.Count(v, "\n"); n != 24 {
+			t.Errorf("%d lines, want 24:\n%s", n, v)
+		}
+		if strings.Contains(v, "↓┐") || strings.Contains(v, "↓┘") {
+			t.Errorf("entries scrolled out of the box:\n%s", v)
+		}
+		if n := strings.Count(v, "GNU GRUB"); n != 1 {
+			t.Errorf("want one GNU GRUB line, got %d:\n%s", n, v)
+		}
+		return v
+	}
+	v := view(fixture.GrubConfig())
+	for _, a := range art {
+		if !strings.Contains(v, a) {
+			t.Errorf("art line %q missing at 80x24:\n%s", a, v)
+		}
+	}
+	// Every prestige unlocked and every optional entry there: 15 entries.
+	c := fixture.GrubConfig()
+	c.Meta.Prestige, c.Gate = game.MaxPrestige, game.PrestigeGate{}
+	c.StoryLog = func(*game.Meta) []flavor.LogEntry {
+		return []flavor.LogEntry{{ID: "story.prologue", Title: "Prologue"}}
+	}
+	v = view(c)
+	if strings.Contains(v, art[0]) {
+		t.Errorf("a 15-entry menu has no room for the art at 80x24:\n%s", v)
+	}
+	for _, want := range []string{"prestige 0", "/proc/story", "poweroff"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("%q missing:\n%s", want, v)
+		}
+	}
+}
+
+// The expanded log gives a door's rating its own right-aligned column
+// (§2.6, E18): every rating ends in one column, whatever its topic.
+func TestLogRatingColumn(t *testing.T) {
+	for _, sz := range sizes {
+		s := meta.NewLog(fixture.Boots(), fixture.PrestigeName)
+		s.Update(key("enter"))
+		ends := map[int]string{}
+		for _, l := range strings.Split(plain(s.View(sz[0], sz[1])), "\n") {
+			i := strings.Index(l, "◆")
+			if i < 0 {
+				continue
+			}
+			digits := strings.IndexFunc(l[i+len("◆"):], func(r rune) bool { return r < '0' || r > '9' })
+			ends[ansi.StringWidth(l[:i])+1+digits] = l
+		}
+		if len(ends) != 1 {
+			t.Errorf("at %dx%d the ratings end in %d columns: %q", sz[0], sz[1], len(ends), slices.Collect(maps.Values(ends)))
+		}
+	}
+}
+
+// top's Solves meter tells its parts apart without color (R1): each kind
+// has its own bar glyph, htop's monochrome |, # and *, in order, and the
+// legend puts each glyph by its count.
+func TestTopSolvesWithoutColor(t *testing.T) {
+	st := fixture.Stats()
+	ind, hint, ed := st.Solves[game.Independent], st.Solves[game.Hinted], st.Solves[game.Editorial]
+	for _, sz := range sizes {
+		lines := strings.Split(plain(meta.NewTop(st).View(sz[0], sz[1])), "\n")
+		i := slices.IndexFunc(lines, func(l string) bool { return strings.Contains(l, "Solves[") })
+		if i < 0 || i+1 >= len(lines) {
+			t.Fatalf("no Solves meter at %dx%d", sz[0], sz[1])
+		}
+		bar := lines[i][strings.Index(lines[i], "Solves["):]
+		if want := regexp.MustCompile(`^Solves\[\|+#+\*+ +` + fmt.Sprint(ind+hint+ed) + `\]$`); !want.MatchString(bar) {
+			t.Errorf("at %dx%d the parts share a glyph: %q", sz[0], sz[1], bar)
+		}
+		for _, p := range []string{fmt.Sprintf("|%d independent", ind), fmt.Sprintf("#%d hinted", hint), fmt.Sprintf("*%d editorial", ed)} {
+			if !strings.Contains(lines[i+1], p) {
+				t.Errorf("at %dx%d the legend lacks %q: %q", sz[0], sz[1], p, lines[i+1])
+			}
+		}
 	}
 }

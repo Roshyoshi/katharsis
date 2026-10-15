@@ -78,6 +78,20 @@ func TestClockAndCountdownAddUp(t *testing.T) {
 // minsec turns "mm:ss" into "mmmss" for time.ParseDuration.
 func minsec(c string) string { return c[:2] + "m" + c[3:] + "s" }
 
+func TestHM(t *testing.T) {
+	for _, c := range []struct {
+		d    time.Duration
+		want string
+	}{
+		{0, "0:00"}, {-time.Minute, "0:00"}, {59 * time.Second, "0:00"},
+		{3*time.Hour + 12*time.Minute + 40*time.Second, "3:12"}, {27 * time.Hour, "27:00"},
+	} {
+		if got := HM(c.d); got != c.want {
+			t.Errorf("HM(%v) = %q, want %q", c.d, got, c.want)
+		}
+	}
+}
+
 func TestHearts(t *testing.T) {
 	for _, c := range []struct {
 		lives, max int

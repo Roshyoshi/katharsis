@@ -504,14 +504,8 @@ func budgetLine(e End, width int) []string {
 	if e.Budget <= 0 || e.Today < e.Budget {
 		return nil
 	}
-	s := fmt.Sprintf("today %s of %s", hm(e.Today), hm(e.Budget)) + ui.G.Sep + "nothing waiting here expires"
+	s := fmt.Sprintf("today %s of %s", units.HM(e.Today), units.HM(e.Budget)) + ui.G.Sep + "nothing waiting here expires"
 	return []string{ui.Clip("  "+ui.Muted.Render(s), width)}
-}
-
-// hm is a long span as hours and minutes: "3:12".
-func hm(d time.Duration) string {
-	d = d.Truncate(time.Minute)
-	return fmt.Sprintf("%d:%02d", int(d.Hours()), int(d.Minutes())%60)
 }
 
 // rebootKey reports whether key starts a boot from an end screen: r for

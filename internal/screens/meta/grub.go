@@ -160,7 +160,7 @@ func NewGrub(c GrubConfig) *Menu {
 	// Past the session budget the status line says so, and nothing more
 	// (retention RT12: a nudge, never a lock).
 	if c.Budget > 0 && c.Today >= c.Budget {
-		m.status += fmt.Sprintf(" · today %s of %s", hm(c.Today), hm(c.Budget))
+		m.status += fmt.Sprintf(" · today %s of %s", units.HM(c.Today), units.HM(c.Budget))
 	}
 	m.motd = c.Story("boot.motd", uint64(max(c.Meta.Boots, 0)))
 	m.gate = screens.GateText(c.Gate, m.maxP, func(p int) string {
@@ -567,47 +567,46 @@ func (m *Menu) View(width, height int) string {
 	if m.motd != "" && ansi.StringWidth(status+" · "+m.motd) <= w-2 {
 		status += " · " + m.motd
 	}
+	gap := len(foot) // the blank row above the status line
 	foot = append(foot, "", ui.Center(ui.Muted.Render(status), w))
 	if m.gate != "" {
 		foot = append(foot, ui.Center(ui.Muted.Render(m.gate), w))
 	}
 	head := []string{ui.Center(grubVersion, w), ""}
 
-	// The box takes what is left. Drop the help, then the header, when the
+	// The box takes what is left: the screen less its borders and, with
+	// the foot, the subtitle row. Drop the help, then the header, when the
 	// terminal is too short to hold them and a few entries.
 	rows := len(m.cur().entries)
 	if m.edit != nil {
 		rows = 6
 	}
-	box := h - len(head) - 2 - 1 - len(foot)
+	boxRows := func(head, foot []string) int {
+		if foot == nil {
+			return h - len(head) - 2
+		}
+		return h - len(head) - 2 - 1 - len(foot)
+	}
+	box := boxRows(head, foot)
 	if box < min(rows, 3) {
 		foot = nil
-		box = h - len(head) - 2
+		box = boxRows(head, foot)
 	}
 	if box < min(rows, 3) {
 		head = nil
-		box = h - 2
+		box = boxRows(head, foot)
 	}
 	box = max(box, 1)
-	if head != nil && m.banner != "" {
-		// The banner is art: centre it as a block so its lines stay
-		// aligned, and let it replace the version line when it carries
-		// one (flavor's does).
-		art := strings.Split(m.banner, "\n")
-		artW := 0
-		for _, l := range art {
-			artW = max(artW, ansi.StringWidth(l))
-		}
-		var b []string
-		for _, l := range art {
-			b = append(b, strings.Repeat(" ", max((w-artW)/2, 0))+l)
-		}
-		b = append(b, "")
-		if !strings.Contains(m.banner, "GRUB") {
-			b = append(b, head...)
-		}
-		if extra := len(b) - len(head); box-extra >= rows && artW <= w {
-			head, box = b, box-extra
+	// The art replaces the header when every entry still fits beside it.
+	// Short of rows, it gives up its blank row, then the one above the
+	// status line, before the plain header comes back.
+	if art := m.art(w); head != nil && foot != nil && art != nil {
+		tight := slices.Delete(slices.Clone(foot), gap, gap+1)
+		for _, try := range [][2][]string{{append(art, ""), foot}, {art, foot}, {art, tight}} {
+			if n := boxRows(try[0], try[1]); n >= rows {
+				head, foot, box = try[0], try[1], n
+				break
+			}
 		}
 	}
 	m.lastH = box
@@ -645,6 +644,30 @@ func (m *Menu) View(width, height int) string {
 		out = append(out, foot...)
 	}
 	return ui.Layout(w, h, out, "")
+}
+
+// art is the banner as the header: centred as one block, so its lines stay
+// aligned, with GRUB's version line under it unless it carries its own
+// (flavor's do). nil when there is no banner or it is wider than w.
+func (m *Menu) art(w int) []string {
+	if m.banner == "" {
+		return nil
+	}
+	lines := strings.Split(m.banner, "\n")
+	artW := 0
+	for _, l := range lines {
+		artW = max(artW, ansi.StringWidth(l))
+	}
+	if artW > w {
+		return nil
+	}
+	for i, l := range lines {
+		lines[i] = strings.Repeat(" ", (w-artW)/2) + l
+	}
+	if !strings.Contains(m.banner, "GRUB") {
+		lines = append(lines, ui.Center(grubVersion, w))
+	}
+	return lines
 }
 
 // menuLines renders the visible slice of the current page, keeping the

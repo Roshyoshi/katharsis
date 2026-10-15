@@ -2,10 +2,10 @@ git log --graph --oneline  42 boots · 10 cleared · 31 crashed        filter: a
 * 54bf774 #42 Oct 14 P2 1:04:12 crashed in The Heap (timer)                +96 B
 │   started 2026-10-14 17:58 · seed 8f3a2c1d9e04b7a1 · preset standard ·
 │   prestige 2 (Gold) · banked 96 B · dumped 312 B · on Bovine Shuffle
-│   ✓ Mixing Milk        simulation ◆1150    08:41 1 sub    🦆0 independent
+│   ✓ Mixing Milk        simulation    ◆1150 08:41 1 sub    🦆0 independent
 │   ✓ The Bucket List    sorting-gree… ◆1280 13:02 3 sub 2✗ 🦆1 hinted [blind]
-│   ✓ Wormhole Sort      dsu ◆1610           21:37 2 sub 1✗ 🦆0 independent
-│   ✗ Bovine Shuffle     graphs ◆1720        30:00 4 sub 4✗ 🦆1 timer [cursed]
+│   ✓ Wormhole Sort      dsu           ◆1610 21:37 2 sub 1✗ 🦆0 independent
+│   ✗ Bovine Shuffle     graphs        ◆1720 30:00 4 sub 4✗ 🦆1 timer [cursed]
 * 11b9dc7 #41 Oct 13 P2 2:18:40 cleared                                 +1.2 KiB
 * 3961090 #40 Oct 12 P2   41:05 crashed in Page Tables (:q!)                 0 B
 * 7677f58 #39 Oct 11 P1 1:17:30 crashed in The Scheduler (out of lives)   +410 B
