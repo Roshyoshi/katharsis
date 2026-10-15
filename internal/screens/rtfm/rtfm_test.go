@@ -577,3 +577,83 @@ func TestModuleIntroLine(t *testing.T) {
 		}
 	}
 }
+
+// The index page's tail keeps a man page's odd sections before COLOPHON,
+// at the paragraph indent: WORDS, CURRICULUM, EXAMPLES (the prologue's
+// man page had none) and BUGS. On a narrow terminal the prose wraps with
+// nothing lost.
+func TestBrowserStoryTail(t *testing.T) {
+	v := plain(browser(t).View(100, 300))
+	prev := -1
+	for _, h := range []string{"\nWORDS\n", "\nCURRICULUM\n", "\nEXAMPLES\n", "\nBUGS\n", "\nCOLOPHON\n"} {
+		i := strings.Index(v, h)
+		if i < prev {
+			t.Fatalf("%q missing or out of order:\n%s", h, v)
+		}
+		prev = i
+	}
+	for _, b := range [][]string{
+		flavor.StoryBlock("help.vocab"), flavor.StoryBlock("rtfm.syllabus"),
+		flavor.StoryBlock("white-knight.song"), {flavor.Story("rtfm.underflow", 0)},
+	} {
+		if len(b) == 0 || b[0] == "" {
+			t.Fatal("a tail hook has no text")
+		}
+		for _, l := range b {
+			if !strings.Contains(v, "\n       "+l+"\n") {
+				t.Errorf("tail lacks %q at the indent", l)
+			}
+		}
+	}
+	narrow := plain(browser(t).View(40, 400))
+	i, j := strings.Index(narrow, "\nWORDS\n"), strings.Index(narrow, "\nCURRICULUM\n")
+	if i < 0 || j < i {
+		t.Fatalf("no WORDS at 40 columns:\n%s", narrow)
+	}
+	want := strings.Fields(strings.Join(flavor.StoryBlock("help.vocab"), " "))
+	if got := strings.Fields(narrow[i:j])[1:]; !slices.Equal(got, want) {
+		t.Errorf("WORDS at 40 columns lost words:\n%s", narrow[i:j])
+	}
+}
+
+// Past the last module the index scrolls on through its tail to the
+// colophon, as man's does, with the last module still selected; scrolled
+// back until it shows, up moves the selection again.
+func TestBrowserScrollsTail(t *testing.T) {
+	line := func(b *rtfm.Browser) int {
+		v := plain(b.View(80, 24))
+		i := strings.LastIndex(v, " line ")
+		var n int
+		if _, err := fmt.Sscanf(v[i:], " line %d/", &n); err != nil {
+			t.Fatalf("no pager line: %v\n%s", err, v)
+		}
+		return n
+	}
+	b := browser(t)
+	press(t, b, "G")
+	end := line(b)
+	if v := plain(b.View(80, 24)); !strings.Contains(v, "COLOPHON") || !strings.Contains(v, "(END)") {
+		t.Fatalf("G does not reach the colophon:\n%s", v)
+	}
+	press(t, b, "k")
+	if got := line(b); got != end-1 {
+		t.Errorf("k in the tail: line %d, want %d", got, end-1)
+	}
+	press(t, b, "b", "b")
+	v := plain(b.View(80, 24))
+	if rows := strings.Split(v, "\n"); !strings.Contains(rows[2], "Counting Minimums") {
+		t.Fatalf("paging back stops on the last module:\n%s", v)
+	}
+	at := line(b)
+	press(t, b, "j")
+	if got := line(b); got != at+1 {
+		t.Errorf("j on the last module: line %d, want %d", got, at+1)
+	}
+	wantMsg(t, press(t, b, "enter", "t"), screens.StartTrial{Module: "count-min"})
+
+	b = browser(t)
+	press(t, b, "G", "b", "b", "k", "enter") // the chapter over it, folded
+	if v := plain(b.View(80, 24)); strings.Contains(v, "Counting Minimums") {
+		t.Errorf("k on screen should select the chapter, and enter fold it:\n%s", v)
+	}
+}

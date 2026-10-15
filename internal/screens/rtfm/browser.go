@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/curriculum"
+	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
 	"katharsis/internal/ui"
@@ -30,6 +31,9 @@ type Browser struct {
 	rows     []row // what is visible: folds and the filter applied
 	sel, top int   // sel indexes rows; top is the first visible line
 	h        int   // list rows at the last View, for paging
+	// tail is set while the view is scrolled on past the last row, into
+	// the page's tail, where it need not show the selection.
+	tail bool
 
 	typing bool
 	input  string // what has been typed at the / prompt
@@ -257,6 +261,10 @@ func (b *Browser) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	if !isKey {
 		return b, nil
 	}
+	// Only the keys that scroll the tail keep the view there; any other
+	// brings the selection back on screen.
+	tail := b.tail
+	b.tail = false
 	if b.typing {
 		b.prompt(k)
 		return b, nil
@@ -264,6 +272,11 @@ func (b *Browser) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	last := max(len(b.rows)-1, 0)
 	page := max(b.h-1, 1)
 	r, ok := b.selected()
+	// On the last row the page goes on past it, through the tail to the
+	// colophon, the way man's does; back up, it scrolls until the row is
+	// on screen again.
+	atEnd := len(b.rows) > 0 && b.sel == last
+	hidden := tail && b.top > b.sel
 	switch k.String() {
 	case "q":
 		return b, screens.Emit(screens.Back{})
@@ -275,17 +288,34 @@ func (b *Browser) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		}
 		return b, screens.Emit(screens.Back{})
 	case "up", "k", "ctrl+p":
-		b.sel = max(b.sel-1, 0)
+		if hidden {
+			b.tail, b.top = true, b.top-1
+		} else {
+			b.sel = max(b.sel-1, 0)
+		}
 	case "down", "j", "ctrl+n":
-		b.sel = min(b.sel+1, last)
+		if atEnd {
+			b.tail, b.top = true, b.top+1
+		} else {
+			b.sel = min(b.sel+1, last)
+		}
 	case "pgup", "b", "ctrl+u":
-		b.sel = max(b.sel-page, 0)
+		if hidden {
+			b.tail, b.top = true, max(b.top-page, b.sel)
+		} else {
+			b.sel = max(b.sel-page, 0)
+		}
 	case "pgdown", "space", "f", "ctrl+d":
-		b.sel = min(b.sel+page, last)
+		if atEnd {
+			b.tail, b.top = true, b.top+page
+		} else {
+			b.sel = min(b.sel+page, last)
+		}
 	case "home", "g":
 		b.sel = 0
 	case "end", "G":
 		b.sel = last
+		b.tail, b.top = len(b.rows) > 0, 1<<30 // View clamps it to the end
 	case "/":
 		b.typing, b.input = true, ""
 		if b.query == "" {
@@ -554,16 +584,15 @@ func (b *Browser) View(width, height int) string {
 	default:
 		lines := b.lines(cols, w)
 		total = len(lines)
-		// Keep the selection on screen; on the last row show the end of
-		// the page, so G reaches the colophon as it does in man.
-		if b.sel == len(b.rows)-1 {
-			b.top = len(lines) - rows
-		}
-		if b.sel < b.top {
-			b.top = b.sel
-		}
-		if b.sel >= b.top+rows {
-			b.top = b.sel - rows + 1
+		// Keep the selection on screen, unless the view was scrolled on
+		// past the last row into the tail (see Update).
+		if !b.tail {
+			if b.sel < b.top {
+				b.top = b.sel
+			}
+			if b.sel >= b.top+rows {
+				b.top = b.sel - rows + 1
+			}
 		}
 		b.top = max(min(b.top, len(lines)-rows), 0)
 		body = lines[b.top:min(b.top+rows, len(lines))]
@@ -576,7 +605,8 @@ func (b *Browser) View(width, height int) string {
 	return ui.Layout(w, h, append(out, body...), b.bar(w, total))
 }
 
-// lines renders every visible row, then the colophon; row i is line i.
+// lines renders every visible row, then the page's tail (storyTail) and
+// the colophon; row i is line i.
 func (b *Browser) lines(cols columns, w int) []string {
 	var out []string
 	q := b.active
@@ -607,6 +637,7 @@ func (b *Browser) lines(cols columns, w int) []string {
 		}
 		out = append(out, line)
 	}
+	out = append(out, storyTail(min(w, 80))...)
 	out = append(out, "", ui.Strong.Render("COLOPHON"))
 	for _, l := range wrap(curriculum.Attribution(), modIndent, min(w, 80)) {
 		out = append(out, ui.Muted.Render(l))
@@ -621,6 +652,44 @@ func (b *Browser) lines(cols columns, w int) []string {
 		out = append(out, ui.Muted.Render(l))
 	}
 	out = append(out, "", ui.Spread("katharsis", manName, min(cols.width(), w)))
+	return out
+}
+
+// storyTail is the odd sections a man page keeps at its tail, before the
+// colophon (text.md, RTFM): the words the game bends (WORDS), the Mock
+// Turtle's syllabus (CURRICULUM), the one example on offer, since the
+// prologue's man page "has no EXAMPLES section" (EXAMPLES), and the one
+// known bug (BUGS). Prose wraps to w; the syllabus and the song are set
+// in columns, so a line too long for w is cut instead.
+func storyTail(w int) []string {
+	var out []string
+	for _, s := range []struct {
+		head  string
+		lines []string
+		pre   bool
+	}{
+		{"WORDS", flavor.StoryBlock("help.vocab"), false},
+		{"CURRICULUM", flavor.StoryBlock("rtfm.syllabus"), true},
+		{"EXAMPLES", flavor.StoryBlock("white-knight.song"), true},
+		{"BUGS", []string{flavor.Story("rtfm.underflow", 0)}, false},
+	} {
+		var body []string
+		for _, l := range s.lines {
+			if l == "" {
+				continue
+			}
+			ls := wrap(l, modIndent, w)
+			if s.pre {
+				ls = []string{strings.Repeat(" ", modIndent) + ui.Clip(l, max(w-modIndent, 1))}
+			}
+			for _, l := range ls {
+				body = append(body, ui.Voice.Render(ui.Muted.Render(l)))
+			}
+		}
+		if len(body) > 0 {
+			out = append(append(out, "", ui.Strong.Render(s.head)), body...)
+		}
+	}
 	return out
 }
 
