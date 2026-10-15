@@ -128,6 +128,9 @@ func TestSettings(t *testing.T) {
 		{`session_budget = "0s"`, 0, false},
 		{`session_budget = "-1h"`, 0, true},
 		{`sesion_budget = "1h"`, 0, true},
+		{"setuid_spoilers = \"hints\"", 3 * time.Hour, false},
+		{"setuid_spoilers = \"some\"", 0, true},
+		{"setuid_notices = false", 3 * time.Hour, false},
 	} {
 		path := filepath.Join(dir, fmt.Sprintf("s%d.toml", len(tc.body)))
 		if err := os.WriteFile(path, []byte(tc.body), 0o644); err != nil {
@@ -137,5 +140,17 @@ func TestSettings(t *testing.T) {
 		if (err != nil) != tc.bad || !tc.bad && s.SessionBudget.Duration != tc.want {
 			t.Errorf("%s: %+v, %v", tc.body, s, err)
 		}
+	}
+	// The setuid bits' two (achievements.md (g), (h)): notices on and no
+	// spoilers by default.
+	if d := defaultSettings(); !d.SetuidNotices || d.SetuidSpoilers != "none" {
+		t.Errorf("defaults: %+v", d)
+	}
+	path := filepath.Join(dir, "setuid.toml")
+	if err := os.WriteFile(path, []byte("setuid_notices = false\nsetuid_spoilers = \"all\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if s, err := loadSettings(path); err != nil || s.SetuidNotices || s.SetuidSpoilers != "all" {
+		t.Errorf("setuid settings: %+v, %v", s, err)
 	}
 }

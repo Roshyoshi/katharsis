@@ -39,6 +39,7 @@ type (
 	OpenLearn     struct{ Topic, Module string }
 	OpenLog       struct{}                     // git log
 	OpenTop       struct{}                     // stats
+	OpenSetuid    struct{}                     // find / -perm -4000, the setuid bits
 	OpenCredits   struct{}                     // music, licenses, sources
 	Upsolve       struct{ Problem catalog.ID } // a core dump or regression
 	OpenStatement struct{ Problem catalog.ID }

@@ -147,6 +147,15 @@ func TestGoldens(t *testing.T) {
 		{"top_sorted", func() screens.Screen { return meta.NewTop(fixture.Stats()) }, []string{"s", "j", "j"}},
 		{"top_timeplus", func() screens.Screen { return meta.NewTop(fixture.Stats()) }, []string{"s", "s", "s", "s"}},
 		{"shop", func() screens.Screen { return meta.NewShop(fixture.ShopConfig()) }, []string{"j", "j"}},
+		// The setuid bits (achievements.md (g)): none set, then some, the
+		// secrets hidden; a hint under ?; the hints and all spoilers; the
+		// percentage once a three-act boot is cleared; scrolled to the end.
+		{"setuid_none", func() screens.Screen { return meta.NewSetuid(meta.SetuidConfig{Now: fixture.Now, Notices: true}) }, nil},
+		{"setuid", func() screens.Screen { return meta.NewSetuid(fixture.SetuidConfig()) }, []string{"j", "j", "j"}},
+		{"setuid_hint", func() screens.Screen { return meta.NewSetuid(fixture.SetuidConfig()) }, []string{"G", "k", "k", "?"}},
+		{"setuid_hints", func() screens.Screen { return meta.NewSetuid(setuidSpoil(meta.SpoilersHints)) }, []string{"G"}},
+		{"setuid_all", func() screens.Screen { return meta.NewSetuid(setuidSpoil(meta.SpoilersAll)) }, []string{"G", "k"}},
+		{"setuid_percent", func() screens.Screen { return meta.NewSetuid(fixture.ShowsPercent(fixture.SetuidConfig())) }, []string{"tab", "tab"}},
 	}
 	for _, c := range cases {
 		for _, sz := range sizes {
@@ -211,7 +220,7 @@ func TestFits(t *testing.T) {
 func TestGrubEntries(t *testing.T) {
 	// Entries top to bottom: prestige 2, the core dump under it (RT4),
 	// prestige 1, 0, nightly build, RTFM, other presets…, regressions due,
-	// apt, git log, top, poweroff.
+	// apt, git log, top, find / -perm -4000, poweroff.
 	down := func(n int) []string {
 		ks := make([]string, n)
 		for i := range ks {
@@ -237,7 +246,8 @@ func TestGrubEntries(t *testing.T) {
 		{"apt", append(down(8), "enter"), screens.OpenShop{}},
 		{"git log", append(down(9), "enter"), screens.OpenLog{}},
 		{"top", append(down(10), "enter"), screens.OpenTop{}},
-		{"poweroff", append(down(11), "enter"), screens.Quit{}},
+		{"setuid", append(down(11), "enter"), screens.OpenSetuid{}},
+		{"poweroff", append(down(12), "enter"), screens.Quit{}},
 		// The credits are a key, as real GRUB's command line is, in any menu.
 		{"c opens the credits", []string{"c"}, screens.OpenCredits{}},
 		{"c in a submenu too", append(down(6), "enter", "c"), screens.OpenCredits{}},
@@ -606,12 +616,21 @@ func TestGrubRealBannerAt80x24(t *testing.T) {
 			t.Errorf("art line %q missing at 80x24:\n%s", a, v)
 		}
 	}
-	// Every prestige unlocked and every optional entry there: 14 entries,
-	// the divisions folded.
+	// Every prestige unlocked and every optional entry there: 15 entries,
+	// the divisions folded, which fill the box under the plain header (the
+	// setuid entry took the art's last row). Without the other presets, 14
+	// entries, the art stays.
 	c := fixture.GrubConfig()
 	c.Meta.Prestige, c.Gate = game.MaxPrestige, game.PrestigeGate{}
 	v = view(c)
-	for _, want := range append([]string{"prestige 8", "prestige 5", "prestige 4 to 0", "poweroff"}, art...) {
+	for _, want := range []string{"prestige 8", "prestige 5", "prestige 4 to 0", "find / -perm -4000", "poweroff"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("%q missing:\n%s", want, v)
+		}
+	}
+	c.Presets = nil
+	v = view(c)
+	for _, want := range append([]string{"prestige 8", "prestige 4 to 0", "find / -perm -4000", "poweroff"}, art...) {
 		if !strings.Contains(v, want) {
 			t.Errorf("%q missing:\n%s", want, v)
 		}
@@ -699,4 +718,11 @@ func TestASCIISeparators(t *testing.T) {
 			}
 		}
 	}
+}
+
+// setuidSpoil is the fixture's setuid screen under the spoilers setting.
+func setuidSpoil(level string) meta.SetuidConfig {
+	c := fixture.SetuidConfig()
+	c.Spoilers = level
+	return c
 }

@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/BurntSushi/toml"
 
 	"katharsis/internal/rules"
+	"katharsis/internal/screens/meta"
 	"katharsis/internal/store"
 )
 
@@ -22,10 +24,22 @@ type settings struct {
 	// so, in one line that never blocks (retention RT12). "0" turns it
 	// off. The default is retention's: 3 h.
 	SessionBudget rules.Duration `toml:"session_budget"`
+	// SetuidNotices is whether the boot screens say a setuid bit set: the
+	// strip's chmod u+s line and the cleared screen's kept line
+	// (docs/design/achievements.md (h)). Off, the find / -perm -4000
+	// screen still records every bit (GR6: every notice tunable or off).
+	SetuidNotices bool `toml:"setuid_notices"`
+	// SetuidSpoilers is what that screen shows of a secret not set yet:
+	// "none" (the default, -?????????), "hints" or "all".
+	SetuidSpoilers string `toml:"setuid_spoilers"`
 }
 
 func defaultSettings() settings {
-	return settings{SessionBudget: rules.Duration{Duration: store.DefaultRetention().SessionBudget}}
+	return settings{
+		SessionBudget:  rules.Duration{Duration: store.DefaultRetention().SessionBudget},
+		SetuidNotices:  true,
+		SetuidSpoilers: meta.SpoilersNone,
+	}
 }
 
 // settingsPath is settings.toml in the config dir the presets dir sits in.
@@ -54,6 +68,9 @@ func loadSettings(path string) (settings, error) {
 	}
 	if s.SessionBudget.Duration < 0 {
 		return defaultSettings(), fmt.Errorf("%s: session_budget %v is negative", path, s.SessionBudget.Duration)
+	}
+	if !slices.Contains(meta.Spoilers, s.SetuidSpoilers) {
+		return defaultSettings(), fmt.Errorf("%s: setuid_spoilers %q: want none, hints or all", path, s.SetuidSpoilers)
 	}
 	return s, nil
 }

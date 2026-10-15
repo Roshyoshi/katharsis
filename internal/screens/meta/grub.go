@@ -59,6 +59,10 @@ type GrubConfig struct {
 	// beside the bank and rating where the status line has room; 0 shows
 	// none.
 	TimePlus time.Duration
+	// SetuidNews is how many setuid bits set since GRUB last showed, where
+	// no screen said so: a crash shows none (GR3), so the status line says
+	// "setuid +1". 0 says nothing.
+	SetuidNews int
 
 	// PrestigeName and Banner default to the flavor package. Tests pin them
 	// so goldens do not churn whenever flavor text changes.
@@ -158,6 +162,11 @@ func NewGrub(c GrubConfig) *Menu {
 	if c.Away > 0 {
 		m.status += ui.G.Sep + "first boot in " + units.Plural(c.Away, "day")
 	}
+	// A bit a crash set, said here and not on the panic (achievements.md
+	// (h)): news, so before the load average a narrow line clips.
+	if c.SetuidNews > 0 {
+		m.status += ui.G.Sep + fmt.Sprintf("setuid +%d", c.SetuidNews)
+	}
 	if c.Load != nil {
 		m.status += ui.G.Sep + LoadText(*c.Load)
 	}
@@ -240,6 +249,7 @@ func NewGrub(c GrubConfig) *Menu {
 	es = append(es,
 		entry{label: "git log", msg: screens.OpenLog{}, note: sub("gitlog")},
 		entry{label: "top", msg: screens.OpenTop{}, note: sub("top")},
+		entry{label: "find / -perm -4000", msg: screens.OpenSetuid{}, note: sub("setuid")},
 		entry{label: "poweroff", msg: screens.Quit{}, note: sub("poweroff")},
 	)
 	m.stack = []*page{{entries: es}}

@@ -100,6 +100,14 @@ type Deps struct {
 	// Budget is the session budget (retention RT12): past this much play
 	// today, the end of a boot says so in one line. 0 turns it off.
 	Budget time.Duration
+	// SetuidNotices turns on the setuid bits' notices (setuid_notices,
+	// docs/design/achievements.md (h)): the strip's chmod u+s, the cleared
+	// screen's kept line, GRUB's "setuid +1" after a crash. The game sets
+	// it from settings.toml; headless tests leave it off. Spoilers is
+	// setuid_spoilers, what find / -perm -4000 shows of a secret (meta.
+	// SpoilersNone for "").
+	SetuidNotices bool
+	Spoilers      string
 }
 
 // Model is the root tea.Model.
@@ -168,6 +176,8 @@ type Model struct {
 	story storyState // story.go
 
 	end endCache // the end screens' figures (debrief.go)
+
+	setuid setuidState // the setuid bits' notices (setuid.go)
 }
 
 func New(d Deps) (*Model, error) {
@@ -197,6 +207,7 @@ func New(d Deps) (*Model, error) {
 		return nil, err
 	}
 	m := &Model{d: d, meta: meta, state: st, pool: d.Catalog.All(), editorials: map[catalog.ID]time.Time{}}
+	m.setuid.notices = d.SetuidNotices
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 	m.reset()
 	m.startTelemetry()

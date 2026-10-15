@@ -1,0 +1,40 @@
+find / -perm -4000 -ls · 8 of 61 set                                                                            spoilers: none · notices: on
+ MODE          SIZE  SET           PATH                                             │ /home/you/.???
+ -rwxr-xr-x       -                /sbin/doesnt-blink                               │
+ -rwsr-xr-x       -  Oct 14 03:02  /sbin/ditto-ditto                                │ a secret
+ -rwxr-xr-x       -                /sbin/rss-modest                                 │   Its name and barrier show once it is set.
+ -rwxr-xr-x       -                /sbin/stopped-looking                            │
+ -rwxr-xr-x       -                /sbin/every-thread                               │   hint: Count them. Count again.
+ -rwxr-xr-x       -                /sbin/bounds-checked                             │
+ -rwxr-xr-x       -                /sbin/decided-this-one                           │ ─ recent ────────────────────────────────────────────
+ -rwxr-xr-x       -                /sbin/independent                                │   Oct 14 03:02  ditto-ditto             boot #41
+ -rwxr-xr-x       -                /sbin/speed-completion                           │   Oct 14 02:31  .two-miles-high         boot #41
+ -rwxr-xr-x       -                /sbin/speed-completion-112                       │   Oct 14 02:30  finds-none              boot #40
+ /usr/bin · completion                                                      0 of 12 │   Oct 14 02:02  humpty                  outside a boot
+ -rwxr-xr-x     2/6                /usr/bin/every-bug                               │   Oct 14 01:55  there-goes-bill         boot #39
+ -rwxr-xr-x    9/17                /usr/bin/cartographer                            │   Oct 14 01:12  two-twins               boot #39
+ -rwxr-xr-x    4/11                /usr/bin/regular-course                          │   Oct 13 23:40  exit-0                  boot #38
+ -rwxr-xr-x    0/19                /usr/bin/apt-full                                │   Oct  2 21:07  hello-world             from git log
+ -rwxr-xr-x     2/7                /usr/bin/own-invention                           │
+ -rwxr-xr-x     0/5                /usr/bin/her-list                                │
+ -rwxr-xr-x     0/5                /usr/bin/ledger                                  │
+ -rwxr-xr-x   0/100                /usr/bin/not-in-general                          │
+ -rwxr-xr-x     2/5                /usr/bin/dictionary                              │
+ -rwxr-xr-x    0/15                /usr/bin/every-topic                             │
+ -rwxr-xr-x       -                /usr/bin/hundred                                 │
+ -rwxr-xr-x       -                /usr/bin/hundred-twelve                          │
+ /home/you · secret                                                         1 of 10 │
+ -rwsr-xr-x       -  Oct 14 02:31  /home/you/.two-miles-high                        │
+ -?????????       ?  ?             /home/you/.???                                   │
+ -?????????       ?  ?             /home/you/.???                                   │
+ -?????????       ?  ?             /home/you/.???                                   │
+ -?????????       ?  ?             /home/you/.???                                   │
+ -?????????       ?  ?             /home/you/.???                                   │
+ -?????????       ?  ?             /home/you/.???                                   │
+▸-?????????       ?  ?             /home/you/.???  # Count them. Count again.       │
+ -?????????       ?  ?             /home/you/.???                                   │
+ -?????????       ?  ?             /home/you/.???                                   │
+ ↑ more                                                                             │
+────────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────
+ setuid bits open nothing. They record what you did, and when.
+j/k move · tab next dir · ? hint for this row · s spoilers · n notices · q back

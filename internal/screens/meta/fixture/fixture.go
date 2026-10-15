@@ -8,12 +8,15 @@ package fixture
 
 import (
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 	"time"
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 	"katharsis/internal/screens/meta"
+	"katharsis/internal/setuid"
 )
 
 // Now is the moment every fixture is rendered at.
@@ -399,4 +402,44 @@ func Packages() []meta.Package {
 func ShopConfig() meta.ShopConfig {
 	m := Meta()
 	return meta.ShopConfig{Packages: Packages(), Bank: m.Bank, Theme: "cowsay"}
+}
+
+// SetuidConfig is the setuid bits' screen for Meta, as the achievements
+// doc sketches it (docs/design/achievements.md (g)): bits set over boots
+// #38 to #41, the first by the backfill, two bosses down, nine map nodes,
+// four capabilities, and the Trial's trail begun (.two-miles-high). No
+// three-act boot is cleared yet, so the percentage stays hidden; ShowsPercent
+// adds one.
+func SetuidConfig() meta.SetuidConfig {
+	m := Meta()
+	m.Setuid = []game.SetuidBit{
+		{ID: "hello-world", At: at(2, 21, 7), Backfill: true},
+		{ID: "exit-0", At: at(13, 23, 40), Boot: 38},
+		{ID: "two-twins", At: at(14, 1, 12), Boot: 39},
+		{ID: "there-goes-bill", At: at(14, 1, 55), Boot: 39},
+		{ID: "humpty", At: at(14, 2, 2)},
+		{ID: "finds-none", At: at(14, 2, 30), Boot: 40},
+		{ID: ".two-miles-high", At: at(14, 2, 31), Boot: 41},
+		{ID: "ditto-ditto", At: at(14, 3, 2), Boot: 41},
+	}
+	caps := slices.Sorted(maps.Values(game.TopicCapabilities))
+	m.Capabilities = caps[:4]
+	m.Libs = []game.Lib{{Name: "dsu"}, {Name: "fenwick"}}
+	m.Record = game.Record{
+		Folded:  41,
+		Bosses:  []string{"off-by-one", "oom-killer"},
+		Nodes:   slices.Clone(setuid.Nodes[:9]),
+		Daemons: []game.Daemon{"strace", "nice"},
+	}
+	return meta.SetuidConfig{Meta: m, Now: Now, Notices: true}
+}
+
+// ShowsPercent is c past its first three-act clear (Record.Cleared), when
+// the screen shows the completion percentage and its breakdown.
+func ShowsPercent(c meta.SetuidConfig) meta.SetuidConfig {
+	c.Meta.Record.Cleared = []int{1}
+	c.Meta.Record.Unlocked = []int{1, 2}
+	c.Meta.Setuid = append(slices.Clone(c.Meta.Setuid),
+		game.SetuidBit{ID: "snicker-snack", At: at(14, 4, 10), Boot: 41})
+	return c
 }

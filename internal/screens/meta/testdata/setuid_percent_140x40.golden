@@ -1,0 +1,40 @@
+find / -perm -4000 -ls · 9 of 61 set · 36% complete                                                             spoilers: none · notices: on
+ MODE          SIZE  SET           PATH                                             │ /usr/bin/every-bug
+ -rwxr-xr-x       -                /bin/through-the-glass                           │
+ -rwxr-xr-x       -                /bin/nameless-wood                               │ Every Bug in the Pack
+ -rwxr-xr-x    0/60                /bin/eighth-square                               │   Defeat all six bosses.
+ -rwxr-xr-x       -                /bin/red-kings-dream                             │
+ -rwxr-xr-x       -                /bin/sunny-at-midnight                           │   not set
+ -rwxr-xr-x       -                /bin/where-the-fall-began                        │
+ -rwxr-xr-x       -                /bin/you-halted                                  │ ─ completion · 36% ──────────────────────────────────
+ -rwxr-xr-x       -                /bin/stamped                                     │   bosses        ▓▓▓▓▓▓░░░░░░░░░░░░  2/6      6 of 18
+ -rwxr-xr-x       -                /bin/another-road                                │   map nodes     ▓▓▓▓▓▓▓▓▓░░░░░░░░░  9/17     9 of 17
+ -rwxr-xr-x       -                /bin/grin-returns                                │   capabilities  ▓▓▓▓▓▓░░░░░░░░░░░░  4/11     8 of 22
+ -rwxr-xr-x       -                /bin/struck-off                                  │   rings         ▓▓▓▓▓▓▓░░░░░░░░░░░  2/5     10 of 25
+ -rwsr-xr-x       -  Oct 14 02:02  /bin/humpty                                      │   firsts        ▓▓▓░░░░░░░░░░░░░░░  1/6      3 of 18
+ -rwxr-xr-x       -                /bin/one-topic                                   │   beyond        ░░░░░░░░░░░░░░░░░░  0/6      0 of 12
+ -rwxr-xr-x       -                /bin/by-railway                                  │
+ -rwxr-xr-x       -                /bin/un-birthday                                 │ ─ recent ────────────────────────────────────────────
+ /sbin · skill                                                              2 of 16 │   Oct 14 04:10  snicker-snack           boot #41
+ -rwxr-xr-x       -                /sbin/speedrun-1                                 │   Oct 14 03:02  ditto-ditto             boot #41
+ -rwxr-xr-x       -                /sbin/speedrun-2                                 │   Oct 14 02:31  .two-miles-high         boot #41
+ -rwxr-xr-x       -                /sbin/all-o3                                     │   Oct 14 02:30  finds-none              boot #40
+ -rwsr-xr-x       -  Oct 14 02:30  /sbin/finds-none                                 │   Oct 14 02:02  humpty                  outside a boot
+ -rwxr-xr-x       -                /sbin/catless                                    │   Oct 14 01:55  there-goes-bill         boot #39
+ -rwxr-xr-x       -                /sbin/essence                                    │   Oct 14 01:12  two-twins               boot #39
+ -rwxr-xr-x       -                /sbin/doesnt-blink                               │   Oct 13 23:40  exit-0                  boot #38
+ -rwsr-xr-x       -  Oct 14 03:02  /sbin/ditto-ditto                                │   Oct  2 21:07  hello-world             from git log
+ -rwxr-xr-x       -                /sbin/rss-modest                                 │
+ -rwxr-xr-x       -                /sbin/stopped-looking                            │
+ -rwxr-xr-x       -                /sbin/every-thread                               │
+ -rwxr-xr-x       -                /sbin/bounds-checked                             │
+ -rwxr-xr-x       -                /sbin/decided-this-one                           │
+ -rwxr-xr-x       -                /sbin/independent                                │
+ -rwxr-xr-x       -                /sbin/speed-completion                           │
+ -rwxr-xr-x       -                /sbin/speed-completion-112                       │
+ /usr/bin · completion                                                      0 of 12 │
+▸-rwxr-xr-x     2/6                /usr/bin/every-bug                               │
+ ↑↓ more                                                                            │
+────────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────
+ setuid bits open nothing. They record what you did, and when.
+j/k move · tab next dir · ? hint for this row · s spoilers · n notices · q back

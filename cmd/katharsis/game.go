@@ -167,6 +167,8 @@ func runGame(args []string) error {
 		Title:         true,
 		Sources:       cfNote,
 		Budget:        prefs.SessionBudget.Duration,
+		SetuidNotices: prefs.SetuidNotices,
+		Spoilers:      prefs.SetuidSpoilers,
 	})
 	if err != nil {
 		return err

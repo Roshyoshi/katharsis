@@ -169,8 +169,9 @@ func (m *Model) stopTelemetry() {
 }
 
 // event queues one event at the app's clock, in the boot on screen (also
-// one that ended) and at its open door's attempt.
-func (m *Model) event(kind string, problem catalog.ID, data kv) {
+// one that ended) and at its open door's attempt. data is its payload: a
+// kv, or a store payload type (store.SetuidSet).
+func (m *Model) event(kind string, problem catalog.ID, data any) {
 	if m.tele.rec == nil {
 		return
 	}
