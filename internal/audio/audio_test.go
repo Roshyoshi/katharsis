@@ -178,6 +178,23 @@ func TestBag(t *testing.T) {
 	}
 }
 
+// A lead that is the last track of the pool's round is not dealt again
+// right after it played.
+func TestBagAvoidsLeadAtRoundEnd(t *testing.T) {
+	ids := []string{"a", "b", "c"}
+	for seed := range uint64(50) {
+		rng := rand.New(rand.NewPCG(seed, 2))
+		var b bag
+		b.next(ids, rng)
+		b.next(ids, rng)
+		lead := b.order[2]
+		b.avoid(lead, rng)
+		if got := b.next(ids, rng); got == lead {
+			t.Fatalf("seed %d: %s played as the lead, then again from the pool", seed, lead)
+		}
+	}
+}
+
 func TestStreamLoops(t *testing.T) {
 	// 0.5 s at 44.1 kHz, played 3 times: exactly 1.5 s out.
 	src, err := newWAV(wav(Rate, sine(Rate, 441, 0.5, 0.5)))
@@ -242,6 +259,14 @@ func TestStreamResamples(t *testing.T) {
 	}
 	if crossings < 995 || crossings > 1005 {
 		t.Errorf("%d zero crossings in 0.5 s, want 1000 for 1 kHz", crossings)
+	}
+}
+
+// A WAV header with no sample rate is a broken file, not a stream that
+// holds its first sample forever.
+func TestWAVRejectsZeroRate(t *testing.T) {
+	if _, err := newWAV(wav(0, sine(Rate, 440, 0.5, 0.1))); err == nil {
+		t.Error("a 0 Hz WAV decoded")
 	}
 }
 
@@ -678,6 +703,24 @@ func TestEngineSkipsBadFiles(t *testing.T) {
 	for i := range 4 {
 		e.Cue(Cue{Pool: PoolGrub, Scene: i + 1})
 		eventually(t, "the good track", func() bool { tr, _ := e.NowPlaying(); return tr.ID == "good" })
+	}
+}
+
+// A cue can start a track while the device opens. When the device then
+// fails, the engine stays silent: housekeeping does not reopen the track
+// the failure dropped, nor announce it as playing.
+func TestEngineStaysSilentWithoutDevice(t *testing.T) {
+	l := library(t, map[string][]string{"g1": {PoolGrub}}, nil)
+	e := newEngine(DefaultSettings(), l, DefaultEffects())
+	defer e.Close()
+	e.Cue(Cue{Pool: PoolGrub})
+	eventually(t, "a track", func() bool { _, s := e.NowPlaying(); return s == 1 })
+	e.noDevice()
+	done := make(chan struct{})
+	e.cmds <- func() { e.housekeep(); close(done) }
+	<-done
+	if _, s := e.NowPlaying(); s != 1 || e.mix.busy() {
+		t.Errorf("after the device failed: track serial %d (want 1), mixer busy %v", s, e.mix.busy())
 	}
 }
 

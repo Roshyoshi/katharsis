@@ -304,6 +304,9 @@ func newWAV(b []byte) (*wavSource, error) {
 	if s.ch != 1 && s.ch != 2 {
 		return nil, fmt.Errorf("wav: %d channels", s.ch)
 	}
+	if s.rate == 0 {
+		return nil, errors.New("wav: 0 Hz") // the resampler would never step
+	}
 	switch {
 	case !s.float && (s.bits == 8 || s.bits == 16 || s.bits == 24 || s.bits == 32):
 	case s.float && s.bits == 32:

@@ -201,8 +201,8 @@ func (m *Mixer) renderSFX(out []float32) {
 }
 
 // limit is a soft clip: linear to ±0.9, then a tanh knee towards ±0.98
-// (-0.2 dBFS) that never reaches it, so a pile-up of effects over loud music saturates gently
-// instead of wrapping or clicking.
+// (-0.2 dBFS) that never reaches it, so a pile-up of effects over loud
+// music saturates gently instead of wrapping or clicking.
 func limit(x float32) float32 {
 	const knee, ceiling = 0.9, 0.98
 	a := math.Abs(float64(x))

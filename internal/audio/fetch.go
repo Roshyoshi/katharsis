@@ -202,7 +202,7 @@ func download(ctx context.Context, o FetchOptions, t Track, tag string) error {
 	if err := os.Rename(f.Name(), t.Path); err != nil {
 		return err
 	}
-	p.done()
+	p.print() // the last step, if the interval skipped it
 	return nil
 }
 
@@ -239,7 +239,5 @@ func (p *progress) print() {
 	p.lastPrintN = p.n
 	fmt.Fprintf(p.out, "%s: %s/%s %3.0f%%\n", p.tag, mib(p.n), mib(p.total), 100*float64(p.n)/float64(max(p.total, 1)))
 }
-
-func (p *progress) done() { p.print() }
 
 func mib(n int64) string { return fmt.Sprintf("%.1f MiB", float64(n)/(1<<20)) }

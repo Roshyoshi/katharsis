@@ -161,9 +161,6 @@ func (m *Meter) MaxMomentary() float64 {
 // Peak is the largest sample magnitude seen (sample peak, not true peak).
 func (m *Meter) Peak() float64 { return m.peak }
 
-// Frames is how many frames were added.
-func (m *Meter) Frames() int { return m.frames }
-
 // RMS is the unweighted root mean square over every sample, for reports.
 func RMS(x []float32) float64 {
 	if len(x) == 0 {

@@ -20,7 +20,6 @@ type Engine struct {
 	kick   chan struct{}
 	cmds   chan func() // run on the engine goroutine (Audition)
 	done   chan struct{}
-	wg     sync.WaitGroup
 
 	mu  sync.Mutex
 	out output // nil until the device is open, and in tests
@@ -35,17 +34,16 @@ type Engine struct {
 	serial  uint64
 
 	// Engine goroutine only.
-	cue      Cue
-	lead     string // the cue key whose lead track plays next, once
-	playing  *musicVoice
-	track    Track
-	tracks   []Track
-	wasOn    bool
-	bags     map[string]*bag
-	bad      map[string]bool // files that would not decode
-	nextID   uint64
-	rng      *rand.Rand
-	cueEpoch int // bumps on every cue reconcile, for tests
+	cue     Cue
+	lead    string // the cue key whose lead track plays next, once
+	playing *musicVoice
+	track   Track
+	tracks  []Track
+	wasOn   bool
+	bags    map[string]*bag
+	bad     map[string]bool // files that would not decode
+	nextID  uint64
+	rng     *rand.Rand
 }
 
 // New starts an engine on the default output device, opened in the
@@ -53,15 +51,10 @@ type Engine struct {
 func New(set Settings, lib *Library) *Engine {
 	e := newEngine(set, lib, DefaultEffects())
 	e.ready = false
-	e.wg.Add(1)
 	go func() {
-		defer e.wg.Done()
 		o, err := openOto(e.mix, set.DeviceBuffer.Duration)
 		if err != nil {
-			e.mu.Lock()
-			e.dead = true
-			e.mu.Unlock()
-			e.mix.stopAll()
+			e.noDevice()
 			return
 		}
 		e.mu.Lock()
@@ -69,6 +62,15 @@ func New(set Settings, lib *Library) *Engine {
 		e.mu.Unlock()
 	}()
 	return e
+}
+
+// noDevice is the output failing to open: the engine goes silent for
+// good and drops what a cue started while the device opened.
+func (e *Engine) noDevice() {
+	e.mu.Lock()
+	e.dead = true
+	e.mu.Unlock()
+	e.mix.stopAll()
 }
 
 // newEngine builds an engine with no output: tests render its mixer by
@@ -89,7 +91,6 @@ func newEngine(set Settings, lib *Library, fx map[string]Effect) *Engine {
 		rng:     rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
 	}
 	e.mix = NewMixer(set, e.ending)
-	e.wg.Add(1)
 	go e.run()
 	return e
 }
@@ -164,7 +165,6 @@ func (e *Engine) poke() {
 }
 
 func (e *Engine) run() {
-	defer e.wg.Done()
 	tick := time.NewTicker(250 * time.Millisecond)
 	defer tick.Stop()
 	for {
@@ -193,7 +193,6 @@ func (e *Engine) reconcile() {
 	if dead {
 		return
 	}
-	e.cueEpoch++
 	if want.Pool == PoolPanic {
 		want.Pool = e.set.Panic
 	}
@@ -229,8 +228,16 @@ func (e *Engine) playable(c Cue) []Track {
 }
 
 // advance crossfades to the pool's next track over fade seconds, or fades
-// to silence when the pool has none.
+// to silence when the pool has none. Without a device it only forgets
+// the track noDevice dropped, which housekeep would otherwise restart.
 func (e *Engine) advance(fade float64) {
+	e.mu.Lock()
+	dead := e.dead
+	e.mu.Unlock()
+	if dead {
+		e.playing = nil
+		return
+	}
 	for len(e.tracks) > 0 {
 		ids := make([]string, len(e.tracks))
 		for i, t := range e.tracks {
@@ -262,13 +269,7 @@ func (e *Engine) advance(fade float64) {
 			e.tracks = slices.Delete(e.tracks, i, i+1)
 			continue
 		}
-		e.mu.Lock()
-		out := e.out
-		e.now, e.serial = t, e.serial+1
-		e.mu.Unlock()
-		if out != nil {
-			out.Resume()
-		}
+		e.announce(t)
 		e.mix.startMusic(v, fade, fade)
 		e.playing, e.track = v, t
 		return
@@ -338,13 +339,7 @@ func (e *Engine) Audition(t Track, from time.Duration) error {
 			errc <- err
 			return
 		}
-		e.mu.Lock()
-		out := e.out
-		e.now, e.serial = t, e.serial+1
-		e.mu.Unlock()
-		if out != nil {
-			out.Resume()
-		}
+		e.announce(t)
 		e.mix.startMusic(v, 0.05, 0.3)
 		e.playing, e.track, e.tracks = v, t, []Track{t}
 		e.cue = Cue{Pool: "audition", Key: t.ID}
@@ -375,4 +370,16 @@ func (e *Engine) bag(k string) *bag {
 		e.bags[k] = &bag{}
 	}
 	return e.bags[k]
+}
+
+// announce makes t the track NowPlaying reports, and wakes a suspended
+// output to play it.
+func (e *Engine) announce(t Track) {
+	e.mu.Lock()
+	out := e.out
+	e.now, e.serial = t, e.serial+1
+	e.mu.Unlock()
+	if out != nil {
+		out.Resume()
+	}
 }

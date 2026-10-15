@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -139,19 +140,10 @@ func (s Settings) Validate() error {
 	if s.UserMusic != "override" && s.UserMusic != "extend" {
 		return fmt.Errorf("audio: user_music %q is not override or extend", s.UserMusic)
 	}
-	if s.Panic != "" && !isPool(s.Panic) {
+	if s.Panic != "" && !slices.Contains(Pools, s.Panic) {
 		return fmt.Errorf("audio: panic pool %q is not one of %v", s.Panic, Pools)
 	}
 	return nil
-}
-
-func isPool(p string) bool {
-	for _, q := range Pools {
-		if p == q {
-			return true
-		}
-	}
-	return false
 }
 
 // ConfigDir is $XDG_CONFIG_HOME/katharsis, else ~/.config/katharsis, as

@@ -41,11 +41,17 @@ func (b *bag) next(ids []string, rng *rand.Rand) string {
 }
 
 // avoid keeps id, just played from elsewhere (a lead), from being dealt
-// next.
+// next. When it is all the round has left, its turn there is the one it
+// just had, and the next round opens with another.
 func (b *bag) avoid(id string, rng *rand.Rand) {
 	b.last = id
-	if rest := len(b.order) - b.pos; rest > 1 && b.order[b.pos] == id {
+	if b.pos >= len(b.order) || b.order[b.pos] != id {
+		return
+	}
+	if rest := len(b.order) - b.pos; rest > 1 {
 		k := b.pos + 1 + rng.IntN(rest-1)
 		b.order[b.pos], b.order[k] = b.order[k], b.order[b.pos]
+	} else {
+		b.pos++
 	}
 }

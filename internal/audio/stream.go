@@ -44,10 +44,7 @@ func newStream(src source, loopStart, loopEnd float64, passes int) *stream {
 		}
 	}
 	if s.ratio != 1 {
-		f0, _ := s.next()
-		f1, _ := s.next()
-		f2, _ := s.next()
-		s.hist = [4][2]float32{f0, f0, f1, f2}
+		s.prime()
 	}
 	return s
 }
@@ -166,10 +163,16 @@ func (s *stream) seek(f int64) error {
 	}
 	s.pos, s.buf, s.bufAt = f, s.buf[:0], 0
 	if s.ratio != 1 {
-		f0, _ := s.next()
-		f1, _ := s.next()
-		f2, _ := s.next()
-		s.hist, s.frac = [4][2]float32{f0, f0, f1, f2}, 0
+		s.prime()
 	}
 	return nil
+}
+
+// prime fills the resampler's history from the next source frames, the
+// first one twice: there is none before it.
+func (s *stream) prime() {
+	f0, _ := s.next()
+	f1, _ := s.next()
+	f2, _ := s.next()
+	s.hist, s.frac = [4][2]float32{f0, f0, f1, f2}, 0
 }

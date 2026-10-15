@@ -140,7 +140,7 @@ func (t Track) check() error {
 		return fmt.Errorf("no pools")
 	}
 	for _, p := range t.Pools {
-		if !isPool(p) {
+		if !slices.Contains(Pools, p) {
 			return fmt.Errorf("pool %q is not one of %v", p, Pools)
 		}
 	}

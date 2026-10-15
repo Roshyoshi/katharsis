@@ -27,24 +27,24 @@ import (
 )
 
 func main() {
-	fs := flag.NewFlagSet("demo-audio", flag.ExitOnError)
-	per := fs.Duration("for", 15*time.Second, "how long each track plays (track, pools)")
-	seam := fs.Duration("seam", 6*time.Second, "how much before a track's loop point to jump to (track)")
-	fs.Usage = func() {
+	flags := flag.NewFlagSet("demo-audio", flag.ExitOnError)
+	per := flags.Duration("for", 15*time.Second, "how long each track plays (track, pools)")
+	seam := flags.Duration("seam", 6*time.Second, "how much before a track's loop point to jump to (track)")
+	flags.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: demo-audio [-for d] [-seam d] sfx|tour|track|pools|analyze|list [args]")
-		fs.PrintDefaults()
+		flags.PrintDefaults()
 	}
-	_ = fs.Parse(os.Args[1:])
-	if fs.NArg() == 0 {
-		fs.Usage()
+	_ = flags.Parse(os.Args[1:])
+	if flags.NArg() == 0 {
+		flags.Usage()
 		os.Exit(2)
 	}
 	set, lib, err := load()
 	if err != nil {
 		fail(err)
 	}
-	args := fs.Args()[1:]
-	switch fs.Arg(0) {
+	args := flags.Args()[1:]
+	switch flags.Arg(0) {
 	case "analyze":
 		err = analyze(lib, args)
 	case "list":
@@ -58,7 +58,7 @@ func main() {
 	case "pools":
 		pools(set, lib, *per)
 	default:
-		fs.Usage()
+		flags.Usage()
 		os.Exit(2)
 	}
 	if err != nil {
@@ -112,12 +112,15 @@ func analyze(lib *audio.Library, args []string) error {
 		}
 	}
 	for _, a := range args {
-		_ = filepath.WalkDir(a, func(p string, d fs.DirEntry, err error) error {
+		err := filepath.WalkDir(a, func(p string, d fs.DirEntry, err error) error {
 			if err == nil && !d.IsDir() && audio.IsAudioName(p) {
 				items = append(items, item{filepath.Base(p), p, 0, 0})
 			}
-			return nil
+			return err
 		})
+		if err != nil {
+			return err
+		}
 	}
 	fmt.Printf("%-34s %5s %7s %6s %6s %6s %5s %5s %6s %7s %6s %6s %5s\n",
 		"track", "kHz", "secs", "LUFS", "peak", "rms", "clip", "lead", "tail", "seam×", "seamdB", "dec×", "trim")
