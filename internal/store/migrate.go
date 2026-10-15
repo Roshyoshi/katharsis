@@ -77,6 +77,12 @@ var migrations = []string{
 // user_version inside that transaction, which holds the write lock from
 // BEGIN: two processes opening a fresh file at once apply each step exactly
 // once, the second seeing the first's commit.
+//
+// A file already migrated gets a write that changes nothing instead. SQLite
+// opens a file it cannot write (read-only, on a read-only mount) read-only
+// without a word, and even begins an immediate transaction on it; only a
+// statement that writes fails. Without the probe the game played a whole
+// boot on such a file and saved none of it.
 func migrate(db *sql.DB, steps []string) error {
 	return inTx(db, nil, func(tx *sql.Tx) error {
 		var v int
@@ -87,6 +93,11 @@ func migrate(db *sql.DB, steps []string) error {
 		case v > len(steps):
 			return fmt.Errorf("%w: schema %d, this build knows %d", ErrNewerSchema, v, len(steps))
 		case v == len(steps):
+			// Step 1 made meta; WHERE 0 matches nothing, but the statement
+			// still needs the write lock on the file.
+			if _, err := tx.Exec(`UPDATE meta SET id = id WHERE 0`); err != nil {
+				return fmt.Errorf("%w: %v", ErrReadOnly, err)
+			}
 			return nil
 		}
 		for i := v; i < len(steps); i++ {

@@ -36,6 +36,9 @@ var (
 	// Opening it anyway would let this binary drop fields it does not know
 	// on the next write.
 	ErrNewerSchema = errors.New("store: database is from a newer katharsis")
+	// ErrReadOnly means Open could not write the file (read-only, or on a
+	// read-only mount): every save would fail.
+	ErrReadOnly = errors.New("store: database is not writable")
 	// ErrNoBoot is returned for a boot id that was never checkpointed.
 	ErrNoBoot = errors.New("store: no such boot")
 	// ErrInvalidBoot rejects a nil State or a boot numbered below 1. Boot 0

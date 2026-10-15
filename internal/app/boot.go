@@ -89,11 +89,15 @@ func (m *Model) startBoot(b screens.StartBoot) tea.Cmd {
 func (m *Model) begin(st *game.State, effs []game.Effect) tea.Cmd {
 	m.state = st
 	m.reset()
-	var save tea.Cmd
-	if err := m.d.Store.Checkpoint(m.meta, m.state); err != nil {
-		save = fail("save: %v", err)
-	}
-	return tea.Batch(save, m.initTop(), m.effects(effs), m.offerLink())
+	m.saved(m.d.Store.Checkpoint(m.meta, m.state))
+	return tea.Batch(m.initTop(), m.effects(effs), m.offerLink())
+}
+
+// saved records how a save went and reports whether it worked. A failure
+// stays on screen (View) until a later save succeeds.
+func (m *Model) saved(err error) bool {
+	m.saveErr = err
+	return err == nil
 }
 
 // abandon gives up a boot still running, so leaving one costs what quitting
@@ -108,9 +112,13 @@ func (m *Model) abandon() error {
 			return err
 		}
 		m.closeDoor()
-		return m.d.Store.Checkpoint(m.meta, m.state)
+		err := m.d.Store.Checkpoint(m.meta, m.state)
+		m.saved(err)
+		return err
 	}
-	return m.d.Store.AbandonBoot(m.state.Boot)
+	err := m.d.Store.AbandonBoot(m.state.Boot)
+	m.saved(err)
+	return err
 }
 
 // step feeds one action to the engine, saves, and applies the effects. A
@@ -139,11 +147,8 @@ func (m *Model) try(a game.Action) (tea.Cmd, error) {
 	}
 	// The step happened whether or not it was saved, so its effects run
 	// either way: a door the engine opened must open on screen too.
-	var cmds []tea.Cmd
-	if err := m.d.Store.Checkpoint(m.meta, m.state); err != nil {
-		cmds = append(cmds, fail("save: %v", err))
-	}
-	cmds = append(cmds, m.effects(effs))
+	m.saved(m.d.Store.Checkpoint(m.meta, m.state))
+	cmds := []tea.Cmd{m.effects(effs)}
 	if m.baseKey() != before {
 		m.reset()
 		cmds = append(cmds, m.initTop())

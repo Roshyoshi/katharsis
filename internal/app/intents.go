@@ -254,8 +254,8 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 	// save, and a door left open would let it count twice.
 	m.closeDoor()
 	m.reset()
-	if err := m.d.Store.SaveMeta(m.meta); err != nil {
-		return fail("save: %v", err)
+	if !m.saved(m.d.Store.SaveMeta(m.meta)) {
+		return nil // the banner says so
 	}
 	if got > 0 {
 		return note("core dump recovered: +%s banked", units.Bytes(got))

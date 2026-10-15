@@ -318,3 +318,12 @@ func overlayFlash(body, msg string, w int) string {
 	lines[len(lines)-1] = ansi.Truncate(lipgloss.NewStyle().Reverse(true).Render(" "+msg+" "), w, "…")
 	return strings.Join(lines, "\n")
 }
+
+// overlayBanner puts msg on the line above the last, which the flash and
+// the key help keep, so the two never cover each other.
+func overlayBanner(body, msg string, w int) string {
+	lines := strings.Split(body, "\n")
+	i := max(len(lines)-2, 0)
+	lines[i] = ansi.Truncate(lipgloss.NewStyle().Reverse(true).Foreground(lipgloss.Color("1")).Render(" "+msg+" "), w, "…")
+	return strings.Join(lines, "\n")
+}

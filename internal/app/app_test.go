@@ -559,8 +559,8 @@ func TestUnsavedBootStillStarts(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.send(screens.StartBoot{Preset: "standard"})
-	if _, grub := h.m.top().(interface{ Editing() bool }); grub || !strings.Contains(h.m.flash, "save") {
-		t.Fatalf("top %T flash %q, want the boot's screen and the save error", h.m.top(), h.m.flash)
+	if _, grub := h.m.top().(interface{ Editing() bool }); grub || !strings.Contains(h.m.View().Content, "save failed") {
+		t.Fatalf("top %T, want the boot's screen and the save error", h.m.top())
 	}
 }
 
@@ -576,8 +576,8 @@ func TestUnsavedUpsolveClosesTheDoor(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.send(submitMsg{})
-	if h.m.open != nil || !strings.Contains(h.m.flash, "save") {
-		t.Fatalf("open %+v flash %q, want the door closed and the save error", h.m.open, h.m.flash)
+	if h.m.open != nil || !strings.Contains(h.m.View().Content, "save failed") {
+		t.Fatalf("open %+v, want the door closed and the save error", h.m.open)
 	}
 }
 

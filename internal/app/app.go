@@ -85,6 +85,10 @@ type Model struct {
 	open    *Door            // the door being played, nil otherwise
 	judging bool
 	flash   string // one-line error shown over the screen until the next key
+	// saveErr is the last save that failed. It shows on every screen
+	// until a save succeeds: as a flash the next key cleared, a store the
+	// game could not write played a whole boot and kept none of it.
+	saveErr error
 
 	// editorials are the problems whose editorial was opened this session,
 	// such as from the crash screen before any upsolve exists.
@@ -261,6 +265,9 @@ func (m *Model) View() tea.View {
 		w, h = 80, 24
 	}
 	body := m.top().View(w, h)
+	if m.saveErr != nil {
+		body = overlayBanner(body, "save failed, progress is not being kept: "+m.saveErr.Error(), w)
+	}
 	if m.flash != "" {
 		body = overlayFlash(body, m.flash, w)
 	}
