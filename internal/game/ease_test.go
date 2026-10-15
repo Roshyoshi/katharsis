@@ -449,3 +449,29 @@ func TestFirstBoot(t *testing.T) {
 		t.Errorf("boot #2: easings %+v, biomes %+v", h2.s.Ease, h2.s.Rules.Biomes)
 	}
 }
+
+// A trial takes a boot number, but a new player who opens RTFM before
+// ever booting still plays boot #1's rules (RT11) on their first boot,
+// days later or not, and only on it.
+func TestFirstBootAfterTrial(t *testing.T) {
+	t.Parallel()
+	m := &game.Meta{}
+	pool := trialPool()
+	if _, _, err := game.NewTrial(rules.Trial(), m, pool, silverTrial(), 1, t0); err != nil {
+		t.Fatal(err)
+	}
+	later := t0.Add(5 * 24 * time.Hour)
+	s, _, err := game.NewBoot(rules.Standard(), m, pool, 0, 2, later)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, first := easeOf(s, game.EaseFirst)
+	_, back := easeOf(s, game.EaseComeback)
+	if !first || back || mustJSON(t, s.Rules.Biomes) != mustJSON(t, rules.Short().Biomes) {
+		t.Errorf("first boot after a trial: easings %+v, biomes %+v", s.Ease, s.Rules.Biomes)
+	}
+	s, _, err = game.NewBoot(rules.Standard(), m, pool, 0, 3, later)
+	if _, again := easeOf(s, game.EaseFirst); err != nil || again {
+		t.Errorf("second boot: easings %+v, %v", s.Ease, err)
+	}
+}

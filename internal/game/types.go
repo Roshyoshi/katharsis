@@ -93,7 +93,10 @@ type Meta struct {
 	// is a milestone).
 	Retired int `json:",omitempty"`
 	Solves  []Solve
-	Boots   int // boots started, for "Boot #N"
+	Boots   int // boots started, for "Boot #N"; trials take numbers too
+	// Trials counts the learn-mode trials among Boots, so a player who
+	// opened RTFM before ever booting still gets boot #1's rules (RT11).
+	Trials int `json:",omitempty"`
 
 	// Seen lists the one-time story scenes already shown, each once, in
 	// the order shown (MarkSeen). It is the story's reread log.

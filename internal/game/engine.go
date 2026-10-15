@@ -82,7 +82,7 @@ func NewBoot(r rules.Rules, meta *Meta, pool []catalog.Problem, prestige int, se
 
 	// Boot #1 plays its own shape (rules.FirstBiomes, RT11); the snapshot
 	// records it as played.
-	first := meta.Boots == 0
+	first := !booted(meta)
 	if first && len(r.FirstBiomes) > 0 {
 		r.Biomes = slices.Clone(r.FirstBiomes)
 	}
@@ -105,6 +105,9 @@ func NewBoot(r rules.Rules, meta *Meta, pool []catalog.Problem, prestige int, se
 func (e *engine) begin() {
 	s, m, r := e.s, e.meta, &e.s.Rules
 	m.Boots++
+	if s.Trial != nil {
+		m.Trials++
+	}
 	if m.Rating <= 0 {
 		m.Rating = r.ColdStartRating
 	}

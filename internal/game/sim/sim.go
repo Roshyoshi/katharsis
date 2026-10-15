@@ -259,7 +259,7 @@ func Run(c Config) Report {
 		slices.Sort(m.Capabilities)
 	}
 	nb := len(c.Rules.Biomes)
-	if m.Boots == 0 { // boot #1 plays its own shape
+	if m.Boots == m.Trials { // boot #1 plays its own shape
 		nb = max(nb, len(c.Rules.FirstBiomes))
 	}
 	if c.Prestige >= 0 {

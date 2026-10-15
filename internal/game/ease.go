@@ -150,7 +150,7 @@ func (s *State) active(k EaseKind) *Ease {
 // eases such a boot; GRUB says the days before it.
 func Comeback(r *rules.Rules, m *Meta, now time.Time) int {
 	last := lastPlayed(m)
-	if m.Boots == 0 || r.ComebackDays <= 0 || last.IsZero() {
+	if !booted(m) || r.ComebackDays <= 0 || last.IsZero() {
 		return 0
 	}
 	if days := int(now.Sub(last) / (24 * time.Hour)); days >= r.ComebackDays {
@@ -158,6 +158,10 @@ func Comeback(r *rules.Rules, m *Meta, now time.Time) int {
 	}
 	return 0
 }
+
+// booted reports whether m has begun a boot that was not a trial: until
+// then the next boot is boot #1 (RT11).
+func booted(m *Meta) bool { return m.Boots > m.Trials }
 
 // lastPlayed is when m last played: Meta.LastPlayed, or for a save from
 // before it the latest solve or core dump.

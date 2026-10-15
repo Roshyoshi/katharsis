@@ -98,11 +98,13 @@ func (c *checker) start(s *game.State, m *game.Meta) {
 		t.Fatalf("boot starts with %d lives, %d ducks (declined %v), want %d and %d from the rules and %+v",
 			s.Lives, s.Ducks, s.Declined, lives, ducks, s.Ease)
 	}
-	if first := s.Boot == 1 && (len(r.FirstBiomes) > 0 || r.FirstDoor || r.FirstEditorial); first != kinds[game.EaseFirst] ||
-		first && kinds[game.EaseComeback] {
-		t.Fatalf("boot %d with easings %+v", s.Boot, s.Ease)
+	// Boot #1 is the first boot that is not a trial (Meta.Trials).
+	first := s.Boot == m.Trials+1
+	if eased := first && (len(r.FirstBiomes) > 0 || r.FirstDoor || r.FirstEditorial); eased != kinds[game.EaseFirst] ||
+		eased && kinds[game.EaseComeback] {
+		t.Fatalf("boot %d (%d trials before) with easings %+v", s.Boot, m.Trials, s.Ease)
 	}
-	if first := s.Boot == 1; first && len(r.FirstBiomes) > 0 && mustJSON(t, r.Biomes) != mustJSON(t, r.FirstBiomes) {
+	if first && len(r.FirstBiomes) > 0 && mustJSON(t, r.Biomes) != mustJSON(t, r.FirstBiomes) {
 		t.Fatalf("boot #1 plays %+v, not its first biomes", r.Biomes)
 	}
 	if gov := r.GovernorAfter > 0 && m.Governor.EarlyCrashes >= r.GovernorAfter; gov != kinds[game.EaseGovernor] {
@@ -687,7 +689,7 @@ func TestFuzzTrials(t *testing.T) {
 		runs = 200
 	}
 	for i := range runs {
-		if i%3 == 0 {
+		if i%3 == 2 { // two trials first: boot #1 comes after them
 			fuzzBoot(t, rules.Standard(), m, ps, f, false)
 		} else {
 			s, _ := fuzzTrial(t, m, ps, f, i%10 == 1)
