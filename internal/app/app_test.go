@@ -550,17 +550,17 @@ func TestUserlandTimeoutCostsALife(t *testing.T) {
 		if len(h.m.state.Ease) == 0 {
 			t.Fatalf("a cold start on the fake catalog is not eased: forecast %.2f", h.m.state.Forecast)
 		}
-		lives, closed := h.m.state.Lives, h.runner.closed
+		lives, closed := h.m.state.Cycles, h.runner.closed
 		h.clock.t = h.enterDoor().Deadline.Add(time.Second)
 		h.send(tickMsg(h.clock.t))
 		s := h.m.state
-		if s.Phase != game.PhaseDoors || s.Crash != nil || s.Lives != lives-1 || len(s.Doors) == 0 || h.m.open != nil || h.runner.closed != closed+1 {
+		if s.Phase != game.PhaseDoors || s.Crash != nil || s.Cycles != lives-1 || len(s.Doors) == 0 || h.m.open != nil || h.runner.closed != closed+1 {
 			t.Fatalf("phase %q crash %+v lives %d (was %d), %d doors, open %v, closed %d (was %d)",
-				s.Phase, s.Crash, s.Lives, lives, len(s.Doors), h.m.open != nil, h.runner.closed, closed)
+				s.Phase, s.Crash, s.Cycles, lives, len(s.Doors), h.m.open != nil, h.runner.closed, closed)
 		}
 		h.restart()
-		if h.m.state.Phase != game.PhaseDoors || h.m.state.Lives != lives-1 {
-			t.Errorf("resumed in phase %q with %d lives", h.m.state.Phase, h.m.state.Lives)
+		if h.m.state.Phase != game.PhaseDoors || h.m.state.Cycles != lives-1 {
+			t.Errorf("resumed in phase %q with %d lives", h.m.state.Phase, h.m.state.Cycles)
 		}
 	})
 }
@@ -579,23 +579,23 @@ func TestDeclineEaseKey(t *testing.T) {
 		}
 		added := 0
 		for _, es := range s.Ease {
-			added += es.Lives
+			added += es.Cycles
 		}
-		lives := s.Lives
+		lives := s.Cycles
 		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "x decline the easing") {
 			t.Fatalf("no decline key on the first room:\n%s", v)
 		}
 		h.send(key("x"))
 		s = h.m.state
-		if !s.Declined || s.Lives != max(1, lives-added) {
-			t.Fatalf("declined %v, lives %d (was %d, the easing added %d)", s.Declined, s.Lives, lives, added)
+		if !s.Declined || s.Cycles != max(1, lives-added) {
+			t.Fatalf("declined %v, lives %d (was %d, the easing added %d)", s.Declined, s.Cycles, lives, added)
 		}
 		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "· declined") || strings.Contains(v, "x decline") {
 			t.Errorf("the doors after a decline:\n%s", v)
 		}
 		h.send(key("x"))
-		if h.m.state.Lives != s.Lives {
-			t.Errorf("a second x moved lives to %d", h.m.state.Lives)
+		if h.m.state.Cycles != s.Cycles {
+			t.Errorf("a second x moved lives to %d", h.m.state.Cycles)
 		}
 		h.restart()
 		if !h.m.state.Declined {

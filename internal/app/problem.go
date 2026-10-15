@@ -425,7 +425,7 @@ func (m *Model) statusLine() string {
 		return "no door open"
 	}
 	left := max(c.Deadline.Sub(m.d.Now()), 0)
-	return fmt.Sprintf("%s left · %s · %s", units.Countdown(left), units.Hearts(s.Lives, s.MaxLives), ducks(s))
+	return fmt.Sprintf("%s left · %s · %s", units.Countdown(left), units.Hearts(s.Cycles, s.MaxCycles), ducks(s))
 }
 
 // ducks is the duck count, or ✗ on a cursed door, which takes none.

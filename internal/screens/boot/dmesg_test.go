@@ -101,7 +101,7 @@ func TestTrackerTellsTheBoot(t *testing.T) {
 	if !slices.Contains(kinds(evs), EvTip) {
 		t.Errorf("first door opened without the door tip: %v", kinds(evs))
 	}
-	lives := b.st.Lives
+	lives := b.st.Cycles
 	b.tr.Judged(6, 30)
 	b.now = b.now.Add(2 * time.Minute)
 	evs = b.step(game.SubmitResult{Verdict: "WA", Passed: 6, Total: 30})
@@ -171,7 +171,7 @@ func TestTrackerTimeoutCostsLife(t *testing.T) {
 	if !b.st.TimeoutCostsLife() {
 		t.Fatal("the standard Userland door's timeout ends the boot")
 	}
-	lives := b.st.Lives
+	lives := b.st.Cycles
 	b.now = b.st.Current.Deadline.Add(time.Second)
 	evs := b.step(game.Tick{})
 	want := fmt.Sprintf("timeout: ⏱ timer ran out: -1 ♥, %d left · new doors", lives-1)
@@ -203,11 +203,11 @@ func TestTrackerEasing(t *testing.T) {
 	if len(b.st.Ease) == 0 || !slices.Equal(said, stripAll(lines)) {
 		t.Fatalf("boot #1 eased %+v; the strip said %q", b.st.Ease, said)
 	}
-	lives := b.st.Lives
+	lives := b.st.Cycles
 	evs := b.step(game.DeclineEase{})
 	want := "ease: easing declined · new doors"
-	if lost := lives - b.st.Lives; lost > 0 {
-		want = fmt.Sprintf("ease: easing declined · -%d ♥, %d left · new doors", lost, b.st.Lives)
+	if lost := lives - b.st.Cycles; lost > 0 {
+		want = fmt.Sprintf("ease: easing declined · -%d ♥, %d left · new doors", lost, b.st.Cycles)
 	}
 	if plain(evs) != want {
 		t.Errorf("decline: got\n%s\nwant %q", plain(evs), want)

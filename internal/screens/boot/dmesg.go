@@ -121,7 +121,7 @@ type snapshot struct {
 
 func snap(st *game.State, m *game.Meta, now time.Time) snapshot {
 	s := snapshot{
-		boot: st.Boot, phase: st.Phase, lives: st.Lives, ducks: st.Ducks, hist: len(st.History),
+		boot: st.Boot, phase: st.Phase, lives: st.Cycles, ducks: st.Ducks, hist: len(st.History),
 		uncommitted: st.Uncommitted, committed: st.Committed, spent: st.Spent,
 		upgrades: len(st.Upgrades), daemons: len(st.Daemons), rerolls: st.Rerolls, at: st.AtTime,
 		kexec: st.KexecUsed, declined: st.Declined, biome: st.Biome, room: st.Room, libs: map[string]string{},
@@ -404,7 +404,7 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 
 	// Lives that changed for a reason no line above names.
 	if !livesSeen && n.lives != p.lives && n.phase != game.PhaseCrashed && n.phase != game.PhaseCleared {
-		add(EvLives, "lives: "+ui.Hearts(n.lives, st.MaxLives), "")
+		add(EvLives, "lives: "+ui.Hearts(n.lives, st.MaxCycles), "")
 	}
 	return out
 }

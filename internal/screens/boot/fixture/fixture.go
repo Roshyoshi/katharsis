@@ -146,7 +146,7 @@ func base() *game.State {
 			attempt(start, door(milkMeasure, 15*time.Minute, 64, 0.86), at(15, 0), at(27, 31), game.Cleared),
 			attempt(start, door(moocast, 30*time.Minute, 96, 0.71), at(30, 0), at(44, 2), game.Cleared),
 		},
-		Lives: 2, MaxLives: 3, Ducks: 1,
+		Cycles: 2, MaxCycles: 3, Ducks: 1,
 		Uncommitted: 96, Committed: 112,
 		Upgrades: []game.Upgrade{game.Overclock},
 		Daemons:  []game.Daemon{game.Strace},
@@ -303,13 +303,13 @@ func Userland() *game.State {
 	floor.Floor = true
 	st.Doors = []game.Door{floor, door(cowTipping, 15*time.Minute, 48, 0.91), door(haybales, 15*time.Minute, 48, 0.88)}
 	st.History = nil
-	st.Lives, st.MaxLives, st.Ducks = 4, 5, 1
+	st.Cycles, st.MaxCycles, st.Ducks = 4, 5, 1
 	st.Uncommitted, st.Committed = 0, 0
 	st.Upgrades, st.Daemons = nil, nil
 	st.Forecast = 0.26
 	st.Ease = []game.Ease{
 		{Kind: game.EaseComeback, Why: "first boot in 5 days", Clear: []float64{0.95, 0, 0, 0}},
-		{Kind: game.EaseFloor, Why: "Userland's easiest doors in the pool are rated 800", Lives: 1},
+		{Kind: game.EaseFloor, Why: "Userland's easiest doors in the pool are rated 800", Cycles: 1},
 	}
 	st.Log = []game.LogLine{{At: start, Text: "boot: prestige 1, preset standard, seed 8f3a"}}
 	st.AtStart = atStart()
@@ -327,7 +327,7 @@ func UserlandTimeout() *game.State {
 	timed.Submits, timed.Failed, timed.BestPass, timed.Total, timed.LastVerdict = 1, 1, 7, 12, "WA"
 	st.History = []game.Attempt{timed}
 	st.Doors = []game.Door{door(milkMeasure, 15*time.Minute, 64, 0.86), st.Doors[1], st.Doors[2]}
-	st.Lives = 3
+	st.Cycles = 3
 	st.Log = append(st.Log, game.LogLine{At: start.Add(at(15, 40)), Text: `door_1: timer expired, -1 life, 3 left`})
 	return st
 }
@@ -368,7 +368,7 @@ func Problem() *game.State {
 	a.Submits, a.Failed, a.BestPass, a.Total, a.LastVerdict = 2, 1, 37, 52, "WA"
 	st.Current = &a
 	st.Doors = nil
-	st.Lives = 1
+	st.Cycles = 1
 	rebase(st, at(53, 49))
 	return st
 }
@@ -385,7 +385,7 @@ func Crash(cause game.Outcome) *game.State {
 	case game.OutOfLives:
 		a = attempt(start, ds[0], at(47, 30), at(66, 8), cause)
 		a.Submits, a.Failed, a.BestPass, a.Total, a.LastVerdict = 2, 2, 37, 52, "WA"
-		st.Lives = 0
+		st.Cycles = 0
 	case game.GaveUp:
 		a = attempt(start, ds[2], at(47, 30), at(58, 44), cause)
 		a.Submits, a.Failed, a.BestPass, a.Total, a.LastVerdict = 1, 1, 12, 20, "TLE"

@@ -28,12 +28,12 @@ func TestWithDefaults(t *testing.T) {
 	t.Parallel()
 	// Rules written before the engine's fields existed.
 	old := rules.Rules{
-		Name: "old", Lives: 2, DoorsPerRoom: 2, BaseBytes: 10,
+		Name: "old", Cycles: 2, DoorsPerRoom: 2, BaseBytes: 10,
 		Biomes: []rules.Biome{{Kind: rules.Fixed, Rooms: 1, TargetClear: 0.8, Timer: rules.Duration{Duration: time.Minute}}},
 	}
 	got := old.WithDefaults()
 	d := rules.Standard()
-	if got.Lives != 2 || got.DoorsPerRoom != 2 || got.BaseBytes != 10 || len(got.Biomes) != 1 {
+	if got.Cycles != 2 || got.DoorsPerRoom != 2 || got.BaseBytes != 10 || len(got.Biomes) != 1 {
 		t.Errorf("set fields changed: %+v", got)
 	}
 	if got.ForkDoors != d.ForkDoors || got.TimerGapScale != d.TimerGapScale || got.RatingK != d.RatingK ||
@@ -147,7 +147,7 @@ func TestAscend(t *testing.T) {
 	for _, tc := range tests {
 		a := r.Ascend(tc.prestige)
 		if !near(a.BlindChance, tc.blind) || !near(a.MysteryChance, tc.mystery) || !near(a.CursedChance, tc.cur) ||
-			a.Lives != tc.lives || a.Ducks != tc.ducks || !near(a.TimerMult, tc.timer) {
+			a.Cycles != tc.lives || a.Ducks != tc.ducks || !near(a.TimerMult, tc.timer) {
 			t.Errorf("Ascend(%d) = %+v", tc.prestige, a)
 		}
 	}
@@ -162,7 +162,7 @@ func TestLoad(t *testing.T) {
 		err   string
 	}{
 		{"overrides a scalar", `lives = 4`, func(r rules.Rules) bool {
-			return r.Lives == 4 && len(r.Biomes) == 3 && len(r.Ascensions) == 4
+			return r.Cycles == 4 && len(r.Biomes) == 3 && len(r.Ascensions) == 4
 		}, ""},
 		{"biome tables replace Standard's", `
 [[biome]]
@@ -180,7 +180,7 @@ timer = "40m"
 level = 2
 lives = -2
 `, func(r rules.Rules) bool {
-			return len(r.Ascensions) == 1 && r.Ascensions[0].BlindChance == 0 && r.Ascend(2).Lives == -2
+			return len(r.Ascensions) == 1 && r.Ascensions[0].BlindChance == 0 && r.Ascend(2).Cycles == -2
 		}, ""},
 		{"bad kind", `
 [[biome]]
@@ -233,8 +233,8 @@ func TestLoadStrictKeysAndFileName(t *testing.T) {
 		t.Errorf("misspelt key: err %v, want unknown keys lifes", err)
 	}
 	r, err := rules.Load(write("short.toml", "lives = 2\n"))
-	if err != nil || r.Name != "short" || r.Lives != 2 {
-		t.Errorf("unnamed preset: %q lives %d, %v; want short, 2", r.Name, r.Lives, err)
+	if err != nil || r.Name != "short" || r.Cycles != 2 {
+		t.Errorf("unnamed preset: %q lives %d, %v; want short, 2", r.Name, r.Cycles, err)
 	}
 	if r, err := rules.Load(write("x.toml", "name = \"speed\"\n")); err != nil || r.Name != "speed" {
 		t.Errorf("named preset: %q, %v; want speed", r.Name, err)

@@ -16,7 +16,7 @@ import (
 
 var update = flag.Bool("update", false, "rewrite testdata/*.golden from the current engine")
 
-// TestDoorsGolden replays fuzzed boots and lists every set of doors put on
+// TestDoorsGolden replays fuzzed boots (the frozen fuzzer, legacyFuzz) and lists every set of doors put on
 // offer and how each door ended, against testdata/doors.golden. Logging
 // the draw (State.Offers, ml-pipeline slice ML1) must leave the draw
 // alone: the same seeds and actions offer the same doors as when the file
@@ -24,11 +24,16 @@ var update = flag.Bool("update", false, "rewrite testdata/*.golden from the curr
 func TestDoorsGolden(t *testing.T) {
 	t.Parallel()
 	ps := sim.SyntheticPool(600, 8)
-	m := &game.Meta{Prestige: game.MaxPrestige}
-	f := &fuzzer{rng: rand.New(rand.NewPCG(31, 32)), now: t0}
+	// The legacy rules (a boot saved before cycles) on their own ladder,
+	// P0 to P4: the doors they offer must not move.
+	m := &game.Meta{Prestige: legacyTop}
+	f := &legacyFuzz{rng: rand.New(rand.NewPCG(31, 32)), now: t0}
 	var w strings.Builder
 	for b := range 60 {
-		s := startBoot(t, rules.Standard(), m, ps, f)
+		s, _, err := game.NewBoot(rules.Legacy(), m, ps, f.rng.IntN(m.Prestige+1), f.rng.Uint64(), f.now)
+		if err != nil {
+			t.Fatalf("NewBoot: %v", err)
+		}
 		last := ""
 		note := func(step int) {
 			if s.Phase != game.PhaseDoors {
@@ -101,3 +106,7 @@ func doorFlags(d game.Door) string {
 	}
 	return strings.Join(fs, " ")
 }
+
+// legacyTop is the top of rules.Legacy's ladder: the highest prestige
+// before the map's P5-P8.
+const legacyTop = 4

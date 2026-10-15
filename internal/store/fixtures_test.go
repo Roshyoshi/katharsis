@@ -125,7 +125,7 @@ func midBoot(n int, start time.Time) *game.State {
 			{Door: d2, Opened: at(11), Deadline: at(26), Closed: at(25), Outcome: game.Cleared,
 				Submits: 2, Failed: 1, BestPass: 15, Total: 15, LastVerdict: "AC"},
 		},
-		Lives: 2, MaxLives: 5, Ducks: 0,
+		Cycles: 2, MaxCycles: 5, Ducks: 0,
 		Uncommitted: 120,
 		Upgrades:    []game.Upgrade{game.Overclock, game.ECC},
 		Daemons:     []game.Daemon{game.Strace},

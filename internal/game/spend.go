@@ -48,7 +48,7 @@ func (s *State) CanSpend(it Item) error {
 		return invalid("%q is not for sale", it)
 	case s.Uncommitted < price:
 		return invalid("%s costs %s, %s uncommitted", it, units.Bytes(price), units.Bytes(s.Uncommitted))
-	case it == Fsck && s.Lives >= s.MaxLives:
+	case it == Fsck && s.Cycles >= s.MaxCycles:
 		return invalid("lives are full")
 	}
 	return nil
@@ -64,7 +64,7 @@ func (e *engine) spend(it Item) error {
 	s.Spent += price
 	switch it {
 	case Fsck:
-		s.Lives++
+		s.Cycles++
 	case Dup:
 		s.Ducks++
 	case Shuf:
@@ -73,7 +73,7 @@ func (e *engine) spend(it Item) error {
 		s.AtTime += s.Rules.AtTime.Duration
 	}
 	e.logf("%s: -%s, %s uncommitted (lives %d/%d, ducks %d, shufs %d, at +%s)",
-		it, units.Bytes(price), units.Bytes(s.Uncommitted), s.Lives, s.MaxLives, s.Ducks, s.Rerolls,
+		it, units.Bytes(price), units.Bytes(s.Uncommitted), s.Cycles, s.MaxCycles, s.Ducks, s.Rerolls,
 		units.Clock(s.AtTime))
 	return nil
 }

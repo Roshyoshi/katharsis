@@ -498,7 +498,7 @@ func (m *Model) Clock() string {
 	if left < 0 && s.SoftTimer() {
 		t = "+" + units.Clock(-left) + " over"
 	}
-	return fmt.Sprintf("%s · %s · %s", t, units.Hearts(s.Lives, s.MaxLives), ducks(s))
+	return fmt.Sprintf("%s · %s · %s", t, units.Hearts(s.Cycles, s.MaxCycles), ducks(s))
 }
 
 // BorderClock is Clock as a tmux format for the editor pane's border, the
@@ -517,7 +517,7 @@ func (m *Model) BorderClock() string {
 	if left < 0 && s.SoftTimer() {
 		t = ui.Danger.Tmux(ui.G.Timer + "+" + units.Clock(-left) + " over")
 	}
-	return t + " · " + ui.BorderHearts(s.Lives, s.MaxLives) + " · " + ui.TmuxEscape(ducks(s)) + m.borderWarn(left)
+	return t + " · " + ui.BorderHearts(s.Cycles, s.MaxCycles) + " · " + ui.TmuxEscape(ducks(s)) + m.borderWarn(left)
 }
 
 // borderWarnFor is how long the border says the open door's timer passed

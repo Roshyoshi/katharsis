@@ -324,7 +324,7 @@ func (e Env) header(where string, width, height int) []string {
 	right := ui.Muted.Render("uptime ") + units.Clock(st.Uptime(e.Now))
 
 	// The bytes at stake are plain, not OK: a crash loses them.
-	status := ui.Hearts(st.Lives, st.MaxLives) + "  " + fmt.Sprintf("%s%d", ui.G.Duck, st.Ducks) + "  " +
+	status := ui.Hearts(st.Cycles, st.MaxCycles) + "  " + fmt.Sprintf("%s%d", ui.G.Duck, st.Ducks) + "  " +
 		units.Bytes(st.Uncommitted) + ui.Muted.Render(" uncommitted") + dot +
 		units.Bytes(st.Committed) + ui.Muted.Render(" committed")
 	var ds []string

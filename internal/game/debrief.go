@@ -82,11 +82,13 @@ type Dump struct {
 type LeverKind string
 
 const (
-	LeverTimer   LeverKind = "timer"   // the door's timer ran out
-	LeverLives   LeverKind = "lives"   // failed submits spent the last life
-	LeverCursed  LeverKind = "cursed"  // the curse: one failed submit
-	LeverGaveUp  LeverKind = "gave-up" // :q!
-	LeverCleared LeverKind = "cleared" // the last boss fell
+	LeverTimer  LeverKind = "timer"   // the door's timer ran out
+	LeverLives  LeverKind = "lives"   // failed submits burned the last cycles
+	LeverCursed LeverKind = "cursed"  // the curse: one failed submit
+	LeverGaveUp LeverKind = "gave-up" // :q!
+	// LeverAbandoned: another boot started while this one was suspended.
+	LeverAbandoned LeverKind = "abandoned"
+	LeverCleared   LeverKind = "cleared" // the last boss fell
 )
 
 // Lever is the attempt that decided the boot, as the task saw it: the
@@ -157,7 +159,7 @@ func Debrief(st *State, m *Meta) Brief {
 		return d
 	}
 	a := crashAttempt(st)
-	kind := map[Outcome]LeverKind{TimedOut: LeverTimer, OutOfLives: LeverLives, GaveUp: LeverGaveUp}[c.Cause]
+	kind := map[Outcome]LeverKind{TimedOut: LeverTimer, OutOfLives: LeverLives, GaveUp: LeverGaveUp, Abandoned: LeverAbandoned}[c.Cause]
 	if c.Cursed {
 		kind = LeverCursed
 	}

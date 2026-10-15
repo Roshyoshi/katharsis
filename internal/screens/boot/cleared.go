@@ -151,7 +151,7 @@ func (c *Cleared) View(width, height int) string {
 		{"committed", ui.OK.Render(units.Bytes(st.Committed)) +
 			ui.Muted.Render(ui.G.Sep+"bank ") + units.Bytes(env.Meta.Bank)},
 		{"solved", sol},
-		{"lives left", ui.Hearts(st.Lives, st.MaxLives)},
+		{"lives left", ui.Hearts(st.Cycles, st.MaxCycles)},
 	}
 	var table []string
 	for _, r := range stats {

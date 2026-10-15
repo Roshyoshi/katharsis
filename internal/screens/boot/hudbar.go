@@ -46,7 +46,7 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	if door.Cursed {
 		ducks = ui.Muted.Render(ui.G.Duck + ui.G.Fail)
 	}
-	status := timer + "  " + ui.Hearts(st.Lives, st.MaxLives) + "  " + ducks + "  " + units.Bytes(st.Uncommitted)
+	status := timer + "  " + ui.Hearts(st.Cycles, st.MaxCycles) + "  " + ducks + "  " + units.Bytes(st.Uncommitted)
 	if reward := " " + ui.OK.Render("+"+units.Bytes(door.Bytes)); door.Bytes > 0 && widthOf(status+reward) <= width {
 		status += reward
 	}

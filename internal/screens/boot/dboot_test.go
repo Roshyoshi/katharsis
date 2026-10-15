@@ -151,7 +151,7 @@ func TestTimeoutNote(t *testing.T) {
 		t.Errorf("no D44 line in the HUD:\n%s", hud)
 	}
 	last := fixture.Userland()
-	last.Lives = 1
+	last.Cycles = 1
 	trial := fixture.Userland()
 	trial.Trial = &game.TrialState{}
 	for name, st := range map[string]*game.State{"last life": last, "the Heap": fixture.Doors(), "trial": trial} {
@@ -211,8 +211,8 @@ func TestEasingCopy(t *testing.T) {
 	st.Ease = []game.Ease{
 		{Kind: game.EaseFirst, Why: "boot #1", FirstDoor: true, Editorial: true},
 		{Kind: game.EaseComeback, Why: "first boot in 5 days", Clear: []float64{0.95, 0, 0, 0}},
-		{Kind: game.EaseGovernor, Why: "the last 2 boots ended in Userland", Clear: []float64{0.95, 0.78, 0.65, 0.55}, Lives: 1},
-		{Kind: game.EaseFloor, Why: "Userland's easiest doors in the pool are rated 800", Lives: 2, Ducks: 1, Buyback: true},
+		{Kind: game.EaseGovernor, Why: "the last 2 boots ended in Userland", Clear: []float64{0.95, 0.78, 0.65, 0.55}, Cycles: 1},
+		{Kind: game.EaseFloor, Why: "Userland's easiest doors in the pool are rated 800", Cycles: 2, Ducks: 1, Buyback: true},
 	}
 	lines, _ := easing(st)
 	items := easeItems(st)

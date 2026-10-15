@@ -124,7 +124,7 @@ func TestAudioCrash(t *testing.T) {
 		h.enterDoor()
 		h.send(game.Quack{})
 		h.verdict = "WA"
-		lives := h.m.state.Lives
+		lives := h.m.state.Cycles
 		for h.m.state.Phase == game.PhaseProblem {
 			h.send(submitMsg{})
 		}

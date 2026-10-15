@@ -256,7 +256,7 @@ func TestQuitMidJudgeChargesTheFailure(t *testing.T) {
 		h := newHarness(t)
 		h.send(screens.StartBoot{Preset: "standard"})
 		cur := h.enterDoor()
-		lives := h.m.state.Lives
+		lives := h.m.state.Cycles
 		release := h.hold()
 		h.send(submitMsg{})
 		h.m.quit()
@@ -266,8 +266,8 @@ func TestQuitMidJudgeChargesTheFailure(t *testing.T) {
 		h.clock.t = cur.Deadline.Add(time.Hour)
 		h.restart()
 		h.send(tickMsg(h.clock.t))
-		if h.m.state.Lives != lives-1 {
-			t.Errorf("lives %d, want %d: the failure went uncharged", h.m.state.Lives, lives-1)
+		if h.m.state.Cycles != lives-1 {
+			t.Errorf("lives %d, want %d: the failure went uncharged", h.m.state.Cycles, lives-1)
 		}
 		last := h.m.state.History[len(h.m.state.History)-1]
 		if last.Submits != 1 || last.Failed != 1 || last.Outcome != game.TimedOut {
@@ -300,7 +300,7 @@ func TestClosedEditorKeepsTheSubmit(t *testing.T) {
 	h := hudHarness(t, submitDir(t, acSrc), stalled(t))
 	h.send(screens.StartBoot{Preset: "standard"})
 	cur := h.enterDoor()
-	lives := h.m.state.Lives
+	lives := h.m.state.Cycles
 	req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
 	h.send(req)
 	h.send(hudQuitMsg{}) // :q in vim
@@ -313,8 +313,8 @@ func TestClosedEditorKeepsTheSubmit(t *testing.T) {
 		t.Fatalf("phase %q inside the grace, want problem", h.m.state.Phase)
 	}
 	h.send(hud.SubmittedMsg{Summary: judge.Summary{Verdict: judge.WA, Passed: 1, Total: 4, Done: 4, First: 1}})
-	if h.m.state.Lives != lives-1 {
-		t.Errorf("lives %d, want %d after the verdict", h.m.state.Lives, lives-1)
+	if h.m.state.Cycles != lives-1 {
+		t.Errorf("lives %d, want %d after the verdict", h.m.state.Cycles, lives-1)
 	}
 }
 
@@ -386,7 +386,7 @@ func TestSecondSubmitCannotDodgeTheFirst(t *testing.T) {
 	h := hudHarness(t, dir, judge.Profile{})
 	h.send(screens.StartBoot{Preset: "standard"})
 	h.enterDoor()
-	lives := h.m.state.Lives
+	lives := h.m.state.Cycles
 
 	// Forced: the samples fail too, and :Submit alone would ask first.
 	first, firstReply := session.NewRequest(session.Command{Cmd: session.CmdSubmit, Args: []string{session.ArgForce}})
@@ -404,8 +404,8 @@ func TestSecondSubmitCannotDodgeTheFirst(t *testing.T) {
 	if rep, _ := answer(firstReply); rep.OK || !strings.HasPrefix(rep.Text, "WA 0/1") {
 		t.Errorf("first submit answered %+v, want its WA", rep)
 	}
-	if h.m.state.Lives != lives-1 {
-		t.Errorf("lives %d, want %d: the first submit's WA went uncharged", h.m.state.Lives, lives-1)
+	if h.m.state.Cycles != lives-1 {
+		t.Errorf("lives %d, want %d: the first submit's WA went uncharged", h.m.state.Cycles, lives-1)
 	}
 	if c := h.m.state.Current; c == nil || c.Submits != 1 || c.Failed != 1 {
 		t.Errorf("attempt %+v, want the door open with 1 submit, 1 failed", c)
@@ -456,7 +456,7 @@ func TestResumedJudgeCannotBeReplaced(t *testing.T) {
 	h := hudHarness(t, submitDir(t, waSrc), stalled(t))
 	h.send(screens.StartBoot{Preset: "standard"})
 	cur := h.enterDoor()
-	lives := h.m.state.Lives
+	lives := h.m.state.Cycles
 	first, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit, Args: []string{session.ArgForce}})
 	h.send(first)
 	h.m.quit() // ctrl+c mid-judge
@@ -477,7 +477,7 @@ func TestResumedJudgeCannotBeReplaced(t *testing.T) {
 		t.Fatalf("resumed %+v SubmitAt %v, want %+v kept", h.m.resumed, h.m.state.Current.SubmitAt, resumed)
 	}
 	h.send(hud.SubmittedMsg{Summary: judge.Summary{Verdict: judge.WA, Total: 1, Done: 1, First: 0}})
-	if h.m.state.Lives != lives-1 {
-		t.Errorf("lives %d, want %d: the resumed WA went uncharged", h.m.state.Lives, lives-1)
+	if h.m.state.Cycles != lives-1 {
+		t.Errorf("lives %d, want %d: the resumed WA went uncharged", h.m.state.Cycles, lives-1)
 	}
 }

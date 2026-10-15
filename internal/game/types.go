@@ -209,6 +209,23 @@ type Door struct {
 	// nothing under 800): the problem is that hard or less, and the engine
 	// reads it as rules.FloorDrop easier on average (Difficulty).
 	Floor bool `json:",omitempty"`
+
+	// Twist is the boss whose rule this door bends (rules.Twists), its key,
+	// "" for none: a boss modifier, shown on the boss card. The engine has
+	// already applied what it carries out (Race Condition's Timer and
+	// Bytes; Off-by-One's burn, State.SubmitCost); the fields below are for
+	// the judge and the HUD.
+	Twist string `json:",omitempty"`
+	// MemMult multiplies the judge's memory limit (OOM Killer), 0 for 1.
+	MemMult float64 `json:",omitempty"`
+	// QuietSamples has sample runs report only pass or fail (Heisenbug).
+	QuietSamples bool `json:",omitempty"`
+	// NoSanitizers runs the samples without sanitizers, in the HUD and the
+	// judge's profile (Undefined Behavior).
+	NoSanitizers bool `json:",omitempty"`
+	// HiddenClock hides the door's clock in the HUD; the strip's 5:00 and
+	// 1:00 warnings still fire (The Halting Problem).
+	HiddenClock bool `json:",omitempty"`
 }
 
 // TagsHidden reports whether the door hides its tags until a duck reveals
@@ -216,26 +233,77 @@ type Door struct {
 func (d Door) TagsHidden() bool { return d.Blind || d.Mastered }
 
 type BiomeState struct {
-	Name   string
-	Topic  string
-	Kind   rules.BiomeKind
-	Rooms  int
-	Offers []string // topics on offer at the entrance (Choice only)
+	Name  string
+	Topic string
+	Kind  rules.BiomeKind
+	Rooms int
+	// Offers are the topics on offer at the entrance (Choice only). On a
+	// map they are the topics of Exits, one each in the same order, for
+	// the log and the screens that show topics.
+	Offers []string
 
 	// Boss is the boss key of a Boss biome (BossKeys or FinalBoss), set at
-	// boot so the map can name it before it is reached.
+	// boot so the map can name it before it is reached. On a map it is set
+	// when the tier's node is taken.
 	Boss string
+
+	// Node is the map node (rules.Rules.Nodes) this tier plays, "" until
+	// its exit is taken and in a boot without a map.
+	Node string `json:",omitempty"`
+	// Exits are the exits the tier was entered by on a map: the nodes the
+	// previous tier's node leads to, locked ones included, in the graph's
+	// order. ChooseRoute takes one by index; a single open exit is taken
+	// at once. They are kept after the choice, for the map's "not taken".
+	Exits []Exit `json:",omitempty"`
+}
+
+// Exit is one way out of a map node into the next tier (map.md §(g)): the
+// card the route screen shows. It is read off the rules snapshot,
+// State.Caps, State.Packages and the prestige, and draws no random number.
+type Exit struct {
+	Node  string // rules.Biome.ID
+	Name  string // the node's name
+	Topic string // its doors' topic: Mixed for a mixed or boss node, "" for a skip
+	Rooms int    // 0 for a skip
+	// Boss is the node's key when it is a boss node; Bosses are the boss
+	// keys its own exits lead to, for a topic node ("→ ⚔ Heisenbug").
+	Boss   string   `json:",omitempty"`
+	Bosses []string `json:",omitempty"`
+	// Picks are the upgrade picks owed at its end: a gated biome's scroll,
+	// or a skip's two.
+	Picks int  `json:",omitempty"`
+	Skip  bool `json:",omitempty"`
+	// Gate is what the node needs, zero when nothing (always open).
+	Gate Gate `json:",omitzero"`
+	// Locked is why it cannot be taken, "" when it can: the gate's terms
+	// ("CAP_BSEARCH or apt git", "prestige 1"), or "pool" when the pool
+	// holds too few problems for its rooms near the player.
+	Locked string `json:",omitempty"`
+}
+
+// Gate is what a map node needs to be taken: its topic's capability
+// (earned in an RTFM trial), unless Package is installed; and a prestige.
+type Gate struct {
+	Capability string `json:",omitempty"`
+	Package    string `json:",omitempty"`
+	Prestige   int    `json:",omitempty"`
 }
 
 // Outcome of one attempt.
 type Outcome string
 
 const (
-	Cleared    Outcome = "cleared"
-	TimedOut   Outcome = "timed-out"
+	Cleared  Outcome = "cleared"
+	TimedOut Outcome = "timed-out"
+	// OutOfLives is a failed submit that burned the last cycles, or set
+	// off a curse. The stored value keeps its name from lives (D48), so
+	// saved outcomes need no migration.
 	OutOfLives Outcome = "out-of-lives"
 	GaveUp     Outcome = "gave-up"   // :q!
-	Retreated  Outcome = "retreated" // swapped the door for a life
+	Retreated  Outcome = "retreated" // swapped the door for cycles
+	// Abandoned is a boot ended because another started while it was
+	// suspended between doors (Abandon): it counts as a crash.
+	Abandoned Outcome = "abandoned"
 )
 
 // Verdict is a full-test judge verdict, with judge.Verdict's values ("AC",
@@ -278,12 +346,17 @@ type Attempt struct {
 	SubmitAt time.Time `json:",omitzero"`
 
 	// Offer is the index in State.Offers of the offer the door was chosen
-	// from; LivesAtOpen and DucksAtOpen are the boot's lives and ducks when
-	// it opened; Events lists what happened on it, in order (ml-pipeline
-	// §4.1). Attempts from before these fields read 0 and none.
-	Offer                    int
-	LivesAtOpen, DucksAtOpen int
-	Events                   []AttemptEvent `json:",omitempty"`
+	// from; CyclesAtOpen and DucksAtOpen are the boot's cycles and ducks
+	// when it opened; Events lists what happened on it, in order
+	// (ml-pipeline §4.1). Attempts from before these fields read 0 and
+	// none. CyclesAtOpen keeps its JSON name from lives.
+	Offer        int
+	CyclesAtOpen int `json:"LivesAtOpen"`
+	DucksAtOpen  int
+	// At is the time bought with at on this door, already in Door.Timer:
+	// -O3 measures the timer without it (rules.O3OnBase).
+	At     time.Duration  `json:",omitempty"`
+	Events []AttemptEvent `json:",omitempty"`
 }
 
 // Upgrade is picked after each cleared door.
@@ -291,7 +364,7 @@ type Upgrade string
 
 const (
 	Overclock Upgrade = "overclock" // +OverclockFrac timer on later doors
-	ECC       Upgrade = "ecc"       // +1 life
+	ECC       Upgrade = "ecc"       // a failed submit costs clock, not cycles (rules.ECCPenalty); else a heal
 	Duck      Upgrade = "duck"      // +1 duck
 	ShufPick  Upgrade = "shuf"      // +1 shuf (locked until coreutils)
 )
@@ -304,7 +377,7 @@ const (
 	Nice      Daemon = "nice"       // +20% timer, every door pays 0.8x
 	Fork      Daemon = "fork"       // 4 doors per room after an AC
 	DevRandom Daemon = "dev-random" // mystery doors pay 2x
-	Kexec     Daemon = "kexec"      // one free door swap per biome
+	Kexec     Daemon = "kexec"      // one free door swap per biome (per act: rules.KexecPerAct)
 	Cron      Daemon = "cron"       // a regression door pays 2x
 	Chrt      Daemon = "chrt"       // -20% timer, every door pays 1.5x
 )
@@ -314,18 +387,20 @@ const (
 type Item string
 
 const (
-	Fsck Item = "fsck" // +1 life, up to MaxLives
+	Fsck Item = "fsck" // rules.FsckCycles, up to MaxCycles
 	Dup  Item = "dup"  // +1 duck
 	Shuf Item = "shuf" // one re-roll of a room's doors (Reroll), kept until used
 
 	At Item = "at" // more time on the next door's timer; sold once installed
 )
 
+// Crash is how a boot ended badly. An Abandoned boot crashed between doors:
+// its Door is the zero Door and it leaves no core dump of its own.
 type Crash struct {
-	Cause   Outcome // TimedOut, OutOfLives, GaveUp
+	Cause   Outcome // TimedOut, OutOfLives, GaveUp, Abandoned
 	Door    Door
 	Verdict Verdict // last verdict on the door, for quote matching
-	Lost    int64   // uncommitted bytes moved into the core dump
+	Lost    int64   // uncommitted bytes moved into the core dump (Abandoned: lost outright)
 	At      time.Time
 	Uptime  time.Duration
 
@@ -334,8 +409,8 @@ type Crash struct {
 	DumpLost int64
 
 	// Cursed is set when a failed submit on a cursed door ended the boot:
-	// the curse, not the lives, which it does not charge (State.Lives has
-	// what was left). Cause is OutOfLives then too, the failed-submit
+	// the curse, not the cycles, which it does not charge (State.Cycles
+	// has what was left). Cause is OutOfLives then too, the failed-submit
 	// family that screens and quotes group by.
 	Cursed bool
 }
@@ -356,10 +431,13 @@ type State struct {
 	Current *Attempt
 	History []Attempt
 
-	Lives, MaxLives int
-	Ducks           int
-	Uncommitted     int64 // lost on crash
-	Committed       int64 // banked this boot (also added to Meta.Bank)
+	// Cycles is the pool (D47, D48: lives renamed cycles), MaxCycles its
+	// cap. The JSON keys keep their names from lives.
+	Cycles      int `json:"Lives"`
+	MaxCycles   int `json:"MaxLives"`
+	Ducks       int
+	Uncommitted int64 // lost on crash
+	Committed   int64 // banked this boot (also added to Meta.Bank)
 
 	Upgrades       []Upgrade
 	Daemons        []Daemon
@@ -367,7 +445,7 @@ type State struct {
 	PendingUpgrade bool      // a cleared door earned an upgrade pick
 	UpgradeOffers  []Upgrade // what the pending pick offers
 	DaemonOffers   []Daemon  // what the current merge window offers
-	KexecUsed      bool      // per biome
+	KexecUsed      bool      // per biome, or per act (rules.KexecPerAct)
 
 	Crash *Crash
 	Log   []LogLine // dmesg
@@ -390,6 +468,15 @@ type State struct {
 	AtTime time.Duration
 	// Packages is Meta.Installed when the boot began: what it plays with.
 	Packages []string
+	// Caps is Meta.Capabilities when the boot began, as Packages snapshots
+	// apt: a map boot's exits read it, so a trial passed while the boot is
+	// suspended opens no route in it. nil in a boot saved before it.
+	Caps []string `json:",omitempty"`
+	// Fountain is what this merge window's fountain restored (0 outside a
+	// merge window and in one without a fountain), Fountained what every
+	// fountain of the boot restored (rules.FountainCycles).
+	Fountain   int `json:",omitempty"`
+	Fountained int `json:",omitempty"`
 	// Unlocked is the prestige this boot unlocked by its clear, 0 if none.
 	Unlocked int
 
@@ -463,8 +550,9 @@ type Ease struct {
 	// boots ended in Userland", "first boot in 5 days".
 	Why string
 
-	// Lives is how many lives it added at the boot's start.
-	Lives int `json:",omitempty"`
+	// Cycles is how many cycles it added at the boot's start; its JSON
+	// key keeps its name from lives.
+	Cycles int `json:"Lives,omitempty"`
 	// Ducks is how many ducks it added at the boot's start.
 	Ducks int `json:",omitempty"`
 	// Clear is, per biome, the clear chance its doors are aimed at instead
@@ -515,7 +603,7 @@ type Action interface{ isAction() }
 
 type ChooseRoute struct{ Index int } // PhaseRoute
 type ChooseDoor struct{ Index int }  // PhaseDoors
-type Retreat struct{}                // PhaseProblem: swap the door, costs a life (kexec: free once)
+type Retreat struct{}                // PhaseProblem: swap the door for cycles (kexec: free once), early in a door
 type Quack struct{}                  // PhaseProblem: use a duck
 type GiveUp struct{}                 // PhaseProblem: :q!
 
@@ -554,6 +642,14 @@ type Link struct{ Libs []string }
 // once, until the first door opens.
 type DeclineEase struct{}
 
+// Abandon ends the boot as a crash because the player starts another while
+// it is suspended (meta.md §(c)): the uncommitted bytes are lost, the core
+// dump an earlier boot left is destroyed, and the boot is logged as
+// abandoned (Crash.Cause). Between doors it is allowed in every phase but
+// the end; with a door open it is a give-up that ends the boot, as :q!
+// did before cycles. The governor does not count it.
+type Abandon struct{}
+
 func (ChooseRoute) isAction()  {}
 func (ChooseDoor) isAction()   {}
 func (Retreat) isAction()      {}
@@ -570,6 +666,7 @@ func (Link) isAction()         {}
 func (Spend) isAction()        {}
 func (Reroll) isAction()       {}
 func (DeclineEase) isAction()  {}
+func (Abandon) isAction()      {}
 
 // ---- outputs -----------------------------------------------------------------
 
@@ -603,7 +700,11 @@ var BossKeys = []string{"off-by-one", "heisenbug", "oom-killer", "race-condition
 
 const FinalBoss = "halting-problem"
 
-// MaxPrestige is the highest prestige level (0 Bronze ... 4 Advanced).
+// MaxPrestige is the highest prestige level a boot can play. The map's
+// ladder runs to P8 (map.md §(d), rules.MapAscensions); this stays 4 until
+// the story names P5-P8 (flavor's prestige table, rings, cleared.N and
+// grub.subtitle.prestige.N) and GRUB lists nine levels at 80x24. A rules
+// ladder can stop short of it (rules.Rules.TopPrestige).
 const MaxPrestige = 4
 
 // ---- logging (ml-pipeline §4.1, slice ML1) ----------------------------------

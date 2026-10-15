@@ -45,7 +45,7 @@ func (m *Model) failCost() string {
 	switch {
 	case st.Current.Door.Cursed:
 		return "a fail ends the boot (cursed)"
-	case cost >= st.Lives:
+	case cost >= st.Cycles:
 		return "a fail ends the boot (last " + ui.G.Life + ")"
 	}
 	return "a fail costs " + strings.Repeat(ui.G.Life, cost)
@@ -62,10 +62,10 @@ func (m *Model) retreatAsk() (string, bool) {
 	if slices.Contains(st.Daemons, game.Kexec) && !st.KexecUsed {
 		return "kexec: a free swap, once per biome · R again", true
 	}
-	if st.Lives <= 1 {
+	if st.Cycles <= 1 {
 		return "", false
 	}
-	return fmt.Sprintf("retreat: -1 %s, %d left · new doors · R again", ui.G.Life, st.Lives-1), true
+	return fmt.Sprintf("retreat: -1 %s, %d left · new doors · R again", ui.G.Life, st.Cycles-1), true
 }
 
 // doorLives is the boot's lives while one of its doors is open, -1
@@ -74,7 +74,7 @@ func (m *Model) doorLives() int {
 	if !m.inBootDoor() {
 		return -1
 	}
-	return m.state.Lives
+	return m.state.Cycles
 }
 
 // charged is what the verdict just stepped cost a boot that had lives
@@ -86,14 +86,14 @@ func (m *Model) charged(lives int) string {
 		return ""
 	}
 	lost := ""
-	if n := lives - s.Lives; n > 0 {
+	if n := lives - s.Cycles; n > 0 {
 		lost = fmt.Sprintf("-%d %s, ", n, ui.G.Life)
 	}
 	switch {
 	case s.Phase == game.PhaseCrashed:
 		return lost + "kernel panic"
 	case lost != "":
-		return fmt.Sprintf("%s%d left", lost, s.Lives)
+		return fmt.Sprintf("%s%d left", lost, s.Cycles)
 	}
 	return ""
 }

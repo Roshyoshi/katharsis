@@ -149,8 +149,8 @@ func play(t *testing.T, r rules.Rules, ps []catalog.Problem, seed uint64, mp *ga
 		case st.Uncommitted < 0 || st.Committed < 0 || meta.Bank < 0 || meta.LifetimeBytes < 0:
 			t.Fatalf("seed %d step %d: negative bytes: uncommitted %d committed %d bank %d lifetime %d",
 				seed, step, st.Uncommitted, st.Committed, meta.Bank, meta.LifetimeBytes)
-		case st.Lives < 0 || st.Lives > st.MaxLives:
-			t.Fatalf("seed %d step %d: lives %d of %d", seed, step, st.Lives, st.MaxLives)
+		case st.Cycles < 0 || st.Cycles > st.MaxCycles:
+			t.Fatalf("seed %d step %d: lives %d of %d", seed, step, st.Cycles, st.MaxCycles)
 		case st.Ducks < 0:
 			t.Fatalf("seed %d step %d: ducks %d", seed, step, st.Ducks)
 		}

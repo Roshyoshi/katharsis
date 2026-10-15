@@ -43,8 +43,8 @@ func TestNewBootLayout(t *testing.T) {
 	if s.Phase != game.PhaseDoors || len(s.Doors) != 3 {
 		t.Fatalf("phase %s with %d doors, want doors with 3", s.Phase, len(s.Doors))
 	}
-	if s.Lives != 3 || s.MaxLives != 5 || s.Ducks != 1 {
-		t.Errorf("lives %d/%d ducks %d, want 3/5 and 1", s.Lives, s.MaxLives, s.Ducks)
+	if s.Cycles != 3 || s.MaxCycles != 5 || s.Ducks != 1 {
+		t.Errorf("lives %d/%d ducks %d, want 3/5 and 1", s.Cycles, s.MaxCycles, s.Ducks)
 	}
 	pf, ok := has[game.Prefetch](h.fx)
 	if !ok || len(pf.Problems) != 3 {
@@ -68,7 +68,7 @@ func TestNewBootErrors(t *testing.T) {
 		unjudgeable[i].Judgeable = false
 	}
 	broken := rules.Standard()
-	broken.Lives = 0
+	broken.Cycles = 0
 	tests := []struct {
 		name     string
 		r        rules.Rules
@@ -98,13 +98,16 @@ func TestNewBootErrors(t *testing.T) {
 func TestBossKeys(t *testing.T) {
 	t.Parallel()
 	ps := dense(catalog.Topics, 800, 2600, 50)
+	// A linear boot meets The Halting Problem at the top of its rules'
+	// ladder (P4 for the legacy rules), and from there to MaxPrestige.
+	top := rules.Legacy().TopPrestige(game.MaxPrestige)
 	for p := 0; p <= game.MaxPrestige; p++ {
-		h := newHarness(t, rules.Standard(), &game.Meta{Prestige: p}, ps, p, uint64(p))
+		h := newHarness(t, rules.Legacy(), &game.Meta{Prestige: p}, ps, p, uint64(p))
 		got := h.s.Biomes[2].Boss
-		if p == game.MaxPrestige && got != game.FinalBoss {
+		if p >= top && got != game.FinalBoss {
 			t.Errorf("prestige %d boss %q, want %q", p, got, game.FinalBoss)
 		}
-		if p < game.MaxPrestige && !slices.Contains(game.BossKeys, got) {
+		if p < top && !slices.Contains(game.BossKeys, got) {
 			t.Errorf("prestige %d boss %q, want one of BossKeys", p, got)
 		}
 	}
@@ -504,8 +507,8 @@ func TestSubmit(t *testing.T) {
 		h.open(0)
 		fx := h.do(wa)
 		a := h.s.Current
-		if h.s.Lives != 2 || a.Failed != 1 || a.Submits != 1 || a.BestPass != 3 || a.Total != 10 || a.LastVerdict != "WA" {
-			t.Errorf("lives %d attempt %+v", h.s.Lives, a)
+		if h.s.Cycles != 2 || a.Failed != 1 || a.Submits != 1 || a.BestPass != 3 || a.Total != 10 || a.LastVerdict != "WA" {
+			t.Errorf("lives %d attempt %+v", h.s.Cycles, a)
 		}
 		if !slices.Equal(sounds(fx), []string{"wa"}) {
 			t.Errorf("sounds %v", sounds(fx))
@@ -519,8 +522,8 @@ func TestSubmit(t *testing.T) {
 		h := newHarness(t, plain(), nil, ps, 0, 1)
 		h.open(0)
 		h.do(game.SubmitResult{Verdict: "CE"})
-		if h.s.Lives != 3 || h.s.Phase != game.PhaseProblem {
-			t.Errorf("lives %d phase %s after CE", h.s.Lives, h.s.Phase)
+		if h.s.Cycles != 3 || h.s.Phase != game.PhaseProblem {
+			t.Errorf("lives %d phase %s after CE", h.s.Cycles, h.s.Phase)
 		}
 	})
 	t.Run("nice charges the normal life", func(t *testing.T) {
@@ -528,8 +531,8 @@ func TestSubmit(t *testing.T) {
 		h.s.Daemons = []game.Daemon{game.Nice}
 		h.open(0)
 		h.do(wa)
-		if h.s.Lives != 2 {
-			t.Errorf("lives %d, want 2", h.s.Lives)
+		if h.s.Cycles != 2 {
+			t.Errorf("lives %d, want 2", h.s.Cycles)
 		}
 	})
 	t.Run("a preset's nice can cost two", func(t *testing.T) {
@@ -539,12 +542,12 @@ func TestSubmit(t *testing.T) {
 		h.s.Daemons = []game.Daemon{game.Nice}
 		h.open(0)
 		h.do(wa)
-		if h.s.Lives != 1 {
-			t.Errorf("lives %d, want 1", h.s.Lives)
+		if h.s.Cycles != 1 {
+			t.Errorf("lives %d, want 1", h.s.Cycles)
 		}
 		h.do(wa)
-		if h.s.Phase != game.PhaseCrashed || h.s.Lives != 0 || h.s.Crash.Cause != game.OutOfLives {
-			t.Errorf("phase %s lives %d crash %+v", h.s.Phase, h.s.Lives, h.s.Crash)
+		if h.s.Phase != game.PhaseCrashed || h.s.Cycles != 0 || h.s.Crash.Cause != game.OutOfLives {
+			t.Errorf("phase %s lives %d crash %+v", h.s.Phase, h.s.Cycles, h.s.Crash)
 		}
 	})
 	t.Run("last life crashes", func(t *testing.T) {
@@ -571,8 +574,8 @@ func TestSubmit(t *testing.T) {
 		h.open(0)
 		h.do(wa)
 		// The curse ends it with lives to spare, and says so.
-		if h.s.Phase != game.PhaseCrashed || h.s.Crash.Cause != game.OutOfLives || !h.s.Crash.Cursed || h.s.Lives != 3 {
-			t.Errorf("phase %s lives %d crash %+v", h.s.Phase, h.s.Lives, h.s.Crash)
+		if h.s.Phase != game.PhaseCrashed || h.s.Crash.Cause != game.OutOfLives || !h.s.Crash.Cursed || h.s.Cycles != 3 {
+			t.Errorf("phase %s lives %d crash %+v", h.s.Phase, h.s.Cycles, h.s.Crash)
 		}
 		if last := h.s.Log[len(h.s.Log)-1].Text; !strings.Contains(last, "curse triggered") {
 			t.Errorf("last dmesg line %q", last)
@@ -650,8 +653,8 @@ func TestUpgrades(t *testing.T) {
 	h.now = h.now.Add(10 * time.Minute)
 	h.do(game.SubmitResult{Verdict: "AC"})
 	h.do(game.PickUpgrade{Upgrade: game.ECC})
-	if h.s.Lives != 3 {
-		t.Errorf("ECC: lives %d, want 3", h.s.Lives)
+	if h.s.Cycles != 3 {
+		t.Errorf("ECC: lives %d, want 3", h.s.Cycles)
 	}
 	h.clearDoor(0, 10*time.Minute)
 	h.do(game.PickUpgrade{Upgrade: game.Duck})
@@ -664,7 +667,7 @@ func TestUpgrades(t *testing.T) {
 
 	// ECC is not offered at full lives.
 	h = newHarness(t, plain(), nil, ps, 0, 1)
-	h.s.Lives = h.s.MaxLives
+	h.s.Cycles = h.s.MaxCycles
 	h.clearDoor(0, 10*time.Minute)
 	if slices.Contains(h.s.UpgradeOffers, game.ECC) || len(h.s.UpgradeOffers) != 2 {
 		t.Errorf("offers %v at full lives", h.s.UpgradeOffers)
@@ -726,8 +729,8 @@ func TestRetreat(t *testing.T) {
 	h := newHarness(t, plain(), nil, ps, 0, 1)
 	d := h.open(1)
 	fx := h.do(game.Retreat{})
-	if h.s.Lives != 2 || h.s.Phase != game.PhaseDoors || len(h.s.Doors) != 3 {
-		t.Fatalf("lives %d phase %s doors %d", h.s.Lives, h.s.Phase, len(h.s.Doors))
+	if h.s.Cycles != 2 || h.s.Phase != game.PhaseDoors || len(h.s.Doors) != 3 {
+		t.Fatalf("lives %d phase %s doors %d", h.s.Cycles, h.s.Phase, len(h.s.Doors))
 	}
 	if got := h.s.History[0]; got.Outcome != game.Retreated || got.Door.Problem != d.Problem {
 		t.Errorf("history %+v", got)
@@ -742,8 +745,8 @@ func TestRetreat(t *testing.T) {
 	h.open(0)
 	h.do(game.Retreat{})
 	h.open(0)
-	if err := h.try(game.Retreat{}); !errors.Is(err, game.ErrInvalid) || h.s.Lives != 1 {
-		t.Errorf("retreat on the last life: %v, lives %d", err, h.s.Lives)
+	if err := h.try(game.Retreat{}); !errors.Is(err, game.ErrInvalid) || h.s.Cycles != 1 {
+		t.Errorf("retreat on the last life: %v, lives %d", err, h.s.Cycles)
 	}
 
 	// kexec: the first per biome is free, and it resets at the next biome.
@@ -753,8 +756,8 @@ func TestRetreat(t *testing.T) {
 	h.do(game.Retreat{})
 	h.open(0)
 	h.do(game.Retreat{})
-	if h.s.Lives != 2 || !h.s.KexecUsed {
-		t.Errorf("kexec: lives %d used %v, want 2 and true", h.s.Lives, h.s.KexecUsed)
+	if h.s.Cycles != 2 || !h.s.KexecUsed {
+		t.Errorf("kexec: lives %d used %v, want 2 and true", h.s.Cycles, h.s.KexecUsed)
 	}
 	h.toMerge()
 	h.pick()
@@ -1093,7 +1096,7 @@ func TestFullClear(t *testing.T) {
 	tests := []struct {
 		unlocked, prestige, rated, want int
 	}{
-		{0, 0, 100, 1}, {1, 0, 100, 1}, {1, 1, 100, 2}, {4, 4, 100, 4},
+		{0, 0, 100, 1}, {1, 0, 100, 1}, {1, 1, 100, 2}, {4, 4, 100, min(5, game.MaxPrestige)}, {game.MaxPrestige, game.MaxPrestige, 100, game.MaxPrestige},
 		{0, 0, 0, 0}, // a newcomer clears but stays at prestige 0
 	}
 	for _, tc := range tests {
@@ -1128,8 +1131,8 @@ func TestPrestigeAscension(t *testing.T) {
 	}
 	for _, tc := range tests {
 		h := newHarness(t, r, &game.Meta{Prestige: 4}, ps, tc.prestige, 1)
-		if h.s.Lives != tc.lives || h.s.Ducks != tc.ducks {
-			t.Errorf("prestige %d: lives %d ducks %d, want %d and %d", tc.prestige, h.s.Lives, h.s.Ducks, tc.lives, tc.ducks)
+		if h.s.Cycles != tc.lives || h.s.Ducks != tc.ducks {
+			t.Errorf("prestige %d: lives %d ducks %d, want %d and %d", tc.prestige, h.s.Cycles, h.s.Ducks, tc.lives, tc.ducks)
 		}
 	}
 }

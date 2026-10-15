@@ -49,14 +49,14 @@ func TestFloorEase(t *testing.T) {
 	// Userland's first window holds the 800 and 820 doors of every topic.
 	door := (game.Expected(1000, 800) + game.Expected(1000, 820)) / 2
 	forecast := 1 - door*door
-	if !ok || !es.Buyback || es.Lives != 2 || es.Ducks != r.EaseDucks || math.Abs(s.Forecast-forecast) > 1e-9 {
+	if !ok || !es.Buyback || es.Cycles != 2 || es.Ducks != r.EaseDucks || math.Abs(s.Forecast-forecast) > 1e-9 {
 		t.Fatalf("easing %+v, forecast %.3f; want the floor's, forecast %.3f, 2 lives and a duck", s.Ease, s.Forecast, forecast)
 	}
 	if !strings.Contains(es.Why, "Userland") || !strings.Contains(es.Why, "800") {
 		t.Errorf("why %q names neither the biome nor the floor", es.Why)
 	}
-	if s.Lives != r.Lives+2 || s.MaxLives < s.Lives || s.Ducks != r.Ducks+r.EaseDucks {
-		t.Errorf("lives %d/%d ducks %d, want %d and %d", s.Lives, s.MaxLives, s.Ducks, r.Lives+2, r.Ducks+r.EaseDucks)
+	if s.Cycles != r.Cycles+2 || s.MaxCycles < s.Cycles || s.Ducks != r.Ducks+r.EaseDucks {
+		t.Errorf("lives %d/%d ducks %d, want %d and %d", s.Cycles, s.MaxCycles, s.Ducks, r.Cycles+2, r.Ducks+r.EaseDucks)
 	}
 	for _, d := range s.Doors {
 		k := d.TimerBuy
@@ -69,8 +69,8 @@ func TestFloorEase(t *testing.T) {
 	}
 
 	strong := newHarness(t, noRisk(), &game.Meta{Rating: 1600}, ps, 0, 1)
-	if len(strong.s.Ease) != 0 || strong.s.Lives != r.Lives {
-		t.Errorf("1600: easings %+v, lives %d", strong.s.Ease, strong.s.Lives)
+	if len(strong.s.Ease) != 0 || strong.s.Cycles != r.Cycles {
+		t.Errorf("1600: easings %+v, lives %d", strong.s.Ease, strong.s.Cycles)
 	}
 	for _, d := range strong.s.Doors {
 		if d.TimerBuy != 0 {
@@ -83,8 +83,8 @@ func TestFloorEase(t *testing.T) {
 
 	off := noRisk()
 	off.EaseAbove, off.BuybackTimers = 0, nil
-	if h := newHarness(t, off, nil, ps, 0, 1); len(h.s.Ease) != 0 || h.s.Lives != off.Lives {
-		t.Errorf("easing off: %+v, lives %d", h.s.Ease, h.s.Lives)
+	if h := newHarness(t, off, nil, ps, 0, 1); len(h.s.Ease) != 0 || h.s.Cycles != off.Cycles {
+		t.Errorf("easing off: %+v, lives %d", h.s.Ease, h.s.Cycles)
 	}
 }
 
@@ -99,7 +99,7 @@ func TestTimeoutLife(t *testing.T) {
 	if len(h.s.Ease) != 0 || !h.s.TimeoutCostsLife() {
 		t.Fatalf("easings %+v, timeout costs a life %v", h.s.Ease, h.s.TimeoutCostsLife())
 	}
-	lives := h.s.Lives
+	lives := h.s.Cycles
 	for n := 1; h.s.Phase != game.PhaseCrashed; n++ {
 		d := h.open(0)
 		rated := h.m.Rated
@@ -107,15 +107,15 @@ func TestTimeoutLife(t *testing.T) {
 		h.do(game.Tick{})
 		if h.s.Phase == game.PhaseCrashed {
 			// The last life is no spare one: that timeout ends the boot.
-			if n != lives || h.s.Lives != 1 || h.s.Crash.Cause != game.TimedOut {
-				t.Errorf("crashed on door %d of %d lives, %d left (%+v)", n, lives, h.s.Lives, h.s.Crash)
+			if n != lives || h.s.Cycles != 1 || h.s.Crash.Cause != game.TimedOut {
+				t.Errorf("crashed on door %d of %d lives, %d left (%+v)", n, lives, h.s.Cycles, h.s.Crash)
 			}
 			break
 		}
 		a := h.s.History[len(h.s.History)-1]
-		if h.s.Phase != game.PhaseDoors || h.s.Lives != lives-n || a.Outcome != game.TimedOut || h.m.Rated != rated+1 ||
+		if h.s.Phase != game.PhaseDoors || h.s.Cycles != lives-n || a.Outcome != game.TimedOut || h.m.Rated != rated+1 ||
 			h.s.Room != 0 || slices.ContainsFunc(h.s.Doors, func(o game.Door) bool { return o.Problem == d.Problem }) {
-			t.Fatalf("door %d: phase %s lives %d room %d, attempt %+v, rated %d", n, h.s.Phase, h.s.Lives, h.s.Room, a, h.m.Rated)
+			t.Fatalf("door %d: phase %s lives %d room %d, attempt %+v, rated %d", n, h.s.Phase, h.s.Cycles, h.s.Room, a, h.m.Rated)
 		}
 		if !slices.ContainsFunc(h.m.Regressions, func(g game.Regression) bool { return g.Problem == d.Problem }) {
 			t.Errorf("door %d: %s not scheduled to come back", n, d.Problem)
@@ -152,8 +152,8 @@ func TestDeclineEase(t *testing.T) {
 		t.Fatal("no easing to decline")
 	}
 	fx := h.do(game.DeclineEase{})
-	if !h.s.Declined || h.s.Lives != r.Lives || h.s.Ducks != r.Ducks || len(h.s.Ease) == 0 {
-		t.Fatalf("declined %v lives %d ducks %d easings %+v", h.s.Declined, h.s.Lives, h.s.Ducks, h.s.Ease)
+	if !h.s.Declined || h.s.Cycles != r.Cycles || h.s.Ducks != r.Ducks || len(h.s.Ease) == 0 {
+		t.Fatalf("declined %v lives %d ducks %d easings %+v", h.s.Declined, h.s.Cycles, h.s.Ducks, h.s.Ease)
 	}
 	if _, ok := has[game.Prefetch](fx); !ok {
 		t.Errorf("effects %v: the redrawn room is not fetched", fx)
@@ -203,12 +203,12 @@ func TestGovernor(t *testing.T) {
 	}
 	h := newHarness(t, r, m, ps, 0, 3)
 	es, ok := easeOf(h.s, game.EaseGovernor)
-	if !ok || es.Lives != r.GovernorLives || !slices.Equal(es.Clear, []float64{0.95, 0.78, 0.55}) ||
+	if !ok || es.Cycles != r.GovernorLives || !slices.Equal(es.Clear, []float64{0.95, 0.78, 0.55}) ||
 		es.Why != "the last 2 boots ended in Userland" {
 		t.Fatalf("easing %+v", h.s.Ease)
 	}
-	if h.s.Lives != r.Lives+r.GovernorLives || h.s.AimClear(0) != 0.95 || h.s.AimClear(1) != 0.78 {
-		t.Errorf("lives %d, aims %.2f %.2f", h.s.Lives, h.s.AimClear(0), h.s.AimClear(1))
+	if h.s.Cycles != r.Cycles+r.GovernorLives || h.s.AimClear(0) != 0.95 || h.s.AimClear(1) != 0.78 {
+		t.Errorf("lives %d, aims %.2f %.2f", h.s.Cycles, h.s.AimClear(0), h.s.AimClear(1))
 	}
 	want := game.Aim(m.Rating, 0.95)
 	if got := h.s.Target(m, "dp"); math.Abs(got-want) > 1e-9 {
@@ -222,8 +222,8 @@ func TestGovernor(t *testing.T) {
 	m2 := &game.Meta{Rating: 1600, Governor: game.Governor{EarlyCrashes: 2}}
 	h = newHarness(t, r, m2, ps, 0, 4)
 	h.do(game.DeclineEase{})
-	if h.s.AimClear(0) != r.Biomes[0].TargetClear || h.s.Lives != r.Lives {
-		t.Errorf("declined governor: aim %.2f lives %d", h.s.AimClear(0), h.s.Lives)
+	if h.s.AimClear(0) != r.Biomes[0].TargetClear || h.s.Cycles != r.Cycles {
+		t.Errorf("declined governor: aim %.2f lives %d", h.s.AimClear(0), h.s.Cycles)
 	}
 
 	// A full clear counts, and starts the early crashes over.
@@ -376,7 +376,7 @@ func TestComeback(t *testing.T) {
 			continue
 		}
 		if es.Why != fmt.Sprintf("first boot in %d days", tc.days) || h.s.AimClear(0) != r.Biomes[0].EaseClear ||
-			h.s.AimClear(1) != r.Biomes[1].TargetClear || es.Lives != 0 {
+			h.s.AimClear(1) != r.Biomes[1].TargetClear || es.Cycles != 0 {
 			t.Errorf("%s: easing %+v, aims %.2f %.2f", tc.name, es, h.s.AimClear(0), h.s.AimClear(1))
 		}
 		h.do(game.DeclineEase{})

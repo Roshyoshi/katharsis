@@ -28,11 +28,11 @@ func TestDmesgStrip(t *testing.T) {
 			t.Fatal("the doors line was not marked seen")
 		}
 		h.enterDoor()
-		lives := h.m.state.Lives
+		lives := h.m.state.Cycles
 		h.verdict = "WA"
 		h.send(submitMsg{})
-		if h.m.state.Lives != lives-1 {
-			t.Fatalf("lives %d after a WA, want %d", h.m.state.Lives, lives-1)
+		if h.m.state.Cycles != lives-1 {
+			t.Fatalf("lives %d after a WA, want %d", h.m.state.Cycles, lives-1)
 		}
 		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "judge: WA 3/10") || !strings.Contains(v, "-1 ♥") {
 			t.Fatalf("the pane does not say what the WA cost:\n%s", v)

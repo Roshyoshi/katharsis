@@ -160,7 +160,7 @@ func cases() []screenCase {
 		{"doors_userland", func() screens.Screen { return NewDoors(env(fixture.Userland())) }},
 		{"doors_declined", func() screens.Screen {
 			st := fixture.Userland()
-			st.Declined, st.Lives = true, 3
+			st.Declined, st.Cycles = true, 3
 			return NewDoors(env(st))
 		}},
 		{"doors_map", func() screens.Screen {
@@ -521,7 +521,7 @@ func TestMergeFitsItsLeaveRow(t *testing.T) {
 // cover, and sells nothing in a trial.
 func TestMergeSpendRows(t *testing.T) {
 	st := fixture.Merge()
-	st.Uncommitted, st.Lives, st.Rerolls = 40, st.MaxLives, 1
+	st.Uncommitted, st.Cycles, st.Rerolls = 40, st.MaxCycles, 1
 	v := ansi.Strip(NewMerge(env(st)).View(140, 40))
 	for _, want := range []string{"spend", "1 shuf held", "fsck", "64 B · lives full", "48 B · 8 B short", "shuf"} {
 		if !strings.Contains(v, want) {
@@ -1156,7 +1156,7 @@ func TestHUDBar(t *testing.T) {
 		// Userland's rule (D44): a timeout here costs a life, not the boot.
 		{"Userland, a spare life", func() *game.State {
 			st := fixture.Problem()
-			st.Biome, st.Lives = 0, 2
+			st.Biome, st.Cycles = 0, 2
 			st.Rules.Biomes[0].TimeoutLife = true
 			return st
 		}},

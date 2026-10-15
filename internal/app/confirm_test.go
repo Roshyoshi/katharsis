@@ -40,16 +40,16 @@ func samplesFailed(t *testing.T) *harness {
 // cost.
 func TestSubmitBangOverFailingSamples(t *testing.T) {
 	h := samplesFailed(t)
-	lives := h.m.state.Lives
+	lives := h.m.state.Cycles
 	req, reply := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
 	h.send(req)
 	rep, ok := answer(reply)
 	if !ok || rep.OK || !strings.Contains(rep.Text, "samples 0/1 pass") || !strings.Contains(rep.Text, ":Submit!") {
 		t.Fatalf(":Submit over failing samples answered %v %+v, want the :Submit! question", ok, rep)
 	}
-	if h.m.judging || h.m.state.Lives != lives || h.m.state.Current.Submits != 0 {
+	if h.m.judging || h.m.state.Cycles != lives || h.m.state.Current.Submits != 0 {
 		t.Fatalf("a refused :Submit judged or charged: judging %v lives %d submits %d",
-			h.m.judging, h.m.state.Lives, h.m.state.Current.Submits)
+			h.m.judging, h.m.state.Cycles, h.m.state.Current.Submits)
 	}
 	req, reply = session.NewRequest(session.Command{Cmd: session.CmdSubmit, Args: []string{session.ArgForce}})
 	_, cmd := h.m.Update(req)
@@ -58,8 +58,8 @@ func TestSubmitBangOverFailingSamples(t *testing.T) {
 	if rep, _ := answer(reply); !strings.HasPrefix(rep.Text, "WA 0/1") || !strings.HasSuffix(rep.Text, cost) {
 		t.Errorf(":Submit! answered %+v, want its verdict and %q", rep, cost)
 	}
-	if h.m.state.Lives != lives-1 {
-		t.Errorf("lives %d after :Submit!'s WA, want %d", h.m.state.Lives, lives-1)
+	if h.m.state.Cycles != lives-1 {
+		t.Errorf("lives %d after :Submit!'s WA, want %d", h.m.state.Cycles, lives-1)
 	}
 }
 
@@ -96,7 +96,7 @@ func TestRetreatAsks(t *testing.T) {
 		h.send(screens.StartBoot{Preset: "standard"})
 		h.enterDoor()
 		h.send(tea.WindowSizeMsg{Width: 60, Height: 30})
-		lives, door := h.m.state.Lives, h.m.state.Current.Door.Problem
+		lives, door := h.m.state.Cycles, h.m.state.Current.Door.Problem
 		h.send(key("R"))
 		if last := h.lastLine(); !strings.Contains(last, "retreat: -1 ♥") || !strings.Contains(last, "R again") {
 			t.Fatalf("keys row %q after R, want what the retreat costs", last)
@@ -105,8 +105,8 @@ func TestRetreatAsks(t *testing.T) {
 			t.Fatal("one R retreated")
 		}
 		h.send(key("R"))
-		if h.m.state.Lives != lives-1 || h.m.state.Current != nil && h.m.state.Current.Door.Problem == door {
-			t.Fatalf("R R: lives %d (want %d), current %+v", h.m.state.Lives, lives-1, h.m.state.Current)
+		if h.m.state.Cycles != lives-1 || h.m.state.Current != nil && h.m.state.Current.Door.Problem == door {
+			t.Fatalf("R R: lives %d (want %d), current %+v", h.m.state.Cycles, lives-1, h.m.state.Current)
 		}
 	})
 }
@@ -118,7 +118,7 @@ func TestChargedNamesTheCrash(t *testing.T) {
 		h := newHarness(t)
 		h.send(screens.StartBoot{Preset: "standard"})
 		h.enterDoor()
-		h.m.state.Lives = 1
+		h.m.state.Cycles = 1
 		lives := h.m.doorLives()
 		h.verdict = "WA"
 		h.send(submitMsg{})

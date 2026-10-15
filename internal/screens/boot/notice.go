@@ -63,8 +63,8 @@ func easeTerms(st *game.State, es game.Ease, after bool) []string {
 		out = append(out, "every door has an editorial")
 	}
 	out = append(out, aimTerms(st, es, after)...)
-	if es.Lives > 0 {
-		out = append(out, fmt.Sprintf("+%d ", es.Lives)+ui.Life.Render(ui.G.Life))
+	if es.Cycles > 0 {
+		out = append(out, fmt.Sprintf("+%d ", es.Cycles)+ui.Life.Render(ui.G.Life))
 	}
 	if es.Ducks > 0 {
 		out = append(out, "+"+ui.G.Duck+fmt.Sprint(es.Ducks))

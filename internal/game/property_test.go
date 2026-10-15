@@ -17,12 +17,13 @@ import (
 	"katharsis/internal/rules"
 )
 
-// next lists the phases each phase may move to in one Step.
+// next lists the phases each phase may move to in one Step. Every phase
+// but the end can crash: Abandon ends a suspended boot.
 var next = map[game.Phase][]game.Phase{
-	game.PhaseRoute:   {game.PhaseRoute, game.PhaseDoors},
-	game.PhaseDoors:   {game.PhaseDoors, game.PhaseProblem},
+	game.PhaseRoute:   {game.PhaseRoute, game.PhaseDoors, game.PhaseCrashed},
+	game.PhaseDoors:   {game.PhaseDoors, game.PhaseProblem, game.PhaseCrashed},
 	game.PhaseProblem: {game.PhaseProblem, game.PhaseDoors, game.PhaseMerge, game.PhaseCleared, game.PhaseCrashed},
-	game.PhaseMerge:   {game.PhaseMerge, game.PhaseRoute, game.PhaseDoors},
+	game.PhaseMerge:   {game.PhaseMerge, game.PhaseRoute, game.PhaseDoors, game.PhaseCrashed},
 	game.PhaseCrashed: {game.PhaseCrashed},
 	game.PhaseCleared: {game.PhaseCleared},
 }
@@ -46,6 +47,7 @@ type checker struct {
 	prestige0 int           // meta.Prestige when the boot began
 	gov0      game.Governor // meta.Governor when the boot began
 	ended     bool          // the boot's end was checked
+	merged    bool          // a merge window was reached (the early-crash count starts over)
 }
 
 // newChecker is called right after NewBoot or NewTrial, before the first
@@ -54,7 +56,7 @@ type checker struct {
 func newChecker(t testing.TB, s *game.State, m *game.Meta) *checker {
 	c := &checker{
 		t: t, bank0: m.Bank, lifetime0: m.LifetimeBytes, rated0: m.Rated, solves0: len(m.Solves),
-		dump0: mustJSON(t, m.CoreDump), phase: s.Phase, lives: s.Lives,
+		dump0: mustJSON(t, m.CoreDump), phase: s.Phase, lives: s.Cycles,
 		installed: slices.Clone(m.Installed), theme: m.Theme,
 		prestige0: m.Prestige,
 	}
@@ -79,14 +81,14 @@ func (c *checker) start(s *game.State, m *game.Meta) {
 		}
 		return
 	}
-	lives, kinds := max(1, r.Lives+r.Ascend(s.Prestige).Lives), map[game.EaseKind]bool{}
+	lives, kinds := max(1, r.Cycles+r.Ascend(s.Prestige).Cycles), map[game.EaseKind]bool{}
 	ducks := max(0, r.Ducks+r.Ascend(s.Prestige).Ducks) + r.Grants(s.Packages).Ducks
 	for _, es := range s.Ease {
-		if kinds[es.Kind] || es.Lives < 0 || es.Ducks < 0 || es.Why == "" {
+		if kinds[es.Kind] || es.Cycles < 0 || es.Ducks < 0 || es.Why == "" {
 			t.Fatalf("easing %+v in %+v", es, s.Ease)
 		}
 		kinds[es.Kind] = true
-		lives += es.Lives
+		lives += es.Cycles
 		ducks += es.Ducks
 		for _, bad := range []string{"easy", "assist", "mercy"} {
 			if strings.Contains(strings.ToLower(es.Why), bad) {
@@ -94,9 +96,9 @@ func (c *checker) start(s *game.State, m *game.Meta) {
 			}
 		}
 	}
-	if s.Lives != lives || s.Ducks != ducks || s.Declined {
+	if s.Cycles != lives || s.Ducks != ducks || s.Declined {
 		t.Fatalf("boot starts with %d lives, %d ducks (declined %v), want %d and %d from the rules and %+v",
-			s.Lives, s.Ducks, s.Declined, lives, ducks, s.Ease)
+			s.Cycles, s.Ducks, s.Declined, lives, ducks, s.Ease)
 	}
 	// Boot #1 is the first boot that is not a trial (Meta.Trials).
 	first := s.Boot == m.Trials+1
@@ -142,17 +144,18 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 		fail("%s -> %s is not a transition", c.phase, s.Phase)
 	}
 	c.phase = s.Phase
-	if s.Lives < 0 || s.Lives > s.MaxLives || s.Ducks < 0 {
-		fail("lives %d/%d ducks %d", s.Lives, s.MaxLives, s.Ducks)
+	c.merged = c.merged || s.Phase == game.PhaseMerge
+	if s.Cycles < 0 || s.Cycles > s.MaxCycles || s.Ducks < 0 {
+		fail("lives %d/%d ducks %d", s.Cycles, s.MaxCycles, s.Ducks)
 	}
-	if s.Lives == 0 && s.Phase != game.PhaseCrashed {
+	if s.Cycles == 0 && s.Phase != game.PhaseCrashed {
 		fail("no lives but not crashed")
 	}
 	// Only an ECC pick or an fsck gives a life back, one at a time.
-	if gain := s.Lives - c.lives; gain > 0 && (gain != 1 || a != game.PickUpgrade{Upgrade: game.ECC} && a != game.Spend{Item: game.Fsck}) {
-		fail("lives %d -> %d", c.lives, s.Lives)
+	if gain := s.Cycles - c.lives; gain > 0 && (gain != 1 || a != game.PickUpgrade{Upgrade: game.ECC} && a != game.Spend{Item: game.Fsck}) {
+		fail("lives %d -> %d", c.lives, s.Cycles)
 	}
-	c.lives = s.Lives
+	c.lives = s.Cycles
 	if s.UpgradePicks < 0 || s.PendingUpgrade != (s.UpgradePicks > 0) || s.PendingUpgrade != (len(s.UpgradeOffers) > 0) {
 		fail("picks %d pending %v offers %v", s.UpgradePicks, s.PendingUpgrade, s.UpgradeOffers)
 	}
@@ -213,11 +216,14 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 		fail("daemons %v on offer outside a merge window", s.DaemonOffers)
 	}
 	// A merge window or a clear sits past the last room of the biome it ends.
+	// An abandoned boot stopped wherever it was suspended, a merge window
+	// included.
 	done := 0
-	if s.Phase == game.PhaseMerge || s.Phase == game.PhaseCleared {
+	abandoned := s.Crash != nil && s.Crash.Cause == game.Abandoned
+	if s.Phase == game.PhaseMerge || s.Phase == game.PhaseCleared || abandoned {
 		done = 1
 	}
-	if s.Biome >= len(s.Biomes) || s.Room >= s.Biomes[s.Biome].Rooms+done || done == 1 && s.Room != s.Biomes[s.Biome].Rooms {
+	if s.Biome >= len(s.Biomes) || s.Room >= s.Biomes[s.Biome].Rooms+done || done == 1 && !abandoned && s.Room != s.Biomes[s.Biome].Rooms {
 		fail("biome %d room %d out of the layout", s.Biome, s.Room)
 	}
 	if len(s.Daemons) > s.Rules.MaxDaemons || len(slices.Compact(slices.Sorted(slices.Values(s.Daemons)))) != len(s.Daemons) {
@@ -274,13 +280,19 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 			}
 		case s.Crash.DumpLost != c.dumpLost:
 			fail("crash destroyed %d B of dump, want the %d B the boot started with", s.Crash.DumpLost, c.dumpLost)
+		case s.Crash.Cause == game.Abandoned:
+			// Abandoned between doors: no door to dump on, so the bytes
+			// are lost outright.
+			if d != nil || s.Crash.Door.Problem != "" {
+				fail("abandoned boot left core dump %+v, door %+v", d, s.Crash.Door)
+			}
 		case (lost > 0) != (d != nil) || d != nil && (d.Problem != s.Crash.Door.Problem || d.Bytes != lost):
 			fail("crash lost %d, core dump %+v", lost, d)
 		}
 	} else if got := mustJSON(t, m.CoreDump); got != c.dump0 {
 		fail("core dump %s became %s without a crash", c.dump0, got)
 	}
-	if s.Crash != nil && s.Trial == nil {
+	if s.Crash != nil && s.Trial == nil && s.Crash.Cause != game.Abandoned {
 		// The problem that crashed you comes back, from stage 0.
 		i := slices.IndexFunc(m.Regressions, func(g game.Regression) bool { return g.Problem == s.Crash.Door.Problem })
 		if i < 0 || m.Regressions[i].Stage != 0 || !m.Regressions[i].Due.Equal(s.Crash.At.AddDate(0, 0, s.Rules.RegressionDays[0])) {
@@ -425,8 +437,8 @@ func checkLog(s *game.State, fail func(string, ...any)) {
 		atts = append(atts, *s.Current)
 	}
 	for _, a := range atts {
-		if a.Offer < 0 || a.Offer >= len(s.Offers) || s.Offers[a.Offer].Kind != "doors" || a.LivesAtOpen < 1 {
-			fail("attempt %+v: offer %d of %d, lives at open %d", a.Door, a.Offer, len(s.Offers), a.LivesAtOpen)
+		if a.Offer < 0 || a.Offer >= len(s.Offers) || s.Offers[a.Offer].Kind != "doors" || a.CyclesAtOpen < 1 {
+			fail("attempt %+v: offer %d of %d, lives at open %d", a.Door, a.Offer, len(s.Offers), a.CyclesAtOpen)
 		}
 		if o := s.Offers[a.Offer]; o.Chosen < 0 || o.Items[o.Chosen].Problem != a.Door.Problem {
 			fail("attempt %+v chosen from offer %+v", a.Door, o)
@@ -490,6 +502,12 @@ func (c *checker) checkEase(s *game.State, m *game.Meta, a game.Action, err erro
 		want := c.gov0
 		switch {
 		case s.Trial != nil:
+		case s.Crash != nil && s.Crash.Cause == game.Abandoned:
+			// Not counted, but a merge window reached starts the early
+			// crashes over.
+			if c.merged {
+				want.EarlyCrashes = 0
+			}
 		case s.Phase == game.PhaseCleared:
 			want = game.Governor{FullClears: want.FullClears + 1}
 		case s.Biome == 0:
@@ -545,6 +563,10 @@ func (f *fuzzer) action(s *game.State) game.Action {
 			return game.Reroll{}
 		case 13:
 			return game.DeclineEase{}
+		case 14:
+			if r.IntN(25) == 0 {
+				return game.Abandon{}
+			}
 		}
 		return nil
 	}

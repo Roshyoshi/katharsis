@@ -32,16 +32,16 @@ func TestSpend(t *testing.T) {
 		}
 	}
 	refuse("bogus", "not sold")
-	s.Lives = s.MaxLives
+	s.Cycles = s.MaxCycles
 	refuse(game.Fsck, "full lives")
-	s.Lives = 2
+	s.Cycles = 2
 	s.Uncommitted = r.FsckPrice + r.DupPrice + r.ShufPrice - 1
 	earned, ducks := s.Uncommitted, s.Ducks
 
 	h.do(game.Spend{Item: game.Fsck})
 	h.do(game.Spend{Item: game.Dup})
-	if s.Lives != 3 || s.Ducks != ducks+1 || s.Spent != r.FsckPrice+r.DupPrice || s.Uncommitted != earned-s.Spent {
-		t.Errorf("after fsck and dup: lives %d ducks %d spent %d uncommitted %d", s.Lives, s.Ducks, s.Spent, s.Uncommitted)
+	if s.Cycles != 3 || s.Ducks != ducks+1 || s.Spent != r.FsckPrice+r.DupPrice || s.Uncommitted != earned-s.Spent {
+		t.Errorf("after fsck and dup: lives %d ducks %d spent %d uncommitted %d", s.Cycles, s.Ducks, s.Spent, s.Uncommitted)
 	}
 	refuse(game.Shuf, "a byte short")
 	s.Uncommitted++
@@ -127,7 +127,7 @@ func TestSpendThenCrash(t *testing.T) {
 	h := newHarness(t, plain(), nil, ps, 0, 1)
 	h.toMerge()
 	h.pick()
-	h.s.Lives = 1
+	h.s.Cycles = 1
 	earned := h.s.Uncommitted
 	h.do(game.Spend{Item: game.Fsck})
 	h.do(game.LeaveMerge{})

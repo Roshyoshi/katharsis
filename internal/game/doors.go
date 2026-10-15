@@ -576,7 +576,8 @@ func (e *engine) routeOffers(i, k int, used map[string]bool) []string {
 
 // layout builds the boot's biomes from the rules: topics for fixed biomes,
 // route offers for choice biomes, and boss keys (distinct per boot until
-// they run out; The Halting Problem ends a max-prestige boot).
+// they run out; The Halting Problem ends a boot at the top of the rules'
+// ladder, rules.Rules.TopPrestige).
 func (e *engine) layout() {
 	s := e.s
 	r := &s.Rules
@@ -590,7 +591,7 @@ func (e *engine) layout() {
 			b.Rooms, b.Topic = 1, Mixed
 			b.Boss = keys[bosses%len(keys)]
 			bosses++
-			if s.Prestige == MaxPrestige && i == len(r.Biomes)-1 {
+			if s.Prestige >= r.TopPrestige(MaxPrestige) && i == len(r.Biomes)-1 {
 				b.Boss = FinalBoss
 			}
 		case rules.Choice:

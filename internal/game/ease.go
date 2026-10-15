@@ -55,10 +55,10 @@ func (e *engine) planAim() {
 		}
 		if clear != nil || r.GovernorLives > 0 {
 			s.Ease = append(s.Ease, Ease{
-				Kind:  EaseGovernor,
-				Why:   fmt.Sprintf("the last %d boots ended in %s", n, first),
-				Clear: clear,
-				Lives: r.GovernorLives,
+				Kind:   EaseGovernor,
+				Why:    fmt.Sprintf("the last %d boots ended in %s", n, first),
+				Clear:  clear,
+				Cycles: r.GovernorLives * r.Life(),
 			})
 		}
 	}
@@ -76,18 +76,18 @@ func (e *engine) planFloor() {
 		if r.EaseAbove > 0 && f.crash > r.EaseAbove {
 			// D34's life, and one more for each further EaseAbove of
 			// forecast crashes, up to EaseLives.
-			es.Lives = min(r.EaseLives, int(math.Ceil(f.crash/r.EaseAbove))-1)
+			es.Cycles = min(r.EaseLives, int(math.Ceil(f.crash/r.EaseAbove))-1) * r.Life()
 			es.Ducks = r.EaseDucks
 		}
-		if es.Buyback || es.Lives > 0 || es.Ducks > 0 {
+		if es.Buyback || es.Cycles > 0 || es.Ducks > 0 {
 			es.Why = fmt.Sprintf("%s's easiest doors in the pool are rated %d", first, f.low)
 			s.Ease = append(s.Ease, es)
 		}
 	}
 	for _, es := range s.Ease {
-		s.Lives += es.Lives
+		s.Cycles += es.Cycles
 		s.Ducks += es.Ducks
-		s.MaxLives = max(s.MaxLives, s.Lives)
+		s.MaxCycles = max(s.MaxCycles, s.Cycles)
 		e.logf("ease: %s (%s)%s", es.Kind, es.Why, easeTerms(es))
 	}
 	if f.floor || len(s.Ease) > 0 {
@@ -104,8 +104,8 @@ func easeTerms(es Ease) string {
 	if es.Editorial {
 		t += ", every door has an editorial"
 	}
-	if es.Lives > 0 {
-		t += fmt.Sprintf(", +%d lives", es.Lives)
+	if es.Cycles > 0 {
+		t += fmt.Sprintf(", +%d lives", es.Cycles)
 	}
 	if es.Ducks > 0 {
 		t += fmt.Sprintf(", +%d ducks", es.Ducks)
@@ -322,14 +322,6 @@ func (e *engine) buyTimers(doors []Door) {
 	}
 }
 
-// TimeoutCostsLife reports whether the open door's timer running out now
-// would cost a life instead of the boot (rules.Biome.TimeoutLife, D44):
-// the biome says so and a spare life is left. The door screen says it in
-// these terms.
-func (s *State) TimeoutCostsLife() bool {
-	return s.Trial == nil && s.Biome < len(s.Rules.Biomes) && s.Rules.Biomes[s.Biome].TimeoutLife && s.Lives > 1
-}
-
 // saveTimeout answers a door's timer running out where that costs a life
 // (TimeoutCostsLife): the door closes as timed out (rated, and back as a
 // regression, like a crash), the life goes, and the room is drawn again,
@@ -342,8 +334,8 @@ func (e *engine) saveTimeout() bool {
 	}
 	name := e.door()
 	a := e.close(TimedOut)
-	s.Lives--
-	e.logf("%s: timer expired, -1 life, %d left", name, s.Lives)
+	s.Cycles--
+	e.logf("%s: timer expired, -1 life, %d left", name, s.Cycles)
 	e.regress(a.Door.Problem)
 	e.emit(CloseProblem{Door: a.Door}, Sound{Name: "wa"})
 	s.Phase = PhaseDoors
@@ -374,14 +366,14 @@ func (e *engine) declineEase() error {
 	}
 	lives, ducks := 0, 0
 	for _, es := range s.Ease {
-		lives += es.Lives
+		lives += es.Cycles
 		ducks += es.Ducks
 	}
 	s.Declined = true
-	s.Lives = max(1, s.Lives-lives)
+	s.Cycles = max(1, s.Cycles-lives)
 	s.Ducks = max(0, s.Ducks-ducks)
-	s.MaxLives = max(s.Rules.MaxLives, s.Lives)
-	e.logf("ease: declined, %d lives, %d ducks", s.Lives, s.Ducks)
+	s.MaxCycles = max(s.Rules.MaxCycles, s.Cycles)
+	e.logf("ease: declined, %d lives, %d ducks", s.Cycles, s.Ducks)
 	if s.Phase == PhaseDoors {
 		e.rollRoom(true, "decline")
 	}

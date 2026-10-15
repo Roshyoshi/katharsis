@@ -114,8 +114,8 @@ func (e *engine) begin() {
 	m.LastPlayed = e.now
 	s.Boot = m.Boots
 	s.AtStart = startOf(s, m) // debrief.go
-	s.Lives = max(1, r.Lives+r.Ascend(s.Prestige).Lives)
-	s.MaxLives = max(r.MaxLives, s.Lives)
+	s.Cycles = max(1, r.Cycles+r.Ascend(s.Prestige).Cycles)
+	s.MaxCycles = max(r.MaxCycles, s.Cycles)
 	s.Packages = slices.Clone(m.Installed)
 	// A package's ducks come once, at the start; merge windows refill to
 	// the base.
@@ -171,6 +171,8 @@ func Step(s *State, meta *Meta, pool []catalog.Problem, a Action, now time.Time)
 		err = e.reroll()
 	case DeclineEase:
 		err = e.declineEase()
+	case Abandon:
+		err = e.abandon()
 	default:
 		err = invalid("unknown action %T", a)
 	}
@@ -227,7 +229,7 @@ func (e *engine) chooseDoor(i int) error {
 	}
 	s.Current = &Attempt{
 		Door: d, Opened: e.now, Deadline: e.now.Add(d.Timer), Biome: s.Biome,
-		Offer: e.choose("doors", i), LivesAtOpen: s.Lives, DucksAtOpen: s.Ducks,
+		Offer: e.choose("doors", i), CyclesAtOpen: s.Cycles, DucksAtOpen: s.Ducks,
 	}
 	s.Doors = nil
 	s.Phase = PhaseProblem
@@ -312,7 +314,7 @@ func (e *engine) submit(v SubmitResult) error {
 	if a.Door.Cursed {
 		// The curse takes the boot, not a life: lives left stay on the
 		// record for the crash screen.
-		e.logf("%s: %s %d/%d on a cursed door, %d lives left", e.door(), v.Verdict, v.Passed, v.Total, s.Lives)
+		e.logf("%s: %s %d/%d on a cursed door, %d lives left", e.door(), v.Verdict, v.Passed, v.Total, s.Cycles)
 		e.crash(OutOfLives, true)
 		return nil
 	}
@@ -320,9 +322,9 @@ func (e *engine) submit(v SubmitResult) error {
 	if slices.Contains(s.Daemons, Nice) {
 		cost = s.Rules.NiceLifeCost
 	}
-	s.Lives = max(0, s.Lives-cost)
-	e.logf("%s: %s %d/%d, -%d life, %d left", e.door(), v.Verdict, v.Passed, v.Total, cost, s.Lives)
-	if s.Lives == 0 {
+	s.Cycles = max(0, s.Cycles-cost)
+	e.logf("%s: %s %d/%d, -%d life, %d left", e.door(), v.Verdict, v.Passed, v.Total, cost, s.Cycles)
+	if s.Cycles == 0 {
 		e.crash(OutOfLives, false)
 		return nil
 	}
@@ -400,7 +402,7 @@ func (e *engine) retreat() error {
 		return invalid("a trial door can't be swapped")
 	}
 	free := slices.Contains(s.Daemons, Kexec) && !s.KexecUsed
-	if !free && s.Lives <= 1 {
+	if !free && s.Cycles <= 1 {
 		return invalid("retreat needs a spare life")
 	}
 	name := e.door()
@@ -409,8 +411,8 @@ func (e *engine) retreat() error {
 		s.KexecUsed = true
 		e.logf("%s: kexec, free swap", name)
 	} else {
-		s.Lives--
-		e.logf("%s: retreat, -1 life, %d left", name, s.Lives)
+		s.Cycles--
+		e.logf("%s: retreat, -1 life, %d left", name, s.Cycles)
 	}
 	e.emit(CloseProblem{Door: a.Door})
 	s.Phase = PhaseDoors
@@ -602,7 +604,7 @@ func (e *engine) offerUpgrades() {
 	s := e.s
 	var pool []Upgrade
 	for _, u := range AllUpgrades {
-		if (u != ECC || s.Lives < s.MaxLives) && !s.UpgradeLocked(u) {
+		if (u != ECC || s.Cycles < s.MaxCycles) && !s.UpgradeLocked(u) {
 			pool = append(pool, u)
 		}
 	}
@@ -628,13 +630,13 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 			s.Doors[i].Timer = roundTimer(scale(s.Doors[i].Timer, 1+s.Rules.OverclockFrac))
 		}
 	case ECC:
-		s.Lives = min(s.Lives+1, s.MaxLives)
+		s.Cycles = min(s.Cycles+1, s.MaxCycles)
 	case Duck:
 		s.Ducks++
 	case ShufPick:
 		s.Rerolls++
 	}
-	e.logf("upgrade: %s (lives %d, ducks %d, shufs %d)", u, s.Lives, s.Ducks, s.Rerolls)
+	e.logf("upgrade: %s (lives %d, ducks %d, shufs %d)", u, s.Cycles, s.Ducks, s.Rerolls)
 	s.UpgradeOffers = nil
 	e.owe(-1)
 	return nil

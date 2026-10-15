@@ -55,7 +55,7 @@ func (m *Model) audioSnap() audioSnap {
 		return a
 	}
 	a.boot, a.phase, a.biome, a.room = s.Boot, s.Phase, s.Biome, s.Room
-	a.lives, a.uncommitted, a.committed = s.Lives, s.Uncommitted, s.Committed
+	a.lives, a.uncommitted, a.committed = s.Cycles, s.Uncommitted, s.Committed
 	a.picks = len(s.Upgrades) + len(s.Daemons)
 	if c := s.Current; c != nil {
 		a.quacks = c.Quacks

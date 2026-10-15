@@ -358,7 +358,7 @@ func itemOptions(st *game.State) []option {
 		name, desc := itemText(it, st.Rules)
 		desc += ui.G.Sep + units.Bytes(st.Price(it))
 		switch {
-		case it == game.Fsck && st.Lives >= st.MaxLives:
+		case it == game.Fsck && st.Cycles >= st.MaxCycles:
 			desc += ui.G.Sep + "lives full"
 		case st.Uncommitted < st.Price(it):
 			desc += ui.G.Sep + units.Bytes(st.Price(it)-st.Uncommitted) + " short"

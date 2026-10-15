@@ -42,10 +42,10 @@ func TestLoadDir(t *testing.T) {
 	if got, want := slices.Sorted(maps.Keys(ps.byName)), []string{"fast", "hard"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("loaded %v, want %v", got, want)
 	}
-	if r := ps.byName["hard"]; r.Name != "hard" || r.Lives != 1 || r.Ducks != rules.Standard().Ducks {
+	if r := ps.byName["hard"]; r.Name != "hard" || r.Cycles != 1 || r.Ducks != rules.Standard().Ducks {
 		t.Errorf("hard = %+v: want its name, lives 1 and the rest standard", r)
 	}
-	if r := ps.byName["fast"]; r.Name != "fast" || r.Lives != 2 {
+	if r := ps.byName["fast"]; r.Name != "fast" || r.Cycles != 2 {
 		t.Errorf("fast = %+v: want it named after its file, lives 2", r)
 	}
 

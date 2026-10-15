@@ -184,13 +184,13 @@ func TestPackageEffects(t *testing.T) {
 	// coreutils: shuf joins the upgrade picks; a pick holds a shuf. At
 	// full lives the pool is overclock, duck and shuf, all on offer.
 	h = boot()
-	h.s.MaxLives = h.s.Lives
+	h.s.MaxCycles = h.s.Cycles
 	h.clearDoor(0, 10*time.Minute)
 	if slices.Contains(h.s.UpgradeOffers, game.ShufPick) {
 		t.Errorf("shuf offered without coreutils: %v", h.s.UpgradeOffers)
 	}
 	h = boot("coreutils")
-	h.s.MaxLives = h.s.Lives
+	h.s.MaxCycles = h.s.Cycles
 	h.clearDoor(0, 10*time.Minute)
 	if !slices.Contains(h.s.UpgradeOffers, game.ShufPick) {
 		t.Fatalf("coreutils: offers %v, want shuf among them", h.s.UpgradeOffers)
@@ -208,7 +208,7 @@ func TestPackageEffects(t *testing.T) {
 	h.now = h.now.Add(10 * time.Minute)
 	h.do(game.SubmitResult{Verdict: "AC", Passed: 10, Total: 10})
 	if want := h.s.Rules.UpgradeOffers + 1; len(h.s.UpgradeOffers) != want {
-		t.Errorf("aptitude at %d/%d lives: offers %v, want %d", h.s.Lives, h.s.MaxLives, h.s.UpgradeOffers, want)
+		t.Errorf("aptitude at %d/%d lives: offers %v, want %d", h.s.Cycles, h.s.MaxCycles, h.s.UpgradeOffers, want)
 	}
 
 	// at: sold only once installed; it adds its time to the next door

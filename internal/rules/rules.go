@@ -70,20 +70,67 @@ type Biome struct {
 	// (blind_all) still applies.
 	Plain int `toml:"plain"`
 	// TimeoutLife makes a door whose timer runs out in this biome cost a
-	// life instead of the boot while a spare life is left, as a retreat
-	// would: the door closes, rated as failed, and the room is drawn again
-	// (D44, Userland only by default; elsewhere a timeout ends the boot).
+	// life (Rules.LifeCycles) instead of the boot while more is left, as a
+	// retreat would: the door closes, rated as failed, and the room is
+	// drawn again (D44). It is the rule of a boot saved before cycles;
+	// FailCycles supersedes it.
 	TimeoutLife bool `toml:"timeout_life"`
+
+	// FailCycles, above 0, makes a timeout or a give-up (:q!) in this biome
+	// burn this many cycles instead of ending the boot, while more than
+	// that is left (D47: 10 a room, scaled by act; 20 a boss). The door
+	// closes, rated as failed and back as a regression; Rules.FailMoveOn
+	// says whether the room is lost or drawn again. A burn that would
+	// leave none ends the boot, and so does a one-shot boss (Rules.OneShot).
+	// 0 is the rule before cycles: a timeout ends the boot (TimeoutLife
+	// aside) and so does a give-up.
+	FailCycles int `toml:"fail_cycles"`
+
+	// ---- a map node (docs/design/map.md §(c), §(h)) ------------------------
+	//
+	// A Biome in Rules.Nodes is a node of the boot's map. Zero values keep
+	// a linear biome, so Rules.Biomes and old snapshots read as before.
+
+	// ID names the node; Tier is the index into Rules.Biomes (the tier
+	// skeleton) it plays at; Next lists the node IDs its exit leads to,
+	// each of the next tier.
+	ID   string   `toml:"id"`
+	Tier int      `toml:"tier"`
+	Next []string `toml:"next"`
+	// Topic is the doors' topic, "" for mixed. A topic node is gated by
+	// the topic's capability (game.TopicCapabilities), which Package, when
+	// installed, also opens (git opens Bisect Bridge, `git bisect`).
+	Topic   string `toml:"topic"`
+	Package string `toml:"package"`
+	// Boss is a boss node's key (game.BossKeys, game.FinalBoss); exactly
+	// the nodes of a boss tier name one.
+	Boss string `toml:"boss"`
+	// MinPrestige gates the node behind a prestige level (Undefined
+	// Behavior at 1, The Framebuffer at 2).
+	MinPrestige int `toml:"min_prestige"`
+	// Picks are upgrade picks owed when the node's last room is cleared:
+	// a scroll at a gated biome's exit.
+	Picks int `toml:"picks"`
+	// Skip is an exit past its tier: no room, Picks owed, and the next tier
+	// entered at once (Dead Cells' Guardian's Haven: two scrolls for the
+	// level skipped).
+	Skip bool `toml:"skip"`
 }
 
 type Rules struct {
 	Name string `toml:"name"`
 
-	Lives        int `toml:"lives"`
-	MaxLives     int `toml:"max_lives"`
+	// Cycles is the pool a boot starts with and MaxCycles its cap (D47,
+	// D48: lives renamed cycles, drawn as ♥). The keys keep the names they
+	// had as lives, so presets and saved boots read as they did.
+	Cycles       int `toml:"lives" json:"Lives"`
+	MaxCycles    int `toml:"max_lives" json:"MaxLives"`
 	Ducks        int `toml:"ducks"` // charges at boot start and per refill
 	DoorsPerRoom int `toml:"doors_per_room"`
 
+	// Biomes are the boot's biomes in order. With Nodes set they are the
+	// map's tier skeleton instead: each tier's kind, and the defaults the
+	// map shows before an exit is taken.
 	Biomes []Biome `toml:"biome"`
 
 	// Door modifiers: chance per door, and the byte multiplier each pays.
@@ -189,7 +236,7 @@ type Rules struct {
 	// of 0 takes the item off sale. Prices are bytes, so a preset that
 	// scales base_bytes should scale them too: a cleared door pays about
 	// BaseBytes/2 in Userland and BaseBytes/1.4 in the mid biome.
-	FsckPrice int64 `toml:"fsck_price"` // +1 life, up to MaxLives
+	FsckPrice int64 `toml:"fsck_price"` // FsckCycles, up to MaxCycles
 	DupPrice  int64 `toml:"dup_price"`  // +1 duck
 	ShufPrice int64 `toml:"shuf_price"` // a re-roll of a room's doors, kept until used
 	// at is sold only once its package is installed.
@@ -201,11 +248,11 @@ type Rules struct {
 	ForkDoors     int     `toml:"fork_doors"`      // doors per room after an AC
 	NiceTimerFrac float64 `toml:"nice_timer_frac"` // timer bonus
 	NiceBytesFrac float64 `toml:"nice_bytes_frac"` // pay cut on every door
-	// NiceLifeCost is the lives a failed submit costs while nice runs. Nice
-	// pays for its time in bytes (NiceBytesFrac) since the alpha, so this
-	// is 1, the normal charge: at 2 it traded survival for survival, +20%
-	// time for a doubled charge on every miss. A preset may still set it.
-	// A boot saved before the change keeps its snapshot's 2 and,
+	// NiceLifeCost multiplies what a failed submit burns while nice runs.
+	// Nice pays for its time in bytes (NiceBytesFrac) since the alpha, so
+	// this is 1, the normal charge: at 2 it traded survival for survival,
+	// +20% time for a doubled charge on every miss. A preset may still set
+	// it. A boot saved before the change keeps its snapshot's 2 and,
 	// NiceBytesFrac being 0 there, its full pay.
 	NiceLifeCost  int     `toml:"nice_life_cost"`
 	DevRandomMult float64 `toml:"dev_random_mult"` // extra pay on mystery doors
@@ -299,14 +346,14 @@ type Rules struct {
 
 	// EaseAbove is the forecast chance of crashing in the first biome above
 	// which a boot eases off there. The forecast is the engine's own: the
-	// best clear chance the pool allows in each room of the biome. It binds
-	// for a low-rated player, whose aim sits below the pool's floor (no
-	// local problem is rated under 800). An eased boot gets lives (D34),
-	// which a timeout there costs instead of the boot (Biome.TimeoutLife).
-	// EaseLives is the most lives it adds: D34's one, and one more for
-	// each further EaseAbove of forecast crashes; and EaseDucks more ducks
-	// (neuro P1.2 buys the clear chance back with lives, time or ducks). 0
-	// turns it off.
+	// best clear chance the pool allows in each room of the biome, and
+	// under cycles the chance its failures burn the pool. It binds for a
+	// low-rated player, whose aim sits below the pool's floor (no local
+	// problem is rated under 800). An eased boot gets lives (D34), each
+	// LifeCycles cycles. EaseLives is the most lives it adds: D34's one,
+	// and one more for each further EaseAbove of forecast crashes; and
+	// EaseDucks more ducks (neuro P1.2 buys the clear chance back with
+	// lives, time or ducks). 0 turns it off.
 	EaseAbove float64 `toml:"ease_above"`
 	EaseLives int     `toml:"ease_lives"`
 	EaseDucks int     `toml:"ease_ducks"`
@@ -322,9 +369,9 @@ type Rules struct {
 	BuybackMargin float64   `toml:"buyback_margin"`
 	// GovernorAfter is how many boots in a row that crashed in the first
 	// biome make the next aim every biome at its EaseClear, with
-	// GovernorLives more lives (the aim cannot move below the pool's floor;
-	// a life can); reaching a merge window starts the count over. 0 turns
-	// it off.
+	// GovernorLives more lives, each LifeCycles cycles (the aim cannot move
+	// below the pool's floor; a life can); reaching a merge window starts
+	// the count over. 0 turns it off.
 	GovernorAfter int `toml:"governor_after"`
 	GovernorLives int `toml:"governor_lives"`
 	// ComebackDays is how many days away make the next boot a comeback:
@@ -342,6 +389,175 @@ type Rules struct {
 	FirstBiomes    []Biome `toml:"first_biome"`
 	FirstDoor      bool    `toml:"first_door"`
 	FirstEditorial bool    `toml:"first_editorial"`
+
+	// ---- cycles (D47, docs/research/meta.md) ---------------------------------
+	//
+	// Every price is in cycles. A zero price is one life, LifeCycles
+	// cycles: the rule of a boot saved before cycles, whose lives are
+	// cycles one apiece.
+
+	// LifeCycles is what one life of the rules before cycles is worth: the
+	// easings' lives (EaseLives, GovernorLives) are dealt in it, and an
+	// unset price costs one. 0 means 1.
+	LifeCycles int `toml:"life_cycles"`
+	// SubmitCycles is what a charged failed submit (not CE, not a sample
+	// failure: FreeVerdicts) burns, before the ascensions' SubmitCycles.
+	SubmitCycles int `toml:"submit_cycles"`
+	// RetreatCycles is what a retreat burns; a retreat that would leave
+	// none is refused.
+	RetreatCycles int `toml:"retreat_cycles"`
+	// FsckCycles and ECCCycles are what an fsck and an ECC pick restore,
+	// up to MaxCycles, before the ascensions' HealCycles. ECC restores
+	// only while ECCPenalty is 0.
+	FsckCycles int `toml:"fsck_cycles"`
+	ECCCycles  int `toml:"ecc_cycles"`
+	// FailMoveOn makes a room whose door failed without ending the boot
+	// (Biome.FailCycles) lost: no pay, no upgrade pick, and the boot moves
+	// to the next room (ICPC triage). A boss room is never lost: it draws
+	// a new boss door. false draws the room again, as D44 did.
+	FailMoveOn bool `toml:"fail_move_on"`
+	// OneShot makes the boot's last OneShot bosses one-shot: a timeout or
+	// give-up there ends the boot whatever its cycles (1: the final;
+	// Ascension.OneShot raises it). The others burn their FailCycles and
+	// draw a new boss door.
+	OneShot int `toml:"one_shot"`
+	// ECCPenalty, above 0, makes the ECC upgrade a conversion, offered
+	// once a boot: from its pick on, a charged failed submit burns no
+	// cycles and takes ECCPenalty off the open door's clock instead (the
+	// user's 5:00). A door whose clock that empties times out.
+	ECCPenalty Duration `toml:"ecc_penalty"`
+	// RetreatLock, above 0, refuses a retreat (kexec's free swap too) this
+	// long into a door: a swap is for a statement read, not a door fought.
+	RetreatLock Duration `toml:"retreat_lock"`
+
+	// ---- the map (docs/design/map.md) -----------------------------------------
+
+	// Nodes is the boot's map: a graph of biomes in the tiers of Biomes.
+	// Tier 0 plays its one node; each later tier plays the node the player
+	// takes from the last one's Next (game.Exit), gated ones shown locked.
+	// Empty plays Biomes in order, as before the map.
+	Nodes []Biome `toml:"node"`
+	// FountainCycles is what a merge window's fountain restores, free, up
+	// to the boot's starting cycles (not MaxCycles), where FountainWhere
+	// puts one: FountainAct in the windows after a boss (between acts),
+	// FountainBoss in those before one, FountainEvery in all. 0, with the
+	// ascensions' FountainCycles, is no fountain.
+	FountainCycles int    `toml:"fountain_cycles"`
+	FountainWhere  string `toml:"fountain_where"`
+	// KexecPerAct makes kexec's free swap once an act (the tiers up to and
+	// including a boss) instead of once a biome.
+	KexecPerAct bool `toml:"kexec_per_act"`
+
+	// ---- time is bought (D50) -------------------------------------------------
+
+	// TimerMult scales every door's timer: the base clock's setting. 0
+	// means 1.
+	TimerMult float64 `toml:"timer_mult"`
+	// OverclockMax, above 0, makes Overclock additive (+OverclockFrac a
+	// pick, not compounding) and stops offering it after OverclockMax
+	// picks; 0 compounds without a cap, as before. OverclockCycles is what
+	// a pick burns (it is offered only while more than that is left).
+	OverclockMax    int `toml:"overclock_max"`
+	OverclockCycles int `toml:"overclock_cycles"`
+	// O3OnBase measures -O3 against the door's timer before the time the
+	// player bought (at, Overclock, nice), so bought time never makes the
+	// free upgrade easier.
+	O3OnBase bool `toml:"o3_on_base"`
+	// FirstClockOwn exempts the first biome from the ascensions' timer
+	// multipliers: its clock per prestige is Ascension.FirstTimer's
+	// (Userland 10:00, 9:00 at P3, 8:00 at P6).
+	FirstClockOwn bool `toml:"first_clock_own"`
+
+	// Twists are the rule each boss bends: a boss door's modifier, as
+	// blind, mystery and cursed are a door's, shown on its boss card.
+	Twists Twists `toml:"twists"`
+}
+
+// Twists is one setting per boss (game.BossKeys, game.FinalBoss), each
+// bending one rule on that boss's doors; a zero value bends nothing, as in a
+// boot saved before them. The engine carries out the cycles, clock and pay;
+// the door says the rest (game.Door's twist flags) for the judge and the
+// HUD to carry out.
+type Twists struct {
+	// OffByOne multiplies what a failed submit burns (or, under ECC, the
+	// clock it costs) when exactly one test fails: off-by-one punishes the
+	// near miss. 0 and 1 bend nothing.
+	OffByOne int `toml:"off_by_one"`
+	// OOMMemory multiplies the judge's memory limit on the OOM Killer's
+	// doors. 0 bends nothing.
+	OOMMemory float64 `toml:"oom_memory"`
+	// Heisenbug makes its doors' sample runs report only pass or fail, no
+	// per-sample detail: the bug hides when looked at.
+	Heisenbug bool `toml:"heisenbug"`
+	// RaceClock multiplies Race Condition's door timers (0.8: the clock
+	// runs 1.25 times fast) and RacePay replaces BossMult on its doors
+	// (4 for 3). 0 bends nothing.
+	RaceClock float64 `toml:"race_clock"`
+	RacePay   float64 `toml:"race_pay"`
+	// UBNoSanitizers runs Undefined Behavior's samples without sanitizers.
+	UBNoSanitizers bool `toml:"ub_no_sanitizers"`
+	// HaltingClock hides the clock on The Halting Problem's doors: you
+	// cannot tell whether it will finish. The dmesg strip's 5:00 and 1:00
+	// warnings still fire.
+	HaltingClock bool `toml:"halting_clock"`
+}
+
+// Fountain placements (Rules.FountainWhere).
+const (
+	FountainEvery = ""     // every merge window
+	FountainAct   = "act"  // the windows after a boss: between acts
+	FountainBoss  = "boss" // the windows before a boss
+)
+
+// Life is what one life is worth in cycles (LifeCycles), at least 1.
+func (r Rules) Life() int { return max(1, r.LifeCycles) }
+
+// price is p, or one life when p is unset.
+func (r Rules) price(p int) int {
+	if p > 0 {
+		return p
+	}
+	return r.Life()
+}
+
+// SubmitPrice, RetreatPrice, FsckHeal and ECCHeal are SubmitCycles,
+// RetreatCycles, FsckCycles and ECCCycles, or one life where unset; the
+// ascensions' cuts are added by the caller (game.State knows the level).
+func (r Rules) SubmitPrice() int  { return r.price(r.SubmitCycles) }
+func (r Rules) RetreatPrice() int { return r.price(r.RetreatCycles) }
+func (r Rules) FsckHeal() int     { return r.price(r.FsckCycles) }
+func (r Rules) ECCHeal() int      { return r.price(r.ECCCycles) }
+
+// Clock is TimerMult, 1 where unset.
+func (r Rules) Clock() float64 {
+	if r.TimerMult > 0 {
+		return r.TimerMult
+	}
+	return 1
+}
+
+// Node returns the map node with id.
+func (r Rules) Node(id string) (Biome, bool) {
+	for _, n := range r.Nodes {
+		if n.ID == id {
+			return n, true
+		}
+	}
+	return Biome{}, false
+}
+
+// TopPrestige is the highest level the rules' ladder (Ascensions) reaches,
+// capped at max: past it a level adds nothing. A linear boot meets The
+// Halting Problem there. Rules without a ladder top out at max.
+func (r Rules) TopPrestige(limit int) int {
+	top := 0
+	for _, a := range r.Ascensions {
+		top = max(top, min(a.Level, limit))
+	}
+	if top <= 0 {
+		return limit
+	}
+	return top
 }
 
 // Ascension is the extra difficulty of one prestige level. Levels stack like
@@ -351,15 +567,36 @@ type Ascension struct {
 	BlindChance   float64 `toml:"blind_chance"`   // added to the door roll
 	MysteryChance float64 `toml:"mystery_chance"` // added to the door roll
 	CursedChance  float64 `toml:"cursed_chance"`  // added to the door roll
-	Lives         int     `toml:"lives"`          // added at boot (>= 1 left)
-	Ducks         int     `toml:"ducks"`          // added at boot and refill
-	TimerMult     float64 `toml:"timer_mult"`     // 0 means 1
+	// Cycles is added to the starting pool (at least 1 is left). Its key
+	// keeps its name from lives.
+	Cycles    int     `toml:"lives" json:"Lives"`
+	Ducks     int     `toml:"ducks"`      // added at boot and refill
+	TimerMult float64 `toml:"timer_mult"` // 0 means 1
+
+	// Cycle cuts (D47, map.md §(d)), summed over the levels: SubmitCycles
+	// is added to a charged failed submit's price, HealCycles to what fsck
+	// and ECC restore (each still restores 1), LateFailCycles to a
+	// FailCycles burn in the tiers after the boot's first boss (acts II and
+	// III, so prestige bites late), FountainCycles to each fountain (at
+	// least 0).
+	SubmitCycles   int `toml:"submit_cycles"`
+	HealCycles     int `toml:"heal_cycles"`
+	LateFailCycles int `toml:"late_fail_cycles"`
+	FountainCycles int `toml:"fountain_cycles"`
+	// OneShot raises Rules.OneShot: the boot's last OneShot bosses are
+	// one-shot (2: Boss II and the final; 3: every boss of three). The
+	// highest level's counts.
+	OneShot int `toml:"one_shot"`
+	// FirstTimer, when set, is the first biome's default timer from this
+	// level on (the highest level's counts).
+	FirstTimer Duration `toml:"first_timer"`
 }
 
 // Ascend sums every ascension at or below prestige. TimerMult multiplies, so
 // the result's TimerMult is never 0.
 func (r Rules) Ascend(prestige int) Ascension {
 	sum := Ascension{Level: prestige, TimerMult: 1}
+	first := 0 // the level FirstTimer was taken from
 	for _, a := range r.Ascensions {
 		if a.Level < 1 || a.Level > prestige {
 			continue
@@ -367,10 +604,18 @@ func (r Rules) Ascend(prestige int) Ascension {
 		sum.BlindChance += a.BlindChance
 		sum.MysteryChance += a.MysteryChance
 		sum.CursedChance += a.CursedChance
-		sum.Lives += a.Lives
+		sum.Cycles += a.Cycles
 		sum.Ducks += a.Ducks
 		if a.TimerMult > 0 {
 			sum.TimerMult *= a.TimerMult
+		}
+		sum.SubmitCycles += a.SubmitCycles
+		sum.HealCycles += a.HealCycles
+		sum.LateFailCycles += a.LateFailCycles
+		sum.FountainCycles += a.FountainCycles
+		sum.OneShot = max(sum.OneShot, a.OneShot)
+		if a.FirstTimer.Duration > 0 && a.Level >= first {
+			sum.FirstTimer, first = a.FirstTimer, a.Level
 		}
 	}
 	return sum
@@ -475,7 +720,7 @@ func (r Rules) WithDefaults() Rules {
 		r.RegressionDays = d.RegressionDays
 	}
 	ints := []struct{ v, d *int }{
-		{&r.MaxLives, &d.MaxLives}, {&r.TopicRatingMin, &d.TopicRatingMin},
+		{&r.MaxCycles, &d.MaxCycles}, {&r.TopicRatingMin, &d.TopicRatingMin},
 		{&r.RouteMinPool, &d.RouteMinPool}, {&r.BossDoors, &d.BossDoors},
 		{&r.UpgradeOffers, &d.UpgradeOffers}, {&r.DaemonOffers, &d.DaemonOffers},
 		{&r.MaxDaemons, &d.MaxDaemons}, {&r.ForkDoors, &d.ForkDoors},
@@ -518,13 +763,20 @@ func (r Rules) WithDefaults() Rules {
 	return r
 }
 
-// Standard is the default preset. Numbers come from the design discussion
-// (DESIGN.md "A boot"); balance simulation will tune them.
-func Standard() Rules {
+// Standard is the default preset: the rules GRUB boots by name
+// "standard".
+func Standard() Rules { return Legacy() }
+
+// Legacy is the standard preset as it was before the cycles meta (D47) and
+// the map: three lives, Userland, a choice biome and one boss. A boot saved
+// then carries these rules in its snapshot and plays them to its end
+// (map.md §(h)); tests build such boots from here. Numbers come from the
+// design discussion (DESIGN.md "A boot") and the balance simulation.
+func Legacy() Rules {
 	return Rules{
 		Name:         "standard",
-		Lives:        3,
-		MaxLives:     5,
+		Cycles:       3,
+		MaxCycles:    5,
 		Ducks:        1,
 		DoorsPerRoom: 3,
 		Biomes: []Biome{
@@ -621,7 +873,7 @@ func Standard() Rules {
 			{Level: 1, BlindChance: 0.15, TimerMult: 0.95},
 			{Level: 2, Ducks: -1, MysteryChance: 0.05, CursedChance: 0.04},
 			{Level: 3, CursedChance: 0.05, TimerMult: 0.9},
-			{Level: 4, Lives: -1, CursedChance: 0.04, TimerMult: 0.9},
+			{Level: 4, Cycles: -1, CursedChance: 0.04, TimerMult: 0.9},
 		},
 
 		// Easing (RT0). With the floor read as censored (FloorDrop) and
@@ -799,6 +1051,9 @@ func Load(path string) (Rules, error) {
 	if _, ok := keys["first_biome"]; ok {
 		r.FirstBiomes = nil
 	}
+	if _, ok := keys["node"]; ok {
+		r.Nodes = nil
+	}
 	md, err := toml.Decode(string(b), &r)
 	if err != nil {
 		return r, fmt.Errorf("%s: %w", path, err)
@@ -822,7 +1077,7 @@ func Load(path string) (Rules, error) {
 }
 
 func (r Rules) Validate() error {
-	if r.Lives < 1 || r.DoorsPerRoom < 1 || len(r.Biomes) == 0 {
+	if r.Cycles < 1 || r.DoorsPerRoom < 1 || len(r.Biomes) == 0 {
 		return fmt.Errorf("rules %q: need lives, doors_per_room and at least one biome", r.Name)
 	}
 	for i, b := range r.Biomes {
@@ -857,7 +1112,7 @@ func (r Rules) Validate() error {
 	}
 	if len(r.FirstBiomes) > 0 {
 		first := r
-		first.Biomes, first.FirstBiomes = r.FirstBiomes, nil
+		first.Biomes, first.FirstBiomes, first.Nodes = r.FirstBiomes, nil, nil
 		if err := first.Validate(); err != nil {
 			return fmt.Errorf("first_biome: %w", err)
 		}
@@ -899,7 +1154,107 @@ func (r Rules) Validate() error {
 			}
 		}
 	}
+	if err := r.validateCycles(); err != nil {
+		return err
+	}
+	if err := r.validateNodes(); err != nil {
+		return err
+	}
 	return r.validateBytes()
+}
+
+// validateCycles checks the cycles and time fields: no negative price,
+// burn or duration, a known fountain placement, a finite clock.
+func (r Rules) validateCycles() error {
+	if r.LifeCycles < 0 || r.SubmitCycles < 0 || r.RetreatCycles < 0 || r.FsckCycles < 0 ||
+		r.ECCCycles < 0 || r.OneShot < 0 || r.FountainCycles < 0 || r.OverclockMax < 0 || r.OverclockCycles < 0 {
+		return fmt.Errorf("rules %q: need life_cycles, submit_cycles, retreat_cycles, fsck_cycles, "+
+			"ecc_cycles, one_shot, fountain_cycles, overclock_max, overclock_cycles >= 0", r.Name)
+	}
+	if r.ECCPenalty.Duration < 0 || r.RetreatLock.Duration < 0 {
+		return fmt.Errorf("rules %q: need ecc_penalty, retreat_lock >= 0", r.Name)
+	}
+	// The negated test also catches NaN.
+	if !(r.TimerMult >= 0 && r.TimerMult <= MaxTimerMult) {
+		return fmt.Errorf("rules %q: timer_mult %v not in 0..%d", r.Name, r.TimerMult, MaxTimerMult)
+	}
+	if w := r.FountainWhere; w != FountainEvery && w != FountainAct && w != FountainBoss {
+		return fmt.Errorf("rules %q: fountain_where %q is not %q, %q or %q", r.Name, w, FountainEvery, FountainAct, FountainBoss)
+	}
+	for _, bs := range [][]Biome{r.Biomes, r.Nodes} {
+		for i, b := range bs {
+			if b.FailCycles < 0 || b.Picks < 0 || b.MinPrestige < 0 {
+				return fmt.Errorf("rules %q: biome %d needs fail_cycles, picks, min_prestige >= 0", r.Name, i)
+			}
+		}
+	}
+	for _, a := range r.Ascensions {
+		if a.OneShot < 0 || a.FirstTimer.Duration < 0 {
+			return fmt.Errorf("rules %q: ascension %d needs one_shot, first_timer >= 0", r.Name, a.Level)
+		}
+	}
+	// The negated tests also catch NaN.
+	tw := r.Twists
+	if tw.OffByOne < 0 || !(tw.OOMMemory >= 0 && tw.OOMMemory <= MaxTimerMult) || !(tw.RaceClock >= 0 && tw.RaceClock <= MaxTimerMult) ||
+		!(tw.RacePay >= 0 && tw.RacePay <= MaxBytesMultiplier) {
+		return fmt.Errorf("rules %q: twists need off_by_one >= 0, oom_memory and race_clock in 0..%d, race_pay in 0..%d",
+			r.Name, MaxTimerMult, MaxBytesMultiplier)
+	}
+	return nil
+}
+
+// MaxTimerMult bounds timer_mult: past it a door's timer is hours.
+const MaxTimerMult = 10
+
+// validateNodes checks the map: every node a playable biome of its tier
+// (rooms, aim and timer as a biome's; a skip plays no room), IDs unique,
+// one node in tier 0, a boss key on the nodes of boss tiers and no other,
+// and every exit to a node of the next tier, which the last tier's nodes
+// have none of.
+func (r Rules) validateNodes() error {
+	if len(r.Nodes) == 0 {
+		return nil
+	}
+	ids := map[string]Biome{}
+	starts := 0
+	last := len(r.Biomes) - 1
+	for _, n := range r.Nodes {
+		if _, dup := ids[n.ID]; n.ID == "" || dup || n.Tier < 0 || n.Tier > last {
+			return fmt.Errorf("rules %q: node %q needs a unique id and a tier in 0..%d", r.Name, n.ID, last)
+		}
+		if n.Skip {
+			n.Rooms = max(n.Rooms, 1) // a skip plays no room; the rest must still check out
+		}
+		if n.Rooms < 1 || n.TargetClear <= 0 || n.TargetClear >= 1 || n.Timer.Duration <= 0 ||
+			n.MinClear < 0 || n.MinClear > n.TargetClear || n.EaseClear != 0 && (n.EaseClear < n.TargetClear || n.EaseClear >= 1) {
+			return fmt.Errorf("rules %q: node %q needs rooms >= 1, 0 <= min_clear <= target_clear < 1, ease_clear 0 or in target_clear..1, timer > 0",
+				r.Name, n.ID)
+		}
+		if boss := r.Biomes[n.Tier].Kind == Boss; boss != (n.Boss != "") || boss && n.Skip {
+			return fmt.Errorf("rules %q: node %q: the nodes of a boss tier, and only they, name a boss (and none is a skip)", r.Name, n.ID)
+		}
+		if n.Tier == 0 && n.Skip {
+			return fmt.Errorf("rules %q: node %q: the start is no skip", r.Name, n.ID)
+		}
+		ids[n.ID] = n
+		if n.Tier == 0 {
+			starts++
+		}
+	}
+	if starts != 1 {
+		return fmt.Errorf("rules %q: the map needs one tier-0 node, has %d", r.Name, starts)
+	}
+	for _, n := range r.Nodes {
+		if len(n.Next) == 0 && n.Tier < last || len(n.Next) > 0 && n.Tier == last {
+			return fmt.Errorf("rules %q: node %q of tier %d has %d exits", r.Name, n.ID, n.Tier, len(n.Next))
+		}
+		for i, id := range n.Next {
+			if m, ok := ids[id]; !ok || m.Tier != n.Tier+1 || slices.Contains(n.Next[:i], id) {
+				return fmt.Errorf("rules %q: node %q exits to %q, not a node of tier %d", r.Name, n.ID, id, n.Tier+1)
+			}
+		}
+	}
+	return nil
 }
 
 // MaxBaseBytes bounds base_bytes, MaxBytesMultiplier each multiplier of a
@@ -946,7 +1301,7 @@ func (r Rules) validateBytes() error {
 	d := r.WithDefaults()
 	worst := float64(d.BaseBytes) * max(d.MaxBytesMult, d.MinBytesMult) *
 		max(d.MysteryMult*d.DevRandomMult, d.BlindMult, 1) * max(d.CursedMult, 1) *
-		max(d.BossMult, 1) * max(d.CronMult, 1) * max(d.ChrtBytesMult, 1) * max(d.OvertimeBytesMult, 1)
+		max(d.BossMult, d.Twists.RacePay, 1) * max(d.CronMult, 1) * max(d.ChrtBytesMult, 1) * max(d.OvertimeBytesMult, 1)
 	if worst > MaxDoorBytes {
 		return fmt.Errorf("rules %q: a door could pay %.3g bytes, over the %d allowed; lower base_bytes or the *_mult keys",
 			r.Name, worst, int64(MaxDoorBytes))

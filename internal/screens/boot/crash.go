@@ -512,7 +512,7 @@ func (c *Crash) precursor(cr game.Crash, verdict string) string {
 			verdict = "?"
 		}
 		who := "Out of lives"
-		if cr.Cursed || cr.Door.Cursed && c.env.State.Lives > 0 {
+		if cr.Cursed || cr.Door.Cursed && c.env.State.Cycles > 0 {
 			who = "Cursed door"
 		}
 		return fmt.Sprintf("%s: Killed process 1 (you) verdict:%s passed:%d/%d submits:%d",

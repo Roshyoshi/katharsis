@@ -305,7 +305,7 @@ func Run(c Config) Report {
 			main.rep.Errors++
 			break
 		}
-		b := &boot{c: &c, p: c.Player, s: s, m: m, rng: rng, clock: clock, sums: sm, lives0: s.Lives, window: -1, learn: lr}
+		b := &boot{c: &c, p: c.Player, s: s, m: m, rng: rng, clock: clock, sums: sm, lives0: s.Cycles, window: -1, learn: lr}
 		b.play()
 
 		rep.Boots++
@@ -778,7 +778,7 @@ func (b *boot) buy() game.Item {
 		it game.Item
 		ok bool
 	}{
-		{game.Fsck, s.Lives < b.lives0},
+		{game.Fsck, s.Cycles < b.lives0},
 		{game.Dup, s.Ducks == 0},
 		{game.Shuf, s.Rerolls == 0 && !bossNext},
 		{game.At, s.AtTime == 0 && bossNext},
@@ -832,7 +832,7 @@ func (b *boot) upgrade() game.Upgrade {
 		u  game.Upgrade
 		ok bool
 	}{
-		{game.ECC, b.s.Lives <= 2},
+		{game.ECC, b.s.Cycles <= 2},
 		{game.Duck, b.s.Ducks == 0},
 		{game.Overclock, true},
 	} {
