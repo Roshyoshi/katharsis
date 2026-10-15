@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"katharsis/internal/game"
 	"katharsis/internal/game/sim"
 	"katharsis/internal/rules"
@@ -465,5 +467,38 @@ func TestRegressionRetiredBeat(t *testing.T) {
 	}
 	if ls := BeatLines(id); len(ls) != 2 || !strings.HasSuffix(ls[1], "?") {
 		t.Errorf("%s lines %q, want two ending on a question", id, ls)
+	}
+}
+
+// teaserWidth is the room the end screens give a beat's first line at 80
+// columns: the kept block's teaser is 80 less its label column and
+// " · b read on" (screens/boot teaser, crash_end_80x24.golden).
+const teaserWidth = 59
+
+// TestMilestoneLines holds the milestones to text.md's rules for them: the
+// first line is the teaser, so it fits whole at 80 columns, and the last
+// ends on a small question a later beat answers (retention RT6).
+func TestMilestoneLines(t *testing.T) {
+	for _, b := range milestones {
+		h, ok := story[b.id]
+		if !ok {
+			t.Errorf("%s has no text", b.id)
+			continue
+		}
+		passages := [][]string{h.entries} // a block is one passage
+		if h.kind != block {
+			passages = nil
+			for _, e := range h.entries {
+				passages = append(passages, strings.Split(e, "\n"))
+			}
+		}
+		for _, ls := range passages {
+			if w := ansi.StringWidth(widest(t, b.id, ls[0])); w > teaserWidth {
+				t.Errorf("%s: teaser %q is %d columns filled, want <= %d", b.id, ls[0], w, teaserWidth)
+			}
+			if last := ls[len(ls)-1]; !strings.HasSuffix(last, "?") {
+				t.Errorf("%s: %q does not end on a question", b.id, last)
+			}
+		}
 	}
 }

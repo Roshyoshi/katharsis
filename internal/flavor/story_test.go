@@ -22,8 +22,8 @@ import (
 // placeholder carries once the caller has truncated it.
 var placeholderWidths = map[string]int{
 	"boot": 5, "ring": 2, "place": 20, "bytes": 8, "title": 24, "tags": 24,
-	"technique": 15, "n": 2, "ago": 11, "pct": 5, "module": 24,
-	"division": 8, "cap": 14, "biome": 18, "name": 16, "time": 5,
+	"technique": 15, "n": 2, "days": 3, "pct": 5, "module": 24,
+	"cap": 14, "biome": 18, "name": 16, "time": 5,
 }
 
 // storyMaxWidth is the bible's tone rule 1: a line is at most 70 display
@@ -570,10 +570,8 @@ func TestRing(t *testing.T) {
 
 // TestStoryFamilies: each hook the screens build from a key ("boss.enter."
 // + boss, "daemon." + daemon, "verdict." + verdict, ...) has text for every
-// key. notYet are the keys text.md has no line for, where the screens show
-// no flavor; a line written for one takes it off the list.
+// key, so a new daemon, upgrade or verdict needs its line in text.md.
 func TestStoryFamilies(t *testing.T) {
-	notYet := map[string]bool{"daemon.cron": true, "daemon.chrt": true, "upgrade.shuf": true, "verdict.OLE": true}
 	var hooks []string
 	add := func(prefix string, keys ...string) {
 		for _, k := range keys {
@@ -601,11 +599,8 @@ func TestStoryFamilies(t *testing.T) {
 		add("", fmt.Sprintf("regression.stage.%d", i+1))
 	}
 	for _, h := range hooks {
-		switch _, ok := story[h]; {
-		case !ok && !notYet[h]:
+		if _, ok := story[h]; !ok {
 			t.Errorf("%s has no text", h)
-		case ok && notYet[h]:
-			t.Errorf("%s has text now: take it off notYet", h)
 		}
 	}
 }

@@ -113,8 +113,7 @@ The Wizards are still passing the ball. Eval. Apply. Eval.
 	"grub.subtitle.prestige.3":      fixedOf("ring 0 · the Court of Hearts · sentence first, verdict afterwards"),
 	"grub.subtitle.prestige.4":      fixedOf("ring -1 · the Red King's dream · beware the Jabberwock"),
 	"grub.subtitle.prestige.beyond": fixedOf("ring {ring} · nobody who went there wrote it down"),
-	"grub.subtitle.locked":          fixedOf("ring {ring} · locked · {n} rated doors to go · the Red Queen runs"),
-	"grub.subtitle.nightly":         fixedOf("an un-birthday present: one seed for everyone, today"),
+	"grub.subtitle.nightly":         fixedOf("an un-birthday present: one seed, the same for everyone"),
 	"grub.subtitle.rtfm":            fixedOf("the Mock Turtle's school · Reeling and Writhing, to begin with"),
 	"grub.subtitle.custom":          fixedOf("a preset means just what you choose it to mean"),
 	"grub.subtitle.coredump":        fixedOf("a grin without a cat · {bytes} still on {title}"),
@@ -219,86 +218,86 @@ Life, what is it but a dream? Reboot.
 
 	// ---- Milestone beats: the dry spells between story beats (beats.go) ----
 	"milestone.doors.10": blockOf(`
-Ten doors in, under a doormat: a note, typed, folded very small.
+Under the doormat in the hall: a note, folded very small.
 On the outside, in pencil: halts? Who asks a doormat that?
 `),
 	"milestone.upsolve.5": blockOf(`
-Five upsolves. The Cat keeps a ledger now: grins lost, grins found.
+The Cat keeps a ledger now: grins lost, grins taken back.
 It won't show you the totals. What is it saving them for?
 `),
 	"milestone.doors.25": blockOf(`
-Twenty-five doors in, the note's initials come clear: A. M. T., 1936.
+The note under the mat is signed: A. M. T., 1936.
 The Rabbit reads it over your shoulder and drops his watch. Why?
 `),
 	"milestone.gate.half": blockOf(`
-The mirror over the mantel has gone cloudy, like breath on glass.
+The mirror over the mantel clouds, like breath on glass.
 Half the rated doors it wants are behind you. What's it waiting for?
 `),
 	"milestone.doors.50": blockOf(`
-Fifty doors in, you unfold the note once: a tape, a head, a table.
-"That's the judge," says the Cat. "Or its grandfather." Is it?
+Unfolded once, the note shows a tape, a head and a table.
+"That's the judge's grandfather," says the Cat. What did it judge?
 `),
 	"milestone.gate.open": blockOf(`
-The glass has gone soft, like gauze. Clear a boot to step through.
-Is the other side the same room? The Red Queen won't stop to say.
+The glass is soft as gauze. One clear takes you through.
+The Red Queen runs past too fast to ask: same room, other side?
 `),
 	"milestone.lib.1": blockOf(`
-Your first lib. Humpty Dumpty, on his wall, insists on naming it.
+Your first lib. Humpty Dumpty insists on naming it.
 He'd call it Humpty. You didn't. Does a name change what it means?
 `),
 	"milestone.capability": pool2Of(`
-The Gryphon stamps a certificate: {cap}. Another road opens.
-The Mock Turtle sobs: lessons lessen. How short can one get?
+{cap}, stamped by the Gryphon. Another road opens.
+The Mock Turtle sobs that lessons lessen. How short can one get?
 
-{cap}, earned. The Mock Turtle weeps: pride, or salt water.
-The Gryphon can't tell which. Can you?
+{cap}, earned. The Mock Turtle weeps buckets.
+Proud, or just salty? The Gryphon can't tell. Can you?
 
 The Gryphon pins {cap} on a crowded wall.
-What's under the oldest certificate? The Mock Turtle won't look.
+What's under the oldest one? The Mock Turtle won't look. Will you?
 `),
 	"milestone.mastered.1": blockOf(`
-One topic knows you now. Its doors well under you hide their tags.
-The Cat will still read them out, for a duck. Will you need it to?
+One topic knows you now: its lesser doors drop their tags.
+The Cat will still read them out for a duck. Will you need it to?
 `),
 	"milestone.retired.1": blockOf(`
-The White Queen strikes a door off her list. It came back twice,
-and twice you fixed it. She won't remember it next week. Will you?
+The White Queen strikes a door off her list, in ink.
+It has no future now, so she's already forgotten it. Will you?
 `),
 	"milestone.doors.75": blockOf(`
-Seventy-five doors in, the second fold asks one thing of any machine:
+The note's second fold asks one thing of every machine:
 does it ever stop? The Rabbit stops winding his watch. Does it?
 `),
 	"milestone.doors.100": blockOf(`
-A hundred doors in, the note answers itself: not for every machine.
-The Rabbit winds his watch again. For one machine, then? Which one?
+The note answers itself: nobody can say, not in general.
+So the Rabbit carries a watch and decides for one. Is that cheating?
 `),
 	"milestone.upsolve.25": blockOf(`
-Twenty-five upsolves. The ledger is full, so the Cat eats it.
-"Every grin you take back," it says, "I keep a copy." A copy of what?
+The Cat's ledger balances at last, so the Cat eats it.
+It purrs that it kept a copy of each one. A copy of whom?
 `),
 	"milestone.doors.150": blockOf(`
-A hundred and fifty doors, and every one stopped. You checked each.
+Every door so far has stopped. You checked each one.
 The Queen calls that a proof. The Cat calls it a sample. Who's right?
 `),
 	"milestone.doors.200": blockOf(`
-Two hundred doors in, something under the floor snores in 4/4 time.
+Something under the floor snores in 4/4 time.
 The judge's clock keeps the beat. Who sleeps through every verdict?
 `),
 	"milestone.doors.250": blockOf(`
-Two hundred and fifty doors in, the note has one more fold. Inside,
-a sketch of PID 1, falling. It stops before you land. On purpose?
+The note's last fold. Inside: a sketch of PID 1, falling.
+The drawing stops before you land. Out of tape, or on purpose?
 `),
 	"milestone.doors.300": blockOf(`
-Three hundred doors. The Wizards have heard about your note.
-"An old question," says Eval. "Older than us," says Apply. How old?
+The Wizards have heard about your note.
+"Older than us," says Eval. "We borrowed it once," says Apply. Why?
 `),
 	"milestone.doors.400": blockOf(`
-Four hundred doors. "We set it as an exercise once," says Eval.
-"Four-fifteen," says Apply. "It got out." What got out?
+"We set it as an exercise," says Eval. "Four-fifteen."
+Apply owns up to the pencil. "Then it got out." What got out?
 `),
 	"milestone.doors.500": blockOf(`
-Five hundred doors. Unfolded flat, the note is the size of a door.
-On the back, in an old terse hand: hello, world. Who carved it first?
+Unfolded flat, the note is exactly the size of a door.
+On its back, in an old terse hand: hello, world. Which came first?
 `),
 
 	// ---- Biomes: one fixed line per catalog topic ----
@@ -397,12 +396,9 @@ The Dormouse is asleep again. It's a daemon. That's the job.
 Linus closes his merge window after two weeks. This one stays at six.
 rc1 is at six o'clock. So is rc2. Time stopped at tea.
 `),
-	// SPONGE: merge.full promises a swap the engine lacks: at MaxDaemons a
-	//         window offers no daemons and has no swap (game/engine.go:653),
-	//         and no screen shows this hook yet. A draft for the
-	//         storyteller, A19 kept verbatim:
-	//         "No room! No room!" Every daemon seat is taken till reboot.
-	"merge.full":        fixedOf(`"No room! No room!" Every daemon seat is taken. Swap one, or don't.`),
+	// At MaxDaemons a window offers no daemons, and there is no swap
+	// (game/engine.go:653), so the line promises none.
+	"merge.full":        fixedOf(`"No room! No room!" Every daemon seat is taken. For once, it's true.`),
 	"merge.nothing":     fixedOf(`"I don't see any bytes." "There aren't any," says the March Hare.`),
 	"merge.commit":      fixedOf(`Committed. The Dormouse murmurs "Treacle," and goes back to sleep.`),
 	"merge.uncommitted": fixedOf("The Hatter waves a cup at your pockets: {bytes} still uncommitted."),
@@ -506,32 +502,35 @@ A grin in the tree, then a Cat around it. Ducks refilled: {n}
 	"daemon.fork":       fixedOf("He rides two horses at once and falls off both. More doors, though."),
 	"daemon.dev-random": fixedOf("A box of mystery doors. He invented it. He's never opened it."),
 	"daemon.kexec":      fixedOf("Swap the door without getting off the horse. Once per biome."),
+	"daemon.cron":       fixedOf("A mousetrap on the saddle, in case old doors come back. They pay more."),
+	"daemon.chrt":       fixedOf("The horse gets real-time priority. The ground comes up faster, too."),
 	"upgrade.overclock": fixedOf(`"You must run at least twice as fast as that!" Or {pct} faster.`),
 	"upgrade.ecc":       fixedOf("One flipped bit forgiven. The Queen is not informed."),
 	"upgrade.duck":      fixedOf("Another grin in the trees. Somebody's Cat. Yours now."),
+	"upgrade.shuf":      fixedOf("New doors for one room, pulled from a hat. The Hatter wants it back."),
 	"o3.bonus":          fixedOf("Twice as fast as that! The Red Queen nods, once. Free upgrade."),
 
 	// ---- Regressions (the White Queen) ----
-	// SPONGE: "Solve it to-day." reads as mild date pressure (retention
-	//         GR2); the storyteller's call. No screen shows this hook yet.
+	// No line asks for a solve on a day (retention GR2): the jam rule's
+	// punchline is the bug, not the date.
 	"regression.door": poolOf(`
-"You again?" This door remembers you. You remember it, a bit.
-"It's a poor sort of memory that only works backwards." Again, then.
-Jam yesterday, jam to-morrow, never jam to-day. Solve it to-day.
-It crashed you {ago}. It has been practising. Have you?
+"You again?" says the door. It remembers you. You remember it, a bit.
+"It's a poor sort of memory that only works backwards." Forwards, now.
+Jam yesterday, jam to-morrow, never jam to-day. Bugs aren't jam.
+Same door, blank file. Since last time, one of you learned something.
 `),
-	"regression.stage.1": fixedOf(`"I haven't pricked it yet, but I soon shall—oh, oh, oh!" Day three.`),
-	"regression.stage.2": fixedOf("Seventeen days on, the White Queen screams before you even open it."),
+	// {days} is the stage's own delay (Regression.Days[Stage]): after the
+	// crash for stage 1, after the last fix for stage 2.
+	"regression.stage.1": fixedOf(`"I haven't pricked it yet, but I soon shall—oh, oh, oh!" Day {days}.`),
+	"regression.stage.2": fixedOf("Day {days} after your fix: the White Queen screams before you open it."),
 	"regression.cleared": fixedOf("Solved, blank file and all. The White Queen forgets it, backwards."),
 
 	// ---- RTFM (the Mock Turtle's school) ----
-	"rtfm.title": fixedOf("the Mock Turtle's school · the regular course · lessons lessen daily"),
 	"rtfm.module.intro": poolOf(`
-"{module}," sighs the Mock Turtle. "Every day."
-{module}: a branch of Arithmetic, says the Gryphon.
+"{module}," sighs the Mock Turtle. "We did it at sea."
+{module}: a branch of Arithmetic, the Gryphon insists.
 {module}. "I only took the regular course."
 The Gryphon: "{module}. They lessen from day to day."
-{division} · {module}. Pass for {cap}.
 `),
 	"rtfm.trial.start": fixedOf(`"Ten hours the first day," says the Mock Turtle. Your timer is soft.`),
 	"rtfm.trial.pass":  fixedOf("The Gryphon claps: {cap}. {biome} joins routes."),
@@ -549,28 +548,6 @@ Drawling, Stretching .......... grids and ASCII art
 Fainting in Coils ............. painting in oils: flood fill
 Laughing and Grief ............ Latin and Greek: strings
 `),
-
-	// ---- Optional new hooks ----
-	"verdict.AC":    fixedOf("The Queen looks for a head to remove. Finds none. Sulks."),
-	"verdict.WA":    fixedOf(`"Off with its head!"`),
-	"verdict.TLE":   fixedOf(`"He's murdering the time!"`),
-	"verdict.MLE":   fixedOf(`"All persons more than a mile high to leave the court."`),
-	"verdict.RE":    fixedOf("The executioner can't cut off a head without a body to cut it from."),
-	"verdict.CE":    fixedOf(`"If there's no meaning in it, that saves a world of trouble."`),
-	"timer.warn.5m": fixedOf(`"Oh dear! Oh dear! I shall be late!"`),
-	"timer.warn.1m": fixedOf(`"Oh my ears and whiskers, how late it's getting!"`),
-	"quit.warn":     fixedOf("The Rabbit won't stop his watch for you. {time} left on this door."),
-	"resume.note":   fixedOf("Welcome back. The Rabbit kept time: {time} left."),
-	"door.blind":    fixedOf("Tags hidden, as in the nameless wood. Bytes extra for the trouble."),
-	"door.mystery":  fixedOf("Sometimes like a doll and sometimes like a work-box. Title hidden."),
-	"door.cursed":   fixedOf("The Queen is judging this one herself. No Cat. One WA."),
-	"lib.saved": pool2Of(`
-"When I use a word, it means just what I choose it to mean—
-neither more nor less." lib {name}, saved.
-
-"When I make a word do a lot of work like that, I always pay it
-extra." lib {name}, linked.
-`),
 	"help.vocab": blockOf(`
 "When I use a word," Humpty Dumpty said in rather a scornful tone,
 "it means just what I choose it to mean—neither more nor less."
@@ -585,6 +562,29 @@ The White Knight explains his song, K&R-style:
   *name         "The Aged Aged Man"     what the name really is
   **name_called "Haddocks' Eyes"        what the name is called
 "It's my own invention."
+`),
+
+	// ---- The dmesg strip and the app's flashes ----
+	"verdict.AC":    fixedOf("The Queen looks for a head to remove. Finds none. Sulks."),
+	"verdict.WA":    fixedOf(`"Off with its head!"`),
+	"verdict.TLE":   fixedOf(`"He's murdering the time!"`),
+	"verdict.MLE":   fixedOf(`"All persons more than a mile high to leave the court."`),
+	"verdict.RE":    fixedOf("The executioner can't cut off a head without a body to cut it from."),
+	"verdict.CE":    fixedOf(`"If there's no meaning in it, that saves a world of trouble."`),
+	"verdict.OLE":   fixedOf("The jury runs out of slate. You're still printing."),
+	"timer.warn.5m": fixedOf(`"Oh dear! Oh dear! I shall be late!"`),
+	"timer.warn.1m": fixedOf(`"Oh my ears and whiskers, how late it's getting!"`),
+	"quit.warn":     fixedOf("The Rabbit won't stop his watch for you. {time} left on this door."),
+	"resume.note":   fixedOf("Welcome back. The Rabbit kept time: {time} left."),
+	"door.blind":    fixedOf("Tags hidden, as in the nameless wood. Bytes extra for the trouble."),
+	"door.mystery":  fixedOf("Sometimes like a doll and sometimes like a work-box. Title hidden."),
+	"door.cursed":   fixedOf("The Queen is judging this one herself. No Cat. One WA."),
+	"lib.saved": pool2Of(`
+"When I use a word, it means just what I choose it to mean—
+neither more nor less." lib {name}, saved.
+
+"When I make a word do a lot of work like that, I always pay it
+extra." lib {name}, linked.
 `),
 }
 

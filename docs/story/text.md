@@ -17,7 +17,7 @@ one entry per line
 ~~~
 
 - **where**: the screen and the code that draws it today. "new" means no
-  slot exists yet.
+  screen draws the hook yet; it names the slot the line was written for.
 - **when**: `every` (each time the screen shows) or `once` (a seen flag,
   see the bible's unfolding table).
 - **pick**: `pool` rotates one entry per seed, with no repeats back to
@@ -38,10 +38,9 @@ one entry per line
 | `{title}`, `{tags}` | 24, caller truncates | `Bovine Shuffle` |
 | `{technique}` | 15 | `data-structures` |
 | `{n}` | 2 | `3` |
-| `{ago}` | 11 | `17 days ago` |
+| `{days}` | 3 | `17` |
 | `{pct}` | 5 | `15%` |
 | `{module}` | 24, caller truncates | `Prefix Sums` |
-| `{division}` | 8 | `Platinum` |
 | `{cap}` | 14 | `CAP_PREFIX` |
 | `{biome}` | 18 | `Brute Force Bunker` |
 | `{name}` | 16 | `dsu` |
@@ -184,7 +183,7 @@ are five words or fewer, as homage.
 ## Boot and GRUB
 
 ### boot.splash.dmesg
-where: new boot-start screen under `Banner("boot")` (`./internal/flavor/banner.go:17`, drawn nowhere yet); reveal one line at a time like the crash screen (`./internal/screens/boot/crash.go`, `tick`) · when: every boot, while door 1 fetches · pick: block · uses: A19 (allusion)
+where: the boot splash, `story.NewBootSplash` (`./internal/screens/story/scenes.go:291`), queued at every boot start (`./internal/app/story.go:95`): `Banner("boot")`, then this block a line at a time · when: every boot, while door 1 fetches · pick: block · uses: A19 (allusion)
 ```text
 [    0.000] katharsis boot #{boot} (k&r@bell-labs) (cc, 1978)
 [    0.000] Command line: ro quiet rabbit=late cat=grinning
@@ -197,7 +196,7 @@ where: new boot-start screen under `Banner("boot")` (`./internal/flavor/banner.g
 ```
 
 ### boot.motd
-where: one line under the dmesg block; also a suffix on the GRUB status line (`./internal/screens/meta/grub.go:99`) · when: every · pick: pool · uses: S1, S2, A55, G1 (fragment), K&R preface (5 words)
+where: one line under the splash's dmesg block (`./internal/screens/story/scenes.go:300`); also a suffix on the GRUB status line (`./internal/screens/meta/grub.go:165`) · when: every · pick: pool · uses: S1, S2, A55, G1 (fragment), K&R preface (5 words)
 ```text
 The Rabbit is late. The Rabbit is always late. Boot anyway.
 hello, world. The old gods never needed an exclamation mark.
@@ -216,7 +215,7 @@ The Wizards are still passing the ball. Eval. Apply. Eval.
 ```
 
 ### grub.subtitle.prestige
-where: a faint second line under each `katharsis, prestige N` entry (`./internal/screens/meta/grub.go:103`, `bootEntry`) · when: every · pick: fixed, line N for prestige N (0 to 4) · uses: G10 (paraphrase)
+where: a faint second line under each `katharsis, prestige N` entry (`prestigeNote`, `./internal/screens/meta/grub.go:252`) · when: every · pick: fixed, line N for prestige N (0 to 4) · uses: G10 (paraphrase)
 ```text
 ring 3 · Userland · down the rabbit-hole
 ring 2 · through the looking-glass · things go the other way
@@ -226,61 +225,55 @@ ring -1 · the Red King's dream · beware the Jabberwock
 ```
 
 ### grub.subtitle.prestige.beyond
-where: as above, prestige 5 and up (`PrestigeName` already handles these) · when: every · pick: fixed
+where: as above, prestige 5 and up (`prestigeNote`'s fallback) · when: every · pick: fixed
 ```text
 ring {ring} · nobody who went there wrote it down
 ```
 
-### grub.subtitle.locked
-where: a locked prestige entry, if GRUB shows the gate (`./docs/design/ux-journey.md` J1) · when: every · pick: fixed
-```text
-ring {ring} · locked · {n} rated doors to go · the Red Queen runs
-```
-
 ### grub.subtitle.nightly
-where: `katharsis (nightly build …)` (`grub.go:107`) · when: every · pick: fixed · uses: Humpty's un-birthday (ch. VI, allusion)
+where: `katharsis (nightly build …)` (`./internal/screens/meta/grub.go:191`) · when: every · pick: fixed · uses: Humpty's un-birthday (ch. VI, allusion). No time word: the entry's label carries the date, and a past nightly is no less a present (retention RT15, GR2)
 ```text
-an un-birthday present: one seed for everyone, today
+an un-birthday present: one seed, the same for everyone
 ```
 
 ### grub.subtitle.rtfm
-where: `katharsis (RTFM — learn mode)` (`grub.go:110`) · when: every · pick: fixed · uses: A41 (fragment)
+where: `katharsis (RTFM — learn mode)` (`grub.go:193`) · when: every · pick: fixed · uses: A41 (fragment)
 ```text
 the Mock Turtle's school · Reeling and Writhing, to begin with
 ```
 
 ### grub.subtitle.custom
-where: `katharsis (other presets…)`: short, patch and custom presets (`grub.go:198`) · when: every · pick: fixed · uses: G25 (paraphrase)
+where: `katharsis (other presets…)`: short, patch and custom presets (`grub.go:199`) · when: every · pick: fixed · uses: G25 (paraphrase)
 ```text
 a preset means just what you choose it to mean
 ```
 
 ### grub.subtitle.coredump
-where: `upsolve core dump: …` (`grub.go:120`) · when: every · pick: fixed · uses: A18 (fragment)
+where: `upsolve core dump: …` (`grub.go:184`); also the Cat's first-crash page (`./internal/screens/story/scenes.go:151`) · when: every · pick: fixed · uses: A18 (fragment)
 ```text
 a grin without a cat · {bytes} still on {title}
 ```
 
 ### grub.subtitle.regressions
-where: `regressions due: N` (`grub.go:132`) · when: every · pick: fixed
+where: `regressions due: N` (`grub.go:217`); also the note of a due regression past the stages `regression.stage.N` covers (`regressionNote`, `grub.go:704`) · when: every · pick: fixed
 ```text
 the White Queen remembers the week after next
 ```
 
 ### grub.subtitle.gitlog
-where: `git log` · when: every · pick: fixed · uses: A8
+where: `git log` (`grub.go:239`) · when: every · pick: fixed · uses: A8
 ```text
 "There ought to be a book written about me, that there ought!"
 ```
 
 ### grub.subtitle.top
-where: `top` · when: every · pick: fixed · uses: A10
+where: `top` (`grub.go:240`) · when: every · pick: fixed · uses: A10
 ```text
 "Who are you?" said the Caterpillar.
 ```
 
 ### grub.subtitle.poweroff
-where: `poweroff` · when: every · pick: fixed · uses: A54
+where: `poweroff` (`grub.go:241`) · when: every · pick: fixed · uses: A54
 ```text
 "Wake up, Alice dear!" The Rabbit will wait. Late, but he'll wait.
 ```
@@ -290,7 +283,7 @@ where: `poweroff` · when: every · pick: fixed · uses: A54
 ## Story beats
 
 ### story.prologue
-where: new full screen before the first route choice of boot #1; any key continues · when: once (`Meta.Boots == 0`) · pick: block · uses: A1, A3; line 3 parodies ch. I ("what is the use of a book … without pictures or conversations?")
+where: `story.NewPrologue` (`./internal/screens/story/scenes.go:82`), before boot #1's first route (`./internal/app/story.go:96`); any key continues · when: once (`Meta.Boots == 0`) · pick: block · uses: A1, A3; line 3 parodies ch. I ("what is the use of a book … without pictures or conversations?")
 ```text
 Ring 3. A hot afternoon. You are PID 1, and you are bored.
 You are reading a man page. It has no EXAMPLES section.
@@ -307,13 +300,13 @@ Pick a door. The Rabbit is already late.
 ```
 
 ### door.first.inscription
-where: doors screen header (`./internal/screens/boot/doors.go:91`), boot #1 room 1 · when: once · pick: fixed
+where: `story.NewFirstDoor` (`scenes.go:223`), boot #1's first room (`./internal/app/story.go:190`) · when: once · pick: fixed
 ```text
 Carved over the first door, in lowercase: hello, world
 ```
 
 ### story.first-merge
-where: merge window, above the commit row (`./internal/screens/boot/merge.go:124`) · when: once · pick: block · uses: A19, A26
+where: `story.NewFirstMerge` (`scenes.go:251`), before the first merge window (`./internal/app/story.go:129`, `:153`) · when: once · pick: block · uses: A19, A26
 ```text
 A long table under a tree. Three seats taken. A sign: MERGE WINDOW.
 "No room! No room!" cry the Hatter and the March Hare.
@@ -322,7 +315,7 @@ There's plenty of room. Sit down. Commit what you carry.
 ```
 
 ### daemon.intro
-where: merge window, above the daemon offers (`merge.go:160`), the first time daemons are offered · when: once · pick: block · uses: G30
+where: merge window, above the daemon offers the first time they show (`./internal/screens/boot/merge.go:254`) · when: once · pick: block · uses: G30
 ```text
 A knight falls off his horse, climbs back on, and bows.
 "It's my own invention," he says, of everything. Pick one.
@@ -330,7 +323,7 @@ Each one works. Each one has a catch. Mind the upside-down box.
 ```
 
 ### story.first-boss
-where: the first boss door card (`doors.go:160`) · when: once · pick: block · uses: A48, A49
+where: `story.NewBossIntro` (`scenes.go:114`), before the first boss room (`./internal/app/story.go:177`) · when: once · pick: block · uses: A48, A49
 ```text
 A trumpet. The White Rabbit unrolls a scroll and puts on spectacles.
 "Where shall I begin, please your Majesty?" he asks.
@@ -340,7 +333,7 @@ Easier said than proven. Here comes the bug.
 ```
 
 ### story.first-crash
-where: crash screen, under the sourced quote and above the core-dump line (`crash.go:172`) · when: once · pick: block · uses: A18; line 4 is a *parody* of the Cat's "if you only walk long enough"
+where: `story.NewFirstCrash` (`scenes.go:147`), 1.5 s after the first crash that left bytes (`flavor.NextBeat`; `./internal/app/story.go:224`) · when: once · pick: block · uses: A18; line 4 is a *parody* of the Cat's "if you only walk long enough"
 ```text
 The Cat appears, grin first. "You crashed. Everyone does, here."
 "You left your bytes on that problem: a grin without a cat."
@@ -349,7 +342,7 @@ The Cat appears, grin first. "You crashed. Everyone does, here."
 ```
 
 ### story.first-rtfm
-where: RTFM browser, above the module list (`./internal/screens/learn/browser.go`) · when: once · pick: block · uses: A39, A41, A42
+where: new: the first time the RTFM browser opens (`openLearn`, `./internal/app/learn.go:32`), as a `story.NewBeat` page over it; `flavor`'s scene list has it, nothing queues it yet · when: once · pick: block · uses: A39, A41, A42
 ```text
 A Gryphon asleep in the sun. A Mock Turtle, sighing on a rock.
 "We had the best of educations," says the Mock Turtle.
@@ -359,7 +352,7 @@ Uglification, and Derision."
 ```
 
 ### story.first-regression
-where: doors screen, the first time a regression card is on offer (`doors.go:299`) · when: once · pick: block · uses: G17
+where: the doors screen, over the first room that offers a regression door (`./internal/screens/boot/doors.go:146`), or the first time GRUB's regressions submenu opens (`./internal/screens/meta/grub.go:383`), whichever comes first · when: once · pick: block · uses: G17
 ```text
 A Queen in a shawl sticks plaster on a finger she hasn't pricked.
 "...one's memory works both ways," says the White Queen, kindly.
@@ -368,7 +361,7 @@ This door crashed you. It's back, with a blank file. Then again.
 ```
 
 ### reveal.prestige.1
-where: cleared screen, under `★ prestige unlocked` (`./internal/screens/boot/cleared.go:117`) · when: once, the clear that unlocks Silver · pick: block · uses: G6, G7
+where: a boot-end beat (`flavor.NextBeat`): the first line is the cleared screen's teaser (`./internal/screens/boot/cleared.go:174`), `b` reads the rest as a `story.NewBeat` page · when: once, the clear that unlocks Silver · pick: block · uses: G6, G7
 ```text
 The mirror over the mantel goes soft, like gauze. You step through.
 Same rooms. Only the things go the other way.
@@ -407,7 +400,7 @@ It got loose. It has jaws that bite and claws that catch.
 ```
 
 ### reveal.final-boss
-where: the first `halting-problem` door card (`doors.go:160`); later visits use `boss.enter.halting-problem` · when: once · pick: block · uses: G2
+where: `story.NewBossIntro` (`scenes.go:114`), before the first `halting-problem` room (`./internal/app/story.go:179`); later visits use `boss.enter.halting-problem` · when: once · pick: block · uses: G2
 ```text
 The last door. Something burbles in the tulgey wood.
 "Beware the Jabberwock, my son!
@@ -416,7 +409,7 @@ It is the Halting Problem. You can't win in general. Win this once.
 ```
 
 ### reveal.final-clear
-where: cleared screen, under `★ highest prestige cleared` (`cleared.go:119`) · when: once, the first clear at max prestige · pick: block · uses: G5, G32, G33
+where: a boot-end beat, as `reveal.prestige.N` · when: once, the first clear at max prestige · pick: block · uses: G5, G32, G33
 ```text
 "O frabjous day! Callooh! Callay!" The Jabberwock is down.
 You didn't solve the Halting Problem. You halted. Turing allows that.
@@ -429,153 +422,162 @@ Life, what is it but a dream? Reboot.
 
 ## Milestone beats
 
-Draft by the S9 wiring thread for the pacing in
-`docs/research/retention.md` RT6; the storyteller should revise. These
-fill the dry spells after the first ten boots. Each is earned by a
-cumulative learning act, never by a date, a streak or bytes (RT6, GR2),
-and shows at a boot end (crash or cleared) only after
-`flavor.DefaultBeatGap` (8) boot ends in a row went by without a new beat.
-At most one beat shows per boot end, and a triggered beat (first crash, a
-reveal) goes first. Each ends on a small question. The rated-door thread
-is the note the prologue mentions ("Turing left a note about that"); the
-final clear answers it. The count in a first line is a floor: the beat may
-show some doors later.
+These fill the dry spells after the first ten boots, paced by
+`docs/research/retention.md` RT6. Each is earned by a cumulative learning
+act, never by a date, a streak or bytes (RT6, GR2), and shows at a boot end
+(crash or cleared) only after `flavor.DefaultBeatGap` (8) boot ends in a
+row went by without a new beat. At most one beat shows per boot end, and a
+triggered beat (first crash, a reveal) goes first. So a milestone often
+shows long after it was earned, and no line names its count. Each ends on
+a small question that a later beat answers (`TestMilestoneLines`).
 
-where: boot end, as a teaser line (the first line) with a key to read the
-rest (RT1's kept block); reread in `/proc/story` · when: once · pick:
-block, except `milestone.capability`
+The rated-door thread is the note the prologue mentions ("Turing left a
+note about that"). It is found under the mat (10), signed A. M. T., 1936
+(25), holds a tape, a head and a table (50), asks whether a machine ever
+stops (75) and answers that nobody can say in general (100). The Wizards
+borrowed it (300) and own up to the pencil (400). The final clear answers
+it: you halted, and Turing allows that.
+
+where: boot end. The first line is the teaser in RT1's kept block
+(`teaser`, `./internal/screens/boot/debrief.go:101`), so it fits in 59
+columns, the room the block has at 80; `b` reads the rest as a
+`story.NewBeat` page. Reread in GRUB's `cat /proc/story`
+(`./internal/screens/meta/grub.go:236`) · when: once · pick: block, except
+`milestone.capability`
 
 | Hook | Earned at |
 |---|---|
-| `milestone.doors.N` | N rated doors (`Meta.Rated`): 10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500 |
+| `milestone.doors.N` | N rated doors (`game.RatedDoors`): 10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500 |
 | `milestone.upsolve.N` | N upsolves of any kind: 5, 25 |
 | `milestone.gate.half` | half the rated doors the first prestige gate needs (`Rules.CalibAfter`), still at prestige 0 and short of it |
 | `milestone.gate.open` | all of them, still at prestige 0 |
 | `milestone.lib.1` | the first lib |
 | `milestone.capability` | each capability, in the order earned; a 2-line pool keyed by the capability |
 | `milestone.mastered.1` | the first topic mastered (D24): `Rules.MasteryAttempts` rated attempts on a topic other than mixed, so its doors well under its rating hide their tags |
-| `milestone.retired.1` | the first regression retired (RT6, `Meta.Retired`): re-solved at every stage of `Rules.RegressionDays` (3 and 17 days), so it no longer comes back |
+| `milestone.retired.1` | the first regression retired (RT6, `Meta.Retired`): re-solved at every stage of `Rules.RegressionDays`, so it no longer comes back |
 
 ### milestone.doors.10
 ```text
-Ten doors in, under a doormat: a note, typed, folded very small.
+Under the doormat in the hall: a note, folded very small.
 On the outside, in pencil: halts? Who asks a doormat that?
 ```
 
 ### milestone.upsolve.5
 ```text
-Five upsolves. The Cat keeps a ledger now: grins lost, grins found.
+The Cat keeps a ledger now: grins lost, grins taken back.
 It won't show you the totals. What is it saving them for?
 ```
 
 ### milestone.doors.25
 ```text
-Twenty-five doors in, the note's initials come clear: A. M. T., 1936.
+The note under the mat is signed: A. M. T., 1936.
 The Rabbit reads it over your shoulder and drops his watch. Why?
 ```
 
 ### milestone.gate.half
 ```text
-The mirror over the mantel has gone cloudy, like breath on glass.
+The mirror over the mantel clouds, like breath on glass.
 Half the rated doors it wants are behind you. What's it waiting for?
 ```
 
 ### milestone.doors.50
 ```text
-Fifty doors in, you unfold the note once: a tape, a head, a table.
-"That's the judge," says the Cat. "Or its grandfather." Is it?
+Unfolded once, the note shows a tape, a head and a table.
+"That's the judge's grandfather," says the Cat. What did it judge?
 ```
 
 ### milestone.gate.open
 ```text
-The glass has gone soft, like gauze. Clear a boot to step through.
-Is the other side the same room? The Red Queen won't stop to say.
+The glass is soft as gauze. One clear takes you through.
+The Red Queen runs past too fast to ask: same room, other side?
 ```
 
 ### milestone.lib.1
+uses: G25 (allusion)
 ```text
-Your first lib. Humpty Dumpty, on his wall, insists on naming it.
+Your first lib. Humpty Dumpty insists on naming it.
 He'd call it Humpty. You didn't. Does a name change what it means?
 ```
 
 ### milestone.capability
 pick: 2-line pool, seeded by the capability
 ```text
-The Gryphon stamps a certificate: {cap}. Another road opens.
-The Mock Turtle sobs: lessons lessen. How short can one get?
+{cap}, stamped by the Gryphon. Another road opens.
+The Mock Turtle sobs that lessons lessen. How short can one get?
 
-{cap}, earned. The Mock Turtle weeps: pride, or salt water.
-The Gryphon can't tell which. Can you?
+{cap}, earned. The Mock Turtle weeps buckets.
+Proud, or just salty? The Gryphon can't tell. Can you?
 
 The Gryphon pins {cap} on a crowded wall.
-What's under the oldest certificate? The Mock Turtle won't look.
+What's under the oldest one? The Mock Turtle won't look. Will you?
 ```
 
 ### milestone.mastered.1
 ```text
-One topic knows you now. Its doors well under you hide their tags.
-The Cat will still read them out, for a duck. Will you need it to?
+One topic knows you now: its lesser doors drop their tags.
+The Cat will still read them out for a duck. Will you need it to?
 ```
 
 ### milestone.retired.1
-draft by the final wiring thread, for the storyteller to revise · uses: G17 (allusion)
+uses: G17 (allusion: her memory works forwards, and a retired door has no future)
 ```text
-The White Queen strikes a door off her list. It came back twice,
-and twice you fixed it. She won't remember it next week. Will you?
+The White Queen strikes a door off her list, in ink.
+It has no future now, so she's already forgotten it. Will you?
 ```
 
 ### milestone.doors.75
 ```text
-Seventy-five doors in, the second fold asks one thing of any machine:
+The note's second fold asks one thing of every machine:
 does it ever stop? The Rabbit stops winding his watch. Does it?
 ```
 
 ### milestone.doors.100
 ```text
-A hundred doors in, the note answers itself: not for every machine.
-The Rabbit winds his watch again. For one machine, then? Which one?
+The note answers itself: nobody can say, not in general.
+So the Rabbit carries a watch and decides for one. Is that cheating?
 ```
 
 ### milestone.upsolve.25
 ```text
-Twenty-five upsolves. The ledger is full, so the Cat eats it.
-"Every grin you take back," it says, "I keep a copy." A copy of what?
+The Cat's ledger balances at last, so the Cat eats it.
+It purrs that it kept a copy of each one. A copy of whom?
 ```
 
 ### milestone.doors.150
 ```text
-A hundred and fifty doors, and every one stopped. You checked each.
+Every door so far has stopped. You checked each one.
 The Queen calls that a proof. The Cat calls it a sample. Who's right?
 ```
 
 ### milestone.doors.200
 ```text
-Two hundred doors in, something under the floor snores in 4/4 time.
+Something under the floor snores in 4/4 time.
 The judge's clock keeps the beat. Who sleeps through every verdict?
 ```
 
 ### milestone.doors.250
 ```text
-Two hundred and fifty doors in, the note has one more fold. Inside,
-a sketch of PID 1, falling. It stops before you land. On purpose?
+The note's last fold. Inside: a sketch of PID 1, falling.
+The drawing stops before you land. Out of tape, or on purpose?
 ```
 
 ### milestone.doors.300
 ```text
-Three hundred doors. The Wizards have heard about your note.
-"An old question," says Eval. "Older than us," says Apply. How old?
+The Wizards have heard about your note.
+"Older than us," says Eval. "We borrowed it once," says Apply. Why?
 ```
 
 ### milestone.doors.400
+uses: S4 (by number)
 ```text
-Four hundred doors. "We set it as an exercise once," says Eval.
-"Four-fifteen," says Apply. "It got out." What got out?
+"We set it as an exercise," says Eval. "Four-fifteen."
+Apply owns up to the pencil. "Then it got out." What got out?
 ```
 
 ### milestone.doors.500
 ```text
-Five hundred doors. Unfolded flat, the note is the size of a door.
-On the back, in an old terse hand: hello, world. Who carved it first?
+Unfolded flat, the note is exactly the size of a door.
+On its back, in an old terse hand: hello, world. Which came first?
 ```
 
 ---
@@ -583,7 +585,7 @@ On the back, in an old terse hand: hello, world. Who carved it first?
 ## Biomes
 
 ### biome.intro.<topic>
-where: doors screen header on the biome's first room (`doors.go:91`), or a one-line toast when the route is taken; `BiomeBlurb` stays on the route card · when: every biome start · pick: fixed, one per topic · uses: listed per line
+where: the drop into each biome, `story.NewBiome` (`./internal/screens/story/scenes.go:185`), queued at its first room (`./internal/app/story.go:188`); `BiomeBlurb` stays on the route card · when: every biome start · pick: fixed, one per topic · uses: listed per line
 
 | Hook | Uses |
 |---|---|
@@ -629,11 +631,14 @@ One of the trees has a door in it. cd in, and remember the way out.
 
 ## Bosses
 
-Boss names and blurbs stay as they are in `./internal/flavor/names.go:35`.
+Boss names and blurbs stay as they are in `./internal/flavor/names.go:37`.
 The entrance line goes on the boss door card under the spaced name
-(`doors.go:160`). The defeat line goes on the AC screen after a boss clear:
-the upgrade pick for a mid-boot boss, the cleared screen for the last one.
-The pick is a pool for both.
+(`./internal/screens/boot/doors.go:473`) and on the boss card scene
+(`story.NewBossIntro`, `./internal/screens/story/scenes.go:119`). The
+defeat line goes on the cleared screen for the boot's last boss
+(`./internal/screens/boot/cleared.go:115`); a mid-boot boss's defeat has no
+slot yet, and the upgrade pick after it is the place. The pick is a pool
+for both.
 
 ### boss.enter.off-by-one
 uses: G12, G13 (fragment)
@@ -739,7 +744,7 @@ You didn't decide halting. You decided this one. The proof survives.
 ## Merge window
 
 ### merge.line
-where: merge window header line (`merge.go:124`) · when: every · pick: pool · uses: A26, A27, A28, A22, A23, A24, A20
+where: over the merge window's table when there is room (`./internal/screens/boot/merge.go:164`) · when: every · pick: pool · uses: A26, A27, A28, A22, A23, A24, A20
 ```text
 "It's always six o'clock now." So it's always time to commit.
 "It's always tea-time." No time to wash the cups between merges.
@@ -753,31 +758,31 @@ rc1 is at six o'clock. So is rc2. Time stopped at tea.
 ```
 
 ### merge.full
-where: daemon section when held daemons are at `MaxDaemons` (`merge.go:160`) · when: every · pick: fixed · uses: A19
+where: new: the merge window's daemon section when the boot holds `MaxDaemons` and the window offers none (`sections`, `./internal/screens/boot/merge.go:237`). There is no swap (`./internal/game/engine.go:653`), so the line promises none · when: every · pick: fixed · uses: A19; the punchline answers `story.first-merge`'s "There's plenty of room."
 ```text
-"No room! No room!" Every daemon seat is taken. Swap one, or don't.
+"No room! No room!" Every daemon seat is taken. For once, it's true.
 ```
 
 ### merge.nothing
-where: commit row with nothing uncommitted (`merge.go:142`) · when: every · pick: fixed · uses: *parody* of A21 ("I don't see any wine" / "There isn't any")
+where: in place of `merge.line` when nothing is uncommitted (`merge.go:166`) · when: every · pick: fixed · uses: *parody* of A21 ("I don't see any wine" / "There isn't any")
 ```text
 "I don't see any bytes." "There aren't any," says the March Hare.
 ```
 
 ### merge.commit
-where: status line after `c` commits · when: every · pick: fixed · uses: A30
+where: the dmesg strip, after `c` commits (`./internal/screens/boot/dmesg.go:371`) · when: every · pick: fixed · uses: A30
 ```text
 Committed. The Dormouse murmurs "Treacle," and goes back to sleep.
 ```
 
 ### merge.uncommitted
-where: new, leaving the window with bytes uncommitted (`./docs/design/ux-journey.md` J2) · when: every · pick: fixed
+where: the dmesg strip, leaving the window with bytes uncommitted (`dmesg.go:376`) · when: every · pick: fixed
 ```text
 The Hatter waves a cup at your pockets: {bytes} still uncommitted.
 ```
 
 ### merge.leave
-where: the `leave →` row (`merge.go:172`) · when: every · pick: fixed · uses: A32
+where: the dmesg strip, leaving the window with nothing uncommitted (`dmesg.go:378`) · when: every · pick: fixed · uses: A32
 ```text
 "At any rate I'll never go there again!" Next biome. Same table.
 ```
@@ -787,8 +792,9 @@ where: the `leave →` row (`merge.go:172`) · when: every · pick: fixed · use
 ## Crash
 
 Epitaphs sit under the sourced quote on the kernel panic screen
-(`crash.go:172`), in faint text. They add to the quote and do not replace
-it. `cause` is `game.Crash.Cause`. A cursed-door crash (`Crash.Cursed`) uses
+(`epitaph`, `./internal/screens/boot/crash.go:426`, drawn at `:330`), in
+faint text. They add to the quote and do not replace it. `cause` is
+`game.Crash.Cause`. A cursed-door crash (`Crash.Cursed`) uses
 `crash.epitaph.cursed` instead of out-of-lives. Out-of-lives with a known
 last verdict prefers the verdict pool and falls back to the general one.
 
@@ -811,7 +817,7 @@ And the moral of that is: the samples are not the test data.
 ```
 
 ### crash.epitaph.out-of-lives.<verdict>
-pick: fixed per verdict (`TLE`, `MLE`, `RE`, `WA`; OLE folds into MLE as in `normVerdict`) · uses: A25, A50, ch. VIII executioner (allusion), A33 (*parody*)
+pick: fixed per verdict (`TLE`, `MLE`, `RE`, `WA`; OLE folds into MLE, `crash.go:433`) · uses: A25, A50, ch. VIII executioner (allusion), A33 (*parody*)
 ```text
 "He's murdering the time! Off with his head!" As charged.
 Rule Forty-two. All persons more than a mile high to leave the court.
@@ -837,13 +843,13 @@ One wrong answer, one head. The Queen keeps very tidy books.
 ```
 
 ### coredump.recovered
-where: after an upsolve recovers the dump (the existing `core dump recovered: +N B banked` message) · when: every · pick: fixed · uses: A18 (allusion)
+where: the flash after an upsolve banks a core dump (`recoveredNote`, `./internal/app/debrief.go:247`) · when: every · pick: fixed · uses: A18 (allusion)
 ```text
 The grin comes back, and a cat behind it: +{bytes} banked.
 ```
 
 ### coredump.lost
-where: new, when a crash overwrites an unrecovered dump (`./docs/design/ux-journey.md`, boot 8) · when: every · pick: block · uses: G28
+where: the crash screen, when a crash overwrites an unrecovered dump (`./internal/screens/boot/crash.go:335`) · when: every · pick: block · uses: G28
 ```text
 All the King's horses and all the King's men
 Couldn't put Humpty Dumpty in his place again.
@@ -854,9 +860,11 @@ Couldn't put Humpty Dumpty in his place again.
 
 ## Cleared
 
-Lines sit under the `cleared` banner (`cleared.go:77`), above the stats.
-The pick is a pool keyed by the prestige just cleared. A prestige unlock
-shows `reveal.prestige.<p+1>` as well, the first time.
+Lines sit under the cleared screen's header (`clearedLine`,
+`./internal/screens/boot/cleared.go:202`, drawn at `:118`), above the
+stats. The pick is a pool keyed by the prestige just cleared. A prestige
+unlock also earns `reveal.prestige.<p+1>`, the first time, as the boot
+end's beat.
 
 ### cleared.0
 uses: A6
@@ -900,7 +908,7 @@ There's talk of a ring -2. The Wizards change the subject.
 ```
 
 ### cleared.beyond
-where: prestige 5 and up, if `MaxPrestige` ever rises
+where: prestige 5 and up, if `MaxPrestige` ever rises (`cleared.go:208`)
 ```text
 Ring {ring}. The Management Engine waves. Nobody knows what it does.
 Eval hands the ball to Apply. Apply hands it back. Again?
@@ -910,9 +918,10 @@ Eval hands the ball to Apply. Apply hands it back. Again?
 
 ## Rubber duck (the Cheshire Cat)
 
-Where: the HUD after `:Quack` or `?` (`./internal/screens/boot/hudbar.go:108`
-to `:123`). The mechanic text there (tags, technique) stays, and the quip
-goes above it. Pick: pool.
+Where: the dmesg strip, under the duck's own line: after a quack
+(`./internal/screens/boot/dmesg.go:313`), a refused one (`:473`, `:475`)
+and the merge window's refill (`:367`). The mechanic text there (tags,
+technique) stays. Pick: pool.
 
 ### duck.quack.1
 first quack, reveals tags · uses: A14 (fragment)
@@ -945,7 +954,7 @@ No body, no head to cut off. The Cat's safe. You're on your own.
 ```
 
 ### duck.refill
-where: merge window, when ducks refill · uses: A17
+the merge window, when ducks refill · uses: A17
 ```text
 "Did you say pig, or fig?" The Cat is back on its branch. Ducks: {n}
 A grin in the tree, then a Cat around it. Ducks refilled: {n}
@@ -955,12 +964,14 @@ A grin in the tree, then a Cat around it. Ducks refilled: {n}
 
 ## Daemons and upgrades
 
-Flavor goes on a faint second line under the mechanic text from
-`DaemonTextFor` and `UpgradeTextFor` (`./internal/flavor/names.go:50`, `:65`).
-That text stays the truth (bible tone rule 5). Pick: fixed per key.
+Flavor goes on the dmesg strip under the pick's mechanic line, the text
+from `DaemonTextFor` and `UpgradeTextFor` (`./internal/flavor/names.go:69`,
+`:52`; drawn at `./internal/screens/boot/dmesg.go:341`, `:327`). That text
+stays the truth (bible tone rule 5), so a line here names no number a
+preset can change. Pick: fixed per key.
 
 ### daemon.<key>
-uses: G30 (allusion); nice parodies the Knight's upside-down box (ch. VIII)
+uses: G30 (allusion); nice parodies the Knight's upside-down box and cron his mouse-trap "in case they do come" (ch. VIII)
 
 | Hook | Line |
 |---|---|
@@ -969,6 +980,8 @@ uses: G30 (allusion); nice parodies the Knight's upside-down box (ch. VIII)
 | `daemon.fork` | line 3 |
 | `daemon.dev-random` | line 4 |
 | `daemon.kexec` | line 5 |
+| `daemon.cron` | line 6 |
+| `daemon.chrt` | line 7 |
 
 ```text
 The Knight's invention: a window onto the test that tripped you.
@@ -976,6 +989,8 @@ Carried upside-down so the rain can't get in. The lives fall out.
 He rides two horses at once and falls off both. More doors, though.
 A box of mystery doors. He invented it. He's never opened it.
 Swap the door without getting off the horse. Once per biome.
+A mousetrap on the saddle, in case old doors come back. They pay more.
+The horse gets real-time priority. The ground comes up faster, too.
 ```
 
 ### upgrade.<key>
@@ -986,15 +1001,17 @@ uses: G8
 | `upgrade.overclock` | line 1 |
 | `upgrade.ecc` | line 2 |
 | `upgrade.duck` | line 3 |
+| `upgrade.shuf` | line 4 |
 
 ```text
 "You must run at least twice as fast as that!" Or {pct} faster.
 One flipped bit forgiven. The Queen is not informed.
 Another grin in the trees. Somebody's Cat. Yours now.
+New doors for one room, pulled from a hat. The Hatter wants it back.
 ```
 
 ### o3.bonus
-where: the free upgrade from an AC under half the timer (the -O3 bonus) · when: every · pick: fixed · uses: G8 (allusion)
+where: the dmesg strip, on the AC under half the timer that earns the free upgrade (`./internal/screens/boot/dmesg.go:264`) · when: every · pick: fixed · uses: G8 (allusion)
 ```text
 Twice as fast as that! The Red Queen nods, once. Free upgrade.
 ```
@@ -1004,28 +1021,28 @@ Twice as fast as that! The Red Queen nods, once. Free upgrade.
 ## Regressions (the White Queen)
 
 ### regression.door
-where: a faint line under the card's `↺ regression: crashed you N days ago` (`doors.go:299`) · when: every · pick: pool · uses: G18, G17 (allusion), White Queen's jam rule (ch. V, paraphrase)
+where: new: the dmesg strip as a regression door opens, its `↺ regression` part with this line (`doorMods`, `./internal/screens/boot/dmesg.go:413`). The card already says how long ago it crashed you, so the lines don't · when: every · pick: pool · uses: G18, G17 (allusion), White Queen's jam rule (ch. V, paraphrase). No line asks for the solve on a day (retention GR2)
 ```text
-"You again?" This door remembers you. You remember it, a bit.
-"It's a poor sort of memory that only works backwards." Again, then.
-Jam yesterday, jam to-morrow, never jam to-day. Solve it to-day.
-It crashed you {ago}. It has been practising. Have you?
+"You again?" says the door. It remembers you. You remember it, a bit.
+"It's a poor sort of memory that only works backwards." Forwards, now.
+Jam yesterday, jam to-morrow, never jam to-day. Bugs aren't jam.
+Same door, blank file. Since last time, one of you learned something.
 ```
 
 ### regression.stage.1
-where: as above, stage 1 (the 3-day return) · pick: fixed · uses: G19
+where: GRUB's regressions submenu, the note under a due regression at stage 1 (`regressionNote`, `./internal/screens/meta/grub.go:704`); `{days}` is that stage's delay, `Regression.Days[0]` (3 in the standard rules) · pick: fixed · uses: G19
 ```text
-"I haven't pricked it yet, but I soon shall—oh, oh, oh!" Day three.
+"I haven't pricked it yet, but I soon shall—oh, oh, oh!" Day {days}.
 ```
 
 ### regression.stage.2
-where: as above, stage 2 (the 17-day return) · pick: fixed
+where: as above, stage 2; `{days}` is `Regression.Days[1]`, counted from the first fix (17 in the standard rules) · pick: fixed
 ```text
-Seventeen days on, the White Queen screams before you even open it.
+Day {days} after your fix: the White Queen screams before you open it.
 ```
 
 ### regression.cleared
-where: AC on a regression door · when: every · pick: fixed
+where: the dmesg strip, on an AC on a regression door (`./internal/screens/boot/dmesg.go:268`), and the flash after a GRUB upsolve fixes a due regression (`upsolveNote`, `./internal/app/debrief.go:233`) · when: every · pick: fixed
 ```text
 Solved, blank file and all. The White Queen forgets it, backwards.
 ```
@@ -1034,48 +1051,52 @@ Solved, blank file and all. The White Queen forgets it, backwards.
 
 ## RTFM (the Mock Turtle's school)
 
-### rtfm.title
-where: RTFM browser header (`browser.go`; `manTitle` at `:421` stays the license line) · when: every · pick: fixed · uses: A44 (allusion)
-```text
-the Mock Turtle's school · the regular course · lessons lessen daily
-```
+None of these is drawn yet. The browser's header stays the guide's
+license line (`manTitle`, `./internal/screens/rtfm/browser.go:424`). The
+page's tail, after the module list and before `COLOPHON`
+(`./internal/screens/rtfm/browser.go:610`), is where a man page keeps its
+odd sections, so `help.vocab`, `rtfm.syllabus`, `white-knight.song` and
+`rtfm.underflow` go there.
 
 ### rtfm.module.intro
-where: module page, under the `RTFM ▸ … ▸ …` crumb (`./internal/screens/learn/module.go:92`) · when: every · pick: pool, seeded by module · uses: A40, A42 (allusion), A44 (*parody*: the Gryphon's line with the module name added)
+where: new: module page, a faint line after the NAME section's description (`./internal/screens/rtfm/module.go:118`) · when: every · pick: pool, seeded by module · uses: A40, A42 (allusion), A44 (*parody*: the Gryphon's line with the module name added)
 ```text
-"{module}," sighs the Mock Turtle. "Every day."
-{module}: a branch of Arithmetic, says the Gryphon.
+"{module}," sighs the Mock Turtle. "We did it at sea."
+{module}: a branch of Arithmetic, the Gryphon insists.
 {module}. "I only took the regular course."
 The Gryphon: "{module}. They lessen from day to day."
-{division} · {module}. Pass for {cap}.
 ```
 
 ### rtfm.trial.start
-where: starting a trial (`module.go:237`, `[t]`) · pick: fixed · uses: A43
+where: new: a flash as a trial starts (`startTrial`, `./internal/app/learn.go:88`). A trial's timer runs into overtime (`rules.Trial`, `OnExpire = ExpireOvertime`), which is what "soft" means · pick: fixed · uses: A43
 ```text
 "Ten hours the first day," says the Mock Turtle. Your timer is soft.
 ```
 
 ### rtfm.trial.pass
-where: trial passed · pick: fixed
+where: new: the cleared screen of a trial that granted a capability (`TrialState.Granted`), in place of `cleared.<p>` (`./internal/screens/boot/cleared.go:117`) · pick: fixed
 ```text
 The Gryphon claps: {cap}. {biome} joins routes.
 ```
 
 ### rtfm.trial.fail
-where: trial failed or abandoned · pick: fixed · uses: A46
+where: new: the crash screen of a trial, in place of the epitaph (`./internal/screens/boot/crash.go:426`) · pick: fixed · uses: A46
 ```text
 "That's enough about lessons," says the Gryphon. Try a boot instead.
 ```
 
-### rtfm.underflow
-where: easter egg, any RTFM footer, rare · pick: fixed · uses: A45
+### help.vocab
+where: new: the RTFM page's tail, a `WORDS` section first: the in-game manual is the closest thing to `man katharsis` · pick: block · uses: G25, G26
 ```text
-"And how did you manage on the twelfth?" Unsigned: 4294967295 hours.
+"When I use a word," Humpty Dumpty said in rather a scornful tone,
+"it means just what I choose it to mean—neither more nor less."
+Here, boot means run, bytes means money, and panic means you died.
+"When I make a word do a lot of work like that," he adds, "I always
+pay it extra."
 ```
 
 ### rtfm.syllabus
-where: an optional `CURRICULUM` section on the `rtfm(7)` page (`browser.go`, next to `COLOPHON` at `:605`) · pick: block · uses: Mock Turtle's subjects, ch. IX
+where: new: the RTFM page's tail, a `CURRICULUM` section · pick: block · uses: Mock Turtle's subjects, ch. IX
 ```text
 Reeling and Writhing .......... fast I/O
 Ambition ...................... addition, and its overflow
@@ -1089,14 +1110,31 @@ Fainting in Coils ............. painting in oils: flood fill
 Laughing and Grief ............ Latin and Greek: strings
 ```
 
+### white-knight.song
+where: new: the RTFM page's tail, an `EXAMPLES` section: the prologue's man page had none, and this is the only example on offer · pick: block · uses: G31 and the rest of the Knight's speech (ch. VIII: "The name really is 'The Aged Aged Man'", "The song is called 'Ways and Means'", "The song really is 'A-sitting On A Gate'")
+```text
+The White Knight explains his song, K&R-style:
+  song          "A-sitting On A Gate"   what the song really is
+  *called       "Ways and Means"        what the song is called
+  *name         "The Aged Aged Man"     what the name really is
+  **name_called "Haddocks' Eyes"        what the name is called
+"It's my own invention."
+```
+
+### rtfm.underflow
+where: new: the RTFM page's tail, a `BUGS` section, last before `COLOPHON` · pick: fixed · uses: A45
+```text
+"And how did you manage on the twelfth?" Unsigned: 4294967295 hours.
+```
+
 ---
 
-## Optional new hooks
+## The dmesg strip and the app's flashes
 
-These have no slot yet. They cost nothing to skip.
+These were written as optional hooks; the D lane wired them.
 
 ### verdict.<V>
-where: the HUD status after `:Submit` (`hudbar.go:136`); the Queen as judge · pick: fixed per verdict · uses: A33 (*parody*), A25 (fragment), A50 (fragment), A51
+where: the dmesg strip: a failed submit's verdict (`./internal/screens/boot/dmesg.go:248`) and every AC (`verdict.AC`, `:258`; `o3.bonus` takes its place on an -O3 clear); the Queen as judge · pick: fixed per verdict · uses: A33 (*parody*), A25 (fragment), A50 (fragment), A51; OLE alludes to the jury's slates (ch. XI)
 
 | Hook | Line |
 |---|---|
@@ -1106,6 +1144,7 @@ where: the HUD status after `:Submit` (`hudbar.go:136`); the Queen as judge · p
 | `verdict.MLE` | line 4 |
 | `verdict.RE` | line 5 |
 | `verdict.CE` | line 6 |
+| `verdict.OLE` | line 7 |
 
 ```text
 The Queen looks for a head to remove. Finds none. Sulks.
@@ -1114,24 +1153,25 @@ The Queen looks for a head to remove. Finds none. Sulks.
 "All persons more than a mile high to leave the court."
 The executioner can't cut off a head without a body to cut it from.
 "If there's no meaning in it, that saves a world of trouble."
+The jury runs out of slate. You're still printing.
 ```
 
 ### timer.warn
-where: the vim border and HUD at 5:00 and 1:00 left · pick: line 1 at 5:00, line 2 at 1:00 · uses: A1, A2
+where: the dmesg strip at 5:00 and 1:00 left (`./internal/screens/boot/dmesg.go:392`); not on the vim border yet · pick: line 1 at 5:00, line 2 at 1:00 · uses: A1, A2
 ```text
 "Oh dear! Oh dear! I shall be late!"
 "Oh my ears and whiskers, how late it's getting!"
 ```
 
 ### quit.warn / resume.note
-where: quitting with a door open, and resuming one (D31: the door keeps running while the game is closed) · pick: fixed
+where: the app's flash on quitting with a door open, and on resuming one (`./internal/app/debrief.go:205`, `:214`; D31: the door keeps running while the game is closed) · pick: fixed
 ```text
 The Rabbit won't stop his watch for you. {time} left on this door.
 Welcome back. The Rabbit kept time: {time} left.
 ```
 
 ### door.blind / door.mystery / door.cursed
-where: a faint line under the modifier on the door card (`doors.go:275` to `:296`) · pick: fixed · uses: G10 (allusion), G24
+where: the dmesg strip as the door opens, the line of its most dangerous modifier (`doorMods`, `./internal/screens/boot/dmesg.go:413`) · pick: fixed · uses: G10 (allusion), G24
 ```text
 Tags hidden, as in the nameless wood. Bytes extra for the trouble.
 Sometimes like a doll and sometimes like a work-box. Title hidden.
@@ -1139,32 +1179,11 @@ The Queen is judging this one herself. No Cat. One WA.
 ```
 
 ### lib.saved
-where: when a `// lib:` block is harvested (README, "Libs") · pick: 2-line pool · uses: G25, G26
+where: the dmesg strip, when a `// lib:` block is harvested from an AC (`./internal/screens/boot/dmesg.go:230`) · pick: 2-line pool · uses: G25, G26
 ```text
 "When I use a word, it means just what I choose it to mean—
 neither more nor less." lib {name}, saved.
 
 "When I make a word do a lot of work like that, I always pay it
 extra." lib {name}, linked.
-```
-
-### help.vocab
-where: the top of any help or glossary screen (a future `man katharsis`) · pick: block · uses: G25, G26
-```text
-"When I use a word," Humpty Dumpty said in rather a scornful tone,
-"it means just what I choose it to mean—neither more nor less."
-Here, boot means run, bytes means money, and panic means you died.
-"When I make a word do a lot of work like that," he adds, "I always
-pay it extra."
-```
-
-### white-knight.song
-where: easter egg; suggested in the RTFM page's `COLOPHON`, or wherever pointers come up · pick: block · uses: G31 and the rest of the Knight's speech (ch. VIII: "The name really is 'The Aged Aged Man'", "The song is called 'Ways and Means'", "The song really is 'A-sitting On A Gate'")
-```text
-The White Knight explains his song, K&R-style:
-  song          "A-sitting On A Gate"   what the song really is
-  *called       "Ways and Means"        what the song is called
-  *name         "The Aged Aged Man"     what the name really is
-  **name_called "Haddocks' Eyes"        what the name is called
-"It's my own invention."
 ```
