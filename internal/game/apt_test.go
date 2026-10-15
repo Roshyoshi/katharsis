@@ -164,6 +164,14 @@ func TestPackageEffects(t *testing.T) {
 	if n, m := len(boot().s.Doors), len(boot("tmux").s.Doors); m != n+1 {
 		t.Errorf("tmux: %d doors, want %d", m, n+1)
 	}
+	// It does not stack with fork's door after an AC: the room holds the
+	// more of the two.
+	h := boot("tmux")
+	h.s.Daemons = []game.Daemon{game.Fork}
+	h.clearDoor(0, 10*time.Minute)
+	if want := max(h.s.Rules.DoorsPerRoom+1, h.s.Rules.ForkDoors); len(h.s.Doors) != want {
+		t.Errorf("tmux and fork after an AC: %d doors, want %d", len(h.s.Doors), want)
+	}
 
 	// git: one more topic at each route.
 	h, g := boot(), boot("git")
