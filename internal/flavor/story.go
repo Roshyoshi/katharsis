@@ -256,6 +256,10 @@ The Gryphon can't tell which. Can you?
 The Gryphon pins {cap} on a crowded wall.
 What's under the oldest certificate? The Mock Turtle won't look.
 `),
+	"milestone.mastered.1": blockOf(`
+One topic knows you now. Its doors well under you hide their tags.
+The Cat will still read them out, for a duck. Will you need it to?
+`),
 	"milestone.doors.75": blockOf(`
 Seventy-five doors in, the second fold asks one thing of any machine:
 does it ever stop? The Rabbit stops winding his watch. Does it?

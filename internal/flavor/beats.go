@@ -159,6 +159,7 @@ var milestones = []beat{
 	{"milestone.gate.open", "the glass goes soft", gateOpen},
 	{"milestone.lib.1", "a word on the wall", func(_ *game.State, m *game.Meta) bool { return len(m.Libs) > 0 }},
 	{capabilityBeat, "the Gryphon's certificate", nil},
+	{"milestone.mastered.1", "tags off", topicMastered},
 	{"milestone.doors.75", "the second fold", doors(75)},
 	{"milestone.doors.100", "nobody can say", doors(100)},
 	{"milestone.upsolve.25", "the ledger, eaten", upsolves(25)},
@@ -175,6 +176,24 @@ var milestones = []beat{
 // crashes still moves it.
 func doors(n int) func(*game.State, *game.Meta) bool {
 	return func(_ *game.State, m *game.Meta) bool { return game.RatedDoors(m) >= n }
+}
+
+// topicMastered is due once a topic is mastered (D24): the boot's
+// MasteryAttempts rated attempts on it and a rating of its own, after
+// which its doors well under that rating hide their tags. Mixed has no
+// rating of its own and never hides them, and a preset with mastery off
+// has nothing to tell.
+func topicMastered(st *game.State, m *game.Meta) bool {
+	need := st.Rules.MasteryAttempts
+	if need <= 0 {
+		return false
+	}
+	for t, n := range m.TopicAttempts {
+		if _, rated := m.TopicRating[t]; rated && t != game.Mixed && n >= need {
+			return true
+		}
+	}
+	return false
 }
 
 // upsolves is due at n upsolves of any kind: re-solving the problem that

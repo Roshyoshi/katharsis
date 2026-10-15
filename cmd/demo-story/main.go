@@ -60,6 +60,7 @@ func scenes() []scene {
 		"daemon.intro", "story.first-rtfm", "story.first-regression",
 		"reveal.prestige.1", "reveal.prestige.2", "reveal.prestige.3", "reveal.prestige.4",
 		"reveal.final-clear", "milestone.doors.10", "milestone.gate.half", "milestone.capability:CAP_DP",
+		"milestone.mastered.1",
 	} {
 		out = append(out, scene{"beat " + id, func() *story.Scene { return story.NewBeat(id) }})
 	}

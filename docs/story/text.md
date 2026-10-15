@@ -453,6 +453,11 @@ block, except `milestone.capability`
 | `milestone.gate.open` | all of them, still at prestige 0 |
 | `milestone.lib.1` | the first lib |
 | `milestone.capability` | each capability, in the order earned; a 2-line pool keyed by the capability |
+| `milestone.mastered.1` | the first topic mastered (D24): `Rules.MasteryAttempts` rated attempts on a topic other than mixed, so its doors well under its rating hide their tags |
+
+"First regression retired" (RT6) has no beat yet: `Meta` keeps no record
+of a regression that passed its last stage (`advanceRegression` deletes
+it), so no trigger can see one.
 
 ### milestone.doors.10
 ```text
@@ -507,6 +512,12 @@ The Gryphon can't tell which. Can you?
 
 The Gryphon pins {cap} on a crowded wall.
 What's under the oldest certificate? The Mock Turtle won't look.
+```
+
+### milestone.mastered.1
+```text
+One topic knows you now. Its doors well under you hide their tags.
+The Cat will still read them out, for a duck. Will you need it to?
 ```
 
 ### milestone.doors.75

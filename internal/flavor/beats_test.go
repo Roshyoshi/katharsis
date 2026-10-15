@@ -230,6 +230,10 @@ func TestEveryBeatReachable(t *testing.T) {
 		if boot == 40 {
 			m.Libs = append(m.Libs, game.Lib{Name: "dsu"})
 		}
+		if boot == 60 {
+			m.TopicAttempts = map[string]int{"dp": rules.Standard().MasteryAttempts}
+			m.TopicRating = map[string]float64{"dp": 1500}
+		}
 		if boot%50 == 0 && len(m.Capabilities) < len(caps) {
 			m.Capabilities = append(m.Capabilities, caps[len(m.Capabilities)])
 		}
@@ -405,5 +409,36 @@ func scenesAt(st *game.State, m *game.Meta) {
 		if len(st.DaemonOffers) > 0 {
 			mark("daemon.intro")
 		}
+	}
+}
+
+// TestTopicMastered: the mastery milestone follows the engine's mastery
+// (D24): enough rated attempts on a topic with a rating of its own, never
+// mixed, and nothing to tell under a preset with mastery off.
+func TestTopicMastered(t *testing.T) {
+	st := crashed(20, 0)
+	need := st.Rules.MasteryAttempts
+	if need <= 0 {
+		t.Fatal("the standard rules have mastery off")
+	}
+	rated := map[string]float64{"dp": 1500, game.Mixed: 1500}
+	for _, c := range []struct {
+		name string
+		m    game.Meta
+		want bool
+	}{
+		{"short of it", game.Meta{TopicAttempts: map[string]int{"dp": need - 1}, TopicRating: rated}, false},
+		{"mastered", game.Meta{TopicAttempts: map[string]int{"dp": need}, TopicRating: rated}, true},
+		{"mixed", game.Meta{TopicAttempts: map[string]int{game.Mixed: need * 3}, TopicRating: rated}, false},
+		{"no rating", game.Meta{TopicAttempts: map[string]int{"graphs": need}, TopicRating: rated}, false},
+	} {
+		if got := topicMastered(st, &c.m); got != c.want {
+			t.Errorf("%s: due %v, want %v", c.name, got, c.want)
+		}
+	}
+	off := crashed(20, 0)
+	off.Rules.MasteryAttempts = 0
+	if topicMastered(off, &game.Meta{TopicAttempts: map[string]int{"dp": 99}, TopicRating: rated}) {
+		t.Error("due with mastery off")
 	}
 }
