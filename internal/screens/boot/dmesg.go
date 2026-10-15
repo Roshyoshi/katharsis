@@ -415,12 +415,19 @@ func livesLost(lost, left int) string {
 }
 
 // doorMods is the line for a door's modifiers as it opens, the most
-// dangerous first, and the flavor hook of that one; "" for a plain door.
+// dangerous first, and the flavor hook of the first; "" for a plain door.
+// A regression (never cursed) comes before what its door hides: the White
+// Queen's line says why the door is back, which matters more than its
+// tags.
 func doorMods(d game.Door) (text, hook string) {
 	var parts []string
 	if d.Cursed {
 		parts = append(parts, ui.Modifier(ui.ModCursed, "cursed: no ducks, 1 WA = crash"))
 		hook = "door.cursed"
+	}
+	if d.Regression {
+		parts = append(parts, ui.Modifier(ui.ModRegression, "regression"))
+		hook = cmp.Or(hook, "regression.door")
 	}
 	switch {
 	case d.Mystery:

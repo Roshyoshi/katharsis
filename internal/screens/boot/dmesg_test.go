@@ -303,6 +303,14 @@ func TestGoldenStrip(t *testing.T) {
 		{"strip_doors", func() screens.Screen { return NewDoors(stripEnv(fixture.Doors())) }},
 		{"strip_doors_fork", func() screens.Screen { return NewDoors(stripEnv(fixture.DoorsFork())) }},
 		{"strip_merge", func() screens.Screen { return NewMerge(stripEnv(fixture.Merge())) }},
+		// A regression door just opened: its part and the White Queen's line.
+		{"strip_regression", func() screens.Screen {
+			st := fixture.Doors()
+			e := env(st)
+			text, hook := doorMods(game.Door{Regression: true, Blind: true})
+			e.Events = []Event{{At: st.Started.Add(170 * time.Second), Kind: EvDoor, Text: "door_5: " + text, Hook: hook}}
+			return NewDoors(e)
+		}},
 	}
 	for _, c := range cases {
 		for _, sz := range goldenSizes {
@@ -372,5 +380,50 @@ func TestTrackerFoldsOLE(t *testing.T) {
 	}
 	if realFlavor.Story(evs[0].Hook, evs[0].Seed) == "" {
 		t.Errorf("flavor has no line for %s", evs[0].Hook)
+	}
+}
+
+// A regression door says so as it opens, with the White Queen's line
+// (regression.door) ahead of the tags it hides; a curse still comes first.
+func TestDoorModsRegression(t *testing.T) {
+	g := ui.G
+	cursed := g.Cursed + " cursed: no ducks, 1 WA = crash"
+	for _, tc := range []struct {
+		d          game.Door
+		text, hook string
+	}{
+		{game.Door{Regression: true}, g.Regression + " regression", "regression.door"},
+		{game.Door{Regression: true, Blind: true}, g.Regression + " regression" + g.Sep + g.Blind + " blind: tags hidden", "regression.door"},
+		{game.Door{Regression: true, Blind: true, Mystery: true}, g.Regression + " regression" + g.Sep + g.Mystery + " mystery: title and tags hidden", "regression.door"},
+		{game.Door{Cursed: true, Regression: true}, cursed + g.Sep + g.Regression + " regression", "door.cursed"},
+		{game.Door{Blind: true}, g.Blind + " blind: tags hidden", "door.blind"},
+		{game.Door{}, "", ""},
+	} {
+		text, hook := doorMods(tc.d)
+		if ansi.Strip(text) != tc.text || hook != tc.hook {
+			t.Errorf("%+v: %q %q, want %q %q", tc.d, ansi.Strip(text), hook, tc.text, tc.hook)
+		}
+	}
+
+	// Opened through the tracker, the door's event carries the line.
+	st := fixture.Doors()
+	m := fixture.Meta()
+	tr := Tracker{Lookup: fixture.Lookup}
+	tr.Observe(st, &m, fixture.Now)
+	d := st.Doors[0]
+	d.Regression, d.Cursed, d.Blind, d.Mystery = true, false, false, false
+	st.Phase, st.Doors = game.PhaseProblem, nil
+	st.Current = &game.Attempt{Door: d, Opened: fixture.Now, Deadline: fixture.Now.Add(d.Timer)}
+	var ev *Event
+	for _, e := range tr.Observe(st, &m, fixture.Now) {
+		if e.Kind == EvDoor {
+			ev = &e
+		}
+	}
+	if ev == nil || ev.Hook != "regression.door" || !strings.HasSuffix(ansi.Strip(ev.Text), g.Regression+" regression") {
+		t.Fatalf("regression door opened: %+v", ev)
+	}
+	if s := realFlavor.Story(ev.Hook, ev.Seed); s == "" || ansi.StringWidth(s) > 70 {
+		t.Errorf("regression.door line %q", s)
 	}
 }
