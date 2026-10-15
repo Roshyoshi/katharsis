@@ -171,7 +171,13 @@ S8 consolidation (after all code QA lands; from the cross-package report):
      (qa/chaos/oracle.sh); single-player honor system, not fixed
 
 ## Now
-Merged since last: submit-busy (a :Submit while one judges is refused; the app's
+Merged since last: S10 store (migration 2: events, offers, skill_history,
+model_versions, attempt columns; app events through a 256-deep async queue,
+failures to katharsis.log; D37 prompt = identity CF prior clamped 800..3500,
+asked once when nothing is rated, --no-prompts; load average = share of practice
+days over 7/30/90 (RT9, not boots per day); top `r` retention panel + GR11
+alarms; boot-end worth-it/felt line; the player's DB migrates forward-only on
+next launch), submit-busy (a :Submit while one judges is refused; the app's
 m.judging owns "busy"; chaos r01/r04/r05/r09/r13b updated; risk: no compile
 timeout in judge.Compile, so a hung compile locks resubmits until the grace),
 judge starve guard for AC cases, B-judge (PCH of each source's leading includes for g++ and clang
@@ -196,7 +202,7 @@ and :Debug; samples clang ASan on libstdc++ + _GLIBCXX_ASSERTIONS; cin 1e6 ints
 38 ms vs 967 ms on libc++; clang 21 out; package closure 2013 -> 1989 MiB;
 binary 28.4 MB). Main tests green (judge TLE timing flaked at load 23; passed
 alone); nix build ok.
-Running (workspaces): s10-engine, s10-store, c-part2, b-content (content/web, one topic
+Running (workspaces): s10-engine, c-part2, b-content (content/web, one topic
 table, DivisionBand, CF cache-only start, deps tidy). Agents keep .agents/work/progress-<ws>.md for
 restarts (spamming esc stops every agent).
 For B (from the GCC report): qa/judge expects ASan wording on the libstdc++
