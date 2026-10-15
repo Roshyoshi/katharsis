@@ -408,19 +408,29 @@ func readFile(path string) (string, error) {
 	return string(b), err
 }
 
-// overlayFlash replaces the last line of body with msg, so errors and notes
-// show without resizing the screen.
-func overlayFlash(body, msg string, w int) string {
+// flashRows is the most rows a flash covers.
+const flashRows = 3
+
+// overlayFlash puts msg over the last lines of body, wrapped to w, so
+// errors and notes show without resizing the screen. rows is how many it
+// covers. One clipped row lost the end of the longer ones in a door, where
+// the game's pane is the 36-48-column HUD: the quit warning's "ctrl+c
+// again to quit".
+func overlayFlash(body, msg string, w int) (_ string, rows int) {
 	lines := strings.Split(body, "\n")
-	lines[len(lines)-1] = ui.Select.Render(ui.Clip(" "+msg+" ", w))
-	return strings.Join(lines, "\n")
+	ms := ui.WrapN(msg, max(w-2, 1), min(flashRows, len(lines)))
+	at := len(lines) - len(ms)
+	for i, m := range ms {
+		lines[at+i] = ui.Select.Render(ui.Clip(" "+m+" ", w))
+	}
+	return strings.Join(lines, "\n"), len(ms)
 }
 
-// overlayBanner puts msg on the line above the last, which the flash and
-// the key help keep, so the two never cover each other.
-func overlayBanner(body, msg string, w int) string {
+// overlayBanner puts msg on the line above the last rows, which the flash
+// and the key help keep, so the two never cover each other.
+func overlayBanner(body, msg string, w, rows int) string {
 	lines := strings.Split(body, "\n")
-	i := max(len(lines)-2, 0)
+	i := max(len(lines)-1-max(rows, 1), 0)
 	lines[i] = ui.Alert.Render(ui.Clip(" "+msg+" ", w))
 	return strings.Join(lines, "\n")
 }

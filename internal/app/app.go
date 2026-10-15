@@ -6,6 +6,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log"
@@ -400,13 +401,12 @@ func (m *Model) View() tea.View {
 	}
 	body := m.body(w, h) // retention.go
 	m.story.drawn = body
-	if m.saveErr != nil {
-		body = overlayBanner(body, "save failed, progress is not being kept: "+m.saveErr.Error(), w)
+	rows := 0 // the flash's
+	if flash := cmp.Or(m.flash, m.toastLine()); flash != "" {
+		body, rows = overlayFlash(body, flash, w)
 	}
-	if m.flash != "" {
-		body = overlayFlash(body, m.flash, w)
-	} else if t := m.toastLine(); t != "" {
-		body = overlayFlash(body, t, w)
+	if m.saveErr != nil {
+		body = overlayBanner(body, "save failed, progress is not being kept: "+m.saveErr.Error(), w, rows)
 	}
 	v := tea.NewView(body)
 	v.AltScreen = true

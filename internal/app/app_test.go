@@ -1439,6 +1439,32 @@ func TestQuitMidDoorConfirms(t *testing.T) {
 	})
 }
 
+// With a door open the game's pane is the HUD, 36 to 48 columns: the quit
+// warning wraps there instead of losing its end ("ctrl+c again to quit")
+// to the one row a flash had. A save-failed banner stays above it.
+func TestQuitWarningFitsTheHUD(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.enterDoor()
+		h.send(tea.WindowSizeMsg{Width: 48, Height: 30})
+		h.m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+		h.m.saveErr = errors.New("disk full")
+		v := ansi.Strip(h.m.View().Content)
+		if flat := strings.Join(strings.Fields(v), " "); !strings.Contains(flat, "ctrl+c again to quit") {
+			t.Errorf("the quit warning lost its end at 48 columns:\n%s", v)
+		}
+		if !strings.Contains(v, "save failed") {
+			t.Errorf("the flash covered the save banner:\n%s", v)
+		}
+		for _, l := range strings.Split(v, "\n") {
+			if ansi.StringWidth(l) > 48 {
+				t.Errorf("a line %d wide at 48 columns: %q", ansi.StringWidth(l), l)
+			}
+		}
+	})
+}
+
 // Outside a door ctrl+c quits at once.
 func TestQuitOutsideDoor(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
