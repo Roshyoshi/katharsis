@@ -260,3 +260,28 @@ func TestBorder(t *testing.T) {
 		t.Errorf("global options changed after Restore")
 	}
 }
+
+// A door that ends while the player has unsaved edits must save them and
+// leave no prompt behind (QA: the next keystroke answered "Save changes?").
+func TestSaveAndCloseEditor(t *testing.T) {
+	vim := realVim(t)
+	privateTmux(t)
+	path := solution(t)
+	pane, err := tmux("new-window", "-P", "-F", "#{pane_id}", "--", vim, "-u", "NONE", "-i", "NONE", "-N", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitScreen(t, pane, "sol.cpp")
+	keys(t, pane, "ohello")
+	waitScreen(t, pane, "-- INSERT --")
+	if err := SaveAndCloseEditor(pane); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "vim to quit without asking", func() bool { return !PaneAlive(pane) })
+	if b, _ := os.ReadFile(path); string(b) != "int main() {}\nhello\n" {
+		t.Fatalf("file = %q, want the edit saved", b)
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(path), "."+filepath.Base(path)+".swp")); err == nil {
+		t.Fatal("swap file left behind")
+	}
+}

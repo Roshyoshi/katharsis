@@ -53,6 +53,18 @@ func CloseEditor(pane string) error {
 	return err
 }
 
+// SaveAndCloseEditor writes every modified buffer, then quits as CloseEditor
+// does. The game uses it when a door ends on its own (AC, a crash, quitting
+// the game): the player is not at the keyboard to answer a save prompt, and
+// a prompt left behind would eat their next keystroke and leave a swap file
+// for the next session. The door's source on disk is what resume and
+// upsolve start from, so writing it is the safe answer. Only a buffer that
+// cannot be written (no name, read-only) still asks.
+func SaveAndCloseEditor(pane string) error {
+	_, err := tmux("send-keys", "-t", pane, "Escape", ":silent! wall | confirm qa", "Enter")
+	return err
+}
+
 // WindowOf returns the id (e.g. "@3") of the window holding pane.
 func WindowOf(pane string) (string, error) {
 	out, err := tmux("display-message", "-p", "-t", pane, "#{pane_id} #{window_id}")
