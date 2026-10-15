@@ -26,20 +26,21 @@ fixed rule. Settings are locked for the length of a boot.
 |---|---|---|
 | run | boot | "Boot #42"; run length is `uptime`, the time inside doors (it stands still between them) |
 | start screen | GRUB menu | pick prestige, preset, seed |
-| difficulty tier | prestige 0–4 | Bronze, Silver, Gold, Platinum, Advanced; beating the final boss unlocks the next |
+| difficulty tier | prestige 0–8 | Bronze, Silver, Gold, Platinum, Advanced, then Prestige 5–8; 60 rated doors and a clear at the top level unlock the next |
 | currency | bytes | shown as B, KiB, MiB |
-| bank between biomes | merge window | `commit` bytes; uncommitted bytes are lost on a crash |
+| run map | map | three acts on a graph: Userland, a topic biome, a boss, twice, then a biome or a skip and the final; the exit taken picks the boss; the hub where a boot suspended between doors resumes |
+| bank between biomes | merge window | `commit` bytes; uncommitted bytes are lost on a crash; between acts a fountain refills 5 cycles, free, up to 30 |
 | death | crash | kernel panic screen |
 | shade | core dump | uncommitted bytes stay on the problem that killed you; upsolving it recovers them; crashing again first loses them |
-| give up | `:q!` | voluntary crash; the editorial opens (RTFM); the problem stays solvable |
+| give up | `:q!` | burns the act's price (10, 12, 15; a boss 20 and a new boss door); the room is lost and the boot goes on; the final is one shot |
 | hint charge | rubber duck | 1st quack reveals tags, 2nd the technique; refills at merge windows |
-| lives | lives | a failed submit costs one |
-| scroll | upgrade | after each clear pick one: Overclock (+15% timer), ECC (+1 life), Duck (+1 duck) |
+| health | cycles | `♥ 30/50 cycles`: a failed hidden-test submit burns 2 (a CE or a sample's fail is free), a timeout as `:q!` does, a retreat 5; fsck buys 10; 0 is a crash |
+| scroll | upgrade | after each clear pick one: Overclock (+15% timer for 5 cycles, two at most), ECC (a failed submit costs 05:00 of the door's clock, not cycles), Duck (+1 duck) |
 | mutation | daemon | passive perk picked at a merge window |
 | blueprint / weapon | lib | a snippet you implemented in a trial; link 2 per boot, pasted into the template |
 | rune | capability | e.g. `CAP_DP`; earned in learn mode; adds that topic's biomes to route choices |
 | elite | regression | a problem that crashed you returns after 3 and 17 days with a blank file |
-| boss | named bug | stretch problem, 1.5x timer: Off-by-One, Heisenbug, OOM Killer, Race Condition; final boss The Halting Problem |
+| boss | named bug | stretch problem that bends one rule: Off-by-One, OOM Killer (act I); Heisenbug, Race Condition, Undefined Behavior (act II); final boss The Halting Problem, its clock hidden |
 | timed door | -O3 bonus | AC under half the timer grants a free upgrade |
 | cursed chest | cursed door | no ducks, one WA = crash, 2x bytes |
 | daily run | nightly build | fixed seed per day |
@@ -97,9 +98,9 @@ label only; doors draw from every local source by difficulty.
    ├─ run each sample (wall-clock kill, wait4 → cpu ms, peak RSS)
    └─ HUD: S1 ✓ 3ms   S2 ✗ line 2: want 7, got 6
 :Submit  (vim command → control socket)
-└─ judge full tests: g++ -O2, parallel → HP bar; first failure costs a life
+└─ judge full tests: g++ -O2, parallel → HP bar; a failure burns 2 cycles (a sample's is free)
 :Debug S2 → lldb pane under vim, stdin = S2 (or copied to <name>.in)
-:q!      → crash, editorial opens
+:q!      → asks, then burns the act's price; the room is lost
 ```
 
 - Inside tmux the game pane shrinks to the HUD and vim opens beside it.

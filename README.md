@@ -52,30 +52,39 @@ command -v katharsis >/dev/null && katharsis motd
 ## Play
 
 ```
-GRUB ─enter→ boot ─→ doors ─enter→ problem (vim + HUD) ─AC→ upgrade ─→ next room
-                                        │                            └ biome end → merge window
-                                        └ timer / lives / :q! → kernel panic → upsolve or reboot
+GRUB ─enter→ boot ─→ exit ─→ doors ─enter→ problem (vim + HUD) ─AC→ upgrade ─→ next room
+                                                │                         └ biome end → merge window
+                                                ├ timer / :q! → burns cycles, the room is lost, the boot goes on
+                                                └ 0 cycles → kernel panic → upsolve or reboot
 ```
+
+A boot after the first is three acts on a map: Userland, a topic biome
+and a boss, twice, then a third biome (or a skip) and The Halting
+Problem. The exit you take picks the next biome and the boss behind it.
+The pool is `♥ 30/50 cycles`. Between any two doors the boot can be left
+(`q`) and picked up again on the map; inside a door there is no quitting.
 
 **In vim** (the game adds these commands; your vimrc loads as usual):
 
 | | |
 |---|---|
 | `:w` | rejudge the samples (the HUD updates in about a second) |
-| `:Submit` | judge the full tests; the HP bar fills, a failure costs a life; another sent before the verdict is refused |
+| `:Submit` | judge the full tests; the HP bar fills; a failure burns 2 cycles (a CE, or a fail on a sample, is free); another sent before the verdict is refused |
 | `:Debug [n]` | lldb on sample n, stopped at `main` (any test with the `strace` daemon) |
 | `:Quack` | rubber duck: first the tags, then the technique |
-| `:Retreat` | swap the door for a life |
-| `:q!` | give up, after a confirmation: the boot crashes and the editorial opens |
+| `:Retreat` | swap the door for 5 cycles (`kexec`: free once an act), only in its first 2:30 |
+| `:q!` | give up, after a confirmation: burns the act's price (10, 12, 15; a boss 20 and a new boss door), the room is lost and the boot goes on; The Halting Problem is one shot |
 
 **Keys:**
 
 | Screen | Keys |
 |---|---|
 | GRUB | `↑/↓` select · `enter` boot · `e` edit prestige, preset, seed |
-| Doors | `←/→` or `1-3` select · `enter` open · `m` map |
+| Map (the hub) | `enter` resume · `n` new boot (ends the one in flight as a crash) · `u` upsolve · `t` RTFM · `q` quit |
+| Exits | `←/→` or `1-4` select · `enter` take · `t` RTFM on a locked one · `m` map |
+| Doors | `←/→` or `1-3` select · `enter` open · `m` map · `q` quit (the boot waits on the map) |
 | Problem pane | `s` submit · `t` statement · `?` duck · `R` retreat · `Q Q` give up · `e` reopen a closed editor |
-| Merge window | `c` commit bytes · `↑/↓` + `enter` pick an upgrade or daemon, then leave |
+| Merge window | `c` commit bytes · `f` fsck · `↑/↓` + `enter` pick an upgrade or daemon, then leave |
 | Kernel panic | `u` upsolve the problem · `e` editorial · `r` reboot (twice over a live core dump) · `s` short · `p` patch · `b` read the story beat · `l` git log · `g` GRUB |
 | Cleared | `r` reboot · `s` short · `p` patch · `b` story beat · `l` git log · `g` GRUB |
 | Reader | `j/k` · `space/b` · `g/G` · `/` search, `n/N` · `o` open in the browser · `q` back |
