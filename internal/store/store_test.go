@@ -524,7 +524,7 @@ func endedAt(t *testing.T, s *store.Store) map[int]int64 {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = rows.Close() }()
+	defer rows.Close()
 	ends := map[int]int64{}
 	for rows.Next() {
 		var id int

@@ -24,7 +24,7 @@ func privateTmux(t *testing.T) func(args ...string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.RemoveAll(tmp) })
+	t.Cleanup(func() { os.RemoveAll(tmp) })
 	t.Setenv("TMUX_TMPDIR", tmp)
 	t.Setenv("HOME", tmp)
 	label := fmt.Sprintf("katharsis-cqa-%d", os.Getpid())

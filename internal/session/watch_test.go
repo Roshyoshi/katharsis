@@ -309,7 +309,7 @@ func logRaw(t *testing.T, dir string) {
 		}
 	}()
 	t.Cleanup(func() {
-		_ = w.Close()
+		w.Close()
 		<-stopped
 	})
 }

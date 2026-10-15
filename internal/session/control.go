@@ -124,7 +124,7 @@ func SweepRunDir() error {
 			continue
 		}
 		if errors.Is(syscall.Kill(pid, 0), syscall.ESRCH) {
-			_ = os.RemoveAll(filepath.Join(dir, e.Name()))
+			os.RemoveAll(filepath.Join(dir, e.Name()))
 		}
 	}
 	return nil
@@ -160,17 +160,17 @@ func Listen(path string) (*Server, error) {
 	}
 	if _, err := os.Lstat(path); err == nil {
 		if c, err := net.DialTimeout("unix", path, 200*time.Millisecond); err == nil {
-			_ = c.Close()
+			c.Close()
 			return nil, fmt.Errorf("session: another game is listening on %s", path)
 		}
-		_ = os.Remove(path) // if this fails, so does the listen below
+		os.Remove(path) // if this fails, so does the listen below
 	}
 	ln, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
 	if err != nil {
 		return nil, fmt.Errorf("session: listen: %w", err)
 	}
 	if err := os.Chmod(path, 0o600); err != nil {
-		_ = ln.Close()
+		ln.Close()
 		return nil, err
 	}
 	return &Server{ln: ln, done: make(chan struct{}), conns: map[net.Conn]struct{}{}}, nil
@@ -195,7 +195,7 @@ func (s *Server) Serve(deliver func(Request)) error {
 		s.mu.Lock()
 		if s.closed {
 			s.mu.Unlock()
-			_ = c.Close()
+			c.Close()
 			return nil
 		}
 		s.conns[c] = struct{}{}
@@ -207,7 +207,7 @@ func (s *Server) Serve(deliver func(Request)) error {
 			s.mu.Lock()
 			delete(s.conns, c)
 			s.mu.Unlock()
-			_ = c.Close()
+			c.Close()
 		}()
 	}
 }
@@ -268,7 +268,7 @@ func call(path string, c Command, timeout time.Duration) (Reply, error) {
 	if err != nil {
 		return Reply{}, fmt.Errorf("no game at %s: %w", path, err)
 	}
-	defer func() { _ = conn.Close() }()
+	defer conn.Close()
 	if err := conn.SetDeadline(time.Now().Add(timeout)); err != nil {
 		return Reply{}, err
 	}
@@ -307,7 +307,7 @@ func CtlMain(args []string, stdout, stderr io.Writer) int {
 	if code == 2 {
 		w = stderr
 	}
-	_, _ = fmt.Fprintln(w, text)
+	fmt.Fprintln(w, text)
 	return code
 }
 

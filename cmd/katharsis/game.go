@@ -90,7 +90,7 @@ func runGame(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = st.Close() }() // every write already committed
+	defer st.Close() // every write already committed
 
 	// Before the TUI: the first run downloads the USACO Guide snapshot
 	// (about 150 MB) and the Codeforces index (about 17 MB) and builds the

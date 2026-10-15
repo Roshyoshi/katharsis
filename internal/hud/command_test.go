@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 		}
 	}
 	code := m.Run()
-	_ = os.RemoveAll(home)
+	os.RemoveAll(home)
 	os.Exit(code)
 }
 

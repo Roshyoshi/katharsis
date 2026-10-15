@@ -1,0 +1,39 @@
+# golangci-lint v2. `golangci-lint run ./...` is the lint gate and
+# `golangci-lint fmt ./...` fixes formatting and import grouping.
+version: "2"
+
+linters:
+  # errcheck, govet, ineffassign, staticcheck, unused.
+  default: standard
+  # Cheap checks that find bugs rather than taste.
+  enable:
+    - bodyclose
+    - durationcheck
+    - errorlint
+    - misspell
+    - nilerr
+    - unconvert
+    - usestdlibvars
+    - wastedassign
+  settings:
+    errorlint:
+      # Wrapping is a choice about what a caller may inspect; comparing or
+      # type-asserting an error that may be wrapped is the bug.
+      errorf: false
+    misspell:
+      ignore-rules:
+        - pratice # cmd/katharsis tests a mistyped subcommand
+  exclusions:
+    # Close, Flush, os.Remove and fmt.Fprint errors are best effort, so
+    # they need no `_ =`.
+    presets:
+      - std-error-handling
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - katharsis

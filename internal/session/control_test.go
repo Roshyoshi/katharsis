@@ -33,7 +33,7 @@ func sockDir(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	t.Cleanup(func() { os.RemoveAll(dir) })
 	return dir
 }
 
@@ -45,7 +45,7 @@ func send(t *testing.T, path, lines string) net.Conn {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = c.Close() })
+	t.Cleanup(func() { c.Close() })
 	if err := c.SetDeadline(time.Now().Add(patience)); err != nil {
 		t.Fatal(err)
 	}
@@ -192,16 +192,16 @@ func TestListenStaleAndLive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Listen over a stale socket: %v", err)
 	}
-	t.Cleanup(func() { _ = s.Close() })
+	t.Cleanup(func() { s.Close() })
 
 	if s2, err := Listen(path); err == nil {
-		_ = s2.Close()
+		s2.Close()
 		t.Fatal("Listen over a live socket succeeded")
 	}
 
 	long := filepath.Join(dir, strings.Repeat("x", 120)+".sock")
 	if s3, err := Listen(long); err == nil {
-		_ = s3.Close()
+		s3.Close()
 		t.Fatal("Listen on a 130-byte path succeeded")
 	} else if !strings.Contains(err.Error(), "bytes") {
 		t.Errorf("long path error %q should say why", err)

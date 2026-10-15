@@ -28,7 +28,7 @@ func privateTmux(t *testing.T) (pane string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.RemoveAll(tmp) })
+	t.Cleanup(func() { os.RemoveAll(tmp) })
 	t.Setenv("TMUX", "")
 	t.Setenv("TMUX_TMPDIR", tmp)
 	// Panes inherit the server's environment; a pane that misses its -c

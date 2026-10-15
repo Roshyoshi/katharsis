@@ -223,10 +223,10 @@ const reapWait = 3 * time.Second
 func (r *TmuxRunner) Shutdown() {
 	r.Close()
 	if r.srv != nil {
-		_ = r.srv.Close() // what it leaves, the next game's SweepRunDir removes
+		r.srv.Close() // what it leaves, the next game's SweepRunDir removes
 	}
 	if r.overlay != "" {
-		_ = os.Remove(r.overlay) // likewise
+		os.Remove(r.overlay) // likewise
 	}
 	r.reaping.Wait()
 }

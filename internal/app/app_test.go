@@ -144,7 +144,7 @@ func newHarnessWith(t *testing.T, wrap func(*fakeRunner) Runner) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = st.Close() }) // some tests close it early
+	t.Cleanup(func() { st.Close() }) // some tests close it early
 	h := &harness{t: t, st: st, runner: &fakeRunner{}, clock: &clock{time.Date(2026, 10, 14, 18, 0, 0, 0, time.UTC)}, verdict: "AC"}
 	var runner Runner = h.runner
 	if wrap != nil {

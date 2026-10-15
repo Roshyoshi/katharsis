@@ -47,9 +47,9 @@ func (o Overlay) Write(path string) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = os.Remove(tmp.Name()) }() // gone once renamed
+	defer os.Remove(tmp.Name()) // gone once renamed
 	if _, err := tmp.WriteString(o.script()); err != nil {
-		_ = tmp.Close()
+		tmp.Close()
 		return err
 	}
 	if err := tmp.Close(); err != nil {

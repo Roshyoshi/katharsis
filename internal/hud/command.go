@@ -72,7 +72,7 @@ func (m *Model) updateCommand(msg tea.Msg) (tea.Cmd, bool) {
 				msg.close()
 			}
 			if msg.dir != "" {
-				_ = os.RemoveAll(msg.dir)
+				os.RemoveAll(msg.dir)
 			}
 			msg.req.Answer(fail("debug: the door closed"))
 			return nil, true
@@ -299,7 +299,7 @@ func openDebugger(src string, t problem.Test, open func(DebugTarget) (func(), er
 		closePane, err = open(target)
 	}
 	if err != nil {
-		_ = os.RemoveAll(dir)
+		os.RemoveAll(dir)
 		return "", nil, err
 	}
 	return dir, closePane, nil
@@ -362,7 +362,7 @@ func (m *Model) closeDebugger() {
 		m.dbg.close()
 	}
 	if m.dbg.dir != "" {
-		_ = os.RemoveAll(m.dbg.dir)
+		os.RemoveAll(m.dbg.dir)
 	}
 	m.dbg = debugger{}
 }

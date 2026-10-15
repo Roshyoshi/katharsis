@@ -94,7 +94,7 @@ func snapshot(ctx context.Context, root, url, commit string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer func() { _ = os.RemoveAll(tmp) }() // no-op after a successful rename
+	defer os.RemoveAll(tmp) // no-op after a successful rename
 
 	if err := download(ctx, url, "usaco-guide-"+commit+"/", tmp); err != nil {
 		return "", fmt.Errorf("usaco guide snapshot %.12s: %w", commit, err)
@@ -148,7 +148,7 @@ func fetchOnce(ctx context.Context, url, prefix, dst string) (retry bool, err er
 	if err != nil {
 		return true, err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests,
 			fmt.Errorf("GET %s: %s", url, resp.Status)
