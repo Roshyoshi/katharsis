@@ -39,3 +39,13 @@ func (b *bag) next(ids []string, rng *rand.Rand) string {
 	b.last = id
 	return id
 }
+
+// avoid keeps id, just played from elsewhere (a lead), from being dealt
+// next.
+func (b *bag) avoid(id string, rng *rand.Rand) {
+	b.last = id
+	if rest := len(b.order) - b.pos; rest > 1 && b.order[b.pos] == id {
+		k := b.pos + 1 + rng.IntN(rest-1)
+		b.order[b.pos], b.order[k] = b.order[k], b.order[b.pos]
+	}
+}

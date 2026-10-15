@@ -1,2 +1,2330 @@
-# The music katharsis can download: one [[track]] per file, filled in from
-# docs/research/audio.md.
+# The music katharsis can download: one [[track]] per file. A track's
+# [source.<name>] fills in what the entry leaves out (artist, license,
+# page, format). docs/research/audio.md has the licensing evidence, the
+# stage-to-pool mapping and how this file was made; nothing here is in
+# the repo or the binary but these lines.
+#
+# Pools are where a track plays (internal/audio/audio.go); keys make a
+# track the opening theme of one boss.
+
+[source.tohovgs]
+name = "SUZUKI PLAN (Yoji Suzuki): 東方BGM on VGS"
+artist = "SUZUKI PLAN"
+touhou = true
+license = "permission"
+license_url = "https://github.com/suzukiplan/tohovgs-cli/blob/cbb13ada5dd1d9244148a265946310bdd192d4b6/README.md#license"
+license_quote = """
+楽曲（東方 Project）著作権: 楽曲の著作権は上海アリス幻樂団に帰属します
+データ著作権: 楽曲データの著作権は Yoji Suzuki に帰属する東方 Project 二次創作物です
+本楽曲の東方Projectの二次創作物への利用は [東方Projectの二次創作ガイドライン](https://touhou-project.news/guideline/) で認められている範囲でご自由にお使い頂けます（事前事後の連絡は基本不要ですがご連絡いただければ喜びます）
+(The songs are copyright Team Shanghai Alice. The song data is copyright Yoji Suzuki, a Touhou Project fan work. It may be used freely in Touhou Project fan works within what the Touhou Project fan-work guideline allows; no notice is needed before or after, though he is glad to hear from you.)"""
+page = "https://github.com/suzukiplan/tohovgs-cli"
+url_prefix = "https://raw.githubusercontent.com/suzukiplan/tohovgs-cli/cbb13ada5dd1d9244148a265946310bdd192d4b6/mml/"
+format = "mml"
+notice = "The songs are VGS MML text, a few kilobytes each, rendered by katharsis as they play. They are fetched from GitHub at commit cbb13ad, never from the 東方BGM on VGS app's own server, which the arranger asks other programs to leave alone."
+
+[[track]]
+id = "swapxfo-misty-lake"
+title = "Misty Lake (2A03+N163 Arrange)"
+title_ja = "ミストレイク"
+artist = "SwapXFO"
+original = "ZUN, Touhou 14 DDC"
+role = "Stage 1 theme"
+touhou = true
+license = "CC BY 4.0"
+license_url = "https://creativecommons.org/licenses/by/4.0/"
+license_quote = "archive.org item mus-misty-lake (creator: SwapXFO), licenseurl: https://creativecommons.org/licenses/by/4.0/"
+page = "https://archive.org/details/mus-misty-lake"
+url = "https://archive.org/download/mus-misty-lake/Misty%20Lake.mp3"
+sha256 = "c84fc3c93df4e13b6c6048d279969eca9875b80f6bf6a9e92a99622f21c4ccae"
+size = 2583239
+format = "mp3"
+seconds = 161.4
+pools = ["userland"]
+once = true
+note = "an NES (2A03 + Namco 163) recording that ends in a 25 dB decay, so it plays once a turn"
+
+[[track]]
+id = "th01-01"
+source = "tohovgs"
+file = "TH01-01.mml"
+title = "A Sacred Lot"
+original = "ZUN, Touhou 1 HRtP"
+role = "Title screen"
+sha256 = "9978c59beac71835fac3a78490717a00c2378465d5898d61827ae2307a270107"
+size = 10216
+seconds = 89.8
+pools = ["grub"]
+
+[[track]]
+id = "th01-02"
+source = "tohovgs"
+file = "TH01-02.mml"
+title = "Miko of Eternity"
+title_ja = "永遠の巫女"
+original = "ZUN, Touhou 1 HRtP"
+role = "Theme of Levels 1-4, Hell (Jigoku) Levels 16-19"
+sha256 = "760651bffd3975fbc53a6d8146dcfb6e1100c424930c2f7ef0e5768ca65e7a1d"
+size = 12389
+seconds = 94.4
+pools = ["userland"]
+
+[[track]]
+id = "th01-03"
+source = "tohovgs"
+file = "TH01-03.mml"
+title = "The Positive and Negative"
+original = "ZUN, Touhou 1 HRtP"
+role = "Shingyoku's theme (stage 5 boss)"
+sha256 = "28c7684845d6e06904481c64e50429bf0ae9152cc0465319a637070c62beb0aa"
+size = 11070
+seconds = 56.4
+pools = ["boss"]
+
+[[track]]
+id = "th01-16"
+source = "tohovgs"
+file = "TH01-16.mml"
+title = "Wind Shinto Shrine"
+title_ja = "風の神社"
+original = "ZUN, Touhou 1 HRtP"
+role = "unused HRtP track"
+sha256 = "ba69b5e749be9c4819833560609511eb219585886620aab919510ddf101deac7"
+size = 8583
+seconds = 75.0
+pools = ["rtfm"]
+
+[[track]]
+id = "th04-01"
+source = "tohovgs"
+file = "TH04-01.mml"
+title = "Gensokyo　〜 Lotus Land Story"
+title_ja = "幻想郷　〜 Lotus Land Story"
+original = "ZUN, Touhou 4 LLS"
+role = "Title screen"
+sha256 = "4eda4db0ed94e070d89102b5853deba4b02cb2fa59f4bc7fff7e273046f26464"
+size = 13534
+seconds = 92.5
+pools = ["grub"]
+
+[[track]]
+id = "th04-02"
+source = "tohovgs"
+file = "TH04-02.mml"
+title = "Witching Dream"
+original = "ZUN, Touhou 4 LLS"
+role = "Reimu Hakurei's Stage 1 theme"
+sha256 = "b2b95347af00cd3d7fcc93c8159b4789a951542eda485e9f38d9e21256bab636"
+size = 11987
+seconds = 112.6
+pools = ["userland"]
+
+[[track]]
+id = "th04-03"
+source = "tohovgs"
+file = "TH04-03.mml"
+title = "Selene's Light"
+original = "ZUN, Touhou 4 LLS"
+role = "Marisa Kirisame's Stage 1 theme"
+sha256 = "392db7a79b447f9dd69e142219bfb48357cde5bc7203735bcfd79ad751bb856d"
+size = 8909
+seconds = 64.9
+pools = ["userland"]
+
+[[track]]
+id = "th04-04"
+source = "tohovgs"
+file = "TH04-04.mml"
+title = "Decoration Battle"
+title_ja = "装飾戦　〜 Decoration Battle"
+original = "ZUN, Touhou 4 LLS"
+role = "Stage 1 Boss - Orange's theme"
+sha256 = "58ac893090a108deb579d138ace071849d89338e05aa708f9b58ac7eec774040"
+size = 13228
+seconds = 106.7
+pools = ["boss"]
+
+[[track]]
+id = "th04-05"
+source = "tohovgs"
+file = "TH04-05.mml"
+title = "Break the Sabbath"
+original = "ZUN, Touhou 4 LLS"
+role = "Stage 2 theme"
+sha256 = "cfd6ed303391d474505e9943bc1e51bbe9a772d8fa4a18e28ae713fd1da2a413"
+size = 10711
+seconds = 116.8
+pools = ["userland"]
+
+[[track]]
+id = "th04-06"
+source = "tohovgs"
+file = "TH04-06.mml"
+title = "Scarlet Symphony　〜 Scarlet Phoneme"
+title_ja = "紅響曲　〜 Scarlet Phoneme"
+original = "ZUN, Touhou 4 LLS"
+role = "Stage 2 Boss - Kurumi's theme"
+sha256 = "3539debbb99df14d76adeecfcda13ab41d24fc7cc4cbd24bcf69afe97e6f3943"
+size = 16193
+seconds = 106.7
+pools = ["boss"]
+
+[[track]]
+id = "th04-07"
+source = "tohovgs"
+file = "TH04-07.mml"
+title = "Bad Apple!!"
+original = "ZUN, Touhou 4 LLS"
+role = "Stage 3 theme"
+sha256 = "76254a98550e53f185f822d1f7b7adb19bd39e853af35dc6fc39b4ea3165d677"
+size = 11718
+seconds = 93.0
+pools = ["mid"]
+
+[[track]]
+id = "th04-08"
+source = "tohovgs"
+file = "TH04-08.mml"
+title = "Spirit Battle　〜 Perdition Crisis"
+title_ja = "霊戦　〜 Perdition crisis"
+original = "ZUN, Touhou 4 LLS"
+role = "Stage 3 Boss - Elly's theme"
+sha256 = "521e82fcbbb91247bb8a852f339f4d19c8747116155ade2213dba77a2ed7a217"
+size = 14716
+seconds = 97.2
+pools = ["boss"]
+
+[[track]]
+id = "th04-09"
+source = "tohovgs"
+file = "TH04-09.mml"
+title = "Alice Maestra"
+title_ja = "アリスマエステラ"
+original = "ZUN, Touhou 4 LLS"
+role = "Stage 4 theme"
+sha256 = "84b962ab67e3615295d09dc6c5ae212010c5e3f2fa904933a75bd338bbf7f42d"
+size = 18127
+seconds = 158.0
+pools = ["mid"]
+
+[[track]]
+id = "th04-10"
+source = "tohovgs"
+file = "TH04-10.mml"
+title = "Maiden's Capriccio"
+title_ja = "少女綺想曲　〜 Capriccio"
+original = "ZUN, Touhou 4 LLS"
+role = "Stage 4 Boss A - Reimu Hakurei's theme"
+sha256 = "5178b9c639df7540ca6abe726d280cf10da954ad29d49d24efa5f8da6f30223c"
+size = 10430
+seconds = 77.6
+pools = ["boss"]
+
+[[track]]
+id = "th04-11"
+source = "tohovgs"
+file = "TH04-11.mml"
+title = "Casket of Star"
+title_ja = "星の器　〜 Casket of Star"
+original = "ZUN, Touhou 4 LLS"
+role = "Stage 4 Boss B - Marisa Kirisame's theme"
+sha256 = "56fadf61d41d46d0e38ba67f17f35b800c550d3a2e20d77c8248002ddf46f01d"
+size = 9297
+seconds = 73.5
+pools = ["boss"]
+
+[[track]]
+id = "th04-12"
+source = "tohovgs"
+file = "TH04-12.mml"
+title = "Lotus Love"
+original = "ZUN, Touhou 4 LLS"
+role = "Stage 5 theme"
+sha256 = "40d9275103537a319d5f81d3449edf3a54d7e79b281ce41208cb35d0b16a4d92"
+size = 18350
+seconds = 113.5
+pools = ["mid"]
+
+[[track]]
+id = "th04-13"
+source = "tohovgs"
+file = "TH04-13.mml"
+title = "Sleeping Terror"
+title_ja = "眠れる恐怖　〜 Sleeping Terror"
+original = "ZUN, Touhou 4 LLS"
+role = "Stage 5 Boss - Yuuka Kazami's 1st theme"
+sha256 = "c15bf5ea80bc4ea985189b0fbeca53ba8a170c5865d90f4175eb7bc4784b7ff4"
+size = 20894
+seconds = 146.8
+pools = ["boss"]
+
+[[track]]
+id = "th05-10"
+source = "tohovgs"
+file = "TH05-10.mml"
+title = "Alice in the Wonderland"
+title_ja = "不思議の国のアリス"
+original = "ZUN, Touhou 5 MS"
+role = "Extra Stage theme"
+sha256 = "aee91b2d5dd5b7df54d938215e44617ceb5c35d71936b8955c11c5d0f55f0115"
+size = 10974
+seconds = 110.5
+pools = ["mid"]
+
+[[track]]
+id = "th05-11"
+source = "tohovgs"
+file = "TH05-11.mml"
+title = "the Grimoire of Alice"
+original = "ZUN, Touhou 5 MS"
+role = "Extra Boss - Alice Margatroid's 2nd theme"
+sha256 = "025c3cf5fc2a1a0eaba3983ab07aa30c1a435bbb3045e88e8f027f2ad3ef92df"
+size = 11512
+seconds = 93.5
+pools = ["final"]
+
+[[track]]
+id = "zsw-01"
+source = "tohovgs"
+file = "ZSW-01.mml"
+title = "Magician of the Evening Darkness"
+title_ja = "宵闇の魔術師"
+original = "ZUN, ZUN's Strange Works (CD)"
+role = "ZUN's Strange Works (music CD, not a game)"
+sha256 = "93c76fd0009dfa971c17604adb24e47cbd8a7f2289b32a36f0e60acad2576c1b"
+size = 47733
+seconds = 320.8
+pools = ["rtfm"]
+once = true
+note = "no loop mark: a song with an ending, played once a turn"
+
+[[track]]
+id = "zsw-03"
+source = "tohovgs"
+file = "ZSW-03.mml"
+title = "Plastic Space"
+original = "ZUN, ZUN's Strange Works (CD)"
+role = "ZUN's Strange Works (music CD)"
+sha256 = "1705fe57a8f30f84bf42772b2807ca91b19395d3391264d76badc790d1af41dc"
+size = 9495
+seconds = 72.9
+pools = ["rtfm"]
+
+[[track]]
+id = "zsw-06"
+source = "tohovgs"
+file = "ZSW-06.mml"
+title = "Hourai Illusion　〜 far East"
+title_ja = "蓬莱幻想　〜 far East"
+original = "ZUN, ZUN's Strange Works (CD)"
+role = "ZUN's Strange Works (music CD)"
+sha256 = "516529a3a5251916b96fdf17123707a383b6212aa1713511eca15418b061c0cd"
+size = 31060
+seconds = 289.5
+pools = ["rtfm"]
+once = true
+note = "no loop mark: a song with an ending, played once a turn"
+
+[[track]]
+id = "hourai-01"
+source = "tohovgs"
+file = "HOURAI-01.mml"
+title = "Legend of Hourai"
+title_ja = "蓬莱伝説"
+original = "ZUN, Dolls in Pseudo Paradise (CD)"
+role = "Dolls in Pseudo Paradise (music CD)"
+sha256 = "7279cb8ab255e64f47bdfe04759393eefdb3d6270810d8f3a6b852dd49b189f3"
+size = 19041
+seconds = 206.9
+pools = ["rtfm"]
+once = true
+note = "no loop mark: a song with an ending, played once a turn"
+
+[[track]]
+id = "th06-01"
+source = "tohovgs"
+file = "TH06-01.mml"
+title = "a Dream that is more Scarlet than Red"
+title_ja = "赤より紅い夢"
+original = "ZUN, Touhou 6 EoSD"
+role = "Title Screen theme"
+sha256 = "e69506098a541d4a43dc4306ef97977ebc9853bb6d68af5f99be275e7f664cc6"
+size = 4136
+seconds = 51.2
+pools = ["grub"]
+
+[[track]]
+id = "th06-02"
+source = "tohovgs"
+file = "TH06-02.mml"
+title = "a Soul Red like Ground Cherry"
+title_ja = "ほおずきみたいに紅い魂"
+original = "ZUN, Touhou 6 EoSD"
+role = "Stage 1 theme"
+sha256 = "ff9e003a8179856b8d6f8c2cbb1f5e6b83dbd395747f0dfb37512124d5020725"
+size = 7385
+seconds = 64.4
+pools = ["userland"]
+
+[[track]]
+id = "th06-03"
+source = "tohovgs"
+file = "TH06-03.mml"
+title = "Mystics Night"
+title_ja = "妖魔夜行"
+original = "ZUN, Touhou 6 EoSD"
+role = "Stage 1 Boss - Rumia's theme"
+sha256 = "5d0268ad7d59e8b53fbf7935fd0644a529dec871f67f352e6a8dab11b20dbc77"
+size = 9961
+seconds = 51.6
+pools = ["boss"]
+
+[[track]]
+id = "th06-04"
+source = "tohovgs"
+file = "TH06-04.mml"
+title = "Lunate Elf"
+title_ja = "ルーネイトエルフ"
+original = "ZUN, Touhou 6 EoSD"
+role = "Stage 2 theme"
+sha256 = "a9e85527b210b4bd2babb104df0074813944728c5e13a15ed251625b68836937"
+size = 7128
+seconds = 80.0
+pools = ["userland"]
+
+[[track]]
+id = "th06-05"
+source = "tohovgs"
+file = "TH06-05.mml"
+title = "Beloved Tomboyish Daughter"
+title_ja = "おてんば恋娘"
+original = "ZUN, Touhou 6 EoSD"
+role = "Stage 2 Boss - Cirno's theme"
+sha256 = "7df5769a3cd53c39405e76ef47e86f6319c3c9b74011fd2d9e17bbf7b051b77d"
+size = 8569
+seconds = 78.4
+pools = ["boss"]
+keys = ["off-by-one"]
+
+[[track]]
+id = "th06-06"
+source = "tohovgs"
+file = "TH06-06.mml"
+title = "Shanghai Teahouse　〜 Chinese Tea"
+title_ja = "上海紅茶館　〜 Chinese Tea"
+original = "ZUN, Touhou 6 EoSD"
+role = "Stage 3 theme"
+sha256 = "377cb5a36c5d2f7abcdc5a241046d677838f5230fa831f662736075c31128584"
+size = 9474
+seconds = 101.8
+pools = ["mid"]
+
+[[track]]
+id = "th06-07"
+source = "tohovgs"
+file = "TH06-07.mml"
+title = "Shanghai Alice in 1884"
+title_ja = "明治十七年の上海アリス"
+original = "ZUN, Touhou 6 EoSD"
+role = "Stage 3 Boss - Hong Meiling's theme"
+sha256 = "5e868163344aa39745c400714f122f83467254718c404d01c114c4cda1f7f036"
+size = 10437
+seconds = 97.0
+pools = ["boss"]
+
+[[track]]
+id = "th06-08"
+source = "tohovgs"
+file = "TH06-08.mml"
+title = "Voile，the Magic Library"
+title_ja = "ヴワル魔法図書館"
+original = "ZUN, Touhou 6 EoSD"
+role = "Stage 4 theme"
+sha256 = "996f2b13fa2e3e34346ba34f24212260bc2d1a17b6d8db286a30662e6fc43c77"
+size = 10697
+seconds = 114.8
+pools = ["mid"]
+
+[[track]]
+id = "th06-09"
+source = "tohovgs"
+file = "TH06-09.mml"
+title = "Locked Girl　〜 the Girl's Secret Room"
+title_ja = "ラクトガール　〜 少女密室"
+original = "ZUN, Touhou 6 EoSD"
+role = "Stage 4 Boss - Patchouli Knowledge's theme"
+sha256 = "ffc1a452dd8cc3cc773bacc2b87fba5890e04b3067b737ac7c24f4bbd4dd10cb"
+size = 11397
+seconds = 116.8
+pools = ["boss"]
+
+[[track]]
+id = "th06-10"
+source = "tohovgs"
+file = "TH06-10.mml"
+title = "the Maid and the Pocket Watch of Blood"
+title_ja = "メイドと血の懐中時計"
+original = "ZUN, Touhou 6 EoSD"
+role = "Stage 5 theme"
+sha256 = "789643b47d265f7108699013fcb41b37b83bd5ea801295b2f8de941315681cf6"
+size = 22418
+seconds = 157.3
+pools = ["mid"]
+
+[[track]]
+id = "th06-11"
+source = "tohovgs"
+file = "TH06-11.mml"
+title = "Luna Dial"
+title_ja = "月時計　〜 ルナ・ダイアル"
+original = "ZUN, Touhou 6 EoSD"
+role = "Stage 5 Boss - Sakuya Izayoi's theme"
+sha256 = "7e64e98416c43844c382e2834c04d00c9792052e877362cb22715a83e04f978c"
+size = 10821
+seconds = 77.8
+pools = ["boss"]
+keys = ["race-condition"]
+
+[[track]]
+id = "th06-12"
+source = "tohovgs"
+file = "TH06-12.mml"
+title = "the Young Descendant of Tepes"
+title_ja = "ツェペシュの幼き末裔"
+original = "ZUN, Touhou 6 EoSD"
+role = "Final Stage theme"
+sha256 = "62b35b13407535c5ff229f554dee0407aedf8095d19f858feceb231d2ad3056b"
+size = 7675
+seconds = 54.9
+pools = ["mid"]
+
+[[track]]
+id = "th06-13"
+source = "tohovgs"
+file = "TH06-13.mml"
+title = "Septette for the Dead Princess"
+title_ja = "亡き王女の為のセプテット"
+original = "ZUN, Touhou 6 EoSD"
+role = "Final Boss - Remilia Scarlet's theme"
+sha256 = "51620f2224a49d774642ca563e121d3e3286244a269b7fa243deda8877d2f315"
+size = 14145
+seconds = 132.3
+pools = ["final"]
+
+[[track]]
+id = "th06-14"
+source = "tohovgs"
+file = "TH06-14.mml"
+title = "the Centennial Festival for Magical Girls"
+title_ja = "魔法少女達の百年祭"
+original = "ZUN, Touhou 6 EoSD"
+role = "Extra Stage theme"
+sha256 = "6c443ae391104978a92b59e7473532f361e17fbe9a0f87538cd9cb96e6154009"
+size = 14025
+seconds = 151.9
+pools = ["mid"]
+
+[[track]]
+id = "th06-15"
+source = "tohovgs"
+file = "TH06-15.mml"
+title = "U.N.Owen was her?"
+title_ja = "U.N.オーエンは彼女なのか？"
+original = "ZUN, Touhou 6 EoSD"
+role = "Extra Boss - Flandre Scarlet's theme"
+sha256 = "c177d251eb544d443beec7f87827e20ac1ba06527ce6e48de3fdce932cad5869"
+size = 12441
+seconds = 121.5
+pools = ["boss", "final"]
+keys = ["undefined-behavior"]
+
+[[track]]
+id = "th06-16"
+source = "tohovgs"
+file = "TH06-16.mml"
+title = "Crimson Beyond a Fleeting Eternity"
+title_ja = "紅より儚い永遠"
+original = "ZUN, Touhou 6 EoSD"
+role = "Ending theme"
+sha256 = "8abb444e32c1ad98e181ad84829cb3b391af8d40a9dcd40abdaadf8f4aabf4a6"
+size = 5285
+seconds = 52.6
+pools = ["cleared"]
+
+[[track]]
+id = "th06-17"
+source = "tohovgs"
+file = "TH06-17.mml"
+title = "Crimson Belvedere　〜 Eastern Dream..."
+title_ja = "紅楼　〜 Eastern Dream..."
+original = "ZUN, Touhou 6 EoSD"
+role = "Staff Roll theme"
+sha256 = "5550ec62a1a4572f04a7556c3c1f92124dbbde557df1c8c54085d3eb047c20a1"
+size = 7789
+seconds = 100.5
+pools = ["merge"]
+
+[[track]]
+id = "th07-01"
+source = "tohovgs"
+file = "TH07-01.mml"
+title = "Mystic Dream　〜 Snow or Cherry Petal"
+title_ja = "妖々夢　〜 Snow or Cherry Petal"
+original = "ZUN, Touhou 7 PCB"
+role = "Title Screen theme"
+sha256 = "be0e1b74a1f0af04c77caaa4c4fce0f668d63e3c268a508bfa6bfc62ab99de1a"
+size = 7609
+seconds = 87.4
+pools = ["grub"]
+
+[[track]]
+id = "th07-02"
+source = "tohovgs"
+file = "TH07-02.mml"
+title = "Paradise　〜 Deep Mountain"
+title_ja = "無何有の郷　〜 Deep Mountain"
+original = "ZUN, Touhou 7 PCB"
+role = "Stage 1 theme"
+sha256 = "9f1f70d89816367f63aec84fab2efe6db83d3817e2221a7068a44601f9bceecc"
+size = 10550
+seconds = 90.1
+pools = ["userland"]
+
+[[track]]
+id = "th07-03"
+source = "tohovgs"
+file = "TH07-03.mml"
+title = "Crystalize Silver"
+title_ja = "クリスタライズシルバー"
+original = "ZUN, Touhou 7 PCB"
+role = "Stage 1 Boss - Letty Whiterock's theme"
+sha256 = "7c80e872be65170063b4bc4f71ca2372df6928d710051a06298221ade40ad1c2"
+size = 8120
+seconds = 67.1
+pools = ["boss"]
+
+[[track]]
+id = "th07-04"
+source = "tohovgs"
+file = "TH07-04.mml"
+title = "the Fantastic Legend of Tohno"
+title_ja = "遠野幻想物語"
+original = "ZUN, Touhou 7 PCB"
+role = "Stage 2 theme"
+sha256 = "1a46391ca40ad880c3a59f199ff09c4ee67f7030f090748929a862380db8a9cb"
+size = 13500
+seconds = 131.2
+pools = ["userland"]
+
+[[track]]
+id = "th07-05"
+source = "tohovgs"
+file = "TH07-05.mml"
+title = "Diao Ye Zong (Withered Leaf)"
+title_ja = "ティアオイエツォン（withered leaf）"
+original = "ZUN, Touhou 7 PCB"
+role = "Stage 2 Boss - Chen's theme"
+sha256 = "9d39527b24a48328352caeb3db7e3d2fac99cc9a2f840337818f14f9ced2f094"
+size = 5986
+seconds = 53.0
+pools = ["boss"]
+
+[[track]]
+id = "th07-06"
+source = "tohovgs"
+file = "TH07-06.mml"
+title = "the Doll Maker of Bucuresti"
+title_ja = "ブクレシュティの人形師"
+original = "ZUN, Touhou 7 PCB"
+role = "Stage 3 theme"
+sha256 = "c1854ba92f6023d79cac3b7299a2088769ea17ea5511b659f2aed9563562f4b6"
+size = 13001
+seconds = 116.8
+pools = ["mid"]
+
+[[track]]
+id = "th07-07"
+source = "tohovgs"
+file = "TH07-07.mml"
+title = "Doll Judgement"
+title_ja = "人形裁判　〜 人の形弄びし少女"
+original = "ZUN, Touhou 7 PCB"
+role = "Stage 3 Boss - Alice Margatroid's theme"
+sha256 = "54eb82117e3fea08df2edf67b7df7a2abc31ac1dcc88985c3a975346be3e57ce"
+size = 21021
+seconds = 175.3
+pools = ["boss"]
+
+[[track]]
+id = "th07-08"
+source = "tohovgs"
+file = "TH07-08.mml"
+title = "the Capital City of Flowers in the Sky"
+title_ja = "天空の花の都"
+original = "ZUN, Touhou 7 PCB"
+role = "Stage 4 theme"
+sha256 = "8e84270aa137305ba3ebd7aae1ecde6681bddf28720911a15f17c7dd98eb9b67"
+size = 16230
+seconds = 236.7
+pools = ["mid"]
+
+[[track]]
+id = "th07-09"
+source = "tohovgs"
+file = "TH07-09.mml"
+title = "Phantom Ensemble"
+title_ja = "幽霊楽団　〜 Phantom Ensemble"
+original = "ZUN, Touhou 7 PCB"
+role = "Stage 4 Boss - Prismriver Sisters' (Lunasa, Merlin, and Lyrica) theme"
+sha256 = "569b19e21c2a91dae6f85aa97bf7b63a644da992817f381deb2e94371f01173b"
+size = 11648
+seconds = 137.3
+pools = ["boss"]
+
+[[track]]
+id = "th07-10"
+source = "tohovgs"
+file = "TH07-10.mml"
+title = "Mystic Oriental Dream　〜 Ancient Temple"
+title_ja = "東方妖々夢　〜 Ancient Temple"
+original = "ZUN, Touhou 7 PCB"
+role = "Stage 5 theme"
+sha256 = "dd3cb16e6b62592727c103ecc98e7bd283d300c4ee1d955eeb0e617fe221c74d"
+size = 14469
+seconds = 139.0
+pools = ["mid"]
+
+[[track]]
+id = "th07-11"
+source = "tohovgs"
+file = "TH07-11.mml"
+title = "Hiroari Shoots a Strange Bird　〜 Till When?"
+title_ja = "広有射怪鳥事　〜 Till When?"
+original = "ZUN, Touhou 7 PCB"
+role = "Stage 5 Boss - Youmu Konpaku's theme"
+sha256 = "fa701ad695d2dd62fb2a63cfd9142e235c92eaa9bef63bb41182532433b8233f"
+size = 10097
+seconds = 105.3
+pools = ["boss"]
+
+[[track]]
+id = "th07-12"
+source = "tohovgs"
+file = "TH07-12.mml"
+title = "Ultimate Truth"
+title_ja = "アルティメットトゥルース"
+original = "ZUN, Touhou 7 PCB"
+role = "Final Stage theme"
+sha256 = "9de1c28a9e0f4c29b3a00e42fdd7a12e71b4845f818453af40018c7ed18954aa"
+size = 8250
+seconds = 54.7
+pools = ["mid"]
+
+[[track]]
+id = "th07-13"
+source = "tohovgs"
+file = "TH07-13.mml"
+title = "Bloom Nobly，Ink-black Cherry Blossom"
+title_ja = "幽雅に咲かせ、墨染の桜　〜 Border of Life"
+original = "ZUN, Touhou 7 PCB"
+role = "Final Boss - Yuyuko Saigyouji's theme"
+sha256 = "fab760e6a285abec3693544b5a0ad306c38a53547cde4955b63b548972bb36cd"
+size = 16656
+seconds = 141.4
+pools = ["boss", "final"]
+keys = ["oom-killer"]
+
+[[track]]
+id = "th07-14"
+source = "tohovgs"
+file = "TH07-14.mml"
+title = "Boarder of Life"
+title_ja = "ボーダーオブライフ"
+original = "ZUN, Touhou 7 PCB"
+role = "Final Boss - Yuyuko Saigyouji's revival theme"
+sha256 = "c578c1d8f124ced084c8ce98348dbf64d88c811b675db0a3c6cb16bc415dd4c2"
+size = 10273
+seconds = 88.4
+pools = ["final"]
+
+[[track]]
+id = "th07-15"
+source = "tohovgs"
+file = "TH07-15.mml"
+title = "Charming Domination"
+title_ja = "妖々跋扈"
+original = "ZUN, Touhou 7 PCB"
+role = "Extra Stage theme"
+sha256 = "17cf2283ba040bfe183a5ac1bcac7d85559a2875e05fe6b9773226967904b468"
+size = 18018
+seconds = 140.0
+pools = ["mid"]
+
+[[track]]
+id = "th07-16"
+source = "tohovgs"
+file = "TH07-16.mml"
+title = "a Maiden's Illusionary Funeral　〜 Necro-Fantasy"
+title_ja = "少女幻葬　〜 Necro-Fantasy"
+original = "ZUN, Touhou 7 PCB"
+role = "Extra Boss - Ran Yakumo's theme"
+sha256 = "408c2dbcacf0c031d7238e0667c161a2510b400f86a1264cce012f9546055558"
+size = 29151
+seconds = 212.5
+pools = ["final"]
+
+[[track]]
+id = "th07-17"
+source = "tohovgs"
+file = "TH07-17.mml"
+title = "Charming Domination　〜 Who done it!"
+title_ja = "妖々跋扈　〜 Who done it!"
+original = "ZUN, Touhou 7 PCB"
+role = "Phantasm Stage theme"
+sha256 = "aa11cb40016cd1ea38ad640e11cce54e675e698ac20e58675a00ff4eca2521f4"
+size = 18208
+seconds = 140.0
+pools = ["mid"]
+
+[[track]]
+id = "th07-18"
+source = "tohovgs"
+file = "TH07-18.mml"
+title = "Necro Fantasia"
+title_ja = "ネクロファンタジア"
+original = "ZUN, Touhou 7 PCB"
+role = "Phantasm Boss - Yukari Yakumo's theme"
+sha256 = "183e7f08bcc79defd0408c9a3b94917e4dd03d2291dadf95473b2e519b084497"
+size = 23065
+seconds = 165.8
+pools = ["final"]
+keys = ["halting-problem"]
+
+[[track]]
+id = "th07-19"
+source = "tohovgs"
+file = "TH07-19.mml"
+title = "Dream of a Spring Breeze"
+title_ja = "春風の夢"
+original = "ZUN, Touhou 7 PCB"
+role = "Ending theme"
+sha256 = "c9eaa35d1c52f7a129ba71874916791bb9e26ba9995652e7e4dde93fc03908ad"
+size = 3748
+seconds = 60.0
+pools = ["cleared"]
+
+[[track]]
+id = "th07-20"
+source = "tohovgs"
+file = "TH07-20.mml"
+title = "Sakura Sakura　〜 Japanize Dream..."
+title_ja = "さくらさくら　〜 Japanize Dream..."
+original = "ZUN, Touhou 7 PCB"
+role = "Staff Roll theme"
+sha256 = "9133c5f7afa485b7b420787835bc65b7ab06a848d7ed9413ce0892dc36e46ed1"
+size = 8768
+seconds = 94.6
+pools = ["merge"]
+
+[[track]]
+id = "th07-21"
+source = "tohovgs"
+file = "TH07-21.mml"
+title = "Flower of Past Days　〜 Fairy of Flower"
+title_ja = "過去の花　〜 Fairy of Flower"
+original = "ZUN"
+role = "listed with PCB in 東方BGM on VGS"
+sha256 = "337851a4cc0feafa0e8b44181e62ba4ff76a06850e10acbd9b4de13a1a471c2a"
+size = 14546
+seconds = 122.5
+pools = ["rtfm"]
+
+[[track]]
+id = "th08-01"
+source = "tohovgs"
+file = "TH08-01.mml"
+title = "Imperishable Night　〜 Eastern Night"
+title_ja = "永夜抄　〜 Eastern Night."
+original = "ZUN, Touhou 8 IN"
+role = "Title screen"
+sha256 = "a6173567ff21abd6efa693a8a73377bd7e0fc507c538e204a7dbb904718a2074"
+size = 4878
+seconds = 66.5
+pools = ["grub"]
+
+[[track]]
+id = "th08-02"
+source = "tohovgs"
+file = "TH08-02.mml"
+title = "Illusionary Night　〜 Ghostly Eyes"
+title_ja = "幻視の夜　〜 Ghostly Eyes"
+original = "ZUN, Touhou 8 IN"
+role = "Stage 1 theme"
+sha256 = "b3524ffac8bb4c3230e4b1a0bc32866c1973c5be3157adb42ba50c30679225d3"
+size = 11500
+seconds = 127.1
+pools = ["userland"]
+
+[[track]]
+id = "th08-03"
+source = "tohovgs"
+file = "TH08-03.mml"
+title = "Stirring an Autumn Moon　〜 Mooned Insect"
+title_ja = "蠢々秋月　〜 Mooned Insect"
+original = "ZUN, Touhou 8 IN"
+role = "Stage 1 Boss - Wriggle Nightbug's theme"
+sha256 = "71b00801a185e18dd069ed7ac236c56c038ca38a0c95d19bf697af1840a458cd"
+size = 14480
+seconds = 75.9
+pools = ["boss"]
+
+[[track]]
+id = "th08-04"
+source = "tohovgs"
+file = "TH08-04.mml"
+title = "Song of the Night Sparrow　〜 Night Bird"
+title_ja = "夜雀の歌声　〜 Night Bird"
+original = "ZUN, Touhou 8 IN"
+role = "Stage 2 theme"
+sha256 = "c9a90f79f96148cb0270f6412449e92768c16edcfdfdefb05b00e625516f5c3d"
+size = 18462
+seconds = 146.9
+pools = ["userland"]
+
+[[track]]
+id = "th08-05"
+source = "tohovgs"
+file = "TH08-05.mml"
+title = "Unwittingly，Distracted with her Song"
+title_ja = "もう歌しか聞こえない"
+original = "ZUN, Touhou 8 IN"
+role = "Stage 2 Boss - Mystia Lorelei's theme"
+sha256 = "29e001475fbfeb706d938103faa083e49e4fcc4d72d60db36ff5f907ed166337"
+size = 10286
+seconds = 94.2
+pools = ["boss"]
+
+[[track]]
+id = "th08-06"
+source = "tohovgs"
+file = "TH08-06.mml"
+title = "Nostalgic Blood of the Eastern　〜 Old World"
+title_ja = "懐かしき東方の血　〜 Old World"
+original = "ZUN, Touhou 8 IN"
+role = "Stage 3 theme"
+sha256 = "a2357fd42f32b0894eecf619dd535c874640c9e039b638c3b46832b1b16cea32"
+size = 9892
+seconds = 90.4
+pools = ["mid"]
+
+[[track]]
+id = "th08-07"
+source = "tohovgs"
+file = "TH08-07.mml"
+title = "Plain Asia"
+title_ja = "プレインエイジア"
+original = "ZUN, Touhou 8 IN"
+role = "Stage 3 Boss - Keine Kamishirasawa's theme"
+sha256 = "044878ed49d1614fada2b702ce0150c25bf7a6c0055c3feca79455a1c1ce7ea7"
+size = 12289
+seconds = 113.8
+pools = ["boss"]
+
+[[track]]
+id = "th08-08"
+source = "tohovgs"
+file = "TH08-08.mml"
+title = "Retribution for the Imperishable Night"
+title_ja = "永夜の報い　〜 Imperishable Night."
+original = "ZUN, Touhou 8 IN"
+role = "Stage 4 theme"
+sha256 = "7e92e49ac0584fd694154e836871eec887be76660b125551956e78bda69a9dfd"
+size = 13187
+seconds = 91.5
+pools = ["mid"]
+
+[[track]]
+id = "th08-09"
+source = "tohovgs"
+file = "TH08-09.mml"
+title = "Maiden's Capriccio　〜 Dream Battle"
+title_ja = "少女綺想曲　〜 Dream Battle"
+original = "ZUN, Touhou 8 IN"
+role = "Stage 4 uncanny Boss - Reimu Hakurei's theme"
+sha256 = "304518d576991d9984d6057fdbb18aa4a09cf235f188139edc069ef2d09c29a8"
+size = 18808
+seconds = 150.8
+pools = ["boss"]
+
+[[track]]
+id = "th08a-10"
+source = "tohovgs"
+file = "TH08a-10.mml"
+title = "Love Colors Master Spark"
+title_ja = "恋色マスタースパーク"
+original = "ZUN, Touhou 8 IN"
+role = "Stage 4 powerful Boss - Marisa Kirisame's theme"
+sha256 = "1882e4251a575a6f9b857e357a053ca46e463acf69c275fc8c2c3ffbadbac967"
+size = 15409
+seconds = 116.4
+pools = ["boss"]
+
+[[track]]
+id = "th08-11"
+source = "tohovgs"
+file = "TH08-11.mml"
+title = "Cinderella Cage　〜 Kagome-Kagome"
+title_ja = "シンデレラケージ　〜 Kagome-Kagome"
+original = "ZUN, Touhou 8 IN"
+role = "Stage 5 theme"
+sha256 = "157369ecf929aa7ea25954d53af6bbf85afbb423954634440a537fe1041375a4"
+size = 17277
+seconds = 167.5
+pools = ["mid"]
+
+[[track]]
+id = "th08-12"
+source = "tohovgs"
+file = "TH08-12.mml"
+title = "Lunatic Eyes　〜 Invisible Full Moon"
+title_ja = "狂気の瞳　〜 Invisible Full Moon"
+original = "ZUN, Touhou 8 IN"
+role = "Stage 5 Boss - Reisen Udongein Inaba's theme"
+sha256 = "f1c2e1dfa93eac866b99ee385339fcc919fb92545a3a62c750bfce4325e0474f"
+size = 11756
+seconds = 118.0
+pools = ["boss"]
+
+[[track]]
+id = "th08-13"
+source = "tohovgs"
+file = "TH08-13.mml"
+title = "Voyage 1969"
+title_ja = "ヴォヤージュ1969"
+original = "ZUN, Touhou 8 IN"
+role = "Final Stage theme"
+sha256 = "c30eef3c616a6dc0918763525da77a579bb0b1ddd433140906535f5122717f8c"
+size = 11253
+seconds = 77.0
+pools = ["mid"]
+
+[[track]]
+id = "th08-14"
+source = "tohovgs"
+file = "TH08-14.mml"
+title = "Gensokyo Millennium　〜 History of the Moon"
+title_ja = "千年幻想郷　〜 History of the Moon"
+original = "ZUN, Touhou 8 IN"
+role = "FinalA Boss - Eirin Yagokoro's theme"
+sha256 = "2f1f99a6af7a85e0fee793cc36fbd1076397f7f4b0e0cb6da76a566376d63ec4"
+size = 21152
+seconds = 171.0
+pools = ["final"]
+
+[[track]]
+id = "th08-15"
+source = "tohovgs"
+file = "TH08-15.mml"
+title = "Flight of the Bamboo Cutter　〜 Lunatic Princess"
+title_ja = "竹取飛翔　〜 Lunatic Princess"
+original = "ZUN, Touhou 8 IN"
+role = "FinalB Boss - Kaguya Houraisan's theme"
+sha256 = "5af065a4ee0e0f03f75cdf81bc2af2584ad329824f0b659d69abfbb2c370b016"
+size = 21559
+seconds = 170.2
+pools = ["final"]
+
+[[track]]
+id = "th08-16"
+source = "tohovgs"
+file = "TH08-16.mml"
+title = "Voyage 1970"
+title_ja = "ヴォヤージュ1970"
+original = "ZUN, Touhou 8 IN"
+role = "Eirin and Kaguya's Revival theme"
+sha256 = "a89be97cef560fafb65111fca72ef60f18283e9b712468208d96cfe04383b852"
+size = 11048
+seconds = 108.7
+pools = ["final"]
+
+[[track]]
+id = "th08-17"
+source = "tohovgs"
+file = "TH08-17.mml"
+title = "Extend Ash　〜 Hourai Victim"
+title_ja = "エクステンドアッシュ　〜 蓬莱人"
+original = "ZUN, Touhou 8 IN"
+role = "Extra Stage theme"
+sha256 = "3fa46b0366d2066d72f7d8f276ff87b1c3a428153effda862e6e0ed25a9b721d"
+size = 18758
+seconds = 150.9
+pools = ["mid"]
+
+[[track]]
+id = "th08-18"
+source = "tohovgs"
+file = "TH08-18.mml"
+title = "Reach for the Moon，Immortal Smoke"
+title_ja = "月まで届け、不死の煙"
+original = "ZUN, Touhou 8 IN"
+role = "Extra Boss - Fujiwara no Mokou's theme"
+sha256 = "616a93b97515ed9ddad461bc127d43ee12f98bec4791a099e47decf2298225ad"
+size = 21202
+seconds = 170.4
+pools = ["final"]
+
+[[track]]
+id = "th08-19"
+source = "tohovgs"
+file = "TH08-19.mml"
+title = "Evening Primrose"
+title_ja = "月見草"
+original = "ZUN, Touhou 8 IN"
+role = "Ending theme"
+sha256 = "483453622684c59a3ce1db74eab5117da5c0521c72384344d49355a456238628"
+size = 4976
+seconds = 83.4
+pools = ["cleared"]
+
+[[track]]
+id = "th08-20"
+source = "tohovgs"
+file = "TH08-20.mml"
+title = "Eternal Dream　〜 Mystic Maple"
+title_ja = "Eternal Dream　〜 幽玄の槭樹"
+original = "ZUN, Touhou 8 IN"
+role = "Staff Roll theme"
+sha256 = "b8895b8c521dea3aa08ad53643fd8f62080e492d949ce23b57c12df42152d4b3"
+size = 10653
+seconds = 100.3
+pools = ["merge"]
+
+[[track]]
+id = "th08-21"
+source = "tohovgs"
+file = "TH08-21.mml"
+title = "Eastern Youkai Beauty"
+title_ja = "東方妖怪小町"
+original = "ZUN, Touhou 8 IN"
+role = "Last Word theme"
+sha256 = "0bc746e8c9b33cabebd9f91ec4bc27c72245836f924b4f3ba330050031981a09"
+size = 10869
+seconds = 72.6
+pools = ["mid"]
+
+[[track]]
+id = "th09-01"
+source = "tohovgs"
+file = "TH09-01.mml"
+title = "Kaeidzuka　〜 Higan Retour"
+title_ja = "花映塚　〜 Higan Retour"
+original = "ZUN, Touhou 9 PoFV"
+role = "Title Screen theme"
+sha256 = "ab53c87b9d58457a0ac1b495e609de1e7904249a03c84545ef72d09ca07eac0d"
+size = 12081
+seconds = 66.1
+pools = ["grub"]
+
+[[track]]
+id = "th09-02"
+source = "tohovgs"
+file = "TH09-02.mml"
+title = "Spring Lane　〜 Colorful Path"
+title_ja = "春色小径　〜 Colorful Path"
+original = "ZUN, Touhou 9 PoFV"
+role = "Reimu Hakurei's theme"
+sha256 = "5aa03c6721b99006c641474e8f63461896c269cdba81cf3f7465d9ba8ef3984f"
+size = 17082
+seconds = 154.3
+pools = ["mid"]
+
+[[track]]
+id = "th09-03"
+source = "tohovgs"
+file = "TH09-03.mml"
+title = "Oriental Dark Flight"
+title_ja = "オリエンタルダークフライト"
+original = "ZUN, Touhou 9 PoFV"
+role = "Marisa Kirisame's theme"
+sha256 = "52f76dcfc77c6e7b27f6f871911d36b56b3126bf9a43947a9c3d0471b256ace0"
+size = 15306
+seconds = 129.9
+pools = ["mid"]
+
+[[track]]
+id = "th09-04"
+source = "tohovgs"
+file = "TH09-04.mml"
+title = "Flowering Knight"
+title_ja = "フラワリングナイト"
+original = "ZUN, Touhou 9 PoFV"
+role = "Sakuya Izayoi's theme"
+sha256 = "9304bde3297ca7d27756f14a0d4491a154725e53d7bc07af6c9eca10cee36de9"
+size = 13812
+seconds = 125.5
+pools = ["mid", "boss"]
+keys = ["race-condition"]
+
+[[track]]
+id = "th09-05"
+source = "tohovgs"
+file = "TH09-05.mml"
+title = "Mystic Oriental Dream　〜 Ancient Temple"
+title_ja = "東方妖々夢　〜 Ancient Temple"
+original = "ZUN, Touhou 9 PoFV"
+role = "Youmu Konpaku's theme"
+sha256 = "0b75a221866a6ec8a0a802a3088e6c944bb32a366d31e802fe6f17da5a6effb2"
+size = 20419
+seconds = 158.3
+pools = ["mid"]
+
+[[track]]
+id = "th09-06"
+source = "tohovgs"
+file = "TH09-06.mml"
+title = "Lunatic Eyes　〜 Invisible Full Moon"
+title_ja = "狂気の瞳　〜 Invisible Full Moon"
+original = "ZUN, Touhou 9 PoFV"
+role = "Reisen Udongein Inaba's theme"
+sha256 = "7d8a61e4146ae7e3a3164c1fdc1ca099f4907c1c1329bb192f6acece5e80b654"
+size = 19007
+seconds = 117.9
+pools = ["mid"]
+
+[[track]]
+id = "th09-07"
+source = "tohovgs"
+file = "TH09-07.mml"
+title = "Adventure of the Lovestruck Tomboy"
+title_ja = "おてんば恋娘の冒険"
+original = "ZUN, Touhou 9 PoFV"
+role = "Cirno's theme"
+sha256 = "459da665c2319b245906da25159cc912e4df6588c81e9f5dbcdfc5899b5e1058"
+size = 24583
+seconds = 144.0
+pools = ["mid", "boss"]
+keys = ["off-by-one"]
+
+[[track]]
+id = "th09-08"
+source = "tohovgs"
+file = "TH09-08.mml"
+title = "Phantom Ensemble"
+title_ja = "幽霊楽団　〜 Phantom Ensemble"
+original = "ZUN, Touhou 9 PoFV"
+role = "Prismriver Sisters' (Lyrica, Merlin, and Lunasa) theme"
+sha256 = "f38bf279583447673c3bc5871207eb772556925139cae05ec43e5f88608afa89"
+size = 19623
+seconds = 137.3
+pools = ["mid"]
+
+[[track]]
+id = "th09-09"
+source = "tohovgs"
+file = "TH09-09.mml"
+title = "Unwittingly，Distracted with her Song　〜 Flower Mix"
+title_ja = "もう歌しか聞こえない　〜 Flower Mix"
+original = "ZUN, Touhou 9 PoFV"
+role = "Mystia Lorelei's theme"
+sha256 = "7ed30f714e631eb29789d0f4529cb06f369662a8decc4eec538e57307e3d7b7f"
+size = 25423
+seconds = 156.1
+pools = ["mid"]
+
+[[track]]
+id = "th09-10"
+source = "tohovgs"
+file = "TH09-10.mml"
+title = "White Flag of the Usa Jingu"
+title_ja = "お宇佐さまの素い幡"
+original = "ZUN, Touhou 9 PoFV"
+role = "Tewi Inaba's theme"
+sha256 = "b555950e84cd78f3deefa04e1c03779f71450fcb1bbdba0c16bb9e057f9c7e98"
+size = 17257
+seconds = 104.2
+pools = ["mid"]
+
+[[track]]
+id = "th09-11"
+source = "tohovgs"
+file = "TH09-11.mml"
+title = "Fujin Maiden (ShortVersion)"
+title_ja = "風神少女 (ShortVersion)"
+original = "ZUN, Touhou 9 PoFV"
+role = "Aya Shameimaru's theme"
+sha256 = "5c026ecb2b7fff8219c68656c325824934de6dccd86a900fa723ce15e7440171"
+size = 30185
+seconds = 181.7
+pools = ["mid"]
+
+[[track]]
+id = "th09-12"
+source = "tohovgs"
+file = "TH09-12.mml"
+title = "Poison Body　〜 Forsaken Doll"
+title_ja = "ポイズンボディ　〜 Forsaken Doll"
+original = "ZUN, Touhou 9 PoFV"
+role = "Medicine Melancholy's theme"
+sha256 = "01e8b9bb2c415dd9f62ac732134ce79c26adb3a46318c010437bf71e15e79458"
+size = 13410
+seconds = 111.5
+pools = ["mid"]
+
+[[track]]
+id = "th09-13"
+source = "tohovgs"
+file = "TH09-13.mml"
+title = "Konjaku Gensokyo　〜 Flower Land"
+title_ja = "今昔幻想郷　〜 Flower Land"
+original = "ZUN, Touhou 9 PoFV"
+role = "Yuuka Kazami's theme"
+sha256 = "0270a502ac0a88715ed28750867e0d34f28e7e5ee744eff440f8866230936093"
+size = 25893
+seconds = 149.8
+pools = ["mid"]
+
+[[track]]
+id = "th09-14"
+source = "tohovgs"
+file = "TH09-14.mml"
+title = "Higan Homeward Voyage　〜 Riverside View"
+title_ja = "彼岸帰航　〜 Riverside View"
+original = "ZUN, Touhou 9 PoFV"
+role = "Komachi Onozuka's theme"
+sha256 = "93401d79e4be5f5a6fc768c39c1cb32d5318283c8208f77ab69ccec822f4704f"
+size = 22194
+seconds = 165.2
+pools = ["mid"]
+
+[[track]]
+id = "th09-15"
+source = "tohovgs"
+file = "TH09-15.mml"
+title = "Eastern Judgement　〜 Fate of Sixty Years"
+title_ja = "六十年目の東方裁判　〜 Fate of Sixty Years"
+original = "ZUN, Touhou 9 PoFV"
+role = "Shikieiki Yamaxanadu's theme"
+sha256 = "74b1a32113a7c5c6eb953bc7cb730d407b63e3cac720aef9a9fc8ab4e569da42"
+size = 34434
+seconds = 242.2
+pools = ["final"]
+keys = ["halting-problem"]
+
+[[track]]
+id = "th10-01"
+source = "tohovgs"
+file = "TH10-01.mml"
+title = "Sealed Gods"
+title_ja = "封印されし神々"
+original = "ZUN, Touhou 10 MoF"
+role = "Title screen"
+sha256 = "d6cf2d88c6b85445288b1f1b2a16792a7dd5b77637530061162cdbc1bc1b82e7"
+size = 12419
+seconds = 73.5
+pools = ["grub"]
+
+[[track]]
+id = "th10-02"
+source = "tohovgs"
+file = "TH10-02.mml"
+title = "The gods that miss people　〜 Romantic Fall"
+title_ja = "人恋し神様　〜 Romantic Fall"
+original = "ZUN, Touhou 10 MoF"
+role = "Stage 1 theme"
+sha256 = "f068f5392851704c05cf6dd5dea19ec374460baa0707668a0c1bf42cc6541851"
+size = 15865
+seconds = 136.3
+pools = ["userland"]
+
+[[track]]
+id = "th10-03"
+source = "tohovgs"
+file = "TH10-03.mml"
+title = "Because Princess Inada is Scolding Me"
+title_ja = "稲田姫様に叱られるから"
+original = "ZUN, Touhou 10 MoF"
+role = "Stage 1 Boss - Minoriko Aki's theme"
+sha256 = "c5a0c89d61d11788d36773a35566d3d188a891bfadadcfbd59fc5eb5b67732a5"
+size = 8425
+seconds = 43.0
+pools = ["boss"]
+
+[[track]]
+id = "th10-04"
+source = "tohovgs"
+file = "TH10-04.mml"
+title = "the Road of an Apotropaic God　〜 Dark Road"
+title_ja = "厄神様の通り道　〜 Dark Road"
+original = "ZUN, Touhou 10 MoF"
+role = "Stage 2 theme"
+sha256 = "64be7c50aae68217df8a15ea4f3c13cdcb23e77a6f37bafba41aa96faef9c771"
+size = 15228
+seconds = 118.4
+pools = ["userland"]
+
+[[track]]
+id = "th10-05"
+source = "tohovgs"
+file = "TH10-05.mml"
+title = "Darkside of Fate"
+title_ja = "運命のダークサイド"
+original = "ZUN, Touhou 10 MoF"
+role = "Stage 2 Boss - Hina Kagiyama's theme"
+sha256 = "d7e835eab0fb6a877bdee940e9599b22943369ab4aa1c0dcce353704813fc769"
+size = 16982
+seconds = 103.5
+pools = ["boss"]
+
+[[track]]
+id = "th10-06"
+source = "tohovgs"
+file = "TH10-06.mml"
+title = "the Gensokyo the Gods Loved"
+title_ja = "神々が恋した幻想郷"
+original = "ZUN, Touhou 10 MoF"
+role = "Stage 3 theme"
+sha256 = "1195f6da078794a1766e98cc99418446182b19d9d2dcf514fe01c568120512d0"
+size = 18281
+seconds = 179.6
+pools = ["mid"]
+
+[[track]]
+id = "th10-07"
+source = "tohovgs"
+file = "TH10-07.mml"
+title = "Akutagawa Ryuunosuke's \"Kappa\"　〜 Candid Friend"
+title_ja = "芥川龍之介の河童　〜 Candid Friend"
+original = "ZUN, Touhou 10 MoF"
+role = "Stage 3 Boss - Nitori Kawashiro's theme"
+sha256 = "229b2cad8cdcab6c3c87069fe4c3f79c7f0300ce5b68d731856515c5aaeb1fb3"
+size = 16037
+seconds = 153.5
+pools = ["boss"]
+
+[[track]]
+id = "th10-08"
+source = "tohovgs"
+file = "TH10-08.mml"
+title = "Fall of Fall　〜 Autumnal Waterfall"
+title_ja = "フォールオブフォール　〜 秋めく滝"
+original = "ZUN, Touhou 10 MoF"
+role = "Stage 4 theme"
+sha256 = "6fdbddf0b3e4c01eabc04227ac6449aa291f5cfd76307f0bfe38bdf1258c281c"
+size = 23773
+seconds = 195.1
+pools = ["mid"]
+
+[[track]]
+id = "th10-09"
+source = "tohovgs"
+file = "TH10-09.mml"
+title = "The Youkai Mountain　〜 Mysterious Mountain"
+title_ja = "妖怪の山　〜 Mysterious Mountain"
+original = "ZUN, Touhou 10 MoF"
+role = "Stage 4 boss - Aya Shameimaru's theme"
+sha256 = "c1232331e8440bbddf40350e6421dc1bb98b7609d9b40a378d4c137e7831fa97"
+size = 12815
+seconds = 82.4
+pools = ["boss"]
+
+[[track]]
+id = "th10-10"
+source = "tohovgs"
+file = "TH10-10.mml"
+title = "The Japanese Wilderness the Girl Saw"
+title_ja = "少女が見た日本の原風景"
+original = "ZUN, Touhou 10 MoF"
+role = "Stage 5 theme"
+sha256 = "5d4a2c3bd55f121a3556fd57f4bcc7e9bc757c6554947e3142a4d75ef96c560b"
+size = 25694
+seconds = 179.9
+pools = ["mid"]
+
+[[track]]
+id = "th10-11"
+source = "tohovgs"
+file = "TH10-11.mml"
+title = "Faith is for the Transient People"
+title_ja = "信仰は儚き人間の為に"
+original = "ZUN, Touhou 10 MoF"
+role = "Stage 5 boss - Sanae Kochiya's theme"
+sha256 = "a33600af7f92214194ce985ebc8ee7f66f4bedc43aafa33bf03c076ccb7f95b9"
+size = 26882
+seconds = 181.1
+pools = ["boss"]
+
+[[track]]
+id = "th10-12"
+source = "tohovgs"
+file = "TH10-12.mml"
+title = "Cemetery of Onbashira　〜 Grave of Being"
+title_ja = "御柱の墓場　〜 Grave of Being"
+original = "ZUN, Touhou 10 MoF"
+role = "Stage 6 theme"
+sha256 = "b3f4f0ab78bdcb7ca24f636f3051b0db4e47fdd662ff24b560adfc8f9ab3906d"
+size = 8231
+seconds = 59.3
+pools = ["mid"]
+
+[[track]]
+id = "th10-13"
+source = "tohovgs"
+file = "TH10-13.mml"
+title = "VenerableAncientBattlefield 〜 SuwaFoughtenField"
+title_ja = "神さびた古戦場　〜 Suwa Foughten Field"
+original = "ZUN, Touhou 10 MoF"
+role = "Stage 6 boss - Kanako Yasaka's theme"
+sha256 = "83a240d24590128b9d23766957ea1414d4c3ac268e5cf373312e75b2ff81887a"
+size = 28158
+seconds = 157.0
+pools = ["final"]
+
+[[track]]
+id = "th10-14"
+source = "tohovgs"
+file = "TH10-14.mml"
+title = "Tomorrow will be Special，Yesterday was not"
+title_ja = "明日ハレの日、ケの昨日"
+original = "ZUN, Touhou 10 MoF"
+role = "Extra stage theme"
+sha256 = "4f8ab4c7b48a9b52ae23a7531717e3f4958f4a2d6c610e4aa7439d3971b382d8"
+size = 20182
+seconds = 198.2
+pools = ["mid"]
+
+[[track]]
+id = "th10-15"
+source = "tohovgs"
+file = "TH10-15.mml"
+title = "Native Faith"
+title_ja = "ネイティブフェイス"
+original = "ZUN, Touhou 10 MoF"
+role = "Extra stage boss - Suwako Moriya's theme"
+sha256 = "ce234f3b3d9820ff5ca12af96ab449c43ded57f9bf00216d03921b10dc7cc2cc"
+size = 23723
+seconds = 163.6
+pools = ["final"]
+
+[[track]]
+id = "th10-16"
+source = "tohovgs"
+file = "TH10-16.mml"
+title = "Shrine at the Foot of the Mountain"
+title_ja = "麓の神社"
+original = "ZUN, Touhou 10 MoF"
+role = "Ending theme"
+sha256 = "40fb641032d2de1b1b6365d0732ebc61611b41dd94e1b3fd1b02ed51c28e546d"
+size = 8028
+seconds = 84.1
+pools = ["cleared"]
+
+[[track]]
+id = "th10-17"
+source = "tohovgs"
+file = "TH10-17.mml"
+title = "the Gods give us Blessed Rain　〜 Sylphid Dream"
+title_ja = "神は恵みの雨を降らす　〜 Sylphid Dream"
+original = "ZUN, Touhou 10 MoF"
+role = "Staff roll theme"
+sha256 = "4d4cbfcef446b2747163b9c161081aa6d3bf84390d02cacbd2962be3bc50589b"
+size = 8995
+seconds = 85.2
+pools = ["merge"]
+
+[[track]]
+id = "th10-18"
+source = "tohovgs"
+file = "TH10-18.mml"
+title = "Player's Score"
+title_ja = "プレイヤーズスコア"
+original = "ZUN, Touhou 10 MoF"
+role = "Score theme"
+sha256 = "8918ce98d8b864ec198d51e382b269252859e3cacd94eff71dbfdf08ec15eb8a"
+size = 6320
+seconds = 35.6
+pools = ["merge"]
+
+[[track]]
+id = "th11-01"
+source = "tohovgs"
+file = "TH11-01.mml"
+title = "Waking the Earth Spirits"
+title_ja = "地霊達の起床"
+original = "ZUN, Touhou 11 SA"
+role = "Title screen"
+sha256 = "faad4069cd7fc10f216441ac7852ece6ac1fd8576ae661ec4f19c710f1050efe"
+size = 11514
+seconds = 76.0
+pools = ["grub"]
+
+[[track]]
+id = "th11-02"
+source = "tohovgs"
+file = "TH11-02.mml"
+title = "The Wind Tunnel of Darkness"
+title_ja = "暗闇の風穴"
+original = "ZUN, Touhou 11 SA"
+role = "Stage 1 theme"
+sha256 = "0e6dc358a70832f1b7e94a856bec411391b987b58e7a9d6a7270a9db2f962514"
+size = 13789
+seconds = 96.8
+pools = ["userland"]
+
+[[track]]
+id = "th11-03"
+source = "tohovgs"
+file = "TH11-03.mml"
+title = "Sealed Yokai　〜 Lost Place"
+title_ja = "封じられた妖怪　〜 Lost Place"
+original = "ZUN, Touhou 11 SA"
+role = "Stage 1 boss - Yamame Kurodani's theme"
+sha256 = "79efdb322cf4344a50cf19806258b65c2bbbd0ac2f7d0375db6be5987d96118d"
+size = 8690
+seconds = 53.8
+pools = ["boss"]
+
+[[track]]
+id = "th11-04"
+source = "tohovgs"
+file = "TH11-04.mml"
+title = "The bridge with no survivors"
+title_ja = "渡る者の途絶えた橋"
+original = "ZUN, Touhou 11 SA"
+role = "Stage 2 theme"
+sha256 = "0b1cadef0d9c5705a314bef39cd23490d6d12711a5e9a3c40649b6ebae3d085d"
+size = 12318
+seconds = 107.8
+pools = ["userland"]
+
+[[track]]
+id = "th11-05"
+source = "tohovgs"
+file = "TH11-05.mml"
+title = "Green-Eyed Jealousy"
+title_ja = "緑眼のジェラシー"
+original = "ZUN, Touhou 11 SA"
+role = "Stage 2 boss - Parsee Mizuhashi's theme"
+sha256 = "5dce1020e4e377304f52f82ecf9a0b791b3135564e033d4962b637ca6105cbd7"
+size = 19414
+seconds = 108.8
+pools = ["boss"]
+
+[[track]]
+id = "th11-06"
+source = "tohovgs"
+file = "TH11-06.mml"
+title = "Going along the Old Hell Road"
+title_ja = "旧地獄街道を行く"
+original = "ZUN, Touhou 11 SA"
+role = "Stage 3 theme"
+sha256 = "bca4b11f47e0fcdc6f300dc76ef5e5dc54501bafa506c8782aae92f75135ec30"
+size = 13469
+seconds = 112.9
+pools = ["mid"]
+
+[[track]]
+id = "th11-07"
+source = "tohovgs"
+file = "TH11-07.mml"
+title = "Petals sake cup Ohe Mountain"
+title_ja = "華のさかづき大江山"
+original = "ZUN, Touhou 11 SA"
+role = "Stage 3 boss - Yuugi Hoshiguma's theme"
+sha256 = "659e78dfe7a3cdd4239753ad898649c090cdd479ff5c9f67ca1025ce03694407"
+size = 14118
+seconds = 116.4
+pools = ["boss"]
+
+[[track]]
+id = "th11-08"
+source = "tohovgs"
+file = "TH11-08.mml"
+title = "Heartfelt Fancy"
+title_ja = "ハートフェルトファンシー"
+original = "ZUN, Touhou 11 SA"
+role = "Stage 4 theme"
+sha256 = "67b79ba0e5c29b964e9e3d9bba3327b48ae0a2655493d299c563e4c216e994ce"
+size = 16876
+seconds = 150.0
+pools = ["mid"]
+
+[[track]]
+id = "th11-09"
+source = "tohovgs"
+file = "TH11-09.mml"
+title = "Satori Maiden　〜 3rd eye"
+title_ja = "少女さとり　〜 3rd eye"
+original = "ZUN, Touhou 11 SA"
+role = "Stage 4 boss - Satori Komeiji's theme"
+sha256 = "955f148fbea8ea47e4014a0fe70c64e8e0108dd772ade393dd2b2a8549cc5095"
+size = 18082
+seconds = 123.5
+pools = ["boss"]
+
+[[track]]
+id = "th11-10"
+source = "tohovgs"
+file = "TH11-10.mml"
+title = "Lullabies of an Abandoned Hell"
+title_ja = "廃獄ララバイ"
+original = "ZUN, Touhou 11 SA"
+role = "Stage 5 theme"
+sha256 = "8b7fb6eedc2b197bd23bddb4063837fd0e6c99c4aa1eeb1e157f7e53040e01f0"
+size = 17187
+seconds = 167.3
+pools = ["panic"]
+once = true
+note = "no loop mark: a song with an ending, played once a turn"
+
+[[track]]
+id = "th11-11"
+source = "tohovgs"
+file = "TH11-11.mml"
+title = "Corpse Voyage　〜 Be of good cheer!"
+title_ja = "死体旅行　〜 Be of good cheer!"
+original = "ZUN, Touhou 11 SA"
+role = "Stage 5 boss - Rin Kaenbyou's theme"
+sha256 = "a36592cdd4ee788511132d9d1cacb6256208e20ade224e1fee0c56bc55c486b2"
+size = 12411
+seconds = 98.6
+pools = ["boss"]
+
+[[track]]
+id = "th11-12"
+source = "tohovgs"
+file = "TH11-12.mml"
+title = "Hellfire Mantle"
+title_ja = "業火マントル"
+original = "ZUN, Touhou 11 SA"
+role = "Stage 6 theme"
+sha256 = "9ba8052706744707c17cfaa8dbe662086509a859c2b96acafcedd6a14df0fa84"
+size = 15013
+seconds = 113.4
+pools = ["mid"]
+
+[[track]]
+id = "th11-13"
+source = "tohovgs"
+file = "TH11-13.mml"
+title = "Heliolithic of Mystic Wisdom　〜 Nuclear Fusion"
+title_ja = "霊知の太陽信仰　〜 Nuclear Fusion"
+original = "ZUN, Touhou 11 SA"
+role = "Stage 6 boss - Utsuho Reiuji's theme"
+sha256 = "e91e4ac60755c07d004903cfd9ad20c8094e1fdbc2b5cb03b3eab95f37334561"
+size = 21328
+seconds = 166.1
+pools = ["final"]
+
+[[track]]
+id = "th11-14"
+source = "tohovgs"
+file = "TH11-14.mml"
+title = "Last Remote"
+title_ja = "ラストリモート"
+original = "ZUN, Touhou 11 SA"
+role = "Extra stage theme"
+sha256 = "60ebfb07daf86a09d5f4d05bc67177687b136f7727d51c5ee09ff77d8c5b9edc"
+size = 19425
+seconds = 184.7
+pools = ["mid"]
+
+[[track]]
+id = "th11-15"
+source = "tohovgs"
+file = "TH11-15.mml"
+title = "Hartmann's Specter Girl"
+title_ja = "ハルトマンの妖怪少女"
+original = "ZUN, Touhou 11 SA"
+role = "Extra stage boss - Koishi Komeiji's theme"
+sha256 = "f1b0a26093c83f348ccfdd93ff26194a7d4328221bee74b4396a2085fd7c0331"
+size = 20590
+seconds = 151.2
+pools = ["boss", "final"]
+keys = ["heisenbug"]
+
+[[track]]
+id = "th11-16"
+source = "tohovgs"
+file = "TH11-16.mml"
+title = "The Return of the Earth Spirits"
+title_ja = "地霊達の帰宅"
+original = "ZUN, Touhou 11 SA"
+role = "Ending theme"
+sha256 = "da4f8ba1d6fe7c3147b315af8cfac9cb0cb2d6d57bc3dc79aba4836aee246bd9"
+size = 10605
+seconds = 68.0
+pools = ["cleared"]
+
+[[track]]
+id = "th11-17"
+source = "tohovgs"
+file = "TH11-17.mml"
+title = "Energy Dawn 〜 Future Dream..."
+title_ja = "エネルギー黎明 〜 Future Dream..."
+original = "ZUN, Touhou 11 SA"
+role = "Staff roll theme"
+sha256 = "274682f9f787b2beb21d4476de78b99951659b1b39451e29847b23b2477647d0"
+size = 9255
+seconds = 81.5
+pools = ["merge"]
+
+[[track]]
+id = "th12-01"
+source = "tohovgs"
+file = "TH12-01.mml"
+title = "Shadow of Blue Sky"
+title_ja = "青空の影"
+original = "ZUN, Touhou 12 UFO"
+role = "Title screen"
+sha256 = "fe50c55f7d79dcd7c3ee50881975776bf0962829388e13112572bf3b5181b38a"
+size = 7626
+seconds = 57.3
+pools = ["grub"]
+
+[[track]]
+id = "th12-02"
+source = "tohovgs"
+file = "TH12-02.mml"
+title = "to the Springtime Harbor"
+title_ja = "春の湊に"
+original = "ZUN, Touhou 12 UFO"
+role = "Stage 1 theme"
+sha256 = "7f541dd63f7261e4757062b6ed4666fd5cacab21f9d43ca1e7ce5f05a6be0e77"
+size = 17481
+seconds = 110.7
+pools = ["userland"]
+
+[[track]]
+id = "th12-03"
+source = "tohovgs"
+file = "TH12-03.mml"
+title = "Tiny Little Clever Commander"
+title_ja = "小さな小さな賢将"
+original = "ZUN, Touhou 12 UFO"
+role = "Stage 1 Boss - Nazrin's theme"
+sha256 = "7e8c31b85de8a9fc7e0cc73c6788e9f68d2d0885c2599469749f3ae99f073bd3"
+size = 19322
+seconds = 94.2
+pools = ["boss"]
+
+[[track]]
+id = "th12-04"
+source = "tohovgs"
+file = "TH12-04.mml"
+title = "Closed Cloud Passage"
+title_ja = "閉ざせし雲の通い路"
+original = "ZUN, Touhou 12 UFO"
+role = "Stage 2 theme"
+sha256 = "00ab431f4b8228c7f8cabada4b0b68e0c10470f45484a2b9b332037b5fad1d7f"
+size = 14173
+seconds = 109.8
+pools = ["userland"]
+
+[[track]]
+id = "th12-05"
+source = "tohovgs"
+file = "TH12-05.mml"
+title = "Beware of the Ever-Present Umbrella"
+title_ja = "万年置き傘にご注意を"
+original = "ZUN, Touhou 12 UFO"
+role = "Stage 2 Boss - Kogasa Tatara's theme"
+sha256 = "331e15fe28c670cd51513564d80294f8780d669bb7caaecea3dda62239244a93"
+size = 15331
+seconds = 124.7
+pools = ["boss"]
+
+[[track]]
+id = "th12-06"
+source = "tohovgs"
+file = "TH12-06.mml"
+title = "Sky Ruins"
+title_ja = "スカイルーイン"
+original = "ZUN, Touhou 12 UFO"
+role = "Stage 3 theme"
+sha256 = "df5b7f31f94f41c8ac99b05452e29e3bf708128edd8673b0ae3a707beebb0b3b"
+size = 17507
+seconds = 131.1
+pools = ["mid"]
+
+[[track]]
+id = "th12-07"
+source = "tohovgs"
+file = "TH12-07.mml"
+title = "Outdated Father and High-Collar Girl"
+title_ja = "時代親父とハイカラ少女"
+original = "ZUN, Touhou 12 UFO"
+role = "Stage 3 Boss - Ichirin Kumoi and Unzan's theme"
+sha256 = "7b151380d7159fa5acb13df8ea7c0c5c549d754910002365530846e9fb988f53"
+size = 14550
+seconds = 107.1
+pools = ["boss"]
+
+[[track]]
+id = "th12-08"
+source = "tohovgs"
+file = "TH12-08.mml"
+title = "A Ghost Liner's Journey Through Time and Space"
+title_ja = "幽霊客船の時空を越えた旅"
+original = "ZUN, Touhou 12 UFO"
+role = "Stage 4 theme"
+sha256 = "33b6c683b6b8c769987929509565cf47a9c8f1b12b63fc44b49e14124466544c"
+size = 16604
+seconds = 140.5
+pools = ["mid"]
+
+[[track]]
+id = "th12-09"
+source = "tohovgs"
+file = "TH12-09.mml"
+title = "Captain Murasa"
+title_ja = "キャプテン・ムラサ"
+original = "ZUN, Touhou 12 UFO"
+role = "Stage 4 Boss - Murasa Minamitsu's theme"
+sha256 = "7903ab17259365b9620e698fea349799c86fcd5ce01463776d17190fbd29deb6"
+size = 16279
+seconds = 126.0
+pools = ["boss"]
+
+[[track]]
+id = "th12-10"
+source = "tohovgs"
+file = "TH12-10.mml"
+title = "Esoteria, a local city in the magical world"
+title_ja = "魔界地方都市エソテリア"
+original = "ZUN, Touhou 12 UFO"
+role = "Stage 5 theme"
+sha256 = "c2e0ba98c70c12b308c142e69e7cc82775585309b56be431e97a9e1358e50ef2"
+size = 21544
+seconds = 172.2
+pools = ["mid"]
+
+[[track]]
+id = "th12-11"
+source = "tohovgs"
+file = "TH12-11.mml"
+title = "Bishamonten with Tiger Pattern"
+title_ja = "虎柄の毘沙門天"
+original = "ZUN, Touhou 12 UFO"
+role = "Stage 5 Boss - Shou Toramaru's theme"
+sha256 = "7d2cc8ecfd399fbab5ab20be39da0e5061396023625fff9ed84599f361102f67"
+size = 27824
+seconds = 207.5
+pools = ["boss"]
+
+[[track]]
+id = "th12-12"
+source = "tohovgs"
+file = "TH12-12.mml"
+title = "Fire of the Dharmadhatu"
+title_ja = "法界の火"
+original = "ZUN, Touhou 12 UFO"
+role = "Stage 6 theme"
+sha256 = "a234f649318ddd9926b824526f2fda8973fe33504e871785d696e3d3c199941d"
+size = 7512
+seconds = 99.3
+pools = ["mid"]
+
+[[track]]
+id = "th12-13"
+source = "tohovgs"
+file = "TH12-13.mml"
+title = "Emotional Skyscrapers　〜 Cosmic Mind"
+title_ja = "感情の摩天楼　〜 Cosmic Mind"
+original = "ZUN, Touhou 12 UFO"
+role = "Stage 6 Boss - Byakuren Hijiri's theme"
+sha256 = "5e133e0512917fa4a0ba0e242f2f84e955d7ccf5bd9a58feb20e6fba3a39ae1d"
+size = 26848
+seconds = 226.9
+pools = ["final"]
+
+[[track]]
+id = "th12-14"
+source = "tohovgs"
+file = "TH12-14.mml"
+title = "UFO Romance in the Night Sky"
+title_ja = "夜空のユーフォーロマンス"
+original = "ZUN, Touhou 12 UFO"
+role = "Extra stage theme"
+sha256 = "a03a786dc698f09b393ac38232d741a05800d66fac8a82887f1ef5656033229e"
+size = 24231
+seconds = 179.2
+pools = ["mid"]
+
+[[track]]
+id = "th12-15"
+source = "tohovgs"
+file = "TH12-15.mml"
+title = "Alien in Heian"
+title_ja = "平安のエイリアン"
+original = "ZUN, Touhou 12 UFO"
+role = "Extra Stage Boss - Nue Houjuu's theme"
+sha256 = "407655a615f1b1a4ea31adb86aa1751ad2a134b26de613ec31fcd02df922d609"
+size = 25949
+seconds = 190.9
+pools = ["boss", "final"]
+keys = ["heisenbug"]
+
+[[track]]
+id = "th12-16"
+source = "tohovgs"
+file = "TH12-16.mml"
+title = "Yokai Temple"
+title_ja = "妖怪寺"
+original = "ZUN, Touhou 12 UFO"
+role = "Ending theme"
+sha256 = "2f403af020ff5b29413f43daa00f9887f5724be41625e06e015c2932a113874b"
+size = 3680
+seconds = 48.0
+pools = ["cleared"]
+
+[[track]]
+id = "th12-17"
+source = "tohovgs"
+file = "TH12-17.mml"
+title = "Way Home in the Sky　〜 Sky Dream"
+title_ja = "空の帰り道　〜 Sky Dream"
+original = "ZUN, Touhou 12 UFO"
+role = "Staff roll theme"
+sha256 = "02a9e2444b1b714da3751d0535103323ebe8db108c97073f2fa83019ed4d9f26"
+size = 8505
+seconds = 108.9
+pools = ["merge"]
+
+[[track]]
+id = "th12_8-01"
+source = "tohovgs"
+file = "TH12_8-01.mml"
+title = "Spring Ice Fairy"
+title_ja = "春の氷精"
+original = "ZUN, Touhou 12.8 Fairy Wars"
+role = "Title theme"
+sha256 = "217e7b38bdbc672e2c8d7b4ede0903f5074711dc5a66cdc9a1420c8da97503ed"
+size = 15173
+seconds = 82.6
+pools = ["grub"]
+
+[[track]]
+id = "th12_8-02"
+source = "tohovgs"
+file = "TH12_8-02.mml"
+title = "Cute Great War Refrain"
+title_ja = "可愛い大戦争のリフレーン"
+original = "ZUN, Touhou 12.8 Fairy Wars"
+role = "Stage 1 theme"
+sha256 = "58be365f2977bc4ac5a5c941b6f47d7485f91efe4fb551da4163e597e51bc65d"
+size = 15672
+seconds = 105.1
+pools = ["userland"]
+
+[[track]]
+id = "th12_8-03"
+source = "tohovgs"
+file = "TH12_8-03.mml"
+title = "Risking Life for the Sake of Mischief"
+title_ja = "いたずらに命をかけて"
+original = "ZUN, Touhou 12.8 Fairy Wars"
+role = "Stage 1/2 boss theme"
+sha256 = "1b341de16df2082c86c4c39fc5029dd5b492be5fcdcf38fa12648393db3a427e"
+size = 12625
+seconds = 72.9
+pools = ["boss"]
+
+[[track]]
+id = "th12_8-04"
+source = "tohovgs"
+file = "TH12_8-04.mml"
+title = "Year Round Preoccupied Curiosity"
+title_ja = "年中夢中の好奇心"
+original = "ZUN, Touhou 12.8 Fairy Wars"
+role = "Stage 2 theme"
+sha256 = "624e37c92dc51df1851313c7719d90633c1448db1956a6077f020ea5c5d26a36"
+size = 12565
+seconds = 83.5
+pools = ["userland"]
+
+[[track]]
+id = "th12_8-05"
+source = "tohovgs"
+file = "TH12_8-05.mml"
+title = "Midnight Fairy Dance"
+title_ja = "真夜中のフェアリーダンス"
+original = "ZUN, Touhou 12.8 Fairy Wars"
+role = "Stage 3 theme"
+sha256 = "85205ff53c45a3ba7f42a84eecea26bd832fb78617aca64ef3a25db1cb3c7de9"
+size = 19777
+seconds = 111.9
+pools = ["mid"]
+
+[[track]]
+id = "th12_8-06"
+source = "tohovgs"
+file = "TH12_8-06.mml"
+title = "Fairy Wars　〜 Faily Wars"
+title_ja = "妖精大戦争　〜 Faily Wars"
+original = "ZUN, Touhou 12.8 Fairy Wars"
+role = "Stage 3 boss theme"
+sha256 = "ef862bebe91a8f79b750b99fbede88005509d243656a9782b25c1053ccd6109e"
+size = 15409
+seconds = 99.6
+pools = ["boss"]
+
+[[track]]
+id = "th12_8-07"
+source = "tohovgs"
+file = "TH12_8-07.mml"
+title = "Spring Ice Fairy - Silent -"
+title_ja = "春の氷精 - 静 -"
+original = "ZUN, Touhou 12.8 Fairy Wars"
+role = "Ending theme"
+sha256 = "aaa55608eaedc7519779de75e57ceb2cee4556e8afd3337d679bdebcf82ebedc"
+size = 6527
+seconds = 67.0
+pools = ["cleared"]
+
+[[track]]
+id = "th12_8-08"
+source = "tohovgs"
+file = "TH12_8-08.mml"
+title = "Loose Rain"
+title_ja = "ルーズレイン"
+original = "ZUN, Touhou 12.8 Fairy Wars"
+role = "Extra stage theme"
+sha256 = "18a1b3a473593769aae72958d6c8041ac3865cd9ef012604e5007d5696977a06"
+size = 23896
+seconds = 152.4
+pools = ["mid"]
+
+[[track]]
+id = "th12_8-09"
+source = "tohovgs"
+file = "TH12_8-09.mml"
+title = "Magus Night"
+title_ja = "メイガスナイト"
+original = "ZUN, Touhou 12.8 Fairy Wars"
+role = "Extra boss theme"
+sha256 = "52cdfb99cda49f7db5d33539e9edc0b7dfa37d440abba546e3be267e0c4d31c0"
+size = 21810
+seconds = 126.4
+pools = ["final"]
+
+[[track]]
+id = "th12_8-10"
+source = "tohovgs"
+file = "TH12_8-10.mml"
+title = "Players Score"
+title_ja = "プレイヤーズスコア"
+original = "ZUN, Touhou 12.8 Fairy Wars"
+role = "Score theme"
+sha256 = "86fa708b313a9b180368512396f076ebfe5a2cd57b2bbbaba81c7ba230e346b7"
+size = 7053
+seconds = 34.3
+pools = ["merge"]
+
+[[track]]
+id = "th13-01"
+source = "tohovgs"
+file = "TH13-01.mml"
+title = "The Greedy Spirits"
+title_ja = "欲深き霊魂"
+original = "ZUN, Touhou 13 TD"
+role = "Title screen"
+sha256 = "e64ea1917c02aa226175975bd64995229d6d9c4b584b55d96856a9c130bda94e"
+size = 8402
+seconds = 60.0
+pools = ["grub"]
+
+[[track]]
+id = "th13-02"
+source = "tohovgs"
+file = "TH13-02.mml"
+title = "Deadly Night Cherry Blossoms"
+title_ja = "死霊の夜桜"
+original = "ZUN, Touhou 13 TD"
+role = "Stage 1 theme"
+sha256 = "aee151a278192a48eec9a52593e21e4f1a107925255ef5bc37b7d6d59d1898d2"
+size = 12316
+seconds = 105.0
+pools = ["userland"]
+
+[[track]]
+id = "th13-03"
+source = "tohovgs"
+file = "TH13-03.mml"
+title = "Ghost Lead"
+title_ja = "ゴーストリード"
+original = "ZUN, Touhou 13 TD"
+role = "Stage 1 Boss - Yuyuko Saigyouji's theme"
+sha256 = "548b41a950ba9c705ef297f8a5b3bc7fd9f12cc68777b9eb4a2dcb82b4e78310"
+size = 13988
+seconds = 80.5
+pools = ["boss"]
+keys = ["oom-killer"]
+
+[[track]]
+id = "th13-04"
+source = "tohovgs"
+file = "TH13-04.mml"
+title = "Welcome to Yokai Temple"
+title_ja = "妖怪寺へようこそ"
+original = "ZUN, Touhou 13 TD"
+role = "Stage 2 theme"
+sha256 = "cec1bbea60a32a1fcf4156931e79188600b1fd7b51a0ce31b961c32dd6a507c9"
+size = 17199
+seconds = 105.1
+pools = ["userland"]
+
+[[track]]
+id = "th13-05"
+source = "tohovgs"
+file = "TH13-05.mml"
+title = "Yokai Girl who at the Gate"
+title_ja = "門前の妖怪小娘"
+original = "ZUN, Touhou 13 TD"
+role = "Stage 2 Boss - Kyouko Kasodani's theme"
+sha256 = "25dfdfea51abe2b2ac2bad3df7b782800fec2c61fc02ce6519ab44544fa6cdeb"
+size = 10299
+seconds = 70.1
+pools = ["boss"]
+
+[[track]]
+id = "th13-06"
+source = "tohovgs"
+file = "TH13-06.mml"
+title = "Let's Live in Nice Cemetery"
+title_ja = "素敵な墓場で暮しましょ"
+original = "ZUN, Touhou 13 TD"
+role = "Stage 3 theme"
+sha256 = "5c8697ef281a560d6feccf5983f6bad8e90f109f31bd3299d19cb13c742454d8"
+size = 19056
+seconds = 137.9
+pools = ["mid"]
+
+[[track]]
+id = "th13-07"
+source = "tohovgs"
+file = "TH13-07.mml"
+title = "Rigid Paradise"
+title_ja = "リジッドパラダイス"
+original = "ZUN, Touhou 13 TD"
+role = "Stage 3 Boss - Yoshika Miyako's theme"
+sha256 = "f37ff8953dc44956ee00ebb465fd2deece5ae0add64acc98e7dbc2ca359b887c"
+size = 13583
+seconds = 73.4
+pools = ["boss"]
+
+[[track]]
+id = "th13-08"
+source = "tohovgs"
+file = "TH13-08.mml"
+title = "Desire Drive"
+title_ja = "デザイアドライブ"
+original = "ZUN, Touhou 13 TD"
+role = "Stage 4 theme"
+sha256 = "b413baa0d2f4c412faa09a0934bea0377adcea816ac82e6369d2a864185fb87d"
+size = 22800
+seconds = 153.1
+pools = ["mid"]
+
+[[track]]
+id = "th13-09"
+source = "tohovgs"
+file = "TH13-09.mml"
+title = "Ancient Yuan-Sheng"
+title_ja = "古きユアンシェン"
+original = "ZUN, Touhou 13 TD"
+role = "Stage 4 Boss - Seiga Kaku's theme"
+sha256 = "de53e69b2644093fb63c92b87eb2263689bc6f36a51d5e534321942ad6ba0c7c"
+size = 17864
+seconds = 100.7
+pools = ["boss"]
+
+[[track]]
+id = "th13-10"
+source = "tohovgs"
+file = "TH13-10.mml"
+title = "Grand Enshrined Mausoleum at Yumedono"
+title_ja = "夢殿大祀廟"
+original = "ZUN, Touhou 13 TD"
+role = "Stage 5 theme"
+sha256 = "ba1a447769f0bb41578f044004700d7262a48763a55970361e21c1d6979d9536"
+size = 15908
+seconds = 115.3
+pools = ["mid"]
+
+[[track]]
+id = "th13-11"
+source = "tohovgs"
+file = "TH13-11.mml"
+title = "Story of Mythomiwa"
+title_ja = "大神神話伝"
+original = "ZUN, Touhou 13 TD"
+role = "Stage 5 Boss - Mononobe no Futo's theme"
+sha256 = "1683e7f5c8d5f7661ed9af5bc1c30d3004c512eb5cb94bff925702c68a33f65e"
+size = 24900
+seconds = 147.0
+pools = ["boss"]
+
+[[track]]
+id = "th13-13"
+source = "tohovgs"
+file = "TH13-13.mml"
+title = "Shotoku Legend　〜 True Administrator"
+title_ja = "聖徳伝説　〜 True Administrator"
+original = "ZUN, Touhou 13 TD"
+role = "Stage 6 Boss - Toyosatomimi no Miko's theme"
+sha256 = "2e55f35f8afa52845fae541591bbfd2d52f69b176ef7b0fa9cf6733c7d4abdd2"
+size = 38577
+seconds = 181.8
+pools = ["final"]
+
+[[track]]
+id = "th13-14"
+source = "tohovgs"
+file = "TH13-14.mml"
+title = "Yokai Backstreet"
+title_ja = "妖怪裏参道"
+original = "ZUN, Touhou 13 TD"
+role = "Extra Stage theme"
+sha256 = "eb7651a13ce309300126d7157732e76ea7873caad7bfee8896255407b8088616"
+size = 21939
+seconds = 133.6
+pools = ["mid"]
+
+[[track]]
+id = "th13-15"
+source = "tohovgs"
+file = "TH13-15.mml"
+title = "Futatsuiwa from Sado"
+title_ja = "佐渡の二ッ岩"
+original = "ZUN, Touhou 13 TD"
+role = "Extra Stage Boss - Mamizou Futatsuiwa"
+sha256 = "defb38414a290d255f8a2618cfdc1516774fa06dc7ddc099c19146842f9a059a"
+size = 21794
+seconds = 143.1
+pools = ["final"]
+
+[[track]]
+id = "th14-01"
+source = "tohovgs"
+file = "TH14-01.mml"
+title = "Mysterious Purified Stick"
+title_ja = "不思議なお祓い棒"
+original = "ZUN, Touhou 14 DDC"
+role = "Title screen"
+sha256 = "0300568638f075efb35adf054c09388256b8c3303e11cf49748ac69e9ecdf76f"
+size = 14893
+seconds = 101.6
+pools = ["grub"]
+
+[[track]]
+id = "th14-02"
+source = "tohovgs"
+file = "TH14-02.mml"
+title = "Mist Lake"
+title_ja = "ミストレイク"
+original = "ZUN, Touhou 14 DDC"
+role = "Stage 1 theme"
+sha256 = "7d8393cfb4167cf65886809d7aa5f919587ae1ddfe1f2afc0546463c7317881a"
+size = 12564
+seconds = 97.8
+pools = ["userland"]

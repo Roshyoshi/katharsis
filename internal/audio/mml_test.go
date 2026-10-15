@@ -3,7 +3,10 @@ package audio
 import (
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
+	"time"
 
 	"katharsis/internal/audio/vgs"
 )
@@ -71,5 +74,101 @@ func TestMMLInLibrary(t *testing.T) {
 	}
 	if _, err := decode("bad.mml", []byte("Ch0 x\n")); err == nil {
 		t.Error("bad MML decoded")
+	}
+}
+
+func TestEngineLeadsAndOnce(t *testing.T) {
+	l := library(t, map[string][]string{"b1": {PoolBoss}, "b2": {PoolBoss}, "b3": {PoolBoss}, "cirno": {PoolBoss}}, nil)
+	for i := range l.Tracks {
+		switch l.Tracks[i].ID {
+		case "cirno":
+			l.Tracks[i].Keys = []string{"off-by-one"}
+		case "b1":
+			l.Tracks[i].Once = true
+		}
+	}
+	e := newEngine(DefaultSettings(), l, DefaultEffects())
+	defer e.Close()
+	// Every boss of that key opens with its lead, whatever the shuffle.
+	for scene := range 6 {
+		e.Cue(Cue{Pool: PoolBoss, Key: "off-by-one", Scene: scene})
+		eventually(t, "the lead", func() bool { tr, _ := e.NowPlaying(); return tr.ID == "cirno" })
+	}
+	// Another boss shuffles the pool as before.
+	seen := map[string]bool{}
+	for scene := 10; scene < 40 && len(seen) < 2; scene++ {
+		e.Cue(Cue{Pool: PoolBoss, Key: "heisenbug", Scene: scene})
+		eventually(t, "a new track", func() bool { _, s := e.NowPlaying(); return s > 0 })
+		time.Sleep(5 * time.Millisecond)
+		tr, _ := e.NowPlaying()
+		seen[tr.ID] = true
+	}
+	if len(seen) < 2 {
+		t.Errorf("a key with no lead always played %v", seen)
+	}
+	// A song with an ending plays one pass; others Settings.Repeats.
+	b1 := l.Tracks[slices.IndexFunc(l.Tracks, func(t Track) bool { return t.ID == "b1" })]
+	b1.Path = l.Path(b1)
+	e.cmds <- func() {
+		e.tracks, e.cue = []Track{b1, b1}, Cue{Pool: PoolBoss, Key: "x"} // two, so it is not looped alone
+		e.advance(0)
+	}
+	eventually(t, "b1", func() bool { tr, _ := e.NowPlaying(); return tr.ID == "b1" })
+	done := make(chan int)
+	e.cmds <- func() { done <- e.playing.st.passes }
+	if p := <-done; p != 1 {
+		t.Errorf("a song with an ending plays %d passes", p)
+	}
+}
+
+func TestVGSManifest(t *testing.T) {
+	ts := Manifest()
+	per := map[string]int{}
+	leads := map[string][]string{}
+	for _, tr := range ts {
+		for _, p := range tr.Pools {
+			per[p]++
+		}
+		for _, k := range tr.Keys {
+			leads[k] = append(leads[k], tr.ID)
+			if !slices.Contains(tr.Pools, PoolBoss) && !slices.Contains(tr.Pools, PoolFinal) {
+				t.Errorf("%s leads for %s but plays in no boss pool", tr.ID, k)
+			}
+		}
+		if tr.Source != "tohovgs" {
+			continue
+		}
+		if !tr.Touhou || tr.Format != "mml" || tr.License != "permission" || tr.From == nil ||
+			!strings.HasPrefix(tr.URL, "https://raw.githubusercontent.com/suzukiplan/tohovgs-cli/cbb13ada5dd1d9244148a265946310bdd192d4b6/mml/") {
+			t.Errorf("%s did not take its source's terms: %+v", tr.ID, tr)
+		}
+		if c := tr.Credit(); !strings.Contains(c, "arr. by SUZUKI PLAN (orig. ZUN") || !strings.HasSuffix(c, "used by permission") {
+			t.Errorf("%s: toast %q", tr.ID, c)
+		}
+	}
+	for _, p := range []string{PoolGrub, PoolUserland, PoolMid, PoolBoss, PoolFinal, PoolMerge, PoolCleared, PoolRTFM} {
+		if per[p] < 5 {
+			t.Errorf("pool %s has %d tracks", p, per[p])
+		}
+	}
+	// Every named bug and the final boss open with a theme of their own.
+	for _, k := range []string{"off-by-one", "heisenbug", "oom-killer", "race-condition", "undefined-behavior", "halting-problem"} {
+		if len(leads[k]) == 0 {
+			t.Errorf("no lead for %s", k)
+		}
+	}
+	// The credits state the permission once, list every track, and carry
+	// the ZUN notice and the decoder's license.
+	page := Credits(&Library{Tracks: ts, CacheDir: t.TempDir()}, DefaultSettings())
+	if n := strings.Count(page, "本楽曲の東方Projectの二次創作物への利用は"); n != 1 {
+		t.Errorf("the permission is quoted %d times", n)
+	}
+	for _, want := range []string{TouhouNotice, "Redistributions in binary form", "ほおずきみたいに紅い魂", "SwapXFO", "CC BY 4.0"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("credits lack %q", want)
+		}
+	}
+	if _, err := LoadManifest("[[track]]\nid = \"x\"\nsource = \"nope\"\n"); err == nil {
+		t.Error("a track with an unknown source loaded")
 	}
 }

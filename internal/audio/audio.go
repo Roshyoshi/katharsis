@@ -106,10 +106,50 @@ type Track struct {
 	LoopEnd   float64 `toml:"loop_end"`
 	Note      string  `toml:"note"` // loop suitability, for the curious
 
-	Path string `toml:"-"` // the local file, once there is one
+	TitleJA string `toml:"title_ja"` // the original's Japanese title, for the credits
+	Role    string `toml:"role"`     // where the original plays: "Stage 1 theme"
+	// Source names a [source.<name>] table that fills in what the entry
+	// leaves out (artist, license, page, format, touhou); File is appended
+	// to its url_prefix to give URL.
+	Source string `toml:"source"`
+	File   string `toml:"file"`
+	// Once marks a song with an ending: it plays once a turn instead of
+	// Settings.Repeats times, so its ending is not followed by its start.
+	Once bool `toml:"once"`
+	// Keys are cue keys (a boss: "heisenbug") this track leads for: a cue
+	// with that key starts with one of its leads, then plays its pool.
+	Keys []string `toml:"keys"`
+
+	From *Source `toml:"-"` // the Source table, once loaded
+	Path string  `toml:"-"` // the local file, once there is one
 	// Gain is the linear gain that brings the track to the target
 	// loudness; 0 means not measured yet (played at 1).
 	Gain float64 `toml:"-"`
+}
+
+// Source is one arranger's or site's terms, shared by its tracks so the
+// credits state them once.
+type Source struct {
+	Name         string `toml:"name"` // who and what, for the credits heading
+	Artist       string `toml:"artist"`
+	Touhou       bool   `toml:"touhou"`
+	License      string `toml:"license"`
+	LicenseURL   string `toml:"license_url"`
+	LicenseQuote string `toml:"license_quote"`
+	Page         string `toml:"page"`
+	URLPrefix    string `toml:"url_prefix"`
+	Format       string `toml:"format"`
+	// Notice is anything else the source asks the game to show, such as
+	// a decoder's copyright line.
+	Notice string `toml:"notice"`
+}
+
+// licenseLabel is a license's short name as a credit shows it.
+func licenseLabel(l string) string {
+	if l == "permission" {
+		return "used by permission"
+	}
+	return l
 }
 
 // Credit is the one-line toast shown when the track starts:
@@ -131,7 +171,7 @@ func (t Track) Credit() string {
 	}
 	if t.License != "" {
 		b.WriteString(", ")
-		b.WriteString(t.License)
+		b.WriteString(licenseLabel(t.License))
 	}
 	return b.String()
 }

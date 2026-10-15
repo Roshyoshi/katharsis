@@ -36,6 +36,7 @@ type Engine struct {
 
 	// Engine goroutine only.
 	cue      Cue
+	lead     string // the cue key whose lead track plays next, once
 	playing  *musicVoice
 	track    Track
 	tracks   []Track
@@ -214,7 +215,7 @@ func (e *Engine) reconcile() {
 		e.cue, e.tracks = want, tracks
 		return
 	}
-	e.cue, e.tracks = want, tracks
+	e.cue, e.tracks, e.lead = want, tracks, want.Key
 	e.advance(e.set.Crossfade.Seconds())
 }
 
@@ -236,13 +237,22 @@ func (e *Engine) advance(fade float64) {
 			ids[i] = t.ID
 		}
 		k := e.cue.Pool + "/" + e.cue.Key
-		if e.bags[k] == nil {
-			e.bags[k] = &bag{}
+		pool := e.bag(k)
+		var id string
+		// A cue with a key (a boss) opens with one of the tracks that lead
+		// for it, then moves through its whole pool.
+		if lead := e.leads(); len(lead) > 0 {
+			id = e.bag(k+"/lead").next(lead, e.rng)
+			pool.avoid(id, e.rng)
+		} else {
+			id = pool.next(ids, e.rng)
 		}
-		id := e.bags[k].next(ids, e.rng)
 		i := slices.IndexFunc(e.tracks, func(t Track) bool { return t.ID == id })
 		t := e.tracks[i]
 		passes := e.set.Repeats
+		if t.Once {
+			passes = 1
+		}
 		if len(e.tracks) == 1 {
 			passes = 0 // alone in its pool: loop it
 		}
@@ -341,4 +351,28 @@ func (e *Engine) Audition(t Track, from time.Duration) error {
 		errc <- nil
 	}
 	return <-errc
+}
+
+// leads are the tracks that lead for the cue's key, the first time
+// advance runs after the cue changed; nil after that or without any.
+func (e *Engine) leads() []string {
+	key := e.lead
+	e.lead = ""
+	if key == "" {
+		return nil
+	}
+	var ids []string
+	for _, t := range e.tracks {
+		if slices.Contains(t.Keys, key) {
+			ids = append(ids, t.ID)
+		}
+	}
+	return ids
+}
+
+func (e *Engine) bag(k string) *bag {
+	if e.bags[k] == nil {
+		e.bags[k] = &bag{}
+	}
+	return e.bags[k]
 }

@@ -44,13 +44,22 @@ var accepted = map[string]bool{
 // LoadManifest parses and checks a manifest (tracks.toml's format).
 func LoadManifest(data string) ([]Track, error) {
 	var doc struct {
-		Track []Track `toml:"track"`
+		Source map[string]*Source `toml:"source"`
+		Track  []Track            `toml:"track"`
 	}
 	if _, err := toml.Decode(data, &doc); err != nil {
 		return nil, fmt.Errorf("tracks: %w", err)
 	}
 	seen := map[string]bool{}
-	for _, t := range doc.Track {
+	for i := range doc.Track {
+		t := &doc.Track[i]
+		if t.Source != "" {
+			s := doc.Source[t.Source]
+			if s == nil {
+				return nil, fmt.Errorf("track %q: no [source.%s]", t.ID, t.Source)
+			}
+			t.inherit(s)
+		}
 		if err := t.check(); err != nil {
 			return nil, fmt.Errorf("track %q: %w", t.ID, err)
 		}
@@ -69,6 +78,26 @@ func Manifest() []Track {
 		panic(err) // the embedded manifest is tested
 	}
 	return ts
+}
+
+// inherit fills what the entry leaves out from its source.
+func (t *Track) inherit(s *Source) {
+	t.From = s
+	fill := func(dst *string, v string) {
+		if *dst == "" {
+			*dst = v
+		}
+	}
+	fill(&t.Artist, s.Artist)
+	fill(&t.License, s.License)
+	fill(&t.LicenseURL, s.LicenseURL)
+	fill(&t.LicenseQuote, s.LicenseQuote)
+	fill(&t.Page, s.Page)
+	fill(&t.Format, s.Format)
+	if t.URL == "" && t.File != "" && s.URLPrefix != "" {
+		t.URL = s.URLPrefix + url.PathEscape(t.File)
+	}
+	t.Touhou = t.Touhou || s.Touhou
 }
 
 func (t Track) check() error {
@@ -117,6 +146,11 @@ func (t Track) check() error {
 	}
 	if t.LoopStart < 0 || t.LoopEnd < 0 || t.LoopEnd > 0 && t.LoopEnd <= t.LoopStart {
 		return fmt.Errorf("loop %v..%v", t.LoopStart, t.LoopEnd)
+	}
+	for _, k := range t.Keys {
+		if k == "" || strings.ContainsAny(k, `/\. `) {
+			return fmt.Errorf("key %q must be a plain name", k)
+		}
 	}
 	return nil
 }

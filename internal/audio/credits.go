@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"katharsis/internal/audio/vgs"
 )
 
 // TouhouNotice is the label ZUN's fan-work guideline asks every Touhou
@@ -27,8 +29,9 @@ var poolNames = map[string]string{
 	PoolRTFM:     "RTFM (learn mode)",
 }
 
-// Credits is the credits page: every track with its license, the Touhou
-// notice, the player's folders, and where the effects come from.
+// Credits is the credits page: each source's license once, every track
+// by where it plays, the Touhou notice, the player's folders, where the
+// effects come from, and the notices the software asks for.
 func Credits(l *Library, set Settings) string {
 	var b strings.Builder
 	b.WriteString("# Credits\n\n")
@@ -37,11 +40,15 @@ func Credits(l *Library, set Settings) string {
 		tracks = l.Tracks
 	}
 	have, touhou := 0, false
+	var sources []*Source
 	for _, t := range tracks {
 		if l.Have(t) {
 			have++
 		}
 		touhou = touhou || t.Touhou
+		if t.From != nil && !slices.Contains(sources, t.From) {
+			sources = append(sources, t.From)
+		}
 	}
 	if touhou {
 		fmt.Fprintf(&b, "> %s\n\n", TouhouNotice)
@@ -55,6 +62,9 @@ func Credits(l *Library, set Settings) string {
 			"from the sources below; without them the game is silent but for its effects.\n\n", have, len(tracks))
 	default:
 		fmt.Fprintf(&b, "All %d tracks are downloaded.\n\n", len(tracks))
+	}
+	for _, s := range sources {
+		b.WriteString(sourceEntry(s))
 	}
 	for _, p := range Pools {
 		var in []Track
@@ -74,12 +84,13 @@ func Credits(l *Library, set Settings) string {
 		for _, t := range in {
 			b.WriteString(creditEntry(t))
 		}
+		b.WriteString("\n")
 	}
 	b.WriteString("## Your own music\n\n")
 	if l != nil && l.UserDir != "" {
-		fmt.Fprintf(&b, "Audio files (mp3, ogg, wav) in `%s/<pool>/` play in that pool, and `%s/<topic or boss>/` "+
-			"in that biome (`dp`, `graphs`, `heisenbug`, ...). With user_music = \"%s\" they %s. "+
-			"Pools: %s.\n\n", l.UserDir, l.UserDir, set.UserMusic,
+		fmt.Fprintf(&b, "Audio files (mp3, ogg, wav, or VGS mml) in `%s/<pool>/` play in that pool, and "+
+			"`%s/<topic or boss>/` in that biome (`dp`, `graphs`, `heisenbug`, ...). With user_music = \"%s\" "+
+			"they %s. Pools: %s.\n\n", l.UserDir, l.UserDir, set.UserMusic,
 			map[string]string{"override": "replace the pool's tracks", "extend": "join the pool's tracks"}[set.UserMusic],
 			strings.Join(Pools, ", "))
 	}
@@ -90,19 +101,56 @@ func Credits(l *Library, set Settings) string {
 	b.WriteString("USACO problems, tests and analyses are from usaco.org. The problem index and learn mode " +
 		"use the USACO Guide (CC BY-NC-SA 4.0). Codeforces problems, statements and editorials come from " +
 		"the open-r1/codeforces dataset (CC BY 4.0); statements and editorials are by their Codeforces authors.\n\n")
-	b.WriteString("## Controls\n\n")
+	b.WriteString("## Software\n\n")
+	b.WriteString("katharsis plays VGS songs through a Go port of SUZUKI PLAN's VGS MML compiler and BGM " +
+		"decoder (https://github.com/suzukiplan/tohovgs-cli), under their license:\n\n")
+	for _, line := range strings.Split(strings.TrimRight(vgs.License, "\n"), "\n") {
+		fmt.Fprintf(&b, "    %s\n", line)
+	}
+	b.WriteString("\n## Controls\n\n")
 	b.WriteString("`ctrl+t` turns the music on or off on any screen. Volumes, fades and the rest are in " +
 		"`~/.config/katharsis/audio.toml`; `--quiet` silences everything, `--no-music` and `--no-sfx` one each.\n")
+	return b.String()
+}
+
+// sourceEntry states one source's license, once for all its tracks.
+func sourceEntry(s *Source) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "### %s\n\n", s.Name)
+	if s.License == "permission" {
+		fmt.Fprintf(&b, "Used by the arranger's written permission (%s):\n\n", s.LicenseURL)
+	} else {
+		fmt.Fprintf(&b, "[%s](%s):\n\n", s.License, s.LicenseURL)
+	}
+	for _, line := range strings.Split(s.LicenseQuote, "\n") {
+		fmt.Fprintf(&b, "> %s\n", line)
+	}
+	fmt.Fprintf(&b, "\nSource: %s\n\n", s.Page)
+	if s.Notice != "" {
+		fmt.Fprintf(&b, "%s\n\n", s.Notice)
+	}
 	return b.String()
 }
 
 func creditEntry(t Track) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "- **%s**", t.Title)
+	if t.TitleJA != "" && t.TitleJA != t.Title {
+		fmt.Fprintf(&b, " (%s)", t.TitleJA)
+	}
 	if t.Original != "" {
-		fmt.Fprintf(&b, ", arranged by %s (original: %s)", t.Artist, t.Original)
+		orig := t.Original
+		if t.Role != "" {
+			orig += ", " + t.Role
+		}
+		fmt.Fprintf(&b, ", arranged by %s (original: %s)", t.Artist, orig)
 	} else {
 		fmt.Fprintf(&b, ", by %s", t.Artist)
+	}
+	if t.From != nil {
+		// The source's entry above states the license.
+		b.WriteString("\n")
+		return b.String()
 	}
 	if t.LicenseURL != "" {
 		fmt.Fprintf(&b, ". [%s](%s)", t.License, t.LicenseURL)
@@ -113,6 +161,5 @@ func creditEntry(t Track) string {
 	if t.LicenseQuote != "" {
 		fmt.Fprintf(&b, "  > %s\n", strings.ReplaceAll(t.LicenseQuote, "\n", " "))
 	}
-	b.WriteString("\n")
 	return b.String()
 }

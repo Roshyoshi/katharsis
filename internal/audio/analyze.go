@@ -85,7 +85,25 @@ func Analyze(path string, loopStart, loopEnd float64) (Analysis, error) {
 	if loopEnd > 0 {
 		le = min(a.Frames, int64(loopEnd*float64(a.Rate)))
 	}
+	w := int64(a.Rate / 10)
+	// What plays after the loop's last frame: its first frames, or for a
+	// VGS song the decoder's own continuation from its loop mark.
+	var after []float32
+	if l, ok := src.(looper); ok && loopStart == 0 && loopEnd == 0 {
+		if s, e, ok := l.loop(); ok && src.SeekFrame(s) == nil {
+			ls, le = s, e
+			after = make([]float32, 2*w)
+			n, _ := src.Read(after)
+			after = after[:2*n]
+		}
+	}
 	if ls >= le-1 {
+		return a, nil
+	}
+	if after == nil {
+		after = pcm[2*ls : 2*min(ls+w, le)]
+	}
+	if len(after) < 2 {
 		return a, nil
 	}
 	steps := make([]float64, 0, a.Frames)
@@ -94,11 +112,10 @@ func Analyze(path string, loopStart, loopEnd float64) (Analysis, error) {
 	}
 	slices.Sort(steps)
 	med := math.Max(steps[len(steps)/2], 1e-4)
-	jump := math.Abs(float64(pcm[2*ls]-pcm[2*(le-1)])) + math.Abs(float64(pcm[2*ls+1]-pcm[2*(le-1)+1]))
+	jump := math.Abs(float64(after[0]-pcm[2*(le-1)])) + math.Abs(float64(after[1]-pcm[2*(le-1)+1]))
 	a.SeamJump = jump / med
-	w := int64(a.Rate / 10)
 	if le-ls > 2*w {
-		head := RMS(pcm[2*ls : 2*(ls+w)])
+		head := RMS(after)
 		end := RMS(pcm[2*(le-w) : 2*le])
 		a.SeamStepDB = DB(math.Max(end, 1e-6)) - DB(math.Max(head, 1e-6))
 	}
