@@ -7,10 +7,10 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -113,14 +113,16 @@ func (c *Crash) View(width, height int) string {
 	for _, e := range els[:n] {
 		body = append(body, e...)
 	}
-	return layout(width, height, body, "")
+	return ui.Layout(width, height, body, "")
 }
 
-// dline is one dmesg line before it is wrapped to the terminal.
+// dline is one dmesg line before it is wrapped to the terminal: its text
+// painted with style, and bold too for the panic line itself.
 type dline struct {
 	at    time.Duration
 	text  string
-	style lipgloss.Style
+	style ui.Token
+	bold  bool
 }
 
 func stamp(d time.Duration) string {
@@ -135,15 +137,18 @@ func (l dline) render(width int) []string {
 	sw := widthOf(ts) + 1
 	ls := []string{l.text}
 	if sw+widthOf(l.text) > width {
-		ls = wrapN(l.text, max(width-sw, 10), 0)
+		ls = ui.WrapN(l.text, max(width-sw, 10), 0)
 	}
 	out := make([]string, len(ls))
 	for i, s := range ls {
 		pre := strings.Repeat(" ", sw)
 		if i == 0 {
-			pre = sFaint.Render(ts) + " "
+			pre = ui.Muted.Render(ts) + " "
 		}
-		out[i] = pre + l.style.Render(s)
+		if s = l.style.Render(s); l.bold {
+			s = ui.Strong.Render(s)
+		}
+		out[i] = pre + s
 	}
 	return out
 }
@@ -188,7 +193,7 @@ func (c *Crash) elements(width, height int) [][]string {
 		head = append(head, dline{at: up, text: pre})
 	}
 	head = append(head,
-		dline{at: up, text: fmt.Sprintf("Kernel panic - not syncing: %s in %q", reason, title), style: sRed.Bold(true)},
+		dline{at: up, text: fmt.Sprintf("Kernel panic - not syncing: %s in %q", reason, title), style: ui.Danger, bold: true},
 		dline{at: up, text: "CPU: 0 PID: 1 Comm: you " + taint(cr.Door)},
 		dline{at: up, text: fmt.Sprintf("Hardware name: katharsis %s, preset %s, seed %x",
 			prestigeLabel(st.Prestige), st.Rules.Name, st.Seed)},
@@ -197,7 +202,7 @@ func (c *Crash) elements(width, height int) [][]string {
 		head = append(head, dline{at: up, text: "Modules linked in: " + mods})
 	}
 	head = append(head, dline{at: up, text: "Call Trace:"})
-	tail := []dline{{at: up, text: "---[ end Kernel panic ]---", style: sRed}}
+	tail := []dline{{at: up, text: "---[ end Kernel panic ]---", style: ui.Danger}}
 
 	lines := func(ds []dline) int {
 		n := 0
@@ -232,7 +237,7 @@ func (c *Crash) elements(width, height int) [][]string {
 		if echoes(l, cr, verdict) {
 			continue
 		}
-		d := dline{at: l.At.Sub(st.Started), text: l.Text, style: sFaint}
+		d := dline{at: l.At.Sub(st.Started), text: l.Text, style: ui.Muted}
 		if st.Started.IsZero() {
 			d.at = 0
 		}
@@ -404,7 +409,7 @@ func (c *Crash) quote(cr game.Crash, verdict string, seed uint64, width int) []s
 		return nil
 	}
 	qw := max(min(width-6, 66), 16)
-	ls := wrapN(q.Text, qw, 0)
+	ls := ui.WrapN(q.Text, qw, 0)
 	out := []string{""}
 	for i, l := range ls {
 		pre := "   "
@@ -414,7 +419,7 @@ func (c *Crash) quote(cr game.Crash, verdict string, seed uint64, width int) []s
 		if i == len(ls)-1 {
 			l += "\""
 		}
-		out = append(out, pre+sItalic.Render(l))
+		out = append(out, pre+ui.Voice.Render(l))
 	}
 	attr := "— " + q.Author
 	if q.Source != "" {
@@ -426,9 +431,9 @@ func (c *Crash) quote(cr game.Crash, verdict string, seed uint64, width int) []s
 	right := min(width-2, 76)
 	last := out[len(out)-1]
 	if widthOf(last)+4+widthOf(attr) <= right {
-		out[len(out)-1] = spread(last, sFaint.Render(attr), right)
+		out[len(out)-1] = ui.Spread(last, ui.Muted.Render(attr), right)
 	} else {
-		out = append(out, strings.Repeat(" ", max(right-widthOf(attr), 4))+sFaint.Render(attr))
+		out = append(out, strings.Repeat(" ", max(right-widthOf(attr), 4))+ui.Muted.Render(attr))
 	}
 	return out
 }
@@ -438,27 +443,28 @@ func (c *Crash) quote(cr game.Crash, verdict string, seed uint64, width int) []s
 // Crash.Lost keeps what the crash dumped, but an upsolve from this screen
 // banks the dump and clears Meta.CoreDump, and the line must not keep
 // offering bytes that are gone. A trial crash loses its bytes without
-// leaving a dump.
+// leaving a dump. The keys keep their brackets: a console prompt is the
+// panic's idiom (C2p).
 func (c *Crash) core(cr game.Crash, title string, width int) []string {
-	keys := sBold.Render("[u]") + " upsolve  "
+	keys := ui.Strong.Render("[u]") + " upsolve  "
 	if c.env.hasEditorial(cr.Door.Problem) {
-		keys += sBold.Render("[e]") + " editorial  "
+		keys += ui.Strong.Render("[e]") + " editorial  "
 	}
-	keys += sBold.Render("[r]") + " reboot  " + sBold.Render("[l]") + " git log"
+	keys += ui.Strong.Render("[r]") + " reboot  " + ui.Strong.Render("[l]") + " git log"
 	var dump string
 	switch d := c.env.Meta.CoreDump; {
 	case d != nil && cr.Door.Problem != "" && d.Problem == cr.Door.Problem:
-		dump = "core dumped: " + sGreen.Bold(true).Render(units.Bytes(d.Bytes)) + fmt.Sprintf(" on %q", title)
+		dump = "core dumped: " + ui.OK.Render(units.Bytes(d.Bytes)) + fmt.Sprintf(" on %q", title)
 	case cr.Lost > 0 && c.upsolved(cr):
-		dump = "core dump recovered: " + sGreen.Bold(true).Render("+"+units.Bytes(cr.Lost)) + sFaint.Render(" banked")
+		dump = "core dump recovered: " + ui.OK.Render("+"+units.Bytes(cr.Lost)) + ui.Muted.Render(" banked")
 	case cr.Lost > 0 && c.env.State.Trial != nil:
-		dump = sFaint.Render("no core dump: a trial loses its " + units.Bytes(cr.Lost) + " outright")
+		dump = ui.Muted.Render("no core dump: a trial loses its " + units.Bytes(cr.Lost) + " outright")
 	case cr.Lost > 0:
-		dump = sFaint.Render("no core dump left to recover")
+		dump = ui.Muted.Render("no core dump left to recover")
 	default:
-		dump = sFaint.Render("no core dump: nothing was uncommitted")
+		dump = ui.Muted.Render("no core dump: nothing was uncommitted")
 	}
-	if line := "  " + dump + sFaint.Render(" · ") + keys; widthOf(line) <= width {
+	if line := "  " + dump + ui.Muted.Render(ui.G.Sep) + keys; widthOf(line) <= width {
 		return []string{"", line}
 	}
 	return []string{"", "  " + dump, "  " + keys}

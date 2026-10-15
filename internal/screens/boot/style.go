@@ -9,22 +9,9 @@ import (
 	"katharsis/internal/ui"
 )
 
-// The s* styles and the helpers below forward to internal/ui while the
-// screens migrate onto it (phase C part 2); they go once nothing calls
-// them.
-var (
-	sBold   = ui.Strong.Style()
-	sFaint  = ui.Muted.Style()
-	sItalic = ui.Voice.Style()
-	sRed    = ui.Danger.Style()
-	sGreen  = ui.OK.Style()
-)
-
-func spread(left, right string, w int) string { return ui.Spread(left, right, w) }
-func wrapN(s string, w, n int) []string       { return ui.WrapN(s, w, n) }
-func layout(width, height int, body []string, footer string) string {
-	return ui.Layout(width, height, body, footer)
-}
+// The boot screens' own layout policy: indents, centering, joins. The
+// visual system itself (tokens, glyphs, frames, text helpers) is
+// internal/ui.
 
 // indent prefixes every non-empty line with n spaces.
 func indent(n int, ls []string) []string {
