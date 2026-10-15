@@ -273,6 +273,12 @@ D56 settled 10-15  Achievements: "w spoiler ones as well"; like Star of Providen
       setuid-engine (61 conditions, the Trial, backfill, sim) and setuid-ui (screen,
       unlock moment, Trial cards and ending scene, story text, SamplesRun wiring).
 
+10-15 map QA merged: verdict ready to play (G1-G3 gaps, 80x24 exits, Kernel Space blurb,
+      skip picks, fountain row, reboot pool, :Submit price, docs). Defaults taken on
+      its calls: A auto-take only a single-exit tier; B OOM samples run at the halved
+      memory; C ECC falls back to -2 cycles when the clock is shorter than its
+      penalty; D the final's door card hides its clock; polish F/G/J/E (fix-map).
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
