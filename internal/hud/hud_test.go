@@ -145,6 +145,11 @@ func TestHeaderClockFlushRight(t *testing.T) {
 			}
 		})
 	}
+	// Practice counts up, which is not a countdown: no ⏱ (§2.4).
+	head := strings.Split(screen(fixture(t, 1)), "\n")[0]
+	if !strings.HasSuffix(head, "up 00:00") || strings.Contains(head, "⏱") || ansi.StringWidth(head) != 60 {
+		t.Errorf("practice header %q, want 60 cells ending in up 00:00", head)
+	}
 }
 
 // A host opens a HUD per door and forwards every message to the current

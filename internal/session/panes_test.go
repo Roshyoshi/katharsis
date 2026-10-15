@@ -236,12 +236,14 @@ func TestBorder(t *testing.T) {
 	if v, local := showWindow(t, win, "pane-border-status"); !local || v != "top" {
 		t.Errorf("pane-border-status = %q (local %v), want top on the window", v, local)
 	}
-	if err := b.Set(pane, "⏱ 01:23 #3"); err != nil {
+	// The text is a format, stored as given: its style directives style the
+	// border, and ## is how it draws a literal # (the caller escapes).
+	const format = "#[fg=colour1,reverse]⏱ 01:23#[default] ##3"
+	if err := b.Set(pane, format); err != nil {
 		t.Fatal(err)
 	}
-	// ## is how the border draws a literal # (#[ would start a style).
-	if got, _ := tmux("display-message", "-p", "-t", pane, "#{E:pane-border-format}"); got != "⏱ 01:23 ##3" {
-		t.Errorf("border expands to %q, want the escaped text", got)
+	if got, _ := tmux("display-message", "-p", "-t", pane, "#{E:pane-border-format}"); got != format {
+		t.Errorf("border expands to %q, want the format as given", got)
 	}
 	if global() != before {
 		t.Errorf("global options changed:\n%s\nwas\n%s", global(), before)

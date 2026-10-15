@@ -108,23 +108,6 @@ func isQuit(cmd tea.Cmd) bool {
 
 func key(s string) tea.KeyPressMsg { return tea.KeyPressMsg{Code: rune(s[0]), Text: s} }
 
-func TestHPBar(t *testing.T) {
-	for _, tc := range []struct {
-		passed, total, cells int
-		want                 string
-	}{
-		{0, 0, 8, "░░░░░░░░"},
-		{0, 52, 8, "░░░░░░░░"},
-		{37, 52, 8, "▓▓▓▓▓░░░"},
-		{51, 52, 8, "▓▓▓▓▓▓▓░"}, // full only when all pass
-		{52, 52, 8, "▓▓▓▓▓▓▓▓"},
-	} {
-		if got := hpBar(tc.passed, tc.total, tc.cells); got != tc.want {
-			t.Errorf("hpBar(%d, %d, %d) = %q, want %q", tc.passed, tc.total, tc.cells, got, tc.want)
-		}
-	}
-}
-
 func feedSubmit(m *Model, evs ...judge.Event) {
 	for _, ev := range evs {
 		m.Update(eventMsg{ch: m.sub.ch, ev: ev})
@@ -143,7 +126,7 @@ func TestSubmitHPBar(t *testing.T) {
 		judge.TestDone{Index: 0, Result: judge.Result{Verdict: judge.AC}},
 	)
 	s := screen(m)
-	for _, want := range []string{"submit ▓", "1/3", "judging 2/3"} {
+	for _, want := range []string{"HP ▓", "1/3", "judging 2/3"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("mid-pass: missing %q in:\n%s", want, s)
 		}
@@ -170,6 +153,40 @@ func TestSubmitHPBar(t *testing.T) {
 	}
 	if st := m.statusText(); !strings.Contains(st, "HP 2/3 WA") {
 		t.Errorf("status %q, want HP 2/3 WA", st)
+	}
+	// The border is a tmux format: the verdict takes its token, and the
+	// plain status stays plain.
+	if b := m.borderText(); !strings.Contains(b, "HP 2/3 #[fg=colour1]WA#[default]") {
+		t.Errorf("border %q, want the WA toned", b)
+	}
+
+	// An earlier submit that passed more shows beside this one; before
+	// this HUD's first submit, the host's best is the bar.
+	m.opt.Best = func() (int, int) { return 3, 3 }
+	if s := screen(m); !strings.Contains(s, "HP ") || !strings.Contains(s, "2/3  WA #3 line 1 · best 3/3") {
+		t.Errorf("missing the best submit:\n%s", s)
+	}
+	m.sub = submission{}
+	if s := screen(m); !strings.Contains(s, "3/3  best") {
+		t.Errorf("a fresh HUD should show the host's best:\n%s", s)
+	}
+}
+
+// A host's clock is a format of its own (a toned countdown); the HUD
+// escapes everything else it puts on the border, which session.Border.Set
+// no longer does.
+func TestBorderTextEscapes(t *testing.T) {
+	m := fixture(t, 1)
+	m.opt.Clock = func() string { return "23:41 #1" }
+	if got := m.borderText(); got != " ⏱ 23:41 ##1 · samples 0/1 " {
+		t.Errorf("border %q, want the clock escaped", got)
+	}
+	m.opt.BorderClock = func() string { return "#[fg=colour2]⏱ 23:41#[default]" }
+	if got := m.borderText(); got != " #[fg=colour2]⏱ 23:41#[default] · samples 0/1 " {
+		t.Errorf("border %q, want the host's format as is", got)
+	}
+	if got := m.statusText(); got != "⏱ 23:41 #1 · samples 0/1" {
+		t.Errorf("status %q stays plain", got)
 	}
 }
 
@@ -342,7 +359,7 @@ func TestPracticeCommands(t *testing.T) {
 		}
 	}
 	_, ch := ask(m, session.CmdStatus)
-	if rep := <-ch; !rep.OK || rep.Text != "⏱ 00:00 · samples 0/2" {
+	if rep := <-ch; !rep.OK || rep.Text != "up 00:00 · samples 0/2" {
 		t.Errorf("status: %+v", rep)
 	}
 }
@@ -352,7 +369,7 @@ func TestBorderFollowsStatus(t *testing.T) {
 	texts := make(chan string, 4)
 	m.opt.Border = func(s string) { texts <- s }
 	m.updateBorder()()
-	if got := <-texts; got != " ⏱ 00:00 · samples 0/1 " {
+	if got := <-texts; got != " up 00:00 · samples 0/1 " {
 		t.Errorf("border %q", got)
 	}
 	if c := m.updateBorder(); c != nil {
@@ -360,7 +377,7 @@ func TestBorderFollowsStatus(t *testing.T) {
 	}
 	// Judge events refresh it as they land.
 	feed(m, judge.BuildDone{Build: judge.Build{OK: true}}, judge.TestDone{Index: 0, Result: judge.Result{Verdict: judge.AC}})
-	if m.border != " ⏱ 00:00 · samples 1/1 " {
+	if m.border != " up 00:00 · samples 1/1 " {
 		t.Errorf("border %q after a pass", m.border)
 	}
 }

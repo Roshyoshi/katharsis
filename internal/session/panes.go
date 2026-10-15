@@ -136,10 +136,11 @@ func ShowBorder(window string) (*Border, error) {
 }
 
 // Set shows text on pane's border; "" blanks it. tmux redraws the border
-// when the option changes.
+// when the option changes. text is a tmux format: the drawn border reads
+// #[...] as a style and ## as #, so the caller styles its text and escapes
+// whatever it did not write itself (ui.TmuxEscape, ui.Token.Tmux).
 func (b *Border) Set(pane, text string) error {
-	// The drawn border reads #[...] as a style and ## as #.
-	_, err := tmux("set-option", "-p", "-t", pane, borderOption, strings.ReplaceAll(text, "#", "##"))
+	_, err := tmux("set-option", "-p", "-t", pane, borderOption, text)
 	return err
 }
 

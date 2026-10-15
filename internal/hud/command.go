@@ -15,6 +15,7 @@ import (
 	"katharsis/internal/judge"
 	"katharsis/internal/problem"
 	"katharsis/internal/session"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -249,58 +250,53 @@ func firstError(log string) string {
 	return l
 }
 
-// hpBar draws passed of total as a bar of cells: ▓▓▓▓░░. It is full only
-// when every test passed.
-func hpBar(passed, total, cells int) string {
-	filled := 0
-	if total > 0 {
-		filled = min(passed*cells/total, cells)
-	}
-	return strings.Repeat("▓", filled) + strings.Repeat("░", cells-filled)
-}
-
-// submitLines is the HP bar section, shown once something was submitted:
-// "submit ▓▓▓▓▓▓░░ 37/52  WA #38 line 2".
+// submitLines is the HP bar, the one per pane (C6): the latest submit's
+// tests passed of the full set, live while it is judged, and its verdict;
+// "· best b/N" when an earlier submit passed more. Before this HUD's first
+// submit it shows the host's best (Options.Best), if any:
+//
+//	HP ▓▓▓▓▓▓▓▓▓░░░░░░░░░░░ 14/30  judging 22/30…
+//	HP ▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░ 16/30  WA #17 line 1 · best 20/30
 func (m *Model) submitLines(w int) []string {
 	s := m.sub
+	bp, bt := 0, 0
+	if m.opt.Best != nil {
+		bp, bt = m.opt.Best()
+	}
 	if !s.started {
+		if bt > 0 {
+			return []string{ui.HP(w, bp, bt, ui.Muted.Render("best"))}
+		}
 		return nil
 	}
 	switch {
 	case s.err != nil:
-		return []string{red.Render("submit: " + s.err.Error())}
+		return []string{ui.Danger.Render("submit: " + s.err.Error())}
 	case s.build == nil && s.running:
-		return []string{faint.Render("submit · compiling -O2…")}
+		return []string{ui.Muted.Render("submit · compiling -O2…")}
 	case s.build != nil && !s.build.OK:
-		return []string{red.Render("submit CE") + faint.Render("  "+firstError(relLog(s.build.Log, s.src)))}
+		return []string{ui.Danger.Render("submit CE") + ui.Muted.Render("  "+firstError(relLog(s.build.Log, s.src)))}
 	}
 	sum := judge.Summarize(s.results)
-	style := faint
-	switch {
-	case s.sum != nil && s.sum.Verdict == judge.AC:
-		style = green
-	case s.sum != nil:
-		style = verdictStyle(s.sum.Verdict)
-	case sum.First >= 0:
-		style = red
-	}
-	out := "submit " + style.Render(hpBar(sum.Passed, sum.Total, min(max(w-24, 6), 24))) +
-		fmt.Sprintf(" %d/%d", sum.Passed, sum.Total)
+	var note string
 	switch {
 	case s.running:
-		out += faint.Render(fmt.Sprintf(" judging %d/%d…", sum.Done, sum.Total))
+		note = ui.Muted.Render(fmt.Sprintf("judging %d/%d…", sum.Done, sum.Total))
 	case s.sum == nil || s.sum.First < 0 && s.sum.Verdict != judge.AC:
-		out += faint.Render(" stopped")
+		note = ui.Muted.Render("stopped")
 	case s.sum.Verdict == judge.AC:
-		out += "  " + green.Bold(true).Render("AC")
+		note = ui.Verdict("AC").Render("AC")
 	default:
-		v := s.sum.Verdict
-		out += "  " + verdictStyle(v).Render(string(v)) + " #" + s.tests[s.sum.First].Name
+		v := string(s.sum.Verdict)
+		note = ui.Verdict(v).Render(v) + " #" + s.tests[s.sum.First].Name
 		if r := s.results[s.sum.First].Reason; r != "" {
-			out += " " + faint.Render(r)
+			note += " " + ui.Muted.Render(r)
 		}
 	}
-	return []string{out}
+	if bt == sum.Total && bp > sum.Passed {
+		note += ui.Muted.Render(fmt.Sprintf("%sbest %d/%d", ui.G.Sep, bp, bt))
+	}
+	return []string{ui.HP(w, sum.Passed, sum.Total, note)}
 }
 
 // startDebug builds the debug profile and opens the debugger on a test; the

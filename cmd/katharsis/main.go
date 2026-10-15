@@ -25,6 +25,7 @@ import (
 	"katharsis/internal/judge"
 	"katharsis/internal/problem"
 	"katharsis/internal/session"
+	"katharsis/internal/ui"
 )
 
 func main() {
@@ -257,7 +258,8 @@ func openEditor(opt *hud.Options, dir, source, editor string, split int) (pane s
 		}
 		_ = session.TagPane(dbg, session.RoleLLDB)
 		if border != nil {
-			_ = border.Set(dbg, " lldb · #"+d.Test+" · stopped at main: run ")
+			// Set takes a tmux format; the test name is not one.
+			_ = border.Set(dbg, ui.TmuxEscape(" lldb · #"+d.Test+" · stopped at main: run "))
 		}
 		return func() { _ = session.KillPane(dbg) }, nil
 	}

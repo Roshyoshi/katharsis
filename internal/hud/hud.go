@@ -12,11 +12,11 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/judge"
 	"katharsis/internal/problem"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -53,8 +53,18 @@ type Options struct {
 	// it; nil turns :Debug off.
 	Debug func(DebugTarget) (close func(), err error)
 	// Border shows a line of status on the editor pane's border, so the
-	// timer stays in view while focus is in the editor; nil for none.
+	// timer stays in view while focus is in the editor; nil for none. text
+	// is a tmux format (session.Border.Set): #[...] styles it, and the HUD
+	// has escaped every # it did not write.
 	Border func(text string)
+	// BorderClock is the clock for the border as a tmux format, so a host
+	// can tone it (ui.BorderTimer); nil escapes the Clock text.
+	BorderClock func() string
+	// Best is the best full-test submit so far, passed of total, for a host
+	// that keeps it across HUDs (a boot resumes a door with a fresh HUD);
+	// the HP bar shows it, and how it compares with the latest submit. Nil
+	// is none.
+	Best func() (passed, total int)
 	// CloseEditor asks the editor to quit without losing work
 	// (session.CloseEditor). With it, quitting the HUD waits for the
 	// editor to close first; nil quits at once.
@@ -69,7 +79,8 @@ type Options struct {
 	// hidden data; nil reveals everything, as in practice.
 	Conceal func() bool
 	// Clock replaces the elapsed-time clock in the header and border, e.g.
-	// with a boot's countdown; nil counts up from when the HUD started.
+	// with a boot's countdown, shown after ⏱; nil counts up from when the
+	// HUD started, "up 12:34".
 	Clock func() string
 	// Embedded is for a host that draws its own chrome around the HUD, as
 	// a boot does with its HUD bar and door keys. The view then drops what
@@ -356,12 +367,13 @@ func (m *Model) firstFailure() int {
 	return -1
 }
 
-// updateBorder hands Options.Border the status line when it changed.
+// updateBorder hands Options.Border the status line, as a tmux format, when
+// it changed.
 func (m *Model) updateBorder() tea.Cmd {
 	if m.opt.Border == nil {
 		return nil
 	}
-	text := " " + m.statusText() + " "
+	text := m.borderText()
 	if text == m.border {
 		return nil
 	}
@@ -373,50 +385,51 @@ func (m *Model) updateBorder() tea.Cmd {
 	}
 }
 
-// statusText is one line for the pane border and `ctl status`:
-// "⏱ 12:34 · samples 2/3 · HP 37/52 WA".
+// statusText is one line for `ctl status`, plain text:
+// "⏱ 12:34 · samples 2/3 · HP 37/52 WA", or "up 12:34 · …" in practice.
 func (m *Model) statusText() string {
-	parts := []string{"⏱ " + m.clockText()}
+	return m.status(m.clockText(), func(_ ui.Token, s string) string { return s })
+}
+
+// borderText is the status line as a tmux format for the editor pane's
+// border: the host's toned clock (Options.BorderClock) or the plain one,
+// the verdicts in their tokens, and every other part escaped, so a # in a
+// clock or a name is drawn, not read as a directive.
+func (m *Model) borderText() string {
+	clock := ui.TmuxEscape(m.clockText())
+	if m.opt.BorderClock != nil {
+		clock = m.opt.BorderClock()
+	}
+	return " " + m.status(clock, ui.Token.Tmux) + " "
+}
+
+// status joins the clock with the samples and the last submit, each part
+// painted with paint.
+func (m *Model) status(clock string, paint func(ui.Token, string) string) string {
+	parts := []string{clock}
 	switch {
 	case m.loadErr != nil:
-		parts = append(parts, "problem not loaded")
+		parts = append(parts, paint(ui.FG, "problem not loaded"))
 	case m.build != nil && !m.build.OK:
-		parts = append(parts, "samples CE")
+		parts = append(parts, paint(ui.FG, "samples ")+paint(ui.Danger, "CE"))
 	case len(m.rows) > 0:
-		parts = append(parts, fmt.Sprintf("samples %d/%d", m.passed(), len(m.rows)))
+		parts = append(parts, paint(ui.FG, fmt.Sprintf("samples %d/%d", m.passed(), len(m.rows))))
 	}
 	if m.sub.started {
 		s := judge.Summarize(m.sub.results)
-		hp := fmt.Sprintf("HP %d/%d", s.Passed, s.Total)
+		hp := paint(ui.FG, fmt.Sprintf("HP %d/%d", s.Passed, s.Total))
 		switch {
 		case m.sub.running:
-			hp += " judging"
+			hp += paint(ui.FG, " judging")
 		case m.sub.err != nil:
-			hp = "submit failed"
+			hp = paint(ui.Danger, "submit failed")
 		case m.sub.sum != nil:
-			hp += " " + string(m.sub.sum.Verdict)
+			v := string(m.sub.sum.Verdict)
+			hp += " " + paint(ui.Verdict(v), v)
 		}
 		parts = append(parts, hp)
 	}
 	return strings.Join(parts, " · ")
-}
-
-var (
-	green  = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
-	red    = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	yellow = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
-	faint  = lipgloss.NewStyle().Faint(true)
-	bold   = lipgloss.NewStyle().Bold(true)
-)
-
-func verdictStyle(v judge.Verdict) lipgloss.Style {
-	switch v {
-	case judge.AC:
-		return green
-	case judge.WA, judge.RE, judge.CE:
-		return red
-	}
-	return yellow
 }
 
 func (m *Model) View() tea.View {
@@ -425,8 +438,8 @@ func (m *Model) View() tea.View {
 		w = 40
 	}
 	var b strings.Builder
-	line := func(s string) { b.WriteString(ansi.Truncate(s, w, "…") + "\n") }
-	rule := func() { line(faint.Render(strings.Repeat("─", w))) }
+	line := func(s string) { b.WriteString(ui.Clip(s, w) + "\n") }
+	rule := func() { line(ui.Rule(w)) }
 	used := func() int { return strings.Count(b.String(), "\n") }
 
 	// help is the row the key help takes; an embedded HUD has none, nor a
@@ -437,15 +450,12 @@ func (m *Model) View() tea.View {
 		if m.prob != nil {
 			name = m.prob.Name
 		}
-		// Pad by cells, not bytes: a boot's clock carries ♥ and 🦆, several
-		// bytes each for one or two cells.
-		clock := "⏱ " + m.clockText()
-		line(bold.Render(name) + strings.Repeat(" ", max(w-ansi.StringWidth(name)-ansi.StringWidth(clock), 1)) + clock)
+		line(ui.Spread(ui.Strong.Render(name), m.headerClock(), w))
 		help = 1
 	}
 	line(m.statusLine())
 	if m.closing {
-		line(yellow.Render("closing vim: answer it there · q again leaves it open"))
+		line(ui.Warn.Render("closing vim: answer it there · q again leaves it open"))
 	}
 	for _, l := range m.submitLines(w) {
 		line(l)
@@ -455,10 +465,10 @@ func (m *Model) View() tea.View {
 	switch {
 	case m.loadErr != nil:
 		for _, l := range wrap(m.loadErr.Error(), w) {
-			line(red.Render(l))
+			line(ui.Danger.Render(l))
 		}
 	case m.build != nil && !m.build.OK:
-		line(red.Render("CE") + faint.Render("  compile error"))
+		line(ui.Danger.Render("CE") + ui.Muted.Render("  compile error"))
 		rule()
 		for _, l := range firstLines(m.compilerLog(m.build.Log), max(m.height-used()-help, 4)) {
 			line(l)
@@ -480,14 +490,14 @@ func (m *Model) View() tea.View {
 			line(m.rowLine(i, m.rows[i]))
 		}
 		if lo > 0 || hi < len(m.rows) {
-			line(faint.Render(fmt.Sprintf("  rows %d–%d of %d · j/k", lo+1, hi, len(m.rows))))
+			line(ui.Muted.Render(fmt.Sprintf("  rows %d–%d of %d · j/k", lo+1, hi, len(m.rows))))
 		}
 		switch {
 		case len(m.rows) > 0:
 		case m.opt.Embedded:
-			line(faint.Render("no samples · :Submit judges the full tests"))
+			line(ui.Muted.Render("no samples · :Submit judges the full tests"))
 		default:
-			line(faint.Render("no tests: add tests/1.in and tests/1.out"))
+			line(ui.Muted.Render("no tests: add tests/1.in and tests/1.out"))
 		}
 		rule()
 		for _, l := range detail {
@@ -509,7 +519,8 @@ func (m *Model) View() tea.View {
 		}
 	}
 	if help > 0 {
-		ls = append(ls, ansi.Truncate(faint.Render(":w rejudges · :Submit · :Debug n · r rerun · j/k · q quit"), w, "…"))
+		ls = append(ls, ui.Footer(w, ":w", "rejudge", ":Submit", "judge", ":Debug n", "debug",
+			"r", "rerun", "j/k", "move", "q", "quit"))
 	}
 	v := tea.NewView(strings.Join(ls, "\n"))
 	v.AltScreen = true
@@ -527,48 +538,52 @@ func (m *Model) passed() int {
 	return n
 }
 
+// statusLine is the samples pass: "samples 2/3 · asan+ubsan · built 1.2s"
+// (C8), the count first and its state right after it, so a narrow pane
+// cuts the profile and the build time first.
 func (m *Model) statusLine() string {
 	prof := m.opt.Profile.Name
 	switch {
 	case m.watchErr != nil:
-		return red.Render("watcher: " + m.watchErr.Error() + " (r rejudges)")
+		return ui.Danger.Render("watcher: " + m.watchErr.Error() + " (r rejudges)")
 	case m.passErr != nil:
-		return red.Render("error: " + m.passErr.Error())
+		return ui.Danger.Render("error: " + m.passErr.Error())
 	case m.build == nil && m.running:
-		return faint.Render(prof + " · compiling…")
+		return ui.Muted.Render(prof + ui.G.Sep + "compiling…")
 	case m.build == nil:
-		return faint.Render(prof)
+		return ui.Muted.Render(prof)
 	case !m.build.OK:
-		return red.Render(prof + " · compile failed")
+		return ui.Danger.Render(prof + ui.G.Sep + "compile failed")
 	}
 	built := fmt.Sprintf("built %.1fs", m.build.Duration.Seconds())
 	if m.build.Cached {
 		built = "cached build"
 	}
 	pass := m.passed()
-	s := faint.Render(prof+" · "+built+" · ") + fmt.Sprintf("%d/%d", pass, len(m.rows))
+	s := fmt.Sprintf("samples %d/%d", pass, len(m.rows))
 	if !m.running && len(m.rows) > 0 && pass == len(m.rows) {
-		s += "  " + green.Bold(true).Render("ALL PASS")
+		// Green paints the glyph, the words are Strong (R2, R3).
+		s += " " + ui.OK.Render(ui.G.Pass) + " " + ui.Strong.Render("ALL PASS")
 	} else if m.running {
-		s += faint.Render(" running…")
+		s += ui.Muted.Render(" running…")
 	}
-	return s
+	return s + ui.Muted.Render(ui.G.Sep+prof+ui.G.Sep+built)
 }
 
 func (m *Model) rowLine(i int, r row) string {
 	cursor := "  "
 	if i == m.sel {
-		cursor = "▸ "
+		cursor = ui.Focus.Render(ui.G.Cursor) + " "
 	}
 	name := m.prob.Tests[i].Name
 	if !r.done {
-		return cursor + fmt.Sprintf("%-3s ", name) + faint.Render("·")
+		return cursor + fmt.Sprintf("%-3s ", name) + ui.Muted.Render("·")
 	}
 	v := r.res.Verdict
-	s := cursor + fmt.Sprintf("%-3s ", name) + verdictStyle(v).Render(fmt.Sprintf("%-4s", v))
+	s := cursor + fmt.Sprintf("%-3s ", name) + ui.Verdict(string(v)).Render(fmt.Sprintf("%-4s", v))
 	s += fmt.Sprintf("%6dms %6s", r.res.CPU.Milliseconds(), units.Mem(r.res.MaxRSS))
 	if r.res.Reason != "" && v != judge.AC {
-		s += "  " + faint.Render(r.res.Reason)
+		s += "  " + ui.Muted.Render(r.res.Reason)
 	}
 	return s
 }
@@ -581,23 +596,23 @@ func (m *Model) detail(w int) []string {
 	}
 	r, t := m.rows[m.sel], m.prob.Tests[m.sel]
 	if !r.done {
-		return []string{faint.Render("#" + t.Name + " pending")}
+		return []string{ui.Muted.Render("#" + t.Name + " pending")}
 	}
 	res := r.res
 	head := fmt.Sprintf("#%s %s", t.Name, res.Verdict)
 	if res.Reason != "" {
 		head += "  " + res.Reason
 	}
-	out := []string{verdictStyle(res.Verdict).Render(head)}
+	out := []string{ui.Verdict(string(res.Verdict)).Render(head)}
 	switch {
 	case res.Diff != nil:
 		out = append(out,
-			faint.Render("want ")+res.Diff.Want,
-			faint.Render("got  ")+res.Diff.Got)
+			ui.Muted.Render("want ")+res.Diff.Want,
+			ui.Muted.Render("got  ")+res.Diff.Got)
 	case res.Verdict == judge.RE:
 		out = append(out, firstLines(res.Stderr, max(m.height-len(m.rows)-8, 3))...)
 	case res.Verdict == judge.AC:
-		out = append(out, faint.Render(fmt.Sprintf("cpu %s · wall %s · peak %s",
+		out = append(out, ui.Muted.Render(fmt.Sprintf("cpu %s · wall %s · peak %s",
 			res.CPU.Round(time.Millisecond), res.Wall.Round(time.Millisecond), units.Mem(res.MaxRSS))))
 	}
 	return out
@@ -643,9 +658,21 @@ func wrap(s string, w int) []string {
 	return strings.Split(ansi.Wrap(s, max(w, 10), ""), "\n")
 }
 
+// clockText is the clock as plain text: a host's countdown under ⏱, or in
+// practice the time since the HUD started, "up 12:34" (an elapsed time has
+// no ⏱, §2.4).
 func (m *Model) clockText() string {
 	if m.opt.Clock != nil {
-		return m.opt.Clock()
+		return ui.G.Timer + m.opt.Clock()
 	}
-	return units.Clock(m.now.Sub(m.started))
+	return "up " + units.Clock(m.now.Sub(m.started))
+}
+
+// headerClock is clockText for the standalone header, its "up" label
+// Muted.
+func (m *Model) headerClock() string {
+	if m.opt.Clock != nil {
+		return m.clockText()
+	}
+	return ui.Muted.Render("up ") + units.Clock(m.now.Sub(m.started))
 }
