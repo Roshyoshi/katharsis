@@ -197,6 +197,7 @@ func TestUpsolveIndependentPaysMore(t *testing.T) {
 		{"independent, standard 1.5x", game.CoreDump{Problem: "x", Bytes: 120}, game.Independent, 180},
 		{"independent, the dump's own 2x", game.CoreDump{Problem: "x", Bytes: 120, Mult: 2}, game.Independent, 240},
 		{"independent, 1x pays the same", game.CoreDump{Problem: "x", Bytes: 120, Mult: 1}, game.Independent, 120},
+		{"independent, a preset's 0.5x", game.CoreDump{Problem: "x", Bytes: 120, Mult: 0.5}, game.Independent, 60},
 		{"rounds to the byte", game.CoreDump{Problem: "x", Bytes: 37, Mult: 1.5}, game.Independent, 56},
 		{"editorial", game.CoreDump{Problem: "x", Bytes: 120, Mult: 2}, game.Editorial, 120},
 		{"hinted", game.CoreDump{Problem: "x", Bytes: 120, Mult: 2}, game.Hinted, 120},
@@ -205,7 +206,7 @@ func TestUpsolveIndependentPaysMore(t *testing.T) {
 		d := tc.dump
 		m := game.Meta{Bank: 10, LifetimeBytes: 1000, CoreDump: &d}
 		got := game.Upsolve(&m, "x", tc.kind, time.Minute, t0)
-		if got != tc.recovered || m.Bank != 10+tc.recovered || m.LifetimeBytes != 1000+tc.recovered-tc.dump.Bytes {
+		if got != tc.recovered || m.Bank != 10+tc.recovered || m.LifetimeBytes != 1000+max(tc.recovered-tc.dump.Bytes, 0) {
 			t.Errorf("%s: recovered %d bank %d lifetime %d, want %d", tc.name, got, m.Bank, m.LifetimeBytes, tc.recovered)
 		}
 		if r := tc.dump.Recovers(tc.kind); r != tc.recovered {
