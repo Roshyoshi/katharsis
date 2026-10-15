@@ -17,27 +17,24 @@ import (
 //
 //   - the content floor: no local problem is rated under 800, so a player
 //     the engine rates near 1000 has no door near Userland's aim (576 for
-//     0.92). The pool's floor doors then get longer timers (the buy-back),
-//     and when the engine still forecasts more than rules.EaseAbove crashes
-//     there, the boot gets a life (D34) and a timeout in that biome costs a
-//     life instead of the boot (ml-pipeline decision (e) applied to it).
+//     0.92). When the engine forecasts more than rules.EaseAbove crashes
+//     there, the boot gets a life (D34); the pool's floor doors can also
+//     get longer timers (the buy-back, rules.BuybackTimers).
 //   - a run of early crashes: after rules.GovernorAfter boots in a row
 //     ended in the first biome, the next aims every biome at its EaseClear
 //     (the streak governor, neuro P1.3).
 //
-// Each easing is a State.Ease the screens announce, and DeclineEase turns
-// them all off before the first door opens (GR9). None of it reads how
-// often the player plays: easing answers outcomes, never engagement
-// (GR7).
+// Two more ease a boot for who plays it: boot #1 (EaseFirst, RT11) and a
+// return after days away (EaseComeback, RT8). Each easing is a State.Ease
+// the screens announce, and DeclineEase turns them all off before the
+// first door opens (GR9). None of it reads how often the player plays:
+// easing answers outcomes, never engagement (GR7).
 
 // planAim finds the easings that change the aim, before NewBoot lays the
 // boot out (route offers are checked against the aim).
 func (e *engine) planAim() {
 	s, r, m := e.s, &e.s.Rules, e.meta
-	first := r.Biomes[0].Name
-	if first == "" {
-		first = "the first biome"
-	}
+	first := e.firstBiome()
 	if e.first && (len(r.FirstBiomes) > 0 || r.FirstDoor || r.FirstEditorial) {
 		s.Ease = append(s.Ease, Ease{Kind: EaseFirst, Why: "boot #1", FirstDoor: r.FirstDoor, Editorial: r.FirstEditorial})
 	}
@@ -71,7 +68,7 @@ func (e *engine) planAim() {
 // first room is drawn, and deals the lives every easing adds.
 func (e *engine) planFloor() {
 	s, r := e.s, &e.s.Rules
-	first := e.biomeName(0)
+	first := e.firstBiome()
 	f := e.forecast()
 	s.Forecast = f.crash
 	if f.floor {
@@ -124,8 +121,10 @@ func easeTerms(es Ease) string {
 	return t
 }
 
-func (e *engine) biomeName(i int) string {
-	if n := e.s.Biomes[i].Name; n != "" {
+// firstBiome names the first biome for an Ease.Why. It reads the rules,
+// which planAim runs before the layout.
+func (e *engine) firstBiome() string {
+	if n := e.s.Rules.Biomes[0].Name; n != "" {
 		return n
 	}
 	return "the first biome"
@@ -211,11 +210,14 @@ type floorCast struct {
 // fall short of the aim when the pool's floor cuts the rating window off
 // below the target: the window keeps only its harder half.
 //
-// It counts no lives (a timeout, the common way to fail a door, ends the
-// boot whatever the lives) and none of the buy-back's time: what a longer
-// timer is worth (BuybackBeta) is a prior no player has confirmed, and in
-// the simulator the boots it forecast under the threshold crashed twice as
-// often as it said, with the lives and the save turned off on its word.
+// It counts no lives, as if a failed door ended the boot. Under Userland's
+// timeout rule (D44) a timeout costs a life instead, so it reads two to
+// three times the crashes the model players have (sim
+// TestBalanceReport/guardrails), the safe side for the easing it gates. Nor
+// does it count the buy-back's time: what a longer timer is worth
+// (BuybackBeta) is a prior no player has confirmed, and in the simulator
+// the boots it forecast under the threshold crashed twice as often as it
+// said, with the lives and the save turned off on its word.
 func (e *engine) forecast() floorCast {
 	s := e.s
 	b := s.Biomes[0]
@@ -338,9 +340,7 @@ func (e *engine) saveTimeout() bool {
 	a := e.close(TimedOut)
 	s.Lives--
 	e.logf("%s: timer expired, -1 life, %d left", name, s.Lives)
-	if due, ok := scheduleRegression(e.meta, a.Door.Problem, e.now, s.Rules.RegressionDays); ok {
-		e.logf("regression: %s due %s", a.Door.Problem, due.Format("2006-01-02"))
-	}
+	e.regress(a.Door.Problem)
 	e.emit(CloseProblem{Door: a.Door}, Sound{Name: "wa"})
 	s.Phase = PhaseDoors
 	e.rollRoom(false, "timeout")

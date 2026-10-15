@@ -5,14 +5,14 @@
 // The model player is a deliberately simple stand-in, not a prediction: it
 // solves a door with the logistic chance of its true rating, takes a
 // lognormal time to do it, sometimes submits wrong answers, spends ducks when
-// stuck, and picks the door with the best bytes×P. The engine never sees the
-// true rating; it has to learn it from outcomes like it would a person.
+// stuck, and picks the door worth most to it (Player.Stake). The engine never
+// sees the true rating; it has to learn it from outcomes like it would a
+// person.
 package sim
 
 import (
 	"cmp"
 	"fmt"
-	"hash/fnv"
 	"maps"
 	"math"
 	"math/rand/v2"
@@ -565,7 +565,7 @@ func (b *boot) play() {
 		b.clock = b.clock.Add(b.p.Overhead)
 		if s.Phase == game.PhaseDoors && !s.PendingUpgrade {
 			for _, d := range s.Doors {
-				if !d.Regression && math.Abs(d.Difficulty(&s.Rules)-s.Target(b.m, d.Topic)) <= float64(s.Rules.RatingWindows[0]) {
+				if !d.Regression && b.onTarget(d) {
 					b.sums.rep.Offered[s.Biome]++
 					b.sums.rep.OfferedP[s.Biome] += d.SolveP
 				}
@@ -585,7 +585,7 @@ func (b *boot) play() {
 			b.sums.rep.Attempts[s.Biome]++
 			b.sums.timerSum[s.Biome] += d.Timer
 			b.opened++
-			if !d.Regression && math.Abs(d.Difficulty(&s.Rules)-s.Target(b.m, d.Topic)) > float64(s.Rules.RatingWindows[0]) {
+			if !d.Regression && !b.onTarget(d) {
 				b.sums.rep.OffTarget[s.Biome]++
 				b.off++
 			}
@@ -601,13 +601,14 @@ func (b *boot) play() {
 				}
 			}
 		case s.Phase == game.PhaseMerge:
-			switch it := b.buy(); {
+			it := b.buy()
+			d, pick := b.daemon()
+			switch {
 			case it != "":
 				b.step(game.Spend{Item: it})
 			case s.Uncommitted > 0:
 				b.step(game.Commit{})
-			case len(s.DaemonOffers) > 0 && b.wantDaemon():
-				d, _ := b.daemon()
+			case pick:
 				b.step(game.PickDaemon{Daemon: d})
 			default:
 				b.step(game.LeaveMerge{})
@@ -630,10 +631,19 @@ func (b *boot) difficulty(d game.Door) float64 {
 	if !d.Floor || b.p.FloorDrop <= 0 {
 		return r
 	}
-	h := fnv.New64a()
-	_, _ = h.Write([]byte(d.Problem))
-	u := (float64(h.Sum64()>>11) + 0.5) / (1 << 53)
-	return r + b.p.FloorDrop*math.Log(1-u)
+	return r + b.p.FloorDrop*math.Log(1-hashUnit(string(d.Problem)))
+}
+
+// onTarget reports whether d is within the first rating window of the
+// engine's target, as the report's Offered and OffTarget count.
+func (b *boot) onTarget(d game.Door) bool {
+	s := b.s
+	return math.Abs(d.Difficulty(&s.Rules)-s.Target(b.m, d.Topic)) <= float64(s.Rules.RatingWindows[0])
+}
+
+// median is the model's median solve time on d.
+func (b *boot) median(d game.Door) float64 {
+	return float64(b.p.Median) * math.Exp2((b.difficulty(d)-b.skill(d.Topic))/b.p.GapScale)
 }
 
 // skill is the model's true rating on topic now: its fixed Rating, or what
@@ -670,8 +680,7 @@ func (b *boot) solveP(d game.Door) float64 {
 // the duck it holds, which a cursed door refuses), within the timer, and
 // (cursed) without a single wrong submit.
 func (b *boot) clearP(d game.Door) float64 {
-	median := float64(b.p.Median) * math.Exp2((b.difficulty(d)-b.skill(d.Topic))/b.p.GapScale)
-	inTime := 0.5 * (1 + math.Erf(math.Log(float64(d.Timer)/median)/(b.p.Sigma*math.Sqrt2)))
+	inTime := 0.5 * (1 + math.Erf(math.Log(float64(d.Timer)/b.median(d))/(b.p.Sigma*math.Sqrt2)))
 	solve := b.solveP(d)
 	if d.Cursed {
 		solve *= 1 - b.p.WAProb
@@ -822,15 +831,12 @@ func (b *boot) upgrade() game.Upgrade {
 	return offers[0]
 }
 
-// wantDaemon reports whether the model takes one of the window's daemons.
-func (b *boot) wantDaemon() bool {
-	_, ok := b.daemon()
-	return ok
-}
-
 // daemon is the model's pick of the window's daemons, false to take none
-// (Player.DeclineDaemons).
+// (none on offer, or Player.DeclineDaemons).
 func (b *boot) daemon() (game.Daemon, bool) {
+	if len(b.s.DaemonOffers) == 0 {
+		return "", false
+	}
 	// chrt last: most of the model's crashes are timeouts.
 	for _, d := range []game.Daemon{game.Fork, game.Kexec, game.DevRandom, game.Cron, game.Strace, game.Nice, game.Chrt} {
 		if b.p.DeclineDaemons && (d == game.Nice || d == game.Chrt) {
@@ -864,7 +870,7 @@ func (b *boot) attempt(biome int) {
 	pStar := b.solveP(d)
 	defer b.taught(d, pStar)
 	capable := b.rng.Float64() < pStar
-	median := float64(b.p.Median) * math.Exp2((b.difficulty(d)-b.skill(d.Topic))/b.p.GapScale)
+	median := b.median(d)
 	t := b.lognormal(median)
 
 	// Stuck with a free swap: take it early.

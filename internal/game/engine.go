@@ -251,8 +251,8 @@ func (e *engine) tick() error {
 // can't be outrun by a retreat or a quack. A soft timer never crashes; the
 // deadline only marks the attempt overtime, which Tick and the judge
 // result do (they cannot fail, so the mark never sticks to a refused
-// action). Under the floor easing a timeout in the first biome may cost a
-// life instead (saveTimeout); the door is closed either way.
+// action). In a biome with rules.Biome.TimeoutLife (D44) a timeout may
+// cost a life instead (saveTimeout); the door is closed either way.
 func (e *engine) expired() bool {
 	if e.now.Before(e.s.Current.Deadline) || e.s.Rules.OnExpire == rules.ExpireOvertime {
 		return false
@@ -539,9 +539,7 @@ func (e *engine) crash(cause Outcome, cursed bool) {
 			m.CoreDump = &CoreDump{Problem: d.Problem, Bytes: lost, Boot: s.Boot, At: e.now, Mult: s.Rules.DumpIndependentMult}
 			e.logf("core dumped: %s on %s", units.Bytes(lost), d.Problem)
 		}
-		if due, ok := scheduleRegression(m, d.Problem, e.now, s.Rules.RegressionDays); ok {
-			e.logf("regression: %s due %s", d.Problem, due.Format(time.DateOnly))
-		}
+		e.regress(d.Problem)
 	}
 
 	e.countEnd(true)
@@ -570,6 +568,14 @@ func (e *engine) crash(cause Outcome, cursed bool) {
 	e.emit(CloseProblem{Door: d}, ShowCrash{Crash: c}, Sound{Name: "crash"})
 	if cause == GaveUp {
 		e.emit(OpenEditorial{Problem: d.Problem})
+	}
+}
+
+// regress schedules id, which just cost the boot or a life, to return as
+// a regression door.
+func (e *engine) regress(id catalog.ID) {
+	if due, ok := scheduleRegression(e.meta, id, e.now, e.s.Rules.RegressionDays); ok {
+		e.logf("regression: %s due %s", id, due.Format(time.DateOnly))
 	}
 }
 

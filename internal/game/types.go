@@ -431,9 +431,10 @@ type EaseKind string
 
 const (
 	// EaseFloor: the pool has no first-biome door near the aim (its floor
-	// sits above a low-rated player's), so doors there get longer timers
-	// and, when the forecast crash chance there is above rules.EaseAbove,
-	// the boot gets lives (D34) and a duck.
+	// sits above a low-rated player's), so doors there may get longer
+	// timers (rules.BuybackTimers) and, when the forecast crash chance is
+	// above rules.EaseAbove, the boot gets lives (D34) and
+	// rules.EaseDucks ducks.
 	EaseFloor EaseKind = "floor"
 	// EaseGovernor: the last rules.GovernorAfter boots crashed in their
 	// first biome, so every biome aims at its EaseClear.
@@ -455,8 +456,8 @@ const (
 type Ease struct {
 	Kind EaseKind
 	// Why names the doors, boots or days behind it, never the player:
-	// "no Userland door in the pool is rated under 800", "the last 2 boots
-	// ended in Userland".
+	// "Userland's easiest doors in the pool are rated 800", "the last 2
+	// boots ended in Userland", "first boot in 5 days".
 	Why string
 
 	// Lives is how many lives it added at the boot's start.

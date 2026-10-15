@@ -391,7 +391,7 @@ type Package struct {
 	DaemonOffers  int    `toml:"daemon_offers"`  // more daemons offered per merge window
 	UpgradeOffers int    `toml:"upgrade_offers"` // more upgrades offered per pick
 	RouteOffers   int    `toml:"route_offers"`   // more topics offered at each route
-	Doors         int    `toml:"doors"`          // more doors per room, but a boss's
+	Doors         int    `toml:"doors"`          // more doors per room, a boss's aside
 	Theme         string `toml:"theme"`          // a GRUB banner theme, cosmetic
 }
 

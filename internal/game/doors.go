@@ -339,13 +339,13 @@ func (e *engine) regressionDoor(offered []Door) (Door, bool) {
 		seen[d.Problem] = true
 	}
 	for _, g := range DueRegressions(e.meta, e.now) {
-		i := slices.IndexFunc(e.pool, func(p catalog.Problem) bool { return p.ID == g.Problem })
-		if i < 0 || !e.pool[i].Judgeable || seen[g.Problem] {
+		p := e.problem(g.Problem)
+		if p == nil || !p.Judgeable || seen[g.Problem] {
 			continue
 		}
 		s.RegressionOffered = true
 		e.logf("regression: %s is back (stage %d)", g.Problem, g.Stage)
-		return e.makeDoor(&e.pool[i], s.Biome, "", true), true
+		return e.makeDoor(p, s.Biome, "", true), true
 	}
 	return Door{}, false
 }

@@ -233,14 +233,15 @@ func (lr *learner) outcomeF(a game.Attempt, upsolved string) float64 {
 // hashNormal is a standard normal draw fixed by key: an item's noise is
 // the same every time its problem comes up, in every run.
 func hashNormal(key string) float64 {
+	u1, u2 := hashUnit(key), hashUnit(key+"#2")
+	return math.Sqrt(-2*math.Log(u1)) * math.Cos(2*math.Pi*u2)
+}
+
+// hashUnit is a uniform draw in (0, 1) fixed by key.
+func hashUnit(key string) float64 {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(key))
-	x := h.Sum64()
-	u1 := (float64(x>>11) + 0.5) / (1 << 53)
-	h.Reset()
-	_, _ = h.Write([]byte(key + "#2"))
-	u2 := (float64(h.Sum64()>>11) + 0.5) / (1 << 53)
-	return math.Sqrt(-2*math.Log(u1)) * math.Cos(2*math.Pi*u2)
+	return (float64(h.Sum64()>>11) + 0.5) / (1 << 53)
 }
 
 // hazard is the chance of churning after a boot, given the endings.

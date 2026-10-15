@@ -56,9 +56,10 @@ func TestChurnRatio(t *testing.T) {
 // learning off) is calibrated: each biome's plain doors clear at the clear
 // chance the engine gave them, within 3 standard errors and 2 points, and
 // Elo sits within its own noise of the true level. (The binned ECE is
-// logged, not held: Elo's noise alone spreads SolveP past the truth.) Learning on (3 points a door), the same player gains
-// and keeps most of it; how far Elo then lags is logged, for the shadow
-// model (slice ML4) to beat.
+// logged, not held: Elo's noise alone spreads SolveP past the truth.)
+// Learning on (3 points a door), the same player gains and keeps most of
+// it; how far Elo then lags is logged, for the shadow model (slice ML4) to
+// beat.
 func TestIdealLearnerCalibrated(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
