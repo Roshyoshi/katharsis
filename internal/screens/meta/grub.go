@@ -14,6 +14,7 @@ import (
 	"katharsis/internal/catalog"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/story"
 	"katharsis/internal/ui"
@@ -720,14 +721,19 @@ func (m *Menu) subtitle(w int) string {
 // (docs/story/text.md).
 const firstRegression = "story.first-regression"
 
-// regressionNote is a due regression's subtitle: its stage's line, for
-// the standard returns on day 3 and day 17 (regression.stage.1, .2). A
-// preset with more stages has no line for the rest, so they get the
+// regressionNote is a due regression's subtitle: the line for its first or
+// second stage (regression.stage.1, .2), with {days} that stage's delay
+// from the regression's own schedule, read as game.advanceRegression reads
+// it. A preset with more stages has no line for the rest, so they get the
 // submenu's own.
 func regressionNote(r game.Regression, story func(string, uint64) string) string {
-	if r.Stage < 2 {
+	days := r.Days
+	if len(days) == 0 {
+		days = rules.Standard().RegressionDays // scheduled before Days existed
+	}
+	if r.Stage < 2 && r.Stage < len(days) {
 		if s := story(fmt.Sprintf("regression.stage.%d", r.Stage+1), 0); s != "" {
-			return s
+			return flavor.Fill(s, "days", strconv.Itoa(days[r.Stage]))
 		}
 	}
 	return story("grub.subtitle.regressions", 0)

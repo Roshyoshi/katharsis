@@ -8,6 +8,7 @@ import (
 
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/meta/fixture"
@@ -147,5 +148,35 @@ func TestGrubBudgetWholeMinutes(t *testing.T) {
 	c.Today, c.Budget = 3*time.Hour+12*time.Minute+40*time.Second, 3*time.Hour
 	if v := plain(meta.NewGrub(c).View(140, 40)); !strings.Contains(v, "today 3:12 of 3:00") {
 		t.Errorf("3:12:40 should read 3:12:\n%s", v)
+	}
+}
+
+// A due regression's note fills {days} from its own schedule
+// (Regression.Days, as the engine advances it), and from the standard
+// rules' for one scheduled before Days existed.
+func TestGrubRegressionDays(t *testing.T) {
+	c := fixture.GrubConfig()
+	c.Story = flavor.Story
+	game.MarkSeen(&c.Meta, "story.first-regression")
+	due := fixture.Now.Add(-time.Hour)
+	c.Meta.Regressions = []game.Regression{ // oldest due first, as GRUB lists them
+		{Problem: "usaco:891", Due: due.Add(-2 * time.Hour), Stage: 0, Days: []int{5, 40}},
+		{Problem: "usaco:1205", Due: due.Add(-time.Hour), Stage: 1, Days: []int{5, 40}},
+		{Problem: "usaco:740", Due: due, Stage: 1},
+	}
+	std := rules.Standard().RegressionDays
+	want := []string{
+		flavor.Fill(flavor.Story("regression.stage.1", 0), "days", "5"),
+		flavor.Fill(flavor.Story("regression.stage.2", 0), "days", "40"),
+		flavor.Fill(flavor.Story("regression.stage.2", 0), "days", fmt.Sprint(std[1])),
+	}
+	g := meta.NewGrub(c)
+	press(t, g, "down", "down", "down", "down", "down", "down", "down", "enter")
+	for i, w := range want {
+		v := plain(g.View(140, 40))
+		if !strings.Contains(v, w) || strings.Contains(v, "{days}") {
+			t.Errorf("regression %d: want %q in:\n%s", i+1, w, v)
+		}
+		press(t, g, "down")
 	}
 }
