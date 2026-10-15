@@ -248,6 +248,45 @@ func (h *harness) send(msg tea.Msg) {
 	}
 }
 
+// pump runs cmd as a tea.Program would, for a pass that takes longer than
+// run waits: its commands run concurrently and their messages go to the
+// app on this goroutine, until done holds after one of them. Commands
+// still blocked (ticks) are dropped on return.
+func (h *harness) pump(cmd tea.Cmd, done func() bool) {
+	h.t.Helper()
+	msgs, stop := make(chan tea.Msg), make(chan struct{})
+	defer close(stop)
+	launch := func(c tea.Cmd) {
+		if c != nil {
+			go func() {
+				select {
+				case msgs <- c():
+				case <-stop:
+				}
+			}()
+		}
+	}
+	launch(cmd)
+	deadline := time.After(60 * time.Second)
+	for !done() {
+		select {
+		case msg := <-msgs:
+			switch msg := msg.(type) {
+			case nil:
+			case tea.BatchMsg:
+				for _, c := range msg {
+					launch(c)
+				}
+			default:
+				_, c := h.m.Update(msg)
+				launch(c)
+			}
+		case <-deadline:
+			h.t.Fatal("pump: timed out")
+		}
+	}
+}
+
 func key(k string) tea.KeyPressMsg { return tea.KeyPressMsg{Code: rune(k[0]), Text: k} }
 
 // play drives the boot with the simplest choices until it ends, returning

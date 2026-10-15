@@ -49,7 +49,7 @@ GRUB ─enter→ boot ─→ doors ─enter→ problem (vim + HUD) ─AC→ upgr
 | | |
 |---|---|
 | `:w` | rejudge the samples (the HUD updates in about a second) |
-| `:Submit` | judge the full tests; the HP bar fills, a failure costs a life |
+| `:Submit` | judge the full tests; the HP bar fills, a failure costs a life; another sent before the verdict is refused |
 | `:Debug [n]` | lldb on sample n, stopped at `main` (any test with the `strace` daemon) |
 | `:Quack` | rubber duck: first the tags, then the technique |
 | `:Retreat` | swap the door for a life |

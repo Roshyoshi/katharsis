@@ -6,11 +6,13 @@ import (
 	"database/sql"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/game"
@@ -305,5 +307,168 @@ func TestClosedEditorKeepsTheSubmit(t *testing.T) {
 	h.send(hud.SubmittedMsg{Summary: judge.Summary{Verdict: judge.WA, Passed: 1, Total: 4, Done: 4, First: 1}})
 	if h.m.state.Lives != lives-1 {
 		t.Errorf("lives %d, want %d after the verdict", h.m.state.Lives, lives-1)
+	}
+}
+
+// submitDir is a door directory a HUD can judge: sol.cpp holding src, and
+// one test whose input and answer are 2.
+func submitDir(t *testing.T, src string) string {
+	t.Helper()
+	dir := t.TempDir()
+	for name, body := range map[string]string{"sol.cpp": src, "tests/1.in": "2\n", "tests/1.out": "2\n"} {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+const (
+	waSrc = "#include <cstdio>\nint main() { puts(\"1\"); }\n"
+	acSrc = "#include <cstdio>\nint main() { int x; scanf(\"%d\", &x); printf(\"%d\\n\", x); }\n"
+)
+
+// stalled is a submit profile whose compiler hangs until the pass is
+// cancelled: the HUD's submit runs until the door closes, and a test
+// delivers the verdict itself.
+func stalled(t *testing.T) judge.Profile {
+	t.Helper()
+	cc := filepath.Join(t.TempDir(), "cc")
+	if err := os.WriteFile(cc, []byte("#!/bin/sh\nexec sleep 30\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return judge.Profile{Name: "stalled", Compiler: cc}
+}
+
+// hudHarness runs the app with a HUD judging dir with prof, its submits
+// copied aside as the tmux runner's are. The door closes when the test
+// ends, so no pass outlives it.
+func hudHarness(t *testing.T, dir string, prof judge.Profile) *harness {
+	t.Helper()
+	h := newHarnessWith(t, func(f *fakeRunner) Runner {
+		return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: dir, SubmitProfile: prof,
+			SubmitCopy: filepath.Join(dir, ".submit", "sol.cpp")}}
+	})
+	t.Cleanup(func() { h.m.d.Runner.Close() })
+	return h
+}
+
+// answer is req's reply if it has one already.
+func answer(reply <-chan session.Reply) (session.Reply, bool) {
+	select {
+	case r := <-reply:
+		return r, true
+	default:
+		return session.Reply{}, false
+	}
+}
+
+// A second submit while one is judged is refused at once, and the first
+// one's verdict is charged: a WA, then the fix sent before its verdict,
+// costs the WA's life. The second used to replace the first, which was
+// never charged, so the WA cost nothing.
+func TestSecondSubmitCannotDodgeTheFirst(t *testing.T) {
+	if _, err := exec.LookPath(judge.Compiler); err != nil {
+		t.Skipf("%s not on PATH", judge.Compiler)
+	}
+	dir := submitDir(t, waSrc)
+	h := hudHarness(t, dir, judge.Profile{})
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.enterDoor()
+	lives := h.m.state.Lives
+
+	first, firstReply := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	_, c1 := h.m.Update(first) // pumped below: the judge takes a while
+	if err := os.WriteFile(filepath.Join(dir, "sol.cpp"), []byte(acSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	second, secondReply := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	_, c2 := h.m.Update(second)
+	if rep, ok := answer(secondReply); !ok || rep.OK || rep.Text != hud.SubmitBusy {
+		t.Errorf("second submit answered %v with %+v, want %q at once", ok, rep, hud.SubmitBusy)
+	}
+	h.pump(tea.Batch(c1, c2), func() bool { return !h.m.judging })
+
+	if rep, _ := answer(firstReply); rep.OK || !strings.HasPrefix(rep.Text, "WA 0/1") {
+		t.Errorf("first submit answered %+v, want its WA", rep)
+	}
+	if h.m.state.Lives != lives-1 {
+		t.Errorf("lives %d, want %d: the first submit's WA went uncharged", h.m.state.Lives, lives-1)
+	}
+	if c := h.m.state.Current; c == nil || c.Submits != 1 || c.Failed != 1 {
+		t.Errorf("attempt %+v, want the door open with 1 submit, 1 failed", c)
+	}
+}
+
+// A refused submit leaves the one in flight as it was: the clock held for
+// it, and its SubmitAt, saved for a resume, still when it was made. The s
+// key's refusal shows over the game, as :Submit's does in vim.
+func TestRefusedSubmitKeepsTheClock(t *testing.T) {
+	h := hudHarness(t, submitDir(t, waSrc), stalled(t))
+	h.send(screens.StartBoot{Preset: "standard"})
+	cur := h.enterDoor()
+	h.clock.t = cur.Deadline.Add(-time.Minute)
+	made := h.clock.t
+	first, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	h.send(first)
+
+	h.clock.t = made.Add(20 * time.Second)
+	second, reply := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	h.send(second)
+	if rep, ok := answer(reply); !ok || rep.OK || rep.Text != hud.SubmitBusy {
+		t.Errorf(":Submit answered %v with %+v, want %q at once", ok, rep, hud.SubmitBusy)
+	}
+	h.send(submitMsg{}) // the s key
+	if h.m.flash != hud.SubmitBusy {
+		t.Errorf("s key flashed %q, want %q", h.m.flash, hud.SubmitBusy)
+	}
+	saved, err := h.st.ActiveBoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if at, sat := h.m.state.Current.SubmitAt, saved.Current.SubmitAt; !h.m.judging || !at.Equal(made) || !sat.Equal(made) {
+		t.Fatalf("judging %v, SubmitAt %v (saved %v); want held, as of %v", h.m.judging, at, sat, made)
+	}
+	h.clock.t = cur.Deadline.Add(10 * time.Second)
+	h.send(tickMsg(h.clock.t))
+	if h.m.state.Phase != game.PhaseProblem {
+		t.Fatalf("phase %q inside the grace, want problem: the clock is held", h.m.state.Phase)
+	}
+}
+
+// A submit judged again on resume cannot be cancelled by a new one: the
+// :Submit is refused, the resumed judge keeps its time, and its verdict is
+// charged. Resubmitting right after a resume replaced it, which dodged
+// the failure the resume was there to charge (qa/chaos r05).
+func TestResumedJudgeCannotBeReplaced(t *testing.T) {
+	h := hudHarness(t, submitDir(t, waSrc), stalled(t))
+	h.send(screens.StartBoot{Preset: "standard"})
+	cur := h.enterDoor()
+	lives := h.m.state.Lives
+	first, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	h.send(first)
+	h.m.quit() // ctrl+c mid-judge
+
+	h.clock.t = cur.Deadline.Add(-time.Minute)
+	h.restart()
+	resumed := h.m.resumed
+	if !h.m.judging || resumed.at.IsZero() {
+		t.Fatalf("judging %v resumed %+v: the resume should judge the submit again", h.m.judging, resumed)
+	}
+	h.clock.t = h.clock.t.Add(5 * time.Second)
+	again, reply := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	h.send(again)
+	if rep, ok := answer(reply); !ok || rep.OK || rep.Text != hud.SubmitBusy {
+		t.Errorf(":Submit answered %v with %+v, want %q at once", ok, rep, hud.SubmitBusy)
+	}
+	if h.m.resumed != resumed || !h.m.state.Current.SubmitAt.Equal(resumed.at) {
+		t.Fatalf("resumed %+v SubmitAt %v, want %+v kept", h.m.resumed, h.m.state.Current.SubmitAt, resumed)
+	}
+	h.send(hud.SubmittedMsg{Summary: judge.Summary{Verdict: judge.WA, Total: 1, Done: 1, First: 0}})
+	if h.m.state.Lives != lives-1 {
+		t.Errorf("lives %d, want %d: the resumed WA went uncharged", h.m.state.Lives, lives-1)
 	}
 }

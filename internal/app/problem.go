@@ -234,7 +234,8 @@ func (s *problemScreen) headless(w int) string {
 }
 
 // onRequest handles a command from the editor. The game's own commands
-// become engine actions; submit and debug belong to the HUD.
+// become engine actions; the HUD judges a submit the game starts
+// (startSubmit), and debug belongs to it.
 func (m *Model) onRequest(req session.Request) tea.Cmd {
 	inBoot := m.state != nil && m.state.Phase == game.PhaseProblem && m.open != nil && !m.open.Upsolve
 	var a game.Action
@@ -250,18 +251,17 @@ func (m *Model) onRequest(req session.Request) tea.Cmd {
 		return nil
 	default:
 		h := m.hud()
-		if h == nil {
+		switch {
+		case h == nil || m.open == nil:
 			req.Answer(session.Reply{Text: "no door open"})
 			return nil
-		}
-		var mark tea.Cmd
-		if req.Cmd == session.CmdSubmit && m.open != nil {
+		case req.Cmd == session.CmdSubmit:
 			// The submit most players make, so it must hold the clock
 			// for the grace, and be noted, the way the s key's is.
-			mark = m.judgingOn()
+			return m.startSubmit(req)
 		}
 		_, cmd := h.Update(req)
-		return tea.Batch(mark, guard(cmd))
+		return guard(cmd)
 	}
 	if !inBoot {
 		req.Answer(session.Reply{Text: req.Cmd + " needs an open door in a boot"})

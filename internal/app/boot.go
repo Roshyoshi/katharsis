@@ -13,6 +13,7 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
+	"katharsis/internal/hud"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/session"
@@ -457,20 +458,46 @@ type judgedMsg struct {
 	err           error
 }
 
-// submit judges the open door's full tests in the background.
+// submit is the s key's submit (startSubmit). A refusal shows over the
+// game, where the key was pressed, as :Submit's shows in vim.
 func (m *Model) submit() tea.Cmd {
 	if m.open == nil {
 		return nil
 	}
+	req, reply := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	cmd := m.startSubmit(req)
+	select {
+	case r := <-reply:
+		if !r.OK {
+			cmd = tea.Batch(cmd, note("%s", r.Text))
+		}
+	default: // answered with the verdict, later
+	}
+	return cmd
+}
+
+// startSubmit judges the open door's full tests for req, from the s key or
+// :Submit: through the HUD, which answers req with the verdict and reports
+// it with a SubmittedMsg, else through Deps.Judge.
+//
+// One submit is judged at a time. One sent while another is in flight is
+// refused, and the one in flight goes on to be charged. Replacing it threw
+// its verdict away: a failing submit followed by an AC cost nothing, and a
+// submit right after a resume cancelled the judging again (qa/chaos r05).
+// m.judging decides, not the HUD's pass: it also covers a verdict on its
+// way from the HUD, and the headless judge. The HUD refuses on its pass
+// too, for the practice room, which has no game.
+func (m *Model) startSubmit(req session.Request) tea.Cmd {
+	if m.judging {
+		req.Answer(session.Reply{Text: hud.SubmitBusy})
+		return nil
+	}
 	if h := m.hud(); h != nil {
-		// The HUD judges and reports back with a SubmittedMsg. A submit
-		// while one runs replaces it, as :Submit from the editor does.
 		mark := m.judgingOn()
-		req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
 		_, cmd := h.Update(req)
 		return tea.Batch(mark, guard(cmd))
 	}
-	if m.d.Judge == nil || m.judging {
+	if m.d.Judge == nil {
 		return nil
 	}
 	return tea.Batch(m.judgingOn(), m.judgeHeadless())
@@ -485,13 +512,13 @@ func (m *Model) judgeHeadless() tea.Cmd {
 	}
 }
 
-// judgingOn marks a submit of the open door in flight. The clock holds for
-// it, up to the grace (onTick); in a boot the engine notes when it was
-// made (Attempt.SubmitAt), saved before the verdict, so a game that quits
-// mid-judge (ctrl+c, a kill) judges it again on resume. A new submit
-// replaces a resumed one.
+// judgingOn marks a submit of the open door in flight; startSubmit calls it
+// only when none is, resumed or not. The clock holds for it, up to the
+// grace (onTick); in a boot the engine notes when it was made
+// (Attempt.SubmitAt), saved before the verdict, so a game that quits
+// mid-judge (ctrl+c, a kill) judges it again on resume.
 func (m *Model) judgingOn() tea.Cmd {
-	m.judging, m.resumed = true, resumedSubmit{}
+	m.judging = true
 	if !m.inBootDoor() {
 		return nil
 	}

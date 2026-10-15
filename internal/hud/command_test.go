@@ -88,6 +88,16 @@ func answered(ch <-chan session.Reply) func(tea.Msg) bool {
 	return func(tea.Msg) bool { return len(ch) > 0 }
 }
 
+// replied is the reply ch holds already, if any.
+func replied(ch <-chan session.Reply) (session.Reply, bool) {
+	select {
+	case r := <-ch:
+		return r, true
+	default:
+		return session.Reply{}, false
+	}
+}
+
 func isQuit(cmd tea.Cmd) bool {
 	if cmd == nil {
 		return false
@@ -172,29 +182,43 @@ func writeSol(t *testing.T, m *Model, src string, outs ...string) {
 	}
 }
 
-// The whole :Submit path with the real compiler: a submit superseded by a
-// newer one is told so, the newer one is answered with its verdict, and a
-// SubmittedMsg goes out for an embedding program.
+// The whole :Submit path with the real compiler. A second submit while the
+// first is judging is refused at once, and leaves the first's copy alone;
+// the first is answered with its verdict, and a SubmittedMsg goes out for
+// an embedding program. The second used to replace the first, so a WA
+// followed by a fixed submit was never charged.
 func TestSubmitEndToEnd(t *testing.T) {
 	needCompiler(t)
 	m := fixture(t, 3)
-	writeSol(t, m, "#include <cstdio>\nint main() { puts(\"1\"); }\n", "1\n", "1\n", "2\n")
+	m.opt.SubmitCopy = filepath.Join(m.opt.Dir, ".submit", "milk2.cpp")
+	wa := "#include <cstdio>\nint main() { puts(\"1\"); }\n"
+	writeSol(t, m, wa, "1\n", "1\n", "2\n")
+	for i, in := range []string{"1\n", "1\n", "2\n"} {
+		must(t, os.WriteFile(m.prob.Tests[i].In, []byte(in), 0o644))
+	}
 
-	_, first := ask(m, session.CmdSubmit)
-	c, second := ask(m, session.CmdSubmit)
-	if rep := <-first; rep.OK || !strings.Contains(rep.Text, "superseded") {
-		t.Errorf("first submit got %+v, want superseded", rep)
+	c, first := ask(m, session.CmdSubmit)
+	writeSol(t, m, "#include <cstdio>\nint main() { int x; scanf(\"%d\", &x); printf(\"%d\\n\", x); }\n")
+	c2, second := ask(m, session.CmdSubmit)
+	if rep, ok := replied(second); !ok || rep.OK || rep.Text != SubmitBusy {
+		t.Errorf("second submit answered %v with %+v, want %q at once", ok, rep, SubmitBusy)
+	}
+	if c2 != nil {
+		t.Error("the refused submit returned a command; it must end nothing for the host")
+	}
+	if b, err := os.ReadFile(m.opt.SubmitCopy); err != nil || string(b) != wa {
+		t.Errorf("copy = %q, %v; want the first submit's source", b, err)
 	}
 	var submitted *judge.Summary
-	pump(t, m, c, func(msg tea.Msg) bool {
+	pump(t, m, tea.Batch(c, c2), func(msg tea.Msg) bool {
 		if s, ok := msg.(SubmittedMsg); ok {
 			submitted = &s.Summary
 		}
-		return submitted != nil && len(second) > 0
+		return submitted != nil && len(first) > 0
 	})
-	rep := <-second
+	rep := <-first
 	if want := "WA 2/3 · #3 line 1: want 2, got 1"; rep.OK || rep.Text != want {
-		t.Errorf("reply %+v, want %q", rep, want)
+		t.Errorf("first submit got %+v, want %q", rep, want)
 	}
 	if s := screen(m); !strings.Contains(s, "2/3") || !strings.Contains(s, "WA #3") {
 		t.Errorf("screen lacks the HP bar result:\n%s", s)
@@ -466,7 +490,7 @@ func TestSubmitCopy(t *testing.T) {
 	}
 	req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
 	m.submit(req)
-	m.sub.cancel()
+	m.stop() // the game quit mid-judge
 	must(t, os.WriteFile(m.prob.Source, []byte("edited after the submit"), 0o644))
 	if b, err := os.ReadFile(m.opt.SubmitCopy); err != nil || string(b) != "int main(){}" {
 		t.Fatalf("copy = %q, %v; want the source as submitted", b, err)
@@ -478,5 +502,34 @@ func TestSubmitCopy(t *testing.T) {
 	m.sub.cancel()
 	if m.sub.src != m.opt.SubmitCopy || !m.sub.running {
 		t.Errorf("Resubmit judged %s (running %v), want the copy", m.sub.src, m.sub.running)
+	}
+}
+
+// A submit judged again on resume runs to its verdict: a :Submit sent
+// meanwhile is refused, and neither cancels the pass nor touches the copy
+// it judges. It used to replace it, so resubmitting right after a resume
+// dodged the failure the resume was there to charge (qa/chaos r05).
+func TestResubmitCannotBeReplaced(t *testing.T) {
+	m := fixture(t, 1)
+	m.opt.SubmitCopy = filepath.Join(m.opt.Dir, ".submit", "milk2.cpp")
+	m.opt.SubmitProfile = judge.Samples // no probe for a pass never read
+	must(t, os.MkdirAll(filepath.Dir(m.opt.SubmitCopy), 0o755))
+	must(t, copyFile(m.prob.Source, m.opt.SubmitCopy)) // what the quit game left
+	m.Resubmit()
+	t.Cleanup(m.Cleanup)
+	pass, cancel, cancelled := m.sub.ch, m.sub.cancel, false
+	m.sub.cancel = func() { cancelled = true; cancel() }
+
+	must(t, os.WriteFile(m.prob.Source, []byte("edited after the resume"), 0o644))
+	_, ch := ask(m, session.CmdSubmit)
+	if rep, ok := replied(ch); !ok || rep.OK || rep.Text != SubmitBusy {
+		t.Errorf("submit during the resumed judge answered %v with %+v, want %q at once", ok, rep, SubmitBusy)
+	}
+	if cancelled || m.sub.ch != pass || !m.sub.running {
+		t.Errorf("cancelled %v, same pass %v, running %v: the resumed judge must run on",
+			cancelled, m.sub.ch == pass, m.sub.running)
+	}
+	if b, err := os.ReadFile(m.opt.SubmitCopy); err != nil || string(b) != "int main(){}" {
+		t.Errorf("copy = %q, %v; want what was submitted before the quit", b, err)
 	}
 }

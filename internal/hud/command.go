@@ -100,9 +100,22 @@ func (m *Model) command(req session.Request) tea.Cmd {
 	return nil
 }
 
-// submit judges the full tests at -O2, replacing any submit still running.
-// With Options.SubmitCopy it judges a copy of the source made now.
+// SubmitBusy answers a :Submit sent while the last one is still judging.
+const SubmitBusy = "a submit is already judging: wait for its verdict"
+
+// submit judges the full tests at -O2. With Options.SubmitCopy it judges a
+// copy of the source made now.
+//
+// One submit judges at a time: one sent meanwhile is refused, and the
+// running one goes on. Replacing it threw away a verdict a host charges,
+// so a failing submit followed by an AC cost nothing, and it overwrote the
+// copy being judged. The refusal answers req only and ends nothing, so a
+// host goes on waiting for the running submit's SubmittedMsg.
 func (m *Model) submit(req session.Request) tea.Cmd {
+	if m.sub.running {
+		req.Answer(fail(SubmitBusy))
+		return nil
+	}
 	if m.prob == nil {
 		return refuse(req, fmt.Errorf("cannot submit: %v", m.loadErr))
 	}
@@ -123,7 +136,7 @@ func (m *Model) submit(req session.Request) tea.Cmd {
 // Resubmit judges again the copy the last :Submit left at
 // Options.SubmitCopy, as it stands: for a host whose game quit while that
 // submit was judged, so its verdict was never charged (qa/chaos r05). Call
-// it after Init, which loads the problem.
+// it after Init, which loads the problem, on a HUD with no submit running.
 func (m *Model) Resubmit() tea.Cmd {
 	req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
 	if m.prob == nil {
@@ -141,12 +154,12 @@ func refuse(req session.Request, err error) tea.Cmd {
 	return func() tea.Msg { return SubmittedMsg{Err: err} }
 }
 
-// judgeSubmit starts the submit pass on src.
+// judgeSubmit starts the submit pass on src. No pass is running (submit,
+// Resubmit), so the last one has answered its request.
 func (m *Model) judgeSubmit(req session.Request, src string) tea.Cmd {
 	if m.sub.cancel != nil {
-		m.sub.cancel()
+		m.sub.cancel() // releases the finished pass's context
 	}
-	m.sub.req.Answer(fail("superseded by a newer :Submit"))
 
 	tests := m.opt.FullTests
 	if tests == nil {
