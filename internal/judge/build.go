@@ -97,11 +97,13 @@ var (
 	}
 )
 
-// trapsDivision reports whether p's builds trap on integer division by
-// zero (divTrap) rather than report it through UBSan's runtime.
-func (p Profile) trapsDivision() bool {
+// traps reports whether p's builds trap on the sanitizer check what
+// ("undefined", "integer-divide-by-zero") rather than report it through
+// a runtime, so a SIGTRAP or SIGILL is that check's (see crashReason).
+func (p Profile) traps(what string) bool {
 	return slices.ContainsFunc(p.Flags, func(f string) bool {
-		return strings.HasPrefix(f, "-fsanitize-trap=") && strings.Contains(f, "integer-divide-by-zero")
+		s, ok := strings.CutPrefix(f, "-fsanitize-trap=")
+		return ok && strings.Contains(s, what)
 	})
 }
 
@@ -110,7 +112,7 @@ type Build struct {
 	Src      []byte // the exact bytes compiled
 	OK       bool
 	Cached   bool
-	Log      string // compiler stderr
+	Log      string // what the compiler printed
 	Duration time.Duration
 	PCH      bool // loaded a precompiled header (see pch.go)
 }
@@ -416,7 +418,10 @@ const (
 )
 
 // cleanDebris removes the dirs in dir named with one of prefixes and last
-// touched before before.
+// touched before before. content/web.CleanDebris does the same for the
+// content caches; the judge keeps its own rather than import the content
+// sources' network package, and sweeps sooner (debrisAge, against web's
+// 6 h): a run's dir holds a copy of a hidden test.
 func cleanDebris(dir string, before time.Time, prefixes ...string) {
 	des, _ := os.ReadDir(dir) // a missing dir has nothing to clean
 	for _, d := range des {

@@ -113,8 +113,8 @@ const DefaultOutputLimit = 64 << 20
 // kills a run once its CPU time passes the budget under a sample profile
 // (Slack > 1: timing there is a hint), or twice the budget under the
 // judged one, so a slow-but-finishing program reports how slow it was.
-// The wall clock (2x budget, plus 0.5 s) only stops a program that waits
-// instead of computing.
+// The wall clock (2x budget, plus 0.5 s) stops a program that waits
+// instead of computing, and one a busy machine starves of CPU.
 //
 // Memory: the watchdog kills a run whose memory grows past memCap (MLE); a
 // run under that cap but over Mem is judged MLE on its peak afterwards, and
@@ -346,7 +346,7 @@ func (p *pipe) finish(d time.Duration) {
 }
 
 // capWriter keeps the first max bytes written to it and drops the rest,
-// calling onOverflow, if set, at the first byte dropped. Only the pipe's
+// calling onOverflow at the first byte dropped. Only the pipe's
 // copying goroutine writes to it, and pipe.finish returns after that
 // goroutine does, so buf is safe to read after finish.
 type capWriter struct {
@@ -362,7 +362,7 @@ func (w *capWriter) Write(p []byte) (int, error) {
 		return w.buf.Write(p)
 	}
 	w.buf.Write(p[:room])
-	if !w.overflow && w.onOverflow != nil {
+	if !w.overflow {
 		w.onOverflow()
 	}
 	w.overflow = true

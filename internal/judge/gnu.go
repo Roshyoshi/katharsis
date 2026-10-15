@@ -111,15 +111,6 @@ func stripTargetPragmas(src []byte, path string) (out []byte, ok bool) {
 	return b.Bytes(), true
 }
 
-// trapsUB reports whether p's builds trap on undefined behavior
-// (-fsanitize-trap=undefined), so a SIGTRAP is UBSan's.
-func (p Profile) trapsUB() bool {
-	return slices.ContainsFunc(p.Flags, func(f string) bool {
-		s, ok := strings.CutPrefix(f, "-fsanitize-trap=")
-		return ok && strings.Contains(s, "undefined")
-	})
-}
-
 var (
 	// libstdc++: "terminate called after throwing an instance of
 	// 'std::runtime_error'", then "  what():  boom".

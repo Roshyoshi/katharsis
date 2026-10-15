@@ -1,6 +1,7 @@
 package judge
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -82,9 +83,9 @@ func crashReason(stderr string, ps *os.ProcessState, p Profile) string {
 	}
 	switch {
 	case ub != "":
-		return at(ub, or(ubAt, frame))
+		return at(ub, cmp.Or(ubAt, frame))
 	case summary != "" && summary != "undefined-behavior":
-		return at(summary, or(frame, summaryAt))
+		return at(summary, cmp.Or(frame, summaryAt))
 	case asanErr != "":
 		return at(asanErr, frame)
 	case hardening != "":
@@ -100,9 +101,9 @@ func crashReason(stderr string, ps *os.ProcessState, p Profile) string {
 	ws, ok := ps.Sys().(syscall.WaitStatus)
 	trap := ok && ws.Signaled() && (ws.Signal() == syscall.SIGTRAP || ws.Signal() == syscall.SIGILL)
 	switch {
-	case trap && p.trapsUB():
+	case trap && p.traps("undefined"):
 		return "undefined behavior (trap)"
-	case trap && p.trapsDivision():
+	case trap && p.traps("integer-divide-by-zero"):
 		// The only trap in the build is the division check (arm64 brk,
 		// x86 ud2).
 		return "integer division by zero"
@@ -149,11 +150,4 @@ func at(what, where string) string {
 		return what
 	}
 	return what + " at " + where
-}
-
-func or(a, b string) string {
-	if a != "" {
-		return a
-	}
-	return b
 }
