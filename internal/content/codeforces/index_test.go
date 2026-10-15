@@ -2,6 +2,7 @@ package codeforces
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
 	"slices"
 	"strconv"
@@ -192,6 +193,53 @@ func TestOpenRebuildsStaleCache(t *testing.T) {
 		if _, err := c2.readText(*c2.entries["cf:4A"]); err != nil {
 			t.Errorf("%s: %v", tc.name, err)
 		}
+	}
+}
+
+// The game opens Codeforces with Cached, which must never wait on the
+// network: a cold or stale cache is ErrNoIndex at once, and build, run in
+// the background, reports its steps up to done.
+func TestCachedNeverBuilds(t *testing.T) {
+	t.Parallel()
+	h := newFakeHF(t, newFixture(t))
+	root := t.TempDir()
+	if _, err := cached(root, h.srv.URL, fixtureLayout, testClient(h)); !errors.Is(err, ErrNoIndex) {
+		t.Fatalf("cached on a cold cache = %v, want ErrNoIndex", err)
+	}
+	if n := h.total(); n != 0 {
+		t.Fatalf("cached made %d requests", n)
+	}
+
+	var steps [][2]int
+	c, err := build(t.Context(), root, h.srv.URL, fixtureLayout, testClient(h), func(done, total int) {
+		steps = append(steps, [2]int{done, total})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(steps) < 3 || steps[0][0] != 0 || steps[len(steps)-1][0] != steps[0][1] {
+		t.Errorf("progress %v, want 0 up to the total", steps)
+	}
+	for i := 1; i < len(steps); i++ {
+		if steps[i][0] <= steps[i-1][0] || steps[i][1] != steps[0][1] {
+			t.Errorf("progress %v does not climb", steps)
+			break
+		}
+	}
+
+	h.setFail(true)
+	before := h.total()
+	c2, err := cached(root, h.srv.URL, fixtureLayout, testClient(h))
+	if err != nil || h.total() != before || len(c2.All()) != len(c.All()) {
+		t.Errorf("cached after a build = %v, %d requests, %d problems; want the built index", err, h.total()-before, len(c2.All()))
+	}
+
+	// An index from another build is as good as none.
+	if err := web.WriteFile(root+"/index.json", []byte(`{"key":"rev=old"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cached(root, h.srv.URL, fixtureLayout, testClient(h)); !errors.Is(err, ErrNoIndex) {
+		t.Errorf("cached on a stale index = %v, want ErrNoIndex", err)
 	}
 }
 

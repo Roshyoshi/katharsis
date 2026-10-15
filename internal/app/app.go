@@ -84,6 +84,9 @@ type Deps struct {
 	// first-launch rating (D37) and the boot-end line. The game sets it;
 	// headless tests leave it off.
 	Prompts bool
+	// Sources, when set, is a note on content sources not serving yet
+	// ("Codeforces indexing… 40%"), which GRUB shows as it changes.
+	Sources func() string
 }
 
 // Model is the root tea.Model.

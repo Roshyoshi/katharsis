@@ -17,10 +17,12 @@ cd ~/katharsis && nix develop -c go run ./cmd/katharsis   # from source
 
 The game runs inside tmux. Started outside tmux, it opens a tmux session of
 its own, and starting it again attaches to that session. The first start
-downloads the USACO Guide snapshot (about 150 MB) and the Codeforces index
-(about 17 MB) and builds the problem indexes. That takes a minute; later
-starts take seconds. Without network on that first start, the game plays
-USACO only and tries Codeforces again next time.
+downloads the USACO Guide snapshot (about 150 MB) and builds the USACO index,
+which takes a minute; later starts take seconds. The Codeforces index (about
+17 MB) builds in the background while you play: GRUB shows "Codeforces
+indexing… N%" until it joins, from the next boot on. Without network it shows
+"Codeforces offline", the game plays USACO only, and it tries again next
+start.
 
 | Flag | Default | |
 |---|---|---|

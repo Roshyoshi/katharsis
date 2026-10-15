@@ -3,10 +3,10 @@
 // Codeforces ratings, statements, editorials (60%) and test data, judged
 // locally like every other source.
 //
-// Open downloads the problem table once, only the columns it needs (17 MB
+// Build downloads the problem table once, only the columns it needs (17 MB
 // of the 2.7 GB; see remote.go), and caches an index plus the statement
-// text, so All and Get never touch the network and a Fetch needs it only
-// for tests:
+// text, so Cached, All and Get never touch the network and a Fetch needs
+// it only for tests:
 //
 //	<cache>/katharsis/codeforces/
 //	  index.json, text.bin                problem table; statement text
@@ -68,32 +68,94 @@ var client = &web.Client{
 	Backoff: time.Second,
 }
 
-// Open loads the cached index (about 0.1 s), or builds it from the dataset
-// and caches it: about 17 MB in 38 requests, 20 s when measured.
-// Afterwards All and Get need no network.
-func Open(ctx context.Context) (*Catalog, error) {
-	c, err := os.UserCacheDir()
+// ErrNoIndex means the cache holds no index this build can read: none was
+// built yet, or another revision, schema or layout wrote it. Build makes
+// one.
+var ErrNoIndex = errors.New("no Codeforces index cached for this build")
+
+// Cached opens the catalog from the cached index alone: about 0.1 s and no
+// network, or ErrNoIndex. The game starts from it, so a cold or stale
+// cache never holds up the start.
+func Cached() (*Catalog, error) {
+	root, err := cacheRoot()
 	if err != nil {
 		return nil, err
 	}
-	return open(ctx, filepath.Join(c, "katharsis", "codeforces"), "https://huggingface.co", pinned, client)
+	return cached(root, "https://huggingface.co", pinned, client)
+}
+
+// Build downloads the problem table, caches the index and opens it: about
+// 17 MB in 38 requests, 20 s when measured. progress, when set, hears how
+// many of the build's steps are done as each finishes. Afterwards All and
+// Get need no network.
+func Build(ctx context.Context, progress func(done, total int)) (*Catalog, error) {
+	root, err := cacheRoot()
+	if err != nil {
+		return nil, err
+	}
+	return build(ctx, root, "https://huggingface.co", pinned, client, progress)
+}
+
+// Open is Cached, else Build, for a caller that would rather wait than do
+// without (the content QA, the network test).
+func Open(ctx context.Context) (*Catalog, error) {
+	root, err := cacheRoot()
+	if err != nil {
+		return nil, err
+	}
+	return open(ctx, root, "https://huggingface.co", pinned, client)
+}
+
+func cacheRoot() (string, error) {
+	c, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(c, "katharsis", "codeforces"), nil
 }
 
 func open(ctx context.Context, root, base string, l layout, pc *web.Client) (*Catalog, error) {
-	c := &Catalog{
+	c, err := cached(root, base, l, pc)
+	if errors.Is(err, ErrNoIndex) {
+		return build(ctx, root, base, l, pc, nil)
+	}
+	return c, err
+}
+
+func cached(root, base string, l layout, pc *web.Client) (*Catalog, error) {
+	c := newCatalog(root, base, l, pc)
+	idx, ok := loadIndex(root, l)
+	if !ok {
+		return nil, ErrNoIndex
+	}
+	c.load(idx)
+	return c, nil
+}
+
+func build(ctx context.Context, root, base string, l layout, pc *web.Client, progress func(done, total int)) (*Catalog, error) {
+	if progress == nil {
+		progress = func(int, int) {}
+	}
+	c := newCatalog(root, base, l, pc)
+	idx, err := c.build(ctx, progress)
+	if err != nil {
+		return nil, err
+	}
+	c.load(idx)
+	return c, nil
+}
+
+func newCatalog(root, base string, l layout, pc *web.Client) *Catalog {
+	// A contest download (.dl-) can be hundreds of MB.
+	web.CleanDebris(root, web.TempPrefix, ".dl-")
+	return &Catalog{
 		root: root, base: base, lay: l, client: pc,
 		entries: map[catalog.ID]*entry{},
 		flights: map[catalog.ID]*flight{},
 	}
-	// A contest download (.dl-) can be hundreds of MB.
-	web.CleanDebris(root, web.TempPrefix, ".dl-")
-	idx, ok := loadIndex(root, l)
-	if !ok {
-		var err error
-		if idx, err = c.build(ctx); err != nil {
-			return nil, err
-		}
-	}
+}
+
+func (c *Catalog) load(idx *index) {
 	c.idx = *idx
 	c.idx.Entries = nil
 	for i := range idx.Entries {
@@ -101,20 +163,23 @@ func open(ctx context.Context, root, base string, l layout, pc *web.Client) (*Ca
 		c.entries[e.ID] = e
 		c.order = append(c.order, e.ID)
 	}
-	return c, nil
 }
 
-// build downloads the table shards and the generated-tests listing and
-// writes the cache.
-func (c *Catalog) build(ctx context.Context) (*index, error) {
+// build downloads the generated-tests listing and the table shards and
+// writes the cache. Each of those is a step for progress, and so is the
+// write.
+func (c *Catalog) build(ctx context.Context, progress func(done, total int)) (*index, error) {
+	total := len(c.lay.Shards) + 2
+	progress(0, total)
 	gen, err := c.genSizes(ctx)
 	if err != nil {
 		return nil, err
 	}
+	progress(1, total)
 	// A split's rows in shard order are its table order, which the
 	// verifiable_tests positions are counted in.
 	var splits []split
-	for _, s := range c.lay.Shards {
+	for n, s := range c.lay.Shards {
 		rows, err := c.readShard(ctx, s)
 		if err != nil {
 			return nil, err
@@ -125,6 +190,7 @@ func (c *Catalog) build(ctx context.Context) (*index, error) {
 			splits = append(splits, split{name: s.Split})
 		}
 		splits[i].rows = append(splits[i].rows, rows...)
+		progress(n+2, total)
 	}
 	idx, blob, err := buildIndex(c.lay, splits, gen)
 	if err != nil {
@@ -133,6 +199,7 @@ func (c *Catalog) build(ctx context.Context) (*index, error) {
 	if err := saveIndex(c.root, idx, blob); err != nil {
 		return nil, err
 	}
+	progress(total, total)
 	return idx, nil
 }
 

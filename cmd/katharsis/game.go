@@ -117,9 +117,9 @@ func runGame(args []string) error {
 	defer closeLog()
 
 	// Before the TUI: the first run downloads the USACO Guide snapshot
-	// (about 150 MB) and the Codeforces index (about 17 MB) and builds the
-	// indexes, which can take a minute. Later runs read them from the cache.
-	fmt.Fprintln(os.Stderr, "katharsis: loading problems… (the first run downloads the USACO Guide and Codeforces indexes)")
+	// (about 150 MB) and builds the USACO index, which can take a minute.
+	// Later runs read it from the cache.
+	fmt.Fprintln(os.Stderr, "katharsis: loading problems… (the first run downloads the USACO Guide)")
 	loadCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	done := showDownload()
 	us, err := usaco.Open(loadCtx)
@@ -128,18 +128,8 @@ func runGame(args []string) error {
 	if err != nil {
 		return fmt.Errorf("USACO catalog: %w", err)
 	}
-	cats := []catalog.Catalog{us}
-	// Codeforces is extra doors, not a requirement: a cold cache with no
-	// network still plays USACO. Its build took 20 s when measured; the
-	// timeout only bounds a stalled download.
-	loadCtx, cancel = context.WithTimeout(ctx, 3*time.Minute)
-	cf, err := codeforces.Open(loadCtx)
-	cancel()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "katharsis: Codeforces catalog unavailable, playing USACO only: %v\n", err)
-	} else {
-		cats = append(cats, cf)
-	}
+	cats := catalog.NewUnion(us)
+	cfNote := joinCodeforces(ctx, cats)
 
 	runner := &app.TmuxRunner{
 		Root:      *root,
@@ -150,7 +140,7 @@ func runGame(args []string) error {
 	}
 	m, err := app.New(app.Deps{
 		Store:   st,
-		Catalog: catalog.NewUnion(cats...),
+		Catalog: cats,
 		Presets: ps.byName,
 		Runner:  runner,
 		Now:     time.Now,
@@ -160,6 +150,7 @@ func runGame(args []string) error {
 		Credits:       credits,
 		Log:           logger,
 		Prompts:       !*noPrompts,
+		Sources:       cfNote,
 	})
 	if err != nil {
 		return err
@@ -185,6 +176,37 @@ func runGame(args []string) error {
 
 	_, err = p.Run()
 	return err
+}
+
+// joinCodeforces adds Codeforces to cats without holding up the start.
+// Codeforces is extra doors, not a requirement: from a cached index it
+// joins at once (about 0.1 s); from a cold or stale cache the index builds
+// in the background (20 s when measured, minutes on a stalled network) and
+// joins when done, for the next boot. The note it returns is GRUB's line
+// until then: the build's progress, or "Codeforces offline" once it fails.
+// A failed build is not retried before the next start.
+func joinCodeforces(ctx context.Context, cats *catalog.Union) (note func() string) {
+	var text atomic.Pointer[string]
+	set := func(s string) { text.Store(&s) }
+	note = func() string { return *text.Load() }
+	if cf, err := codeforces.Cached(); err == nil {
+		cats.Add(cf)
+		set("")
+		return note
+	}
+	set("Codeforces indexing… 0%")
+	go func() {
+		cf, err := codeforces.Build(ctx, func(done, total int) {
+			set(fmt.Sprintf("Codeforces indexing… %d%%", done*100/total))
+		})
+		if err != nil {
+			set("Codeforces offline")
+			return
+		}
+		cats.Add(cf)
+		set("")
+	}()
+	return note
 }
 
 // showDownload prints the USACO Guide download as it moves, on one line

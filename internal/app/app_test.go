@@ -958,6 +958,48 @@ func TestUnjudgeableProblemLeavesThePool(t *testing.T) {
 	}
 }
 
+// A source that joins mid-boot (Codeforces once its index is built) stays
+// out of that boot's pool, even when a recheck rereads the catalog, so
+// the boot keeps drawing the doors its seed made; the next boot draws from
+// it. Until it joins, GRUB says how it stands.
+func TestLateSourceWaitsForTheNextBoot(t *testing.T) {
+	h := newHarness(t)
+	note := "Codeforces indexing… 40%"
+	h.m.d.Sources = func() string { return note }
+	h.m.reset()
+	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, note) {
+		t.Errorf("GRUB lacks the sources note:\n%s", v)
+	}
+	bc := &breakingCatalog{fakeCatalog: h.m.d.Catalog.(*fakeCatalog), broken: map[catalog.ID]bool{}}
+	u := catalog.NewUnion(bc)
+	h.m.d.Catalog = u
+	h.send(screens.StartBoot{Preset: "standard"})
+	late := newFakeCatalog()
+	for i := range late.all {
+		late.all[i].ID = catalog.NewID(catalog.CF, late.all[i].ID.Native())
+		late.all[i].Source = catalog.CF
+		late.byID[late.all[i].ID] = late.all[i]
+	}
+	u.Add(late)
+	// A fetch finds a problem in the pool unjudgeable after the join.
+	i := slices.IndexFunc(h.m.pool, func(p catalog.Problem) bool { return p.Judgeable })
+	id := h.m.pool[i].ID
+	bc.mu.Lock()
+	bc.broken[id] = true
+	bc.mu.Unlock()
+	h.send(prefetchedMsg{id})
+	if slices.ContainsFunc(h.m.pool, func(p catalog.Problem) bool { return p.Source == catalog.CF }) {
+		t.Fatal("a source that joined mid-boot entered its pool")
+	}
+	if slices.ContainsFunc(h.m.pool, func(p catalog.Problem) bool { return p.ID == id && p.Judgeable }) {
+		t.Fatalf("the recheck did not happen: %s still judgeable", id)
+	}
+	h.send(screens.StartBoot{Preset: "standard"})
+	if !slices.ContainsFunc(h.m.pool, func(p catalog.Problem) bool { return p.Source == catalog.CF }) {
+		t.Error("the next boot does not draw from the source that joined")
+	}
+}
+
 // A door's timer starts when its problem is on disk, not when it is
 // chosen: a cold fetch took up to 56 s in play, all of it off the timer.
 // A fetch that fails leaves the door unopened instead of open and doomed.

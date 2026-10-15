@@ -85,6 +85,7 @@ func (m *Model) grub() screens.Screen {
 		Gate:     game.NextPrestige(m.aptRules(), &m.meta),
 		Packages: m.packages(),
 		Load:     m.loadAverage(),
+		Sources:  m.d.Sources,
 	})
 }
 

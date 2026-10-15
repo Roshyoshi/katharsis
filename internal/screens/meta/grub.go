@@ -38,6 +38,9 @@ type GrubConfig struct {
 	// Load is the load average on the status line (retention.md RT9), the
 	// share of practice days over 7, 30 and 90 days; nil shows none.
 	Load *[3]float64
+	// Sources, when set, is a note on content sources not serving yet
+	// ("Codeforces indexing… 40%"), added to the status line at every draw.
+	Sources func() string
 
 	// PrestigeName and Banner default to the flavor package. Tests pin them
 	// so goldens do not churn whenever flavor text changes.
@@ -57,6 +60,7 @@ type Menu struct {
 	status  string
 	gate    string // the prestige gate line under the status, "" for none
 	lastH   int    // box rows at the last View, for page up/down
+	sources func() string
 }
 
 type page struct {
@@ -107,6 +111,7 @@ func NewGrub(c GrubConfig) *Menu {
 			m.banner = strings.TrimRight(art, "\n")
 		}
 	}
+	m.sources = c.Sources
 	m.presets = []string{standardPreset}
 	for _, p := range c.Presets {
 		if p != "" && p != standardPreset {
@@ -398,7 +403,13 @@ func (m *Menu) View(width, height int) string {
 	for i := range foot {
 		foot[i] = strings.Repeat(" ", max((w-helpW)/2, 1)) + foot[i]
 	}
-	foot = append(foot, "", center(faint.Render(m.status), w))
+	status := m.status
+	if m.sources != nil {
+		if note := m.sources(); note != "" {
+			status += " · " + note
+		}
+	}
+	foot = append(foot, "", center(faint.Render(status), w))
 	if m.gate != "" {
 		foot = append(foot, center(faint.Render(m.gate), w))
 	}

@@ -277,6 +277,22 @@ func TestGrubHidesWhatIsNotThere(t *testing.T) {
 	wantMsg(t, press(t, meta.NewGrub(c), "down", "enter"), screens.StartBoot{Prestige: 0, Preset: "standard", Seed: 0x20261014})
 }
 
+// A source still loading says so on the status line, and the line follows
+// it as it moves without the menu being rebuilt.
+func TestGrubSourcesNote(t *testing.T) {
+	c := fixture.GrubConfig()
+	note := "Codeforces indexing… 40%"
+	c.Sources = func() string { return note }
+	g := meta.NewGrub(c)
+	if s := plain(g.View(80, 24)); !strings.Contains(s, "next boot #") || !strings.Contains(s, "· Codeforces indexing… 40%") {
+		t.Errorf("status line lacks the note:\n%s", s)
+	}
+	note = ""
+	if s := plain(g.View(80, 24)); strings.Contains(s, "Codeforces") {
+		t.Errorf("a source that joined is still noted:\n%s", s)
+	}
+}
+
 func TestNightlySeed(t *testing.T) {
 	pdt := time.FixedZone("PDT", -7*3600)
 	day := time.Date(2026, 10, 14, 0, 0, 0, 0, pdt)

@@ -330,7 +330,10 @@ func (m *Model) closeDoor() {
 
 // recheck takes the catalog's word on problems a fetch just touched: one
 // whose tests turned out missing (a zip that 404s, say) is no longer
-// judgeable, and the engine must stop offering it.
+// judgeable, and the engine must stop offering it. It rereads only the
+// sources the pool already draws from: one that joined since (Codeforces,
+// once its index is built) waits for the next boot or trial, so the boot
+// under way keeps drawing the doors its seed made.
 func (m *Model) recheck(ids ...catalog.ID) {
 	for _, id := range ids {
 		p, _ := m.d.Catalog.Get(id)
@@ -338,7 +341,11 @@ func (m *Model) recheck(ids ...catalog.ID) {
 			return q.ID == id && q.Judgeable
 		})
 		if stale {
-			m.pool = m.d.Catalog.All()
+			srcs := map[catalog.Source]bool{}
+			for _, q := range m.pool {
+				srcs[q.Source] = true
+			}
+			m.pool = slices.DeleteFunc(m.d.Catalog.All(), func(q catalog.Problem) bool { return !srcs[q.Source] })
 			return
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync"
 	"testing"
 
 	"katharsis/internal/catalog"
@@ -63,5 +64,43 @@ func TestUnion(t *testing.T) {
 	us.ps[0].Judgeable = false
 	if p := u.All()[0]; p.Judgeable {
 		t.Errorf("All()[0] = %+v after the source refined it", p)
+	}
+}
+
+// A source that joins late (Codeforces once its index is built) serves
+// from then on, while a pool taken before keeps its problems; adding a
+// served source again replaces it rather than listing it twice.
+func TestUnionAdd(t *testing.T) {
+	t.Parallel()
+	us := &fake{ps: []catalog.Problem{{ID: "usaco:1", Source: catalog.USACO}}}
+	u := catalog.NewUnion(us)
+	pool := u.All()
+	cf := &fake{ps: []catalog.Problem{{ID: "cf:1A", Source: catalog.CF}}}
+
+	var wg sync.WaitGroup
+	wg.Go(func() { u.Add(cf) })
+	for range 100 { // readers meanwhile; -race checks the lock
+		u.All()
+		u.Get("cf:1A")
+	}
+	wg.Wait()
+
+	if _, ok := u.Get("cf:1A"); !ok {
+		t.Error("Get(cf:1A) after Add found nothing")
+	}
+	if n := len(u.All()); n != 2 {
+		t.Errorf("All has %d problems after Add, want 2", n)
+	}
+	if len(pool) != 1 || pool[0].ID != "usaco:1" {
+		t.Errorf("a pool taken before Add changed: %v", pool)
+	}
+	cf2 := &fake{ps: []catalog.Problem{{ID: "cf:2B", Source: catalog.CF}}}
+	u.Add(cf2)
+	var ids []catalog.ID
+	for _, p := range u.All() {
+		ids = append(ids, p.ID)
+	}
+	if want := []catalog.ID{"usaco:1", "cf:2B"}; !slices.Equal(ids, want) {
+		t.Errorf("All ids = %v after re-adding cf, want %v", ids, want)
 	}
 }
