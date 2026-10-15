@@ -148,6 +148,9 @@ D46 merged 10-15: uptime counts in-door time (migration 3 rewrites boots.uptime)
                    nice -20 pays 0.8x bytes (NiceBytesFrac); apt prices x9/8; boot #1
                    bound 75 min. Open: union-pool G1 at 900/1000 late (floor runs dry);
                    full clear 2h29-2h49 wall vs D13 2 h; chrt ahead in the sim.
+                   10-15 user: the late union-pool G1 drift is fine ("the goal is to
+                   improve"): G1 is judged on the learning player long-term, the static
+                   model only over boots 51-250.
 D47 settled 10-15  Meta research before any change to lives: "3 lives seems a little harsh";
                    "a pool of 30 lives, and each time out costs like 10"; "pvz 1 has a
                    great meta"; "we need to consider the meta do some research first in
