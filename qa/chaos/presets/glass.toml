@@ -1,0 +1,10 @@
+# chaos: one life, no ducks to spare, a long biome.
+name = "glass"
+lives = 1
+max_lives = 1
+ducks = 0
+[[biome]]
+kind = "fixed"
+rooms = 9
+target_clear = 0.5
+timer = "1m"

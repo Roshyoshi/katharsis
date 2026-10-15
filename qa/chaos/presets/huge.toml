@@ -1,0 +1,9 @@
+# chaos: overflow bait; bytes and multipliers far past sane.
+name = "huge"
+base_bytes = 9223372036854775807
+boss_mult = 1e300
+[[biome]]
+kind = "fixed"
+rooms = 3
+target_clear = 0.9
+timer = "1ns"

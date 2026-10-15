@@ -1,0 +1,14 @@
+# chaos: 40 doors per room and more route choices than there are topics.
+name = "wide"
+doors_per_room = 40
+[[biome]]
+kind = "choice"
+rooms = 1
+choices = 30
+target_clear = 0.7
+timer = "1m"
+[[biome]]
+kind = "boss"
+rooms = 1
+target_clear = 0.5
+timer = "1m"

@@ -1,0 +1,23 @@
+# fast: one-minute doors, one room per biome, for timer and merge-window
+# chaos runs (qa/chaos). Not a balance preset.
+name = "fast"
+
+[[biome]]
+kind = "fixed"
+name = "Userland"
+rooms = 1
+target_clear = 0.9
+timer = "1m"
+
+[[biome]]
+kind = "fixed"
+name = "Kernel"
+rooms = 1
+target_clear = 0.9
+timer = "1m"
+
+[[biome]]
+kind = "boss"
+rooms = 1
+target_clear = 0.5
+timer = "1m"
