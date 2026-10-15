@@ -454,10 +454,7 @@ block, except `milestone.capability`
 | `milestone.lib.1` | the first lib |
 | `milestone.capability` | each capability, in the order earned; a 2-line pool keyed by the capability |
 | `milestone.mastered.1` | the first topic mastered (D24): `Rules.MasteryAttempts` rated attempts on a topic other than mixed, so its doors well under its rating hide their tags |
-
-"First regression retired" (RT6) has no beat yet: `Meta` keeps no record
-of a regression that passed its last stage (`advanceRegression` deletes
-it), so no trigger can see one.
+| `milestone.retired.1` | the first regression retired (RT6, `Meta.Retired`): re-solved at every stage of `Rules.RegressionDays` (3 and 17 days), so it no longer comes back |
 
 ### milestone.doors.10
 ```text
@@ -518,6 +515,13 @@ What's under the oldest certificate? The Mock Turtle won't look.
 ```text
 One topic knows you now. Its doors well under you hide their tags.
 The Cat will still read them out, for a duck. Will you need it to?
+```
+
+### milestone.retired.1
+draft by the final wiring thread, for the storyteller to revise · uses: G17 (allusion)
+```text
+The White Queen strikes a door off her list. It came back twice,
+and twice you fixed it. She won't remember it next week. Will you?
 ```
 
 ### milestone.doors.75

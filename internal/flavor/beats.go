@@ -149,7 +149,8 @@ func cleared(st *game.State) bool { return st.Phase == game.PhaseCleared && st.T
 const capabilityBeat = "milestone.capability"
 
 // milestones fill the dry spells, in this order when several are due. Each
-// counts a learning act (a rated door, an upsolve, a lib, a capability) and
+// counts a learning act (a rated door, an upsolve, a lib, a capability, a
+// regression retired: re-solved at every stage, so it no longer returns) and
 // stays due once earned, so a milestone that waits for a gap still holds.
 // The rated-door thread is Turing's note, which the prologue mentions and
 // the final clear answers.
@@ -163,6 +164,7 @@ var milestones = []beat{
 	{"milestone.lib.1", "a word on the wall", func(_ *game.State, m *game.Meta) bool { return len(m.Libs) > 0 }},
 	{capabilityBeat, "the Gryphon's certificate", nil},
 	{"milestone.mastered.1", "tags off", topicMastered},
+	{"milestone.retired.1", "struck off the list", func(_ *game.State, m *game.Meta) bool { return m.Retired > 0 }},
 	{"milestone.doors.75", "the second fold", doors(75)},
 	{"milestone.doors.100", "nobody can say", doors(100)},
 	{"milestone.upsolve.25", "the ledger, eaten", upsolves(25)},

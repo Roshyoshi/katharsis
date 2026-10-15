@@ -260,6 +260,10 @@ What's under the oldest certificate? The Mock Turtle won't look.
 One topic knows you now. Its doors well under you hide their tags.
 The Cat will still read them out, for a duck. Will you need it to?
 `),
+	"milestone.retired.1": blockOf(`
+The White Queen strikes a door off her list. It came back twice,
+and twice you fixed it. She won't remember it next week. Will you?
+`),
 	"milestone.doors.75": blockOf(`
 Seventy-five doors in, the second fold asks one thing of any machine:
 does it ever stop? The Rabbit stops winding his watch. Does it?

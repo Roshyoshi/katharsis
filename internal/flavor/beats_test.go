@@ -234,6 +234,9 @@ func TestEveryBeatReachable(t *testing.T) {
 			m.TopicAttempts = map[string]int{"dp": rules.Standard().MasteryAttempts}
 			m.TopicRating = map[string]float64{"dp": 1500}
 		}
+		if boot == 80 {
+			m.Retired++ // the first regression re-solved at its last stage
+		}
 		if boot%50 == 0 && len(m.Capabilities) < len(caps) {
 			m.Capabilities = append(m.Capabilities, caps[len(m.Capabilities)])
 		}
@@ -440,5 +443,27 @@ func TestTopicMastered(t *testing.T) {
 	off.Rules.MasteryAttempts = 0
 	if topicMastered(off, &game.Meta{TopicAttempts: map[string]int{"dp": 99}, TopicRating: rated}) {
 		t.Error("due with mastery off")
+	}
+}
+
+// The first regression retired (Meta.Retired, RT6) is a milestone: due
+// from the first, once shown never again.
+func TestRegressionRetiredBeat(t *testing.T) {
+	const id = "milestone.retired.1"
+	var due func(*game.State, *game.Meta) bool
+	for _, b := range milestones {
+		if b.id == id {
+			due = b.due
+		}
+	}
+	if due == nil {
+		t.Fatalf("no %s milestone", id)
+	}
+	st := crashed(30, 0)
+	if due(st, &game.Meta{}) || !due(st, &game.Meta{Retired: 1}) {
+		t.Errorf("%s: due with none retired, or not with one", id)
+	}
+	if ls := BeatLines(id); len(ls) != 2 || !strings.HasSuffix(ls[1], "?") {
+		t.Errorf("%s lines %q, want two ending on a question", id, ls)
 	}
 }
