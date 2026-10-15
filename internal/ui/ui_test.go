@@ -153,6 +153,9 @@ func catalogue() string {
 		row(md.Word()+" "+md.Taint(), Modifier(md, ""))
 	}
 	row("boss Heisenbug", Modifier(ModBoss, "Heisenbug"))
+	for _, md := range []Mod{ModRegression, ModCursed} {
+		row(md.Word()+" lines w16", strings.Join(ModifierLines(md, "crashed you 3 days ago", 16, 2), " / "))
+	}
 
 	section("verdicts")
 	for _, v := range []string{"AC", "WA", "RE", "CE", "TLE", "MLE", "OLE", "judging"} {

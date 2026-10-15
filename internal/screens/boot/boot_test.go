@@ -294,13 +294,24 @@ func TestDoorsContent(t *testing.T) {
 	for _, want := range []string{
 		"Boot #42", "Silver", "The Heap · room 2/2", "♥♥♡", "🦆1", "96 B uncommitted", "112 B committed",
 		"uptime 47:12", "daemons strace",
-		"The Bovine Shuffle", "Functional Graphs · Cycle Detection", "◆ 1300", "⏱ 30:00", "+80 B",
-		"☠ cursed", "tags hidden", "☠ no ducks · 1 WA = crash · ×2", "◌ blind: tags hidden · ×1.5",
-		"???", "? mystery: title and tags hidden · ×2", "USACO · 2016 US Open, Silver P3",
+		"The Bovine Shuffle", "Functional Graphs · Cycle Detection", "◆1300", "⏱ 30:00", "+80 B",
+		"☠ cursed", "tags hidden", "☠ no ducks · 1 WA = crash · ×2", "◌ blind · ×1.5",
+		"???", "? mystery · ×2", "USACO · 2016 US Open, Silver P3",
 	} {
 		if !strings.Contains(v, want) {
 			t.Errorf("doors missing %q", want)
 		}
+	}
+	// Stacked cards say what blind and mystery hide in place of the tags;
+	// side by side, the tag slot says it and the line only what they pay.
+	stacked := ansi.Strip(NewDoors(env(fixture.Doors())).View(80, 40))
+	for _, want := range []string{"◌ blind: tags hidden · ×1.5", "? mystery: title and tags hidden · ×2"} {
+		if !strings.Contains(stacked, want) {
+			t.Errorf("stacked doors missing %q", want)
+		}
+	}
+	if strings.Contains(v, "blind: tags hidden") {
+		t.Errorf("side-by-side cards say tags hidden twice:\n%s", v)
 	}
 	// A mystery door must not leak its title or contest.
 	for _, leak := range []string{"Wormhole Sort", "2020 January"} {
@@ -326,9 +337,11 @@ func TestDoorsContent(t *testing.T) {
 func TestMasteredDoor(t *testing.T) {
 	st := fixture.Doors()
 	st.Doors[0].Mastered = true
-	for _, w := range []int{140, 80} {
+	// Side by side the tag slot says the tags are hidden; stacked, the
+	// reason takes the tags' place.
+	for w, why := range map[int]string{140: "mastered topic", 80: "mastered topic: tags hidden"} {
 		v := ansi.Strip(NewDoors(env(st)).View(w, 40))
-		if !strings.Contains(v, "mastered topic: tags hidden") || strings.Contains(v, "Functional Graphs") {
+		if !strings.Contains(v, why) || !strings.Contains(v, "tags hidden") || strings.Contains(v, "Functional Graphs") {
 			t.Errorf("at %d cols the mastered door should hide its tags and say why:\n%s", w, v)
 		}
 	}

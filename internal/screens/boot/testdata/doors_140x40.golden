@@ -17,9 +17,9 @@ Boot #42 · Silver · The Heap · room 2/2                                      
 ┃ The Bovine Shuffle                        ┃  │ Closing the Farm                          │  │ ???                                       │
 ┃ Functional Graphs · Cycle Detection       ┃  │ tags hidden                               │  │ tags hidden                               │
 ┃                                           ┃  │                                           │  │                                           │
-┃ ◆ 1300  ⏱ 30:00  +80 B                    ┃  │ ◆ 1350  ⏱ 30:00  +240 B                   │  │ ◆ 1450  ⏱ 30:00  +160 B                   │
+┃ ◆1300  ⏱ 30:00  +80 B                     ┃  │ ◆1350  ⏱ 30:00  +240 B                    │  │ ◆1450  ⏱ 30:00  +160 B                    │
 ┃ ≈74% clear                                ┃  │ ≈66% clear                                │  │ ≈58% clear                                │
-┃                                           ┃  │ ◌ blind: tags hidden · ×1.5               │  │ ? mystery: title and tags hidden · ×2     │
+┃                                           ┃  │ ◌ blind · ×1.5                            │  │ ? mystery · ×2                            │
 ┃                                           ┃  │ ☠ no ducks · 1 WA = crash · ×2            │  │                                           │
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ╰───────────────────────────────────────────╯  ╰───────────────────────────────────────────╯
 

@@ -5,11 +5,11 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -66,7 +66,7 @@ func (d *Doors) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 func (d *Doors) View(width, height int) string {
 	st := d.env.State
 	if d.showMap {
-		return mapScreen(d.env, width, height, hint("m", "back to doors"))
+		return mapScreen(d.env, width, height, ui.Footer(width, "m", "back to doors"))
 	}
 	head := d.env.header(d.where(), width)
 	n := len(st.Doors)
@@ -78,7 +78,7 @@ func (d *Doors) View(width, height int) string {
 	if d.canShuf() {
 		keys = append(keys, "s", fmt.Sprintf("shuf (%d)", st.Rerolls))
 	}
-	footer := hint(append(keys, "m", "map")...)
+	footer := ui.Footer(width, append(keys, "m", "map")...)
 
 	// The cards and the map sit centered between header and footer, the
 	// way a game frames a choice, with at least one blank line under the
@@ -88,7 +88,7 @@ func (d *Doors) View(width, height int) string {
 	if m := centerBlock(renderMap(st, width), width); len(block)+1+len(m) <= room-1 {
 		block = append(append(block, ""), m...)
 	}
-	return layout(width, height, centered(head, block, height), footer)
+	return ui.Layout(width, height, centered(head, block, height), footer)
 }
 
 // canShuf reports whether s re-rolls the room: a shuf is held and the room
@@ -103,9 +103,9 @@ func (d *Doors) where() string {
 	b := st.Biome
 	name := biomeLabel(st, b)
 	if st.Biomes[b].Kind == rules.Boss {
-		return sMagenta.Render("⚔ " + name)
+		return ui.Modifier(ui.ModBoss, name)
 	}
-	return fmt.Sprintf("%s · room %d/%d", name, st.Room+1, st.Biomes[b].Rooms)
+	return name + ui.Muted.Render(ui.G.Sep) + fmt.Sprintf("room %d/%d", st.Room+1, st.Biomes[b].Rooms)
 }
 
 // cards lays the doors out in the richest form that fits: side by side on
@@ -115,23 +115,29 @@ func (d *Doors) cards(width, room int) []string {
 	doors := d.doors()
 	n := len(doors)
 	if n == 0 {
-		return []string{"  " + sFaint.Render("no doors on offer")}
+		return []string{"  " + ui.Muted.Render("no doors on offer")}
 	}
 	if width >= 90 {
 		cw := (width - 2*(n-1)) / n
 		if cw >= 28 {
 			cw = min(cw, 52)
-			bodies := make([][]string, n)
-			h := 0
+			// Each card pads its top half, so the stats rows line up
+			// across the row whatever the titles and tags wrap to (E13).
+			tops, bottoms := make([][]string, n), make([][]string, n)
+			th, h := 0, 0
 			for i, door := range doors {
-				bodies[i] = d.body(door, cw-4, true)
-				h = max(h, len(bodies[i]))
+				tops[i], bottoms[i] = d.wideBody(door, cw-4)
+				th = max(th, len(tops[i]))
+			}
+			for i := range doors {
+				h = max(h, th+len(bottoms[i]))
 			}
 			blocks := make([][]string, n)
 			for i, door := range doors {
-				blocks[i] = d.card(i, door, cw, padLines(bodies[i], h), false)
+				body := ui.PadLines(append(ui.PadLines(tops[i], th), bottoms[i]...), h)
+				blocks[i] = d.card(i, door, cw, body, false)
 			}
-			row := joinH(2, blocks...)
+			row := ui.JoinH(2, blocks...)
 			if len(row) <= room {
 				return centerBlock(row, width)
 			}
@@ -140,7 +146,7 @@ func (d *Doors) cards(width, room int) []string {
 	w := min(width, 96)
 	var out []string
 	for i, door := range doors {
-		out = append(out, indent((width-w)/2, d.card(i, door, w, d.body(door, w-4, false), true))...)
+		out = append(out, indent((width-w)/2, d.card(i, door, w, d.stackedBody(door, w-4), true))...)
 	}
 	if len(out) <= room {
 		return out
@@ -154,33 +160,33 @@ func (d *Doors) cards(width, room int) []string {
 // narrow side-by-side cards put it in the body instead.
 func (d *Doors) card(i int, door game.Door, w int, body []string, source bool) []string {
 	sel := i == d.sel
-	f, num := frameIdle, sFaint.Render(fmt.Sprint(i+1))
+	f, num := ui.FrameIdle, ui.Muted.Render(fmt.Sprint(i+1))
 	switch {
 	case door.Boss != "" && sel:
-		f = frameBossSel
+		f = ui.FrameBossSelected
 	case door.Boss != "":
-		f = frameBoss
+		f = ui.FrameBoss
 	case door.Cursed && sel:
-		f = frameCursedSel
+		f = ui.FrameCursedSelected
 	case door.Cursed:
-		f = frameCursed
+		f = ui.FrameCursed
 	case sel:
-		f = frameSelected
+		f = ui.FrameSelected
 	}
 	if sel {
-		num = f.Render(fmt.Sprintf("▸ %d", i+1))
+		num = f.Render(fmt.Sprintf("%s %d", ui.G.Cursor, i+1))
 	}
 	title := num
 	if door.Boss != "" {
-		label := "⚔ BOSS"
+		label := "BOSS"
 		if door.Boss == game.FinalBoss {
-			label = "⚔ FINAL BOSS"
+			label = "FINAL BOSS"
 		}
-		title += " " + sMagenta.Bold(true).Render(label)
+		title += " " + ui.Modifier(ui.ModBoss, label)
 	} else if src := d.env.doorText(door).Source; source && src != "" {
-		title += sFaint.Render(" · " + src)
+		title += ui.Muted.Render(ui.G.Sep + src)
 	}
-	return box(f, w, title, d.tag(door), body)
+	return ui.Frame(f, w, title, d.tag(door), body)
 }
 
 // tag is the one modifier named in the card's top edge, the most dangerous
@@ -190,81 +196,84 @@ func (d *Doors) tag(door game.Door) string {
 	case door.Boss != "":
 		return ""
 	case door.Cursed:
-		return sRed.Bold(true).Render("☠ cursed")
+		return ui.Modifier(ui.ModCursed, "")
 	case door.Regression:
-		return sYellow.Render("↺ regression")
+		return ui.Modifier(ui.ModRegression, "")
 	case door.Mystery:
-		return sMagenta.Render("? mystery")
+		return ui.Modifier(ui.ModMystery, "")
 	case door.Blind:
-		return sCyan.Render("◌ blind")
+		return ui.Modifier(ui.ModBlind, "")
 	}
 	return ""
 }
 
-// body is a door card's content, cw cells wide. Side-by-side cards have
-// height to spare, so titles and tags wrap and the source gets a line;
-// stacked cards pack title and stats on one line and say why the tags are
-// hidden in place of the tags.
-func (d *Doors) body(door game.Door, cw int, wide bool) []string {
+// wideBody is a side-by-side card's content, cw cells wide, in two halves:
+// the source, title and tags, which wrap, then a blank line, the stats and
+// the modifiers. The tag slot already says the tags are hidden, so the
+// blind or mystery line only says what the door pays.
+func (d *Doors) wideBody(door game.Door, cw int) (top, bottom []string) {
+	if door.Boss != "" {
+		return d.bossBody(door, cw), nil
+	}
+	t := d.env.doorText(door)
+	if t.Source != "" {
+		top = append(top, ui.Muted.Render(ui.Clip(t.Source, cw)))
+	}
+	for _, l := range ui.WrapN(t.Title, cw, 2) {
+		top = append(top, titleToken(door).Render(l))
+	}
+	top = append(top, tagLines(t, cw, 2)...)
+	bottom = []string{"", doorStats(door)}
+	if c := clearChance(door); c != "" {
+		bottom = append(bottom, c)
+	}
+	return top, append(bottom, d.modifiers(door, cw, hiddenShort)...)
+}
+
+// stackedBody is a full-width card's content, cw cells wide: title and
+// stats on one line, then the tags, or why they are hidden in their place,
+// then the modifiers.
+func (d *Doors) stackedBody(door game.Door, cw int) []string {
 	if door.Boss != "" {
 		return d.bossBody(door, cw)
 	}
 	t := d.env.doorText(door)
 	stats, chance := doorStats(door), clearChance(door)
 	var out []string
-	if wide {
-		if t.Source != "" {
-			out = append(out, sFaint.Render(clip(t.Source, cw)))
-		}
-		for _, l := range wrapN(t.Title, cw, 2) {
-			out = append(out, titleStyle(door).Render(l))
-		}
-		out = append(out, tagLines(t, cw, 2)...)
-		out = append(out, "", stats)
-		if chance != "" {
-			out = append(out, chance)
-		}
-		return append(out, d.modifiers(door, cw, true)...)
-	}
-	title := titleStyle(door).Render(t.Title)
+	title := titleToken(door).Render(t.Title)
 	if widthOf(title)+2+widthOf(stats) <= cw {
-		out = append(out, spread(title, stats, cw))
+		out = append(out, ui.Spread(title, stats, cw))
 	} else {
-		out = append(out, clip(title, cw), stats)
+		out = append(out, ui.Clip(title, cw), stats)
 	}
 	tags := tagLines(t, cw, 1)[0]
-	if s, txt := d.hiddenMod(door); txt != "" {
-		tags = s.Render(txt)
+	if h, ok := d.hiddenMod(door, hiddenLong); ok {
+		tags = h.line()
 	}
-	out = append(out, spread(tags, chance, cw))
-	return append(out, d.modifiers(door, cw, false)...)
+	out = append(out, ui.Spread(tags, chance, cw))
+	return append(out, d.modifiers(door, cw, hiddenNone)...)
 }
 
-func titleStyle(door game.Door) lipgloss.Style {
+func titleToken(door game.Door) ui.Token {
 	if door.Mystery {
-		return sMagenta.Bold(true)
+		return ui.Special
 	}
-	return sBold
+	return ui.Strong
 }
 
 func tagLines(t doorText, cw, n int) []string {
 	switch {
 	case t.Hidden:
-		return []string{sFaint.Italic(true).Render("tags hidden")}
+		return []string{ui.Voice.Render(ui.Muted.Render("tags hidden"))}
 	case len(t.Tags) == 0:
-		return []string{sFaint.Render("no tags")}
+		return []string{ui.Muted.Render("no tags")}
 	}
-	var out []string
-	for _, l := range wrapN(strings.Join(t.Tags, " · "), cw, n) {
-		out = append(out, sFaint.Render(l))
-	}
-	return out
+	return ui.WrapN(strings.Join(t.Tags, ui.G.Sep), cw, n)
 }
 
 func doorStats(door game.Door) string {
-	return sYellow.Render("◆") + fmt.Sprintf(" %d", door.Rating) +
-		"  ⏱ " + units.Clock(door.Timer) +
-		"  " + sGreen.Bold(true).Render("+"+units.Bytes(door.Bytes))
+	return ui.Rating(door.Rating) + "  " + ui.G.Timer + units.Clock(door.Timer) +
+		"  " + ui.OK.Render("+"+units.Bytes(door.Bytes))
 }
 
 // clearChance is the engine's estimate that the player clears door, "" when
@@ -273,72 +282,109 @@ func clearChance(door game.Door) string {
 	if door.SolveP <= 0 {
 		return ""
 	}
-	return sFaint.Render(fmt.Sprintf("≈%d%% clear", int(door.SolveP*100+0.5)))
+	return ui.Muted.Render(fmt.Sprintf("%s%d%% clear", ui.G.Approx, int(door.SolveP*100+0.5)))
 }
 
 func withMult(s string, m float64) string {
 	if m > 0 && m != 1 {
-		return s + " · " + fmtMult(m)
+		return s + ui.G.Sep + fmtMult(m)
 	}
 	return s
 }
 
-// hiddenMod is the blind or mystery modifier, what it hides and what it
-// pays, or a mastered topic, which hides the tags without paying more.
-// The text is "" for a door that shows its tags.
-func (d *Doors) hiddenMod(door game.Door) (lipgloss.Style, string) {
-	r := d.env.State.Rules
-	switch {
-	case door.Mystery:
-		return sMagenta, withMult("? mystery: title and tags hidden", r.MysteryMult)
-	case door.Blind:
-		return sCyan, withMult("◌ blind: tags hidden", r.BlindMult)
-	case door.Mastered:
-		return sFaint, "mastered topic: tags hidden"
+// modLine is one modifier spelled out: a door modifier with its text, or,
+// for a mastered topic, which is not one, Muted text.
+type modLine struct {
+	mod      ui.Mod
+	text     string
+	mastered bool
+}
+
+func (m modLine) lines(cw, n int) []string {
+	if m.mastered {
+		var out []string
+		for _, l := range ui.WrapN(m.text, cw, n) {
+			out = append(out, ui.Muted.Render(l))
+		}
+		return out
 	}
-	return lipgloss.Style{}, ""
+	return ui.ModifierLines(m.mod, m.text, cw, n)
+}
+
+func (m modLine) line() string {
+	if m.mastered {
+		return ui.Muted.Render(m.text)
+	}
+	return ui.Modifier(m.mod, m.text)
+}
+
+// hiddenForm is how much the blind or mystery line says: nothing, what it
+// pays (beside a tag slot that already says the tags are hidden), or what
+// it hides and pays (in place of the tags).
+type hiddenForm int
+
+const (
+	hiddenNone hiddenForm = iota
+	hiddenShort
+	hiddenLong
+)
+
+// hiddenMod is the blind or mystery modifier, what it hides and what it
+// pays, or a mastered topic, which hides the tags without paying more. ok
+// is false for a door that shows its tags.
+func (d *Doors) hiddenMod(door game.Door, form hiddenForm) (modLine, bool) {
+	r := d.env.State.Rules
+	long := form == hiddenLong
+	switch {
+	case form == hiddenNone:
+	case door.Mystery && long:
+		return modLine{mod: ui.ModMystery, text: withMult("mystery: title and tags hidden", r.MysteryMult)}, true
+	case door.Mystery:
+		return modLine{mod: ui.ModMystery, text: withMult("mystery", r.MysteryMult)}, true
+	case door.Blind && long:
+		return modLine{mod: ui.ModBlind, text: withMult("blind: tags hidden", r.BlindMult)}, true
+	case door.Blind:
+		return modLine{mod: ui.ModBlind, text: withMult("blind", r.BlindMult)}, true
+	case door.Mastered && long:
+		return modLine{text: "mastered topic: tags hidden", mastered: true}, true
+	case door.Mastered:
+		return modLine{text: "mastered topic", mastered: true}, true
+	}
+	return modLine{}, false
 }
 
 // modifiers spell out what each door modifier costs and pays, so the
-// choice is informed without reading the rules. hidden includes the blind
-// or mystery line, which stacked cards show in place of the tags.
-func (d *Doors) modifiers(door game.Door, cw int, hidden bool) []string {
+// choice is informed without reading the rules. form says whether and how
+// the blind or mystery line comes first; stacked cards show it in place of
+// the tags instead.
+func (d *Doors) modifiers(door game.Door, cw int, form hiddenForm) []string {
 	r := d.env.State.Rules
-	type mod struct {
-		style lipgloss.Style
-		text  string
-	}
-	var mods []mod
-	if s, txt := d.hiddenMod(door); hidden && txt != "" {
-		mods = append(mods, mod{s, txt})
+	var mods []modLine
+	if h, ok := d.hiddenMod(door, form); ok {
+		mods = append(mods, h)
 	}
 	if door.Cursed {
-		mods = append(mods, mod{sRed, withMult("☠ no ducks · 1 WA = crash", r.CursedMult)})
+		mods = append(mods, modLine{mod: ui.ModCursed, text: withMult("no ducks · 1 WA = crash", r.CursedMult)})
 	}
 	if door.Regression {
-		txt := "↺ regression: crashed you before"
+		txt := "regression: crashed you before"
 		if n, ok := d.env.regressionAge(door.Problem); ok {
-			txt = "↺ regression: crashed you " + daysAgo(n)
+			txt = "regression: crashed you " + daysAgo(n)
 		}
-		mods = append(mods, mod{sYellow, txt})
+		mods = append(mods, modLine{mod: ui.ModRegression, text: txt})
 	}
 	var out []string
 	for _, m := range mods {
-		for _, l := range wrapN(m.text, cw, 2) {
-			out = append(out, m.style.Render(l))
-		}
+		out = append(out, m.lines(cw, 2)...)
 	}
 	return out
 }
 
 func daysAgo(n int) string {
-	switch n {
-	case 0:
+	if n == 0 {
 		return "today"
-	case 1:
-		return "1 day ago"
 	}
-	return fmt.Sprintf("%d days ago", n)
+	return units.Plural(n, "day") + " ago"
 }
 
 // bossBody is the boss door: the named bug large and centered, its blurb,
@@ -348,21 +394,21 @@ func (d *Doors) bossBody(door game.Door, cw int) []string {
 	if big := spaced(name); widthOf(big) <= cw {
 		name = big
 	}
-	out := []string{"", center(sMagenta.Bold(true).Render(clip(name, cw)), cw)}
-	for _, l := range wrapN(fl.BossBlurb(door.Boss), cw-4, 2) {
-		out = append(out, center(sItalic.Render(l), cw))
+	out := []string{"", ui.Center(ui.Special.Render(ui.Clip(name, cw)), cw)}
+	for _, l := range ui.WrapN(fl.BossBlurb(door.Boss), cw-4, 2) {
+		out = append(out, ui.Center(ui.Voice.Render(l), cw))
 	}
 	t := d.env.doorText(door)
-	out = append(out, "", center(titleStyle(door).Render(clip(t.Title, cw)), cw))
+	out = append(out, "", ui.Center(titleToken(door).Render(ui.Clip(t.Title, cw)), cw))
 	for _, l := range tagLines(t, cw, 1) {
-		out = append(out, center(l, cw))
+		out = append(out, ui.Center(l, cw))
 	}
-	out = append(out, center(doorStats(door), cw))
+	out = append(out, ui.Center(doorStats(door), cw))
 	if c := clearChance(door); c != "" {
-		out = append(out, center(c, cw))
+		out = append(out, ui.Center(c, cw))
 	}
-	for _, l := range d.modifiers(door, cw, true) {
-		out = append(out, center(l, cw))
+	for _, l := range d.modifiers(door, cw, hiddenShort) {
+		out = append(out, ui.Center(l, cw))
 	}
 	return append(out, "")
 }
@@ -370,35 +416,37 @@ func (d *Doors) bossBody(door game.Door, cw int) []string {
 // spaced letter-spaces a word for the boss banner: HEISENBUG → H E I S …
 func spaced(s string) string { return strings.Join(strings.Split(s, ""), " ") }
 
-// compact is the last resort for short terminals: one line per door.
+// compact is the last resort for short terminals: one line per door, its
+// modifiers as glyphs, a space apart.
 func (d *Doors) compact(width int) []string {
 	var out []string
 	for i, door := range d.doors() {
 		t := d.env.doorText(door)
 		mark := "  "
 		if i == d.sel {
-			mark = sCyan.Bold(true).Render("▸ ")
+			mark = ui.Focus.Render(ui.G.Cursor) + " "
 		}
 		var flags []string
+		flag := func(m ui.Mod) { flags = append(flags, m.Token().Render(m.Glyph())) }
 		if door.Boss != "" {
-			flags = append(flags, sMagenta.Render("⚔"))
+			flag(ui.ModBoss)
 		}
 		if door.Cursed {
-			flags = append(flags, sRed.Render("☠"))
+			flag(ui.ModCursed)
 		}
 		if door.Regression {
-			flags = append(flags, sYellow.Render("↺"))
+			flag(ui.ModRegression)
 		}
 		if door.Mystery {
-			flags = append(flags, sMagenta.Render("?"))
+			flag(ui.ModMystery)
 		} else if door.Blind {
-			flags = append(flags, sCyan.Render("◌"))
+			flag(ui.ModBlind)
 		}
-		left := mark + fmt.Sprintf("%d ", i+1) + titleStyle(door).Render(t.Title)
+		left := mark + fmt.Sprintf("%d ", i+1) + titleToken(door).Render(t.Title)
 		if len(flags) > 0 {
-			left += " " + strings.Join(flags, "")
+			left += " " + strings.Join(flags, " ")
 		}
-		out = append(out, spread(left, doorStats(door), width))
+		out = append(out, ui.Spread(left, doorStats(door), width))
 	}
 	return out
 }

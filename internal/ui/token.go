@@ -113,3 +113,22 @@ func Modifier(m Mod, text string) string {
 	}
 	return d.paint.Render(m.Glyph()) + " " + text
 }
+
+// ModifierLines is Modifier wrapped to w cells and at most n lines, for a
+// card's modifier rows: "☠ no ducks · 1 WA = crash · ×2". Each line is
+// painted as Modifier paints the tag, so a regression's continuation lines
+// stay plain.
+func ModifierLines(m Mod, text string, w, n int) []string {
+	g := m.Glyph()
+	ls := WrapN(g+" "+text, w, n)
+	d := mods[m]
+	for i, l := range ls {
+		switch {
+		case d.wholeToken:
+			ls[i] = d.paint.Render(l)
+		case i == 0 && strings.HasPrefix(l, g):
+			ls[i] = d.paint.Render(g) + l[len(g):]
+		}
+	}
+	return ls
+}

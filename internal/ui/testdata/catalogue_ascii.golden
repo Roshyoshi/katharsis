@@ -65,6 +65,8 @@ blind B                «d»B blind«/»
 cursed C               «R»C cursed«/»
 boss X                 «M»X boss«/»
 boss Heisenbug         «M»X Heisenbug«/»
+regression lines w16   «Y»R«/» crashed you 3 / days ago
+cursed lines w16       «R»C crashed you 3«/» / «R»days ago«/»
 
 -- verdicts --
 AC                     «G»AC«/»

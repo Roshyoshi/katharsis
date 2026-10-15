@@ -16,10 +16,10 @@ Boot #42 · Silver · The Mesh · room 1/2                                      
  ┃ Cereal                        ┃  │ MooBuzz                       │  │ Snow Boots                    │  │ ???                           │
  ┃ Simulation · Amortized        ┃  │ Math · Periodicity            │  │ tags hidden                   │  │ tags hidden                   │
  ┃ Analysis                      ┃  │                               │  │                               │  │                               │
- ┃                               ┃  │ ◆ 1200  ⏱ 35:00  +96 B        │  │ ◆ 1350  ⏱ 35:00  +168 B       │  │ ◆ 1600  ⏱ 35:00  +512 B       │
- ┃ ◆ 1400  ⏱ 35:00  +128 B       ┃  │ ≈69% clear                    │  │ ≈64% clear                    │  │ ≈41% clear                    │
- ┃ ≈62% clear                    ┃  │                               │  │ ◌ blind: tags hidden · ×1.5   │  │ ? mystery: title and tags     │
- ┃ ↺ regression: crashed you 3   ┃  │                               │  │                               │  │ hidden · ×2                   │
+ ┃                               ┃  │                               │  │                               │  │                               │
+ ┃ ◆1400  ⏱ 35:00  +128 B        ┃  │ ◆1200  ⏱ 35:00  +96 B         │  │ ◆1350  ⏱ 35:00  +168 B        │  │ ◆1600  ⏱ 35:00  +512 B        │
+ ┃ ≈62% clear                    ┃  │ ≈69% clear                    │  │ ≈64% clear                    │  │ ≈41% clear                    │
+ ┃ ↺ regression: crashed you 3   ┃  │                               │  │ ◌ blind · ×1.5                │  │ ? mystery · ×2                │
  ┃ days ago                      ┃  │                               │  │                               │  │ ☠ no ducks · 1 WA = crash ·   │
  ┃                               ┃  │                               │  │                               │  │ ×2                            │
  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ╰───────────────────────────────╯  ╰───────────────────────────────╯  ╰───────────────────────────────╯
