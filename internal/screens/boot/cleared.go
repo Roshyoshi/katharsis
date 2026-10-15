@@ -78,8 +78,14 @@ func (c *Cleared) View(width, height int) string {
 
 	var body []string
 	if banner := fl.Banner("cleared"); banner != "" {
-		if bl := strings.Split(banner, "\n"); len(bl) <= height/3 && maxWidth(bl) <= width {
-			body = append(body, centerBlock(bl, width)...)
+		bl := strings.Split(banner, "\n")
+		for i, l := range bl {
+			// systemd paints its OK green; the climax keeps it (E17).
+			bl[i] = strings.Replace(l, "[  OK  ]", "[  "+ui.OK.Render("OK")+"  ]", 1)
+		}
+		// The climax gets the double frame (§2.5).
+		if fw := maxWidth(bl) + 4; len(bl)+2 <= height/3 && fw <= width {
+			body = append(body, centerBlock(ui.Frame(ui.FrameBoss, fw, "", "", bl), width)...)
 		}
 	}
 	// Green paints the glyph, the words are Strong (R2, R3).
