@@ -110,6 +110,28 @@ func TestStoryWidths(t *testing.T) {
 	}
 }
 
+// bossCardInner is the text width inside the S9 boss card: cardWidth 64
+// (screens/story) less the border and padding (anim.Card.inner).
+const bossCardInner = 60
+
+// TestBossRules: each boss's twist is one fixed line that fits the boss
+// card whole, so the rule is never wrapped or cut before the door opens.
+func TestBossRules(t *testing.T) {
+	for _, k := range append(slices.Clone(game.BossKeys), game.FinalBoss) {
+		h, ok := story["boss.rule."+k]
+		if !ok {
+			t.Errorf("boss.rule.%s has no text", k)
+			continue
+		}
+		if h.kind != fixed || strings.Contains(h.entries[0], "\n") {
+			t.Errorf("boss.rule.%s is not one fixed line: %q", k, h.entries)
+		}
+		if w := ansi.StringWidth(widest(t, k, h.entries[0])); w > bossCardInner {
+			t.Errorf("boss.rule.%s: %d columns, want <= %d: %q", k, w, bossCardInner, h.entries[0])
+		}
+	}
+}
+
 func TestStoryPlaceholdersFill(t *testing.T) {
 	var pairs []string
 	for name := range placeholderWidths {
@@ -392,6 +414,7 @@ var quoted = map[string][]use{
 	"biome.intro.mixed":              {{"A16", "we're all mad here"}},
 	"boss.enter.off-by-one":          {{"G12", ""}, {"G13", "if it was so, it might be; and if it were so, it would be"}},
 	"boss.defeat.off-by-one":         {{"G14", ""}, {"G13", "but as it isn't, it ain't. That's logic."}},
+	"boss.rule.off-by-one":           {{"G12", ""}},
 	"boss.enter.heisenbug":           {{"G20", ""}, {"G23", ""}},
 	"boss.defeat.oom-killer":         {{"A7", ""}},
 	"boss.enter.race-condition":      {{"A5", ""}, {"A35", ""}, {"S5", ""}},
@@ -615,6 +638,7 @@ func TestStoryFamilies(t *testing.T) {
 	bosses := append(slices.Clone(game.BossKeys), game.FinalBoss)
 	add("boss.enter.", bosses...)
 	add("boss.defeat.", bosses...)
+	add("boss.rule.", bosses...)
 	add("crash.epitaph.", string(game.TimedOut), string(game.OutOfLives), string(game.GaveUp), "cursed")
 	// Every level the ring table names, so the ladder can grow to P8
 	// (map.md (d)) without a level that falls back to the beyond lines.

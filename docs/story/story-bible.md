@@ -121,6 +121,13 @@ way Alice meets the poem in Looking-Glass chapter I: mirrored, "rather
 hard to understand", explained by nobody (`reveal.final-boss`). Humpty
 Dumpty sits at the edge of ring 1, and the Wizards own up to it at ring -1.
 
+Each boss also bends one rule, and says so on its card in its own voice
+before the door opens (`boss.rule.<key>`): the twins charge double for
+missing by exactly one test, the Rabbit's house halves the memory, the
+Sheep's `:w` says only pass or fail, the Dodo runs the clock fast for four
+times the prize, the Duchess cooks without sanitizers, and the Jabberwock
+hides the clock but for the Rabbit's two cries.
+
 ## Biomes (names unchanged; the scene is new)
 
 | Topic | Name | Act | Scene |
@@ -227,7 +234,9 @@ act III       one topic biome, Kernel Space, or the train over the Third
     Story text says "cycles" and "burn", never "life" or "lives", and
     names no cost or count a preset sets (kexec's swaps, the fountain's
     refill, Overclock's price). The mechanic line beside it says the
-    number: "burned 10 cycles, 14 left".
+    number: "burned 10 cycles, 14 left". The one exception is
+    `boss.rule.<key>`: a boss card's twist is the rule itself, in the
+    boss's voice, so its line changes when the twist does.
 
 ## How the story unfolds
 

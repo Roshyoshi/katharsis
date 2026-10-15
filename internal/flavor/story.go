@@ -436,6 +436,15 @@ Same bug, new door, fewer cycles to spend on it.
 One shot, no second door. Either it halts, or you do.
 The Queen deals this hand once. Lose it and the boot is hers.
 `),
+	// Each boss's one rule twist, named on its card before the door opens,
+	// in its own voice. Unlike other story lines these state the rule, so
+	// each changes with its twist's numbers.
+	"boss.rule.off-by-one":         fixedOf(`"Exactly one test wrong burns double." "Contrariwise."`),
+	"boss.rule.oom-killer":         fixedOf(`"Half the memory limit! Outgrow it and I send in Bill!"`),
+	"boss.rule.heisenbug":          fixedOf(`"Pass or fail, that's all :w says here," says the Sheep.`),
+	"boss.rule.race-condition":     fixedOf(`"Clock a quarter fast, prize times four!" says the Dodo.`),
+	"boss.rule.undefined-behavior": fixedOf(`"No sanitizers in my kitchen," says the Duchess. "Pepper!"`),
+	"boss.rule.halting-problem":    fixedOf("It hides the clock. The Rabbit cries twice; then it ends."),
 
 	// ---- Merge window ----
 	"merge.line": poolOf(`

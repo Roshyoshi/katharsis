@@ -856,6 +856,27 @@ One shot, no second door. Either it halts, or you do.
 The Queen deals this hand once. Lose it and the boot is hers.
 ```
 
+### boss.rule.<key>
+where: new: each boss's one rule twist, named before its door opens: on the boss card scene (`story.NewBossIntro`) and on the boss door card (`bossBody`, `./internal/screens/boot/doors.go:458`) · when: every · pick: fixed per boss · uses: G12 (Off-by-One); the Rabbit's Bill (ch. IV), the Sheep (TTLG ch. V), the Dodo (ch. III), the Duchess's pepper (ch. VI), the Rabbit's two warnings (`timer.warn`) as allusions. Each fits the boss card whole: at most 60 columns, the card's 64 less its border (`TestBossRules`). Unlike every other story line, these **state the rule**, in the boss's voice (coordinator, 10-15), so each line changes when its twist's numbers do · **draft**: the twists' numbers are the coordinator's list, not yet the engine's
+
+| Hook | Twist (the engine's) | Line |
+|---|---|---|
+| `boss.rule.off-by-one` | a WA on exactly one hidden test burns double | line 1 |
+| `boss.rule.oom-killer` | half the memory limit | line 2 |
+| `boss.rule.heisenbug` | `:w` says only pass or fail: no sample number, no diff | line 3 |
+| `boss.rule.race-condition` | the clock runs 1.25× fast; the door pays ×4 | line 4 |
+| `boss.rule.undefined-behavior` | samples run without ASan or UBSan | line 5 |
+| `boss.rule.halting-problem` | the clock is hidden; only the 5:00 and 1:00 warnings | line 6 |
+
+```text
+"Exactly one test wrong burns double." "Contrariwise."
+"Half the memory limit! Outgrow it and I send in Bill!"
+"Pass or fail, that's all :w says here," says the Sheep.
+"Clock a quarter fast, prize times four!" says the Dodo.
+"No sanitizers in my kitchen," says the Duchess. "Pepper!"
+It hides the clock. The Rabbit cries twice; then it ends.
+```
+
 ---
 
 ## Merge window
