@@ -479,7 +479,7 @@ func TestBootSummaryEnds(t *testing.T) {
 		{
 			Boot: 1, Seed: crashed.Seed, Prestige: 1, Rules: "standard",
 			Started: t0, Outcome: store.BootCrashed, Cause: game.OutOfLives,
-			Uptime: crashed.Crash.Uptime, LastDoor: "usaco:1060",
+			Uptime: crashed.Crash.Uptime, Dumped: 120, LastDoor: "usaco:1060",
 		},
 	}
 	same(t, "boots", boots, want)
@@ -490,6 +490,30 @@ func TestBootSummaryEnds(t *testing.T) {
 	if one, _ := s.Boots(1); len(one) != 1 || one[0].Boot != 2 {
 		t.Errorf("Boots(1) = %+v, want only boot 2", one)
 	}
+}
+
+// A crashed trial loses its bytes without a core dump, so git log shows
+// nothing dumped; a crashed boot shows what went into the dump.
+func TestBootSummaryDumped(t *testing.T) {
+	t.Parallel()
+	s := openClocked(t, tempPath(t), t0.Add(48*time.Hour))
+	meta := sampleMeta()
+	boot := crash(midBoot(1, t0), game.TimedOut)
+	trial := midBoot(2, t0.Add(time.Hour))
+	trial.Trial = &game.TrialState{TrialSpec: game.TrialSpec{Module: "prefix-sums"}}
+	crash(trial, game.TimedOut)
+	checkpoint(t, s, meta, boot)
+	checkpoint(t, s, meta, trial)
+
+	boots, err := s.Boots(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[int]int64{}
+	for _, b := range boots {
+		got[b.Boot] = b.Dumped
+	}
+	same(t, "dumped", got, map[int]int64{1: 120, 2: 0})
 }
 
 // endedAt reads each boot's ended column, 0 while it runs. No query

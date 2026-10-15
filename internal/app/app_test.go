@@ -346,6 +346,14 @@ func TestCrashThenUpsolveRecoversCoreDump(t *testing.T) {
 		t.Fatal("crash left no core dump")
 	}
 	bank := h.m.meta.Bank
+	// git log shows what the crash dumped.
+	boots, err := h.st.Boots(1)
+	if err != nil || len(boots) != 1 {
+		t.Fatalf("stored boots %+v, %v", boots, err)
+	}
+	if row := h.m.bootRow(boots[0], nil); row.Dumped != dump.Bytes {
+		t.Errorf("git log row dumped %d, want the core dump's %d", row.Dumped, dump.Bytes)
+	}
 
 	h.verdict = "AC"
 	h.send(screens.Upsolve{Problem: dump.Problem})

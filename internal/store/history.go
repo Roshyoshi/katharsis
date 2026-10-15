@@ -24,15 +24,25 @@ type BootSummary struct {
 	Uptime   time.Duration // as of the last checkpoint while running
 	// Committed is bytes banked during the boot.
 	Committed int64
-	LastDoor  catalog.ID
+	// Dumped is the uncommitted bytes the crash left in the core dump
+	// (Crash.Lost); 0 when the boot did not crash or was a trial, which
+	// loses its bytes without a dump.
+	Dumped   int64
+	LastDoor catalog.ID
 }
+
+// dumpedSQL reads Dumped out of the stored State. It has no column of its
+// own: the snapshot already holds it, so boots saved before the field
+// existed show it too.
+const dumpedSQL = `CASE WHEN json_extract(state, '$.Trial') IS NULL
+	THEN COALESCE(json_extract(state, '$.Crash.Lost'), 0) ELSE 0 END`
 
 // Boots lists boots newest first; limit <= 0 lists all.
 func (s *Store) Boots(limit int) ([]BootSummary, error) {
 	var out []BootSummary
 	err := eachRow(s.db, `
 		SELECT id, seed, prestige, rules, started, outcome, cause, uptime,
-			committed, last_door
+			committed, `+dumpedSQL+`, last_door
 		FROM boots ORDER BY id DESC LIMIT ?`, []any{sqlLimit(limit)},
 		func(rows *sql.Rows) error {
 			var (
@@ -40,7 +50,7 @@ func (s *Store) Boots(limit int) ([]BootSummary, error) {
 				seed, started, uptime int64
 			)
 			if err := rows.Scan(&b.Boot, &seed, &b.Prestige, &b.Rules, &started,
-				&b.Outcome, &b.Cause, &uptime, &b.Committed, &b.LastDoor); err != nil {
+				&b.Outcome, &b.Cause, &uptime, &b.Committed, &b.Dumped, &b.LastDoor); err != nil {
 				return err
 			}
 			b.Seed = uint64(seed)

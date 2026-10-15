@@ -24,6 +24,7 @@ func (m *Model) bootRow(b store.BootSummary, atts []store.AttemptRecord) meta.Bo
 		Cleared:  b.Outcome == store.BootCleared,
 		Cause:    b.Cause,
 		Banked:   b.Committed,
+		Dumped:   b.Dumped,
 	}
 	if b.LastDoor != "" {
 		row.Problem = m.title(b.LastDoor)
