@@ -140,9 +140,10 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	return b, nil
 }
 
-// compileEnv disables nix's cc-wrapper hardening even outside the dev shell:
-// when NIX_HARDENING_ENABLE is unset the wrapper applies its defaults, whose
-// -fwrapv makes UBSan skip signed overflow.
+// compileEnv disables nix's hardening for judge builds. Inside a nix dev
+// shell or build, the setup hook enables it (its -fwrapv makes UBSan skip
+// signed overflow) and the wrapper reads it from there; an empty
+// NIX_HARDENING_ENABLE turns it off. Outside nix nothing enables it.
 func compileEnv(p Profile) []string {
 	if p.CleanEnv {
 		return cleanEnv()

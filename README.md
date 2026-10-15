@@ -10,8 +10,9 @@ Design and vocabulary: [DESIGN.md](DESIGN.md).
 ## Run
 
 ```sh
-cd ~/katharsis
-nix develop -c go run ./cmd/katharsis        # the game
+nix run ~/katharsis                          # the game
+nix profile install ~/katharsis              # or install `katharsis` on PATH
+cd ~/katharsis && nix develop -c go run ./cmd/katharsis   # from source
 ```
 
 The game runs inside tmux. Started outside tmux, it opens a tmux session of
@@ -29,6 +30,7 @@ USACO only and tries Codeforces again next time.
 | `--template-fileio` | `~/cp/template.cpp` | file-I/O template; `problem` becomes the file stem |
 | `--scale` | `1` | multiply CPU time limits (below 1 is stricter) |
 | `--quiet` | off | no sounds |
+| `--preset` | | also load a rules preset file (repeatable); presets in `~/.config/katharsis/presets` load automatically. `presets/short.toml` is a ~1 h boot |
 
 `katharsis practice <dir>` is the training room: any folder with
 `<dir>.cpp` and `tests/N.in`/`tests/N.out`, no timer and no stakes.

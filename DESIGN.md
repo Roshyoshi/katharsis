@@ -14,7 +14,7 @@ fixed rule. Settings are locked for the length of a boot.
 |---|---|
 | Language | Go 1.26 |
 | TUI | Bubble Tea v2, Bubbles v2, Lip Gloss v2, Glamour v2 (`charm.land/*`) |
-| Judge compiler | clang 21 (pinned in `flake.nix`) |
+| Judge compiler | clang 22 (pinned in `flake.nix`; 21.1.8's ASan hangs on macOS 26.5) |
 | Editor, layout, debugger | the user's vim, tmux and `/usr/bin/lldb` (not pinned) |
 | Storage | SQLite via `modernc.org/sqlite` (no cgo) |
 | Settings | TOML rule presets |
