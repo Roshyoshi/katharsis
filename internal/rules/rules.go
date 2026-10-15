@@ -484,5 +484,50 @@ func (r Rules) Validate() error {
 			return fmt.Errorf("rules %q: ascension level %d < 1", r.Name, a.Level)
 		}
 	}
+	return r.validateBytes()
+}
+
+// MaxBaseBytes bounds base_bytes, MaxBytesMultiplier each multiplier of a
+// door's pay, and MaxDoorBytes what one door can pay with every multiplier
+// stacked; Standard's richest door pays 6 KiB. The bounds keep the sums
+// over a lifetime of boots (the bank, lifetime bytes) far from int64's
+// limit: a preset with base_bytes near it overflowed on the first clear.
+const (
+	MaxBaseBytes       = 1 << 30
+	MaxBytesMultiplier = 1000
+	MaxDoorBytes       = 1 << 40
+)
+
+func (r Rules) validateBytes() error {
+	if r.BaseBytes < 0 || r.BaseBytes > MaxBaseBytes {
+		return fmt.Errorf("rules %q: base_bytes %d not in 0..%d", r.Name, r.BaseBytes, MaxBaseBytes)
+	}
+	mults := []struct {
+		key string
+		v   float64
+	}{
+		{"blind_mult", r.BlindMult}, {"mystery_mult", r.MysteryMult},
+		{"cursed_mult", r.CursedMult}, {"boss_mult", r.BossMult},
+		{"min_bytes_mult", r.MinBytesMult}, {"max_bytes_mult", r.MaxBytesMult},
+		{"dev_random_mult", r.DevRandomMult}, {"overtime_bytes_mult", r.OvertimeBytesMult},
+	}
+	for _, m := range mults {
+		// TOML has inf and nan; the negated test also catches NaN.
+		if m.v < 0 || !(m.v <= MaxBytesMultiplier) {
+			return fmt.Errorf("rules %q: %s %v not in 0..%d", r.Name, m.key, m.v, MaxBytesMultiplier)
+		}
+	}
+	// The richest door stacks every multiplier as doorBytes in
+	// internal/game does: the difficulty factor at its cap, mystery (with
+	// dev-random) or blind, cursed, a boss, and overtime pay. A zero is
+	// the default WithDefaults fills in.
+	d := r.WithDefaults()
+	worst := float64(d.BaseBytes) * max(d.MaxBytesMult, d.MinBytesMult) *
+		max(d.MysteryMult*d.DevRandomMult, d.BlindMult, 1) * max(d.CursedMult, 1) *
+		max(d.BossMult, 1) * max(d.OvertimeBytesMult, 1)
+	if worst > MaxDoorBytes {
+		return fmt.Errorf("rules %q: a door could pay %.3g bytes, over the %d allowed; lower base_bytes or the *_mult keys",
+			r.Name, worst, int64(MaxDoorBytes))
+	}
 	return nil
 }

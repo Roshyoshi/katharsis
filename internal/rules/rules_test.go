@@ -90,6 +90,17 @@ func TestValidate(t *testing.T) {
 		{"calib_rate of 1", func(r *rules.Rules) { r.CalibRate = 1 }, "calib_rate"},
 		{"negative calib_after", func(r *rules.Rules) { r.CalibAfter = -1 }, "calib_after"},
 		{"negative cold start", func(r *rules.Rules) { r.RatingColdAttempts = -1 }, "rating_cold_attempts"},
+		// qa/chaos/presets/huge.toml: overflow bait.
+		{"huge base_bytes", func(r *rules.Rules) { r.BaseBytes = math.MaxInt64 }, "base_bytes"},
+		{"negative base_bytes", func(r *rules.Rules) { r.BaseBytes = -1 }, "base_bytes"},
+		{"huge boss_mult", func(r *rules.Rules) { r.BossMult = 1e300 }, "boss_mult"},
+		{"inf mystery_mult", func(r *rules.Rules) { r.MysteryMult = math.Inf(1) }, "mystery_mult"},
+		{"nan cursed_mult", func(r *rules.Rules) { r.CursedMult = math.NaN() }, "cursed_mult"},
+		{"negative blind_mult", func(r *rules.Rules) { r.BlindMult = -2 }, "blind_mult"},
+		{"stacked pay", func(r *rules.Rules) {
+			r.BaseBytes, r.MaxBytesMult, r.BossMult, r.CursedMult = rules.MaxBaseBytes, 100, 100, 100
+		}, "a door could pay"},
+		{"rich but bounded", func(r *rules.Rules) { r.BaseBytes, r.BossMult = 1<<20, 1000 }, ""},
 	}
 	for _, tc := range tests {
 		r := rules.Standard()
