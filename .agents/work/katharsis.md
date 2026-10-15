@@ -171,7 +171,10 @@ S8 consolidation (after all code QA lands; from the cross-package report):
      (qa/chaos/oracle.sh); single-player honor system, not fixed
 
 ## Now
-Merged since last: B content (content/web shared client with a 30 s idle cut, fsync
+Merged since last: C part 2 (every screen on internal/ui: rank-coloured ◆ ratings, one HP
+bar per pane, toned border clock, no blink, C8 problem pane, HUD 36-48 cols, pager
+zoom, credits on GRUB `c` with the banner back at 80x24, crash bottom-anchored,
+framed cleared banner, Mono under NO_COLOR), B content (content/web shared client with a 30 s idle cut, fsync
 writes and debris sweeps; one module->topic table in guide, the curriculum's
 mapping proved right for all 5; usaco.DivisionBand; Codeforces opens from cache
 and indexes in the background: cold-cache start 20.7 s -> 0.4 s; internal/deps
@@ -206,7 +209,7 @@ and :Debug; samples clang ASan on libstdc++ + _GLIBCXX_ASSERTIONS; cin 1e6 ints
 38 ms vs 967 ms on libc++; clang 21 out; package closure 2013 -> 1989 MiB;
 binary 28.4 MB). Main tests green (judge TLE timing flaked at load 23; passed
 alone); nix build ok.
-Running (workspaces): s10-engine, c-part2. Agents keep .agents/work/progress-<ws>.md for
+Running (workspaces): s10-engine. Agents keep .agents/work/progress-<ws>.md for
 restarts (spamming esc stops every agent).
 For B (from the GCC report): qa/judge expects ASan wording on the libstdc++
 sample profile (re_heap_oob, re_container_oob, re_after_20KB_debug_stderr) and
@@ -246,6 +249,10 @@ Run with the unslop pass (package by package), then core-loop QA, then alpha.
 - Old guide snapshot dirs stay after a Commit bump; Codeforces "offline" never
   retries until the next start; problem dir files are not fsynced;
   katharsis.log may belong in XDG_STATE_HOME.
-- GRUB banner lost at 80x24 (SPONGE in meta_test.go; C part 2 P4).
+- fork adds nothing once tmux is installed (they do not stack, A2): stop
+  offering it then, or give it another effect.
+- top's Solves meter tells parts apart by colour only; expanded git log
+  rating not in its own column (E18); real 4-line GRUB art fits 80x24 only
+  with <= 11 entries.
 - When deps change: recompute vendorHash with a fake hash (nix reuses a
   cached vendor dir and hides a stale hash).
