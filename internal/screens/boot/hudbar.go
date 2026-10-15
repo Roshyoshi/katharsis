@@ -134,11 +134,22 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 // hpBar is the problem's health from the player's side: tests passed by
 // the best submit, out of the full set.
 func hpBar(att game.Attempt, width int) string {
+	// A submit being judged (Attempt.SubmitAt) shows here too: the HUD
+	// below read "judging 5/10" while this bar said "not submitted".
+	judging := !att.SubmitAt.IsZero()
 	count := "not submitted"
-	if att.Total > 0 {
+	switch {
+	case att.Total > 0:
 		count = fmt.Sprintf("%d/%d", att.BestPass, att.Total)
+	case judging:
+		count = "judging…"
 	}
-	bw := min(max(width-widthOf(count)-1, 6), 20)
+	// The bar gives way to the word that a submit is in flight.
+	room := width - widthOf(count) - 1
+	if judging && att.Total > 0 {
+		room -= widthOf("  judging…")
+	}
+	bw := min(max(room, 6), 20)
 	filled := 0
 	if att.Total > 0 {
 		filled = min(max(att.BestPass, 0)*bw/att.Total, bw)
@@ -148,17 +159,24 @@ func hpBar(att game.Attempt, width int) string {
 	if att.Total == 0 {
 		s = bar + " " + sFaint.Render(count)
 	}
+	more := ""
 	if att.Submits > 0 {
-		more := fmt.Sprintf("  %d submit", att.Submits)
+		more = fmt.Sprintf("  %d submit", att.Submits)
 		if att.Submits != 1 {
 			more += "s"
 		}
 		if att.LastVerdict != "" {
 			more += " · " + att.LastVerdict
 		}
-		if widthOf(s)+widthOf(more) <= width {
-			s += sFaint.Render(more)
+	}
+	if judging && att.Total > 0 {
+		// The submit in flight comes first when both do not fit.
+		if more += " · judging…"; widthOf(s)+widthOf(more) > width {
+			more = "  judging…"
 		}
+	}
+	if more != "" && widthOf(s)+widthOf(more) <= width {
+		s += sFaint.Render(more)
 	}
 	return s
 }

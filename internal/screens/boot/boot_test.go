@@ -911,6 +911,17 @@ func TestHUDBar(t *testing.T) {
 			st.Current = nil
 			return st
 		}},
+		{"first submit judging", func() *game.State {
+			st := fixture.Problem()
+			st.Current.Submits, st.Current.BestPass, st.Current.Total, st.Current.LastVerdict = 0, 0, 0, ""
+			st.Current.SubmitAt = fixture.Now
+			return st
+		}},
+		{"judging again", func() *game.State {
+			st := fixture.Problem()
+			st.Current.SubmitAt = fixture.Now
+			return st
+		}},
 	}
 	prob, _ := fixture.Lookup("usaco:764")
 	var sb strings.Builder
@@ -945,6 +956,14 @@ func TestHUDBar(t *testing.T) {
 	}
 	if s := ansi.Strip(HUDBar(variants[3].st(), prob, fixture.Now, 48)); !strings.Contains(s, "technique graphs") {
 		t.Errorf("two quacks reveal the technique:\n%s", s)
+	}
+	// A submit in flight shows at every width, never as not submitted.
+	for _, v := range variants[len(variants)-2:] {
+		for _, w := range []int{35, 48, 60} {
+			if s := ansi.Strip(HUDBar(v.st(), prob, fixture.Now, w)); !strings.Contains(s, "judging…") || strings.Contains(s, "not submitted") {
+				t.Errorf("%s at %d should read judging:\n%s", v.name, w, s)
+			}
+		}
 	}
 }
 
