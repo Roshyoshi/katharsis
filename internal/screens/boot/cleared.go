@@ -8,6 +8,7 @@ import (
 
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/units"
 )
 
 // Cleared is the victory screen after the last boss: how long the boot ran,
@@ -100,9 +101,9 @@ func (c *Cleared) View(width, height int) string {
 		}
 	}
 	rows := [][2]string{
-		{"uptime", fmtClock(uptime)},
-		{"committed", sGreen.Bold(true).Render(formatBytes(st.Committed)) +
-			sFaint.Render(" · bank ") + formatBytes(c.env.Meta.Bank)},
+		{"uptime", units.Clock(uptime)},
+		{"committed", sGreen.Bold(true).Render(units.Bytes(st.Committed)) +
+			sFaint.Render(" · bank ") + units.Bytes(c.env.Meta.Bank)},
 		{"solved", sol},
 		{"lives left", hearts(st.Lives, st.MaxLives)},
 	}

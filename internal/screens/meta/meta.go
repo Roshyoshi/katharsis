@@ -98,40 +98,6 @@ type TopicStat struct {
 
 // ---- formatting ---------------------------------------------------------------
 
-// Bytes formats a byte count the way the game shows currency: B, KiB, MiB
-// or GiB, with one decimal under 10.
-func Bytes(n int64) string {
-	sign := ""
-	if n < 0 {
-		sign, n = "-", -n
-	}
-	if n < 1024 {
-		return fmt.Sprintf("%s%d B", sign, n)
-	}
-	v, unit := float64(n)/1024, "KiB"
-	for _, u := range []string{"MiB", "GiB"} {
-		if v < 1024 {
-			break
-		}
-		v, unit = v/1024, u
-	}
-	prec := 0
-	if v < 10 {
-		prec = 1
-	}
-	return fmt.Sprintf("%s%.*f %s", sign, prec, v, unit)
-}
-
-// clock formats a duration as h:mm:ss, or m:ss under an hour.
-func clock(d time.Duration) string {
-	d = d.Round(time.Second)
-	h, m, s := int(d.Hours()), int(d.Minutes())%60, int(d.Seconds())%60
-	if h > 0 {
-		return fmt.Sprintf("%d:%02d:%02d", h, m, s)
-	}
-	return fmt.Sprintf("%d:%02d", m, s)
-}
-
 // uptime formats a long duration as htop does: "3 days, 04:12:33".
 func uptime(d time.Duration) string {
 	d = d.Round(time.Second)

@@ -406,18 +406,6 @@ func TestTopKeys(t *testing.T) {
 
 // ---- formatting --------------------------------------------------------------
 
-func TestBytes(t *testing.T) {
-	for n, want := range map[int64]string{
-		0: "0 B", 312: "312 B", 1023: "1023 B", 1024: "1.0 KiB", 1331: "1.3 KiB",
-		12698: "12 KiB", 5 << 20: "5.0 MiB", 300 << 20: "300 MiB", 3 << 30: "3.0 GiB",
-		2048 << 30: "2048 GiB", -312: "-312 B",
-	} {
-		if got := meta.Bytes(n); got != want {
-			t.Errorf("Bytes(%d) = %q, want %q", n, got, want)
-		}
-	}
-}
-
 func TestGrubConfigDefaults(t *testing.T) {
 	c := fixture.GrubConfig()
 	c.Now, c.Title = time.Time{}, nil

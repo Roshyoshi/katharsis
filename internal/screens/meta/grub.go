@@ -14,6 +14,7 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/units"
 )
 
 // GrubConfig is what the start screen shows.
@@ -97,7 +98,7 @@ func NewGrub(c GrubConfig) *Menu {
 		}
 	}
 	m.status = fmt.Sprintf("bank %s · rating %.0f · next boot #%d",
-		Bytes(c.Meta.Bank), c.Meta.Rating, c.Meta.Boots+1)
+		units.Bytes(c.Meta.Bank), c.Meta.Rating, c.Meta.Boots+1)
 
 	var es []entry
 	for p := m.maxP; p >= 0; p-- {
@@ -117,7 +118,7 @@ func NewGrub(c GrubConfig) *Menu {
 	}
 	if d := c.Meta.CoreDump; d != nil {
 		es = append(es, entry{
-			label: fmt.Sprintf("upsolve core dump: %s (%s)", title(d.Problem), Bytes(d.Bytes)),
+			label: fmt.Sprintf("upsolve core dump: %s (%s)", title(d.Problem), units.Bytes(d.Bytes)),
 			msg:   screens.Upsolve{Problem: string(d.Problem)},
 		})
 	}

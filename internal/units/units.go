@@ -1,0 +1,88 @@
+// Package units formats the game's numbers the one way every screen and log
+// shows them (docs/design/ui-system.md, "Number formats"): the byte
+// currency, memory, clocks, countdowns and hearts. It imports nothing from
+// the game, so the engine can use it as well as the screens.
+package units
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// Bytes formats the game currency: whole bytes under 1 KiB, then KiB, MiB
+// or GiB with one decimal (".0" trimmed) below 100 and none from 100 up,
+// always with a space before the unit: "42 B", "12.5 KiB", "1 MiB",
+// "312 KiB".
+func Bytes(n int64) string {
+	sign := ""
+	if n < 0 {
+		sign, n = "-", -n
+	}
+	switch {
+	case n < 1<<10:
+		return sign + strconv.FormatInt(n, 10) + " B"
+	case n < 1<<20:
+		return sign + scaled(float64(n)/(1<<10), "KiB")
+	case n < 1<<30:
+		return sign + scaled(float64(n)/(1<<20), "MiB")
+	}
+	return sign + scaled(float64(n)/(1<<30), "GiB")
+}
+
+func scaled(v float64, unit string) string {
+	if v >= 100 {
+		return strconv.FormatFloat(v, 'f', 0, 64) + " " + unit
+	}
+	return strings.TrimSuffix(strconv.FormatFloat(v, 'f', 1, 64), ".0") + " " + unit
+}
+
+// Mem formats a memory size (a solution's peak RSS, a limit) compactly and
+// without a space, so it never reads as currency: "312B", "1.2K", "48M",
+// "1.5G".
+func Mem(n int64) string {
+	switch {
+	case n >= 1<<30:
+		return fmt.Sprintf("%.1fG", float64(n)/(1<<30))
+	case n >= 1<<20:
+		return fmt.Sprintf("%.0fM", float64(n)/(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%.1fK", float64(n)/(1<<10))
+	}
+	return fmt.Sprintf("%dB", n)
+}
+
+// Clock formats a duration that has run, such as time spent on a door or
+// an uptime: mm:ss, or h:mm:ss from an hour on. It counts whole seconds
+// gone, as a stopwatch does, and never goes below 00:00.
+func Clock(d time.Duration) string {
+	d = max(d, 0).Truncate(time.Second)
+	h, m, s := int(d.Hours()), int(d.Minutes())%60, int(d.Seconds())%60
+	if h > 0 {
+		return fmt.Sprintf("%d:%02d:%02d", h, m, s)
+	}
+	return fmt.Sprintf("%02d:%02d", m, s)
+}
+
+// Countdown formats the time left before a deadline like Clock, but rounds
+// up, so it reads 00:00 only once the deadline has passed. With the same
+// limit, Clock of the time gone and Countdown of the time left always add
+// up to it.
+func Countdown(left time.Duration) string {
+	if r := left % time.Second; r > 0 {
+		left += time.Second - r
+	}
+	return Clock(left)
+}
+
+// Hearts draws lives as filled hearts and the missing ones as hollow:
+// "♥♥♡". Past ten, a row of hearts would crowd the line, so it counts
+// instead: "♥ 7/12".
+func Hearts(lives, maxLives int) string {
+	lives = max(lives, 0)
+	if lives > 10 || maxLives > 10 {
+		return fmt.Sprintf("♥ %d/%d", lives, maxLives)
+	}
+	return strings.Repeat("♥", lives) + strings.Repeat("♡", max(maxLives-lives, 0))
+}

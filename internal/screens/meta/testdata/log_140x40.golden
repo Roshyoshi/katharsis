@@ -35,6 +35,6 @@ git log --graph --oneline  42 boots · 10 cleared · 31 crashed                 
 * 1abef49 #9  2026-09-11 18:00 P0   34:51 crashed in Shortest Paths (out of lives)                                                    +231 B
 * aeba430 #8  2026-09-10 17:00 P0 1:11:04 crashed in Page Tables (timer)                                                              +284 B
 * 672fb00 #7  2026-09-09 16:00 P0 1:48:17 crashed in The Cache (:q!)                                                                  +337 B
-* 7945a0b #6  2026-09-08 20:00 P0   35:30 cleared                                                                                   +1.0 KiB
+* 7945a0b #6  2026-09-08 20:00 P0   35:30 cleared                                                                                     +1 KiB
 * e75e603 #5  2026-09-07 19:00 P0 1:12:43 crashed in The Stack (timer)                                                                 +43 B
 j/k move · enter expand · f filter · g/G ends · q back

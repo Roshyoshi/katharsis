@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -16,6 +15,7 @@ import (
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/session"
+	"katharsis/internal/units"
 )
 
 // submitMsg asks the app to judge the open door's full tests. The problem
@@ -295,7 +295,7 @@ func (m *Model) statusLine() string {
 		return "no door open"
 	}
 	left := max(s.Current.Deadline.Sub(m.d.Now()), 0)
-	return fmt.Sprintf("%s left · %s · %s", countdown(left), strings.Repeat("♥", s.Lives), ducks(s))
+	return fmt.Sprintf("%s left · %s · %s", units.Countdown(left), units.Hearts(s.Lives, s.MaxLives), ducks(s))
 }
 
 // ducks is the duck count, or ✗ on a cursed door, which takes none.
@@ -304,14 +304,6 @@ func ducks(s *game.State) string {
 		return "🦆✗"
 	}
 	return fmt.Sprintf("🦆%d", s.Ducks)
-}
-
-func countdown(d time.Duration) string {
-	t := int(d.Seconds())
-	if t >= 3600 {
-		return fmt.Sprintf("%d:%02d:%02d", t/3600, t/60%60, t%60)
-	}
-	return fmt.Sprintf("%02d:%02d", t/60, t%60)
 }
 
 func readFile(path string) (string, error) {

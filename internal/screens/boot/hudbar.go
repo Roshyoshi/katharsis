@@ -9,6 +9,7 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
+	"katharsis/internal/units"
 )
 
 // tone is how urgent the countdown looks.
@@ -67,15 +68,15 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	timer := sFaint.Render("⏱ --:--")
 	if open {
 		left := att.Deadline.Sub(now)
-		timer = toneStyle[timerTone(left, door.Timer)].Render("⏱ " + fmtCountdown(left))
+		timer = toneStyle[timerTone(left, door.Timer)].Render("⏱ " + units.Countdown(left))
 	}
 	ducks := fmt.Sprintf("🦆%d", st.Ducks)
 	if door.Cursed {
 		ducks = sFaint.Render("🦆✗")
 	}
 	status := timer + "  " + hearts(st.Lives, st.MaxLives) + "  " + ducks + "  " +
-		sGreen.Render(formatBytes(st.Uncommitted))
-	if reward := sFaint.Render(" +" + formatBytes(door.Bytes)); door.Bytes > 0 && widthOf(status+reward) <= width {
+		sGreen.Render(units.Bytes(st.Uncommitted))
+	if reward := sFaint.Render(" +" + units.Bytes(door.Bytes)); door.Bytes > 0 && widthOf(status+reward) <= width {
 		status += reward
 	}
 	out = append(out, status)

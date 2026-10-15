@@ -12,6 +12,7 @@ import (
 
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/units"
 )
 
 // Top is the stats screen, laid out like htop: meters on top (a braille
@@ -185,7 +186,7 @@ func (t *Top) meters(w int) []string {
 		solveBar,
 		legend(w, ind, hint, ed),
 		label("Uptime") + val(uptime(st.Uptime)),
-		label("Bytes") + val(Bytes(st.LifetimeBytes)) + " lifetime, " + val(Bytes(st.Bank)) + " bank",
+		label("Bytes") + val(units.Bytes(st.LifetimeBytes)) + " lifetime, " + val(units.Bytes(st.Bank)) + " bank",
 		label("Trend") + cyan.Render(sparkline(t.ratings, max(min(w-20, 30), 0))) + delta + faint.Render(" last 10"),
 	}
 }

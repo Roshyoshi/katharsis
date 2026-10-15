@@ -11,6 +11,7 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/units"
 )
 
 // Log is git log: one line per boot, newest first, in the shape of
@@ -200,11 +201,11 @@ func (l *Log) bootLine(b BootRow, w, numW int, wide bool) string {
 		date = b.Started.Format("2006-01-02 15:04")
 	}
 	left := fmt.Sprintf("%s %s %s %s P%d %7s ", star, hash,
-		pad(fmt.Sprintf("#%d", b.Boot), numW), faint.Render(date), b.Prestige, clock(b.Uptime))
-	const bytesW = 8
+		pad(fmt.Sprintf("#%d", b.Boot), numW), faint.Render(date), b.Prestige, units.Clock(b.Uptime))
+	const bytesW = 8 // "+1.2 KiB", "+312 KiB"; a boot banking 10-99 KiB runs one over
 	bytes := faint.Render(padLeft("0 B", bytesW))
 	if b.Banked > 0 {
-		bytes = green.Render(padLeft("+"+Bytes(b.Banked), bytesW))
+		bytes = green.Render(padLeft("+"+units.Bytes(b.Banked), bytesW))
 	}
 	room := w - ansi.StringWidth(left) - bytesW - 1
 	return left + pad(outcomeText(b, room), room) + " " + bytes
@@ -250,9 +251,9 @@ func (l *Log) details(b BootRow, w int) []string {
 		preset = standardPreset
 	}
 	sum := fmt.Sprintf("started %s · seed %x · preset %s · %s · banked %s",
-		b.Started.Format("2006-01-02 15:04"), b.Seed, preset, prestigeText(b.Prestige, l.nameOf), Bytes(b.Banked))
+		b.Started.Format("2006-01-02 15:04"), b.Seed, preset, prestigeText(b.Prestige, l.nameOf), units.Bytes(b.Banked))
 	if b.Dumped > 0 {
-		sum += " · dumped " + Bytes(b.Dumped)
+		sum += " · dumped " + units.Bytes(b.Dumped)
 	}
 	if b.Problem != "" && !b.Cleared {
 		sum += " · on " + b.Problem
@@ -300,13 +301,13 @@ func attemptLine(a AttemptRow, lay attemptLayout) string {
 	if a.Rating > 0 {
 		topic += " " + ratingStyle(float64(a.Rating)).Render(fmt.Sprint(a.Rating))
 	}
-	t := padLeft(clock(a.Elapsed), 5)
+	t := padLeft(units.Clock(a.Elapsed), 5)
 	if lay.timer {
 		tm := ""
 		if a.Timer > 0 {
-			tm = "/" + clock(a.Timer)
+			tm = "/" + units.Clock(a.Timer)
 		}
-		t = padLeft(clock(a.Elapsed)+tm, 11)
+		t = padLeft(units.Clock(a.Elapsed)+tm, 11)
 	}
 	subs := fmt.Sprintf("%d sub", a.Submits)
 	if a.Failed > 0 {

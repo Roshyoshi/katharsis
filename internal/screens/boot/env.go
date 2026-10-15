@@ -15,6 +15,7 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
+	"katharsis/internal/units"
 )
 
 // Lookup resolves a door's problem. catalog.Catalog.Get satisfies it.
@@ -291,11 +292,11 @@ func (e Env) header(where string, width int) []string {
 	if where != "" {
 		left += dot + where
 	}
-	right := sFaint.Render("uptime ") + fmtClock(e.uptime())
+	right := sFaint.Render("uptime ") + units.Clock(e.uptime())
 
 	status := hearts(st.Lives, st.MaxLives) + "  " + fmt.Sprintf("🦆%d", st.Ducks) + "  " +
-		sGreen.Render(formatBytes(st.Uncommitted)) + sFaint.Render(" uncommitted") + dot +
-		formatBytes(st.Committed) + sFaint.Render(" committed")
+		sGreen.Render(units.Bytes(st.Uncommitted)) + sFaint.Render(" uncommitted") + dot +
+		units.Bytes(st.Committed) + sFaint.Render(" committed")
 	var ds []string
 	for _, d := range st.Daemons {
 		n, _ := daemonText(d, st.Rules)

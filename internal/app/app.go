@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand/v2"
-	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +22,7 @@ import (
 	"katharsis/internal/screens"
 	"katharsis/internal/session"
 	"katharsis/internal/store"
+	"katharsis/internal/units"
 )
 
 // Runner sets up and tears down the editing side of an open door: files on
@@ -335,11 +335,11 @@ func (m *Model) Clock() string {
 		return "untimed"
 	}
 	left := s.Current.Deadline.Sub(m.d.Now())
-	t := countdown(max(left, 0))
+	t := units.Countdown(left)
 	// A trial's timer is soft: past the deadline the door goes on at half
 	// pay, so show how far over it is instead of a frozen 00:00.
 	if left < 0 && s.SoftTimer() {
-		t = "+" + countdown(-left) + " over"
+		t = "+" + units.Clock(-left) + " over"
 	}
-	return fmt.Sprintf("%s · %s · %s", t, strings.Repeat("♥", s.Lives), ducks(s))
+	return fmt.Sprintf("%s · %s · %s", t, units.Hearts(s.Lives, s.MaxLives), ducks(s))
 }

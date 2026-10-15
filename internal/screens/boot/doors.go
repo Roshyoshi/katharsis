@@ -10,6 +10,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	"katharsis/internal/units"
 )
 
 // Doors is the room's choice: one card per door with everything that bears
@@ -246,8 +247,8 @@ func tagLines(t doorText, cw, n int) []string {
 
 func doorStats(door game.Door) string {
 	return sYellow.Render("◆") + fmt.Sprintf(" %d", door.Rating) +
-		"  ⏱ " + fmtClock(door.Timer) +
-		"  " + sGreen.Bold(true).Render("+"+formatBytes(door.Bytes))
+		"  ⏱ " + units.Clock(door.Timer) +
+		"  " + sGreen.Bold(true).Render("+"+units.Bytes(door.Bytes))
 }
 
 // clearChance is the engine's estimate that the player clears door, "" when

@@ -17,6 +17,7 @@ import (
 
 	"katharsis/internal/judge"
 	"katharsis/internal/problem"
+	"katharsis/internal/units"
 )
 
 // SavedMsg tells the HUD the source was saved; the file watcher sends it.
@@ -546,7 +547,7 @@ func (m *Model) rowLine(i int, r row) string {
 	}
 	v := r.res.Verdict
 	s := cursor + fmt.Sprintf("%-3s ", name) + verdictStyle(v).Render(fmt.Sprintf("%-4s", v))
-	s += fmt.Sprintf("%6dms %6s", r.res.CPU.Milliseconds(), judge.Bytes(r.res.MaxRSS))
+	s += fmt.Sprintf("%6dms %6s", r.res.CPU.Milliseconds(), units.Mem(r.res.MaxRSS))
 	if r.res.Reason != "" && v != judge.AC {
 		s += "  " + faint.Render(r.res.Reason)
 	}
@@ -578,7 +579,7 @@ func (m *Model) detail(w int) []string {
 		out = append(out, firstLines(res.Stderr, max(m.height-len(m.rows)-8, 3))...)
 	case res.Verdict == judge.AC:
 		out = append(out, faint.Render(fmt.Sprintf("cpu %s · wall %s · peak %s",
-			res.CPU.Round(time.Millisecond), res.Wall.Round(time.Millisecond), judge.Bytes(res.MaxRSS))))
+			res.CPU.Round(time.Millisecond), res.Wall.Round(time.Millisecond), units.Mem(res.MaxRSS))))
 	}
 	return out
 }
@@ -589,15 +590,6 @@ func scroll(n, sel, room int) (lo, hi int) {
 	room = max(min(room, n), 1)
 	lo = min(max(sel-room/2, 0), n-room)
 	return lo, lo + room
-}
-
-func fmtClock(d time.Duration) string {
-	d = d.Round(time.Second)
-	h, mnt, s := int(d.Hours()), int(d.Minutes())%60, int(d.Seconds())%60
-	if h > 0 {
-		return fmt.Sprintf("%d:%02d:%02d", h, mnt, s)
-	}
-	return fmt.Sprintf("%02d:%02d", mnt, s)
 }
 
 // compilerLog is the compiler's log with the source's directory cut from
@@ -636,5 +628,5 @@ func (m *Model) clockText() string {
 	if m.opt.Clock != nil {
 		return m.opt.Clock()
 	}
-	return fmtClock(m.now.Sub(m.started))
+	return units.Clock(m.now.Sub(m.started))
 }

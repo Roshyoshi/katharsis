@@ -8,6 +8,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	"katharsis/internal/units"
 )
 
 // option is one pickable upgrade or daemon as the player sees it.
@@ -170,12 +171,12 @@ func (u *UpgradeScreen) View(width, height int) string {
 	if a, ok := lastClear(st); ok {
 		p := u.env.problem(a.Door.Problem)
 		line := sGreen.Bold(true).Render("✓ AC") + "  " + sBold.Render(p.Title) +
-			sFaint.Render(fmt.Sprintf("  in %s of %s", fmtClock(elapsed(a, u.env.Now)), fmtClock(a.Door.Timer)))
+			sFaint.Render(fmt.Sprintf("  in %s of %s", units.Clock(elapsed(a, u.env.Now)), units.Clock(a.Door.Timer)))
 		if a.O3 {
 			line += "  " + sYellow.Bold(true).Render("-O3")
 		}
 		block = append(block, center(line, width),
-			center(sGreen.Render("+"+formatBytes(a.Door.Bytes))+sFaint.Render(" uncommitted"), width), "")
+			center(sGreen.Render("+"+units.Bytes(a.Door.Bytes))+sFaint.Render(" uncommitted"), width), "")
 	}
 	ask := sBold.Render("Pick an upgrade.")
 	switch n, o3 := owedPicks(st); {

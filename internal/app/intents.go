@@ -16,6 +16,7 @@ import (
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/store"
+	"katharsis/internal/units"
 )
 
 // intent handles navigation messages; ok is false for anything else.
@@ -257,7 +258,7 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 		return fail("save: %v", err)
 	}
 	if got > 0 {
-		return note("core dump recovered: +%s banked", meta.Bytes(got))
+		return note("core dump recovered: +%s banked", units.Bytes(got))
 	}
 	return nil
 }

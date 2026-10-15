@@ -8,6 +8,7 @@ import (
 
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/units"
 )
 
 // Route is the fork at the entrance of a choice biome: one card per topic
@@ -126,7 +127,7 @@ func (r *Route) describe(topic string) route {
 	}
 	rb, ok := ruleBiome(st, st.Biome)
 	if ok && rb.Timer.Duration > 0 {
-		out.rooms += sFaint.Render(" · ") + "⏱ ~" + fmtClock(rb.Timer.Duration)
+		out.rooms += sFaint.Render(" · ") + "⏱ ~" + units.Clock(rb.Timer.Duration)
 	}
 	if ok && rb.TargetClear > 0 && rb.TargetClear < 1 {
 		// A preview of the rating the engine aims this topic's doors at,

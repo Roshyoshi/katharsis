@@ -15,6 +15,7 @@ import (
 	"katharsis/internal/judge"
 	"katharsis/internal/problem"
 	"katharsis/internal/session"
+	"katharsis/internal/units"
 )
 
 // Commands from the editor arrive as session.Request messages. In practice
@@ -171,7 +172,7 @@ func (m *Model) submitReply() session.Reply {
 		return fail("CE: " + log)
 	case s.sum.Verdict == judge.AC:
 		return session.Reply{OK: true, Text: fmt.Sprintf("AC %d/%d · max %s, %s",
-			s.sum.Passed, s.sum.Total, s.sum.MaxCPU.Round(time.Millisecond), judge.Bytes(s.sum.MaxRSS))}
+			s.sum.Passed, s.sum.Total, s.sum.MaxCPU.Round(time.Millisecond), units.Mem(s.sum.MaxRSS))}
 	case s.sum.First < 0:
 		return fail(fmt.Sprintf("%d/%d judged", s.sum.Done, s.sum.Total))
 	}

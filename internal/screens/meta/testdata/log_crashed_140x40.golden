@@ -2,7 +2,7 @@ git log --graph --oneline  42 boots · 10 cleared · 31 crashed                 
 * 54bf774 #42 2026-10-14 17:58 P2 1:04:12 crashed in The Heap (timer)                                                                  +96 B
 * 3961090 #40 2026-10-12 21:30 P2   41:05 crashed in Page Tables (:q!)                                                                   0 B
 │   started 2026-10-12 21:30 · seed 2b7e151628aed2a6 · preset hardcore · prestige 2 (Gold) · banked 0 B · dumped 140 B · on Haybale Stacking
-│   ✓ Shell Game                   simulation 1100        5:02/12:00 1 sub    🦆0 independent
+│   ✓ Shell Game                   simulation 1100       05:02/12:00 1 sub    🦆0 independent
 │   ✗ Haybale Stacking             prefix-sums 1480      36:03/24:00 2 sub 2✗ 🦆0 :q! [regression]
 * 7677f58 #39 2026-10-11 19:04 P1 1:17:30 crashed in The Scheduler (out of lives)                                                     +410 B
 * a84eb59 #35 2026-10-07 19:00 P2 1:02:13 crashed in The Stack (timer)                                                                 +53 B

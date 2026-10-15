@@ -1,13 +1,13 @@
 package boot
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"katharsis/internal/units"
 )
 
 // The palette is the terminal's own 16 ANSI colors, so every screen follows
@@ -206,57 +206,11 @@ func layout(width, height int, body []string, footer string) string {
 	return strings.Join(out, "\n")
 }
 
-// hearts draws lives as filled hearts and the missing ones as hollow.
+// hearts colors units.Hearts: the lives left red, the lost ones faint.
 func hearts(lives, maxLives int) string {
-	lives = max(lives, 0)
-	if maxLives > 10 || lives > 10 {
-		return sRed.Render("♥") + fmt.Sprintf(" %d/%d", lives, maxLives)
-	}
-	return sRed.Render(strings.Repeat("♥", lives)) +
-		sFaint.Render(strings.Repeat("♡", max(maxLives-lives, 0)))
-}
-
-// formatBytes renders the game currency the way the HUD bar and screens
-// show it: whole bytes below 1 KiB, then one decimal of KiB or MiB.
-func formatBytes(n int64) string {
-	sign := ""
-	if n < 0 {
-		sign, n = "-", -n
-	}
-	switch {
-	case n < 1<<10:
-		return sign + strconv.FormatInt(n, 10) + " B"
-	case n < 1<<20:
-		return sign + unit(float64(n)/(1<<10), "KiB")
-	default:
-		return sign + unit(float64(n)/(1<<20), "MiB")
-	}
-}
-
-func unit(v float64, u string) string {
-	if v >= 100 {
-		return strconv.FormatFloat(v, 'f', 0, 64) + " " + u
-	}
-	return strings.TrimSuffix(strconv.FormatFloat(v, 'f', 1, 64), ".0") + " " + u
-}
-
-// fmtClock is mm:ss under an hour and h:mm:ss above, never negative.
-func fmtClock(d time.Duration) string {
-	d = max(d, 0).Truncate(time.Second)
-	h, m, s := int(d.Hours()), int(d.Minutes())%60, int(d.Seconds())%60
-	if h > 0 {
-		return fmt.Sprintf("%d:%02d:%02d", h, m, s)
-	}
-	return fmt.Sprintf("%02d:%02d", m, s)
-}
-
-// fmtCountdown rounds up, so a countdown reads 00:00 only once the deadline
-// has actually passed.
-func fmtCountdown(d time.Duration) string {
-	if r := d % time.Second; r > 0 {
-		d += time.Second - r
-	}
-	return fmtClock(d)
+	h := units.Hearts(lives, maxLives)
+	left := strings.TrimRight(h, "♡")
+	return sRed.Render(left) + sFaint.Render(h[len(left):])
 }
 
 // fmtMult renders a byte multiplier: ×2, ×1.5.

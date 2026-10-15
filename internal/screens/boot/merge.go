@@ -9,6 +9,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	"katharsis/internal/units"
 )
 
 // Merge is the merge window between biomes: commit the uncommitted bytes
@@ -136,11 +137,11 @@ func (m *Merge) View(width, height int) string {
 
 	label := func(s string) string { return "  " + sBold.Render(fmt.Sprintf("%-9s", s)) }
 	if st.Uncommitted > 0 {
-		secs = append(secs, label("commit")+sGreen.Bold(true).Render(formatBytes(st.Uncommitted))+
+		secs = append(secs, label("commit")+sGreen.Bold(true).Render(units.Bytes(st.Uncommitted))+
 			sFaint.Render(" uncommitted, lost if you crash  ")+hint("c", "commit"))
 	} else {
 		secs = append(secs, label("commit")+sFaint.Render("nothing uncommitted · ")+
-			formatBytes(st.Committed)+sFaint.Render(" committed this boot · bank ")+formatBytes(m.env.Meta.Bank))
+			units.Bytes(st.Committed)+sFaint.Render(" committed this boot · bank ")+units.Bytes(m.env.Meta.Bank))
 	}
 
 	if st.PendingUpgrade && len(st.UpgradeOffers) > 0 {

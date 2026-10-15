@@ -10,6 +10,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	"katharsis/internal/units"
 )
 
 // node is one room on the map.
@@ -260,7 +261,7 @@ func historyRows(env Env, width int) []string {
 	for _, s := range ss {
 		a := s.Attempt
 		p := env.problem(a.Door.Problem)
-		tm := fmtClock(elapsed(a, env.Now)) + " / " + fmtClock(a.Door.Timer)
+		tm := units.Clock(elapsed(a, env.Now)) + " / " + units.Clock(a.Door.Timer)
 		if a.Opened.IsZero() {
 			tm = "-"
 		}

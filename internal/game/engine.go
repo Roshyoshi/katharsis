@@ -10,6 +10,7 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/rules"
+	"katharsis/internal/units"
 )
 
 // ErrInvalid wraps every error Step returns for an action the current phase
@@ -189,7 +190,7 @@ func (e *engine) chooseDoor(i int) error {
 	if mods != "" {
 		mods = ", " + mods
 	}
-	e.logf("%s: open %s (%d, %s, %s%s)", e.door(), d.Problem, d.Rating, clock(d.Timer), fmtBytes(d.Bytes), mods)
+	e.logf("%s: open %s (%d, %s, %s%s)", e.door(), d.Problem, d.Rating, units.Clock(d.Timer), units.Bytes(d.Bytes), mods)
 	e.emit(OpenProblem{Door: d})
 	return nil
 }
@@ -410,7 +411,7 @@ func (e *engine) clear() {
 	if a.Overtime {
 		over = " (overtime)"
 	}
-	e.logf("%s: AC in %s, +%s%s", name, clock(elapsed), fmtBytes(paid), over)
+	e.logf("%s: AC in %s, +%s%s", name, units.Clock(elapsed), units.Bytes(paid), over)
 	e.emit(CloseProblem{Door: d})
 
 	s.Room++
@@ -422,7 +423,7 @@ func (e *engine) clear() {
 	picks := 1
 	if a.O3 {
 		picks++
-		e.logf("%s: -O3, under %s, free upgrade", name, clock(scale(d.Timer, r.O3Frac)))
+		e.logf("%s: -O3, under %s, free upgrade", name, units.Clock(scale(d.Timer, r.O3Frac)))
 	}
 	e.emit(Sound{Name: "ac"})
 	e.owe(picks)
@@ -458,17 +459,17 @@ func (e *engine) crash(cause Outcome, cursed bool) {
 	s.Uncommitted = 0
 	if s.Trial != nil {
 		if lost > 0 {
-			e.logf("trial: %s lost, no core dump", fmtBytes(lost))
+			e.logf("trial: %s lost, no core dump", units.Bytes(lost))
 		}
 	} else {
 		if m.CoreDump != nil {
 			dumpLost = m.CoreDump.Bytes
-			e.logf("coredump: %s on %s overwritten", fmtBytes(dumpLost), m.CoreDump.Problem)
+			e.logf("coredump: %s on %s overwritten", units.Bytes(dumpLost), m.CoreDump.Problem)
 			m.CoreDump = nil
 		}
 		if lost > 0 {
 			m.CoreDump = &CoreDump{Problem: d.Problem, Bytes: lost, Boot: s.Boot, At: e.now}
-			e.logf("core dumped: %s on %s", fmtBytes(lost), d.Problem)
+			e.logf("core dumped: %s on %s", units.Bytes(lost), d.Problem)
 		}
 		if due, ok := scheduleRegression(m, d.Problem, e.now, s.Rules.RegressionDays); ok {
 			e.logf("regression: %s due %s", d.Problem, due.Format(time.DateOnly))
@@ -583,7 +584,7 @@ func (e *engine) enterMerge() {
 		s.DaemonOffers = sample(e.rng, pool, r.DaemonOffers)
 	}
 	e.logf("merge window: %s uncommitted, ducks %d, daemons on offer %v",
-		fmtBytes(s.Uncommitted), s.Ducks, s.DaemonOffers)
+		units.Bytes(s.Uncommitted), s.Ducks, s.DaemonOffers)
 }
 
 func (e *engine) commit() error {
@@ -603,7 +604,7 @@ func (e *engine) bank() {
 	s.Committed += n
 	e.meta.Bank += n
 	s.Uncommitted = 0
-	e.logf("commit: %s banked, bank %s", fmtBytes(n), fmtBytes(e.meta.Bank))
+	e.logf("commit: %s banked, bank %s", units.Bytes(n), units.Bytes(e.meta.Bank))
 }
 
 func (e *engine) pickDaemon(d Daemon) error {
@@ -630,7 +631,7 @@ func (e *engine) leaveMerge() error {
 		return invalid("pick an upgrade first")
 	}
 	if s.Uncommitted > 0 {
-		e.logf("merge window: leaving %s uncommitted", fmtBytes(s.Uncommitted))
+		e.logf("merge window: leaving %s uncommitted", units.Bytes(s.Uncommitted))
 	}
 	s.DaemonOffers = nil
 	e.enterBiome(s.Biome + 1)
@@ -687,7 +688,7 @@ func (e *engine) finish() {
 	case s.Prestige == m.Prestige && m.Prestige < MaxPrestige:
 		e.logf("prestige %d locked until %d rated doors (%d so far)", m.Prestige+1, s.Rules.CalibAfter, rated(m))
 	}
-	e.logf("boot #%d: cleared in %s, %s committed", s.Boot, clock(e.now.Sub(s.Started)), fmtBytes(s.Committed))
+	e.logf("boot #%d: cleared in %s, %s committed", s.Boot, units.Clock(e.now.Sub(s.Started)), units.Bytes(s.Committed))
 	e.emit(Sound{Name: "cleared"}, ShowCleared{})
 }
 
@@ -729,25 +730,4 @@ func (s *State) ShowsFailingInput() bool {
 		return true
 	}
 	return s.Rules.ShowFailingInput || slices.Contains(s.Daemons, Strace)
-}
-
-// clock formats a duration as m:ss or h:mm:ss, like the HUD.
-func clock(d time.Duration) string {
-	d = d.Round(time.Second)
-	h, m, sec := int(d.Hours()), int(d.Minutes())%60, int(d.Seconds())%60
-	if h > 0 {
-		return fmt.Sprintf("%d:%02d:%02d", h, m, sec)
-	}
-	return fmt.Sprintf("%d:%02d", m, sec)
-}
-
-// fmtBytes shows bytes in B, KiB or MiB (DESIGN.md's currency).
-func fmtBytes(n int64) string {
-	switch {
-	case n < 1<<10:
-		return fmt.Sprintf("%dB", n)
-	case n < 1<<20:
-		return fmt.Sprintf("%.1fKiB", float64(n)/(1<<10))
-	}
-	return fmt.Sprintf("%.1fMiB", float64(n)/(1<<20))
 }

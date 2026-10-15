@@ -11,6 +11,7 @@ import (
 
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/units"
 )
 
 // revealTime is how long the panic takes to print. Long enough to read as
@@ -447,11 +448,11 @@ func (c *Crash) core(cr game.Crash, title string, width int) []string {
 	var dump string
 	switch d := c.env.Meta.CoreDump; {
 	case d != nil && cr.Door.Problem != "" && d.Problem == cr.Door.Problem:
-		dump = "core dumped: " + sGreen.Bold(true).Render(formatBytes(d.Bytes)) + fmt.Sprintf(" on %q", title)
+		dump = "core dumped: " + sGreen.Bold(true).Render(units.Bytes(d.Bytes)) + fmt.Sprintf(" on %q", title)
 	case cr.Lost > 0 && c.upsolved(cr):
-		dump = "core dump recovered: " + sGreen.Bold(true).Render("+"+formatBytes(cr.Lost)) + sFaint.Render(" banked")
+		dump = "core dump recovered: " + sGreen.Bold(true).Render("+"+units.Bytes(cr.Lost)) + sFaint.Render(" banked")
 	case cr.Lost > 0 && c.env.State.Trial != nil:
-		dump = sFaint.Render("no core dump: a trial loses its " + formatBytes(cr.Lost) + " outright")
+		dump = sFaint.Render("no core dump: a trial loses its " + units.Bytes(cr.Lost) + " outright")
 	case cr.Lost > 0:
 		dump = sFaint.Render("no core dump left to recover")
 	default:

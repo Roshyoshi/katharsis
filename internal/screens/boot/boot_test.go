@@ -1055,17 +1055,6 @@ func TestTimerTone(t *testing.T) {
 	}
 }
 
-func TestFormatBytes(t *testing.T) {
-	for n, want := range map[int64]string{
-		0: "0 B", 312: "312 B", 1023: "1023 B", 1024: "1 KiB", 1536: "1.5 KiB",
-		10 << 10: "10 KiB", 150 << 10: "150 KiB", 1 << 20: "1 MiB", 3 << 19: "1.5 MiB", -312: "-312 B",
-	} {
-		if got := formatBytes(n); got != want {
-			t.Errorf("formatBytes(%d) = %q, want %q", n, got, want)
-		}
-	}
-}
-
 func TestStepsPlaceAttempts(t *testing.T) {
 	ss := steps(fixture.Crash(game.TimedOut))
 	want := [][2]int{{0, 0}, {0, 1}, {0, 1}, {1, 0}, {1, 1}}
