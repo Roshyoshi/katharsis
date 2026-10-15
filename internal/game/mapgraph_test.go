@@ -212,3 +212,90 @@ func TestMapFirstBoot(t *testing.T) {
 		t.Errorf("boot #2: biomes %+v", s2.Biomes)
 	}
 }
+
+// TestMapUIContract pins what the map hub's screens read (coordinator,
+// 10-15): every tier laid out at boot start with tier 0 on its node, a map
+// told by len(Rules.Nodes) > 0 && len(Biomes) == len(Rules.Biomes) (so
+// boot #1's linear snapshot carries no nodes); during a route, Biome is the
+// tier being entered with its Exits written, kept after the choice; taking
+// a node names the tier; Gate is set on open exits too, Locked only when
+// the exit cannot be taken; Bosses on topic nodes and the skip; FailCost
+// and OneShot read the routed tier; every attempt knows its biome.
+func TestMapUIContract(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	isMap := func(s *game.State) bool { return len(s.Rules.Nodes) > 0 && len(s.Biomes) == len(s.Rules.Biomes) }
+	m := &game.Meta{Installed: []string{"git"}}
+	first, _, err := game.NewBoot(rules.Map(), m, ps, 0, 9, t0)
+	if err != nil || isMap(first) || len(first.Rules.Nodes) != 0 {
+		t.Fatalf("boot #1 reads as a map: %v nodes %d", err, len(first.Rules.Nodes))
+	}
+	h := newHarness(t, mapPlain(), m, ps, 0, 9)
+	s := h.s
+	if !isMap(s) || s.Biomes[0].Node != "userland" || len(s.Biomes) != 7 {
+		t.Fatalf("map boot: %+v", s.Biomes)
+	}
+	routes := 0
+	for range 200 {
+		if s.Phase == game.PhaseCrashed || s.Phase == game.PhaseCleared {
+			break
+		}
+		switch {
+		case s.PendingUpgrade:
+			h.pick()
+		case s.Phase == game.PhaseRoute:
+			routes++
+			b := s.Biomes[s.Biome]
+			if b.Node != "" || len(b.Exits) == 0 || len(b.Offers) != len(b.Exits) {
+				t.Fatalf("route into tier %d: %+v", s.Biome, b)
+			}
+			fc, ok := s.FailCost(game.TimedOut)
+			if want := s.Rules.Biomes[s.Biome].FailCycles; s.OneShot() != (s.Biome == len(s.Biomes)-1) ||
+				!s.OneShot() && (fc != want || ok != (s.Cycles > fc)) {
+				t.Errorf("route into tier %d: FailCost %d %v (want %d), one shot %v", s.Biome, fc, ok, want, s.OneShot())
+			}
+			open := -1
+			for j, x := range b.Exits {
+				if n, _ := s.Rules.Node(x.Node); game.CapabilityFor(n.Topic) != "" && x.Gate.Capability == "" {
+					t.Errorf("exit %s: no gate", x.Node)
+				}
+				if x.Boss == "" && len(x.Bosses) == 0 {
+					t.Errorf("exit %s: no boss behind it", x.Node)
+				}
+				if x.Locked != "" {
+					if _, err := game.Step(s, h.m, h.ps, game.ChooseRoute{Index: j}, h.now); err == nil {
+						t.Fatalf("locked exit %s taken", x.Node)
+					}
+				} else if open < 0 {
+					open = j
+				}
+			}
+			want := b.Exits
+			h.do(game.ChooseRoute{Index: open})
+			nb := s.Biomes[s.Biome-boolInt(want[open].Skip)]
+			n, _ := s.Rules.Node(want[open].Node)
+			if nb.Node != n.ID || nb.Name != n.Name || nb.Boss != n.Boss || len(nb.Exits) != len(want) {
+				t.Errorf("took %s: tier %+v", n.ID, nb)
+			}
+		case s.Phase == game.PhaseDoors:
+			h.clearDoor(0, time.Minute)
+		case s.Phase == game.PhaseMerge:
+			h.do(game.LeaveMerge{})
+		}
+	}
+	for _, a := range s.History {
+		if a.Biome < 0 || a.Biome >= len(s.Biomes) || s.Biomes[a.Biome].Node == "" {
+			t.Errorf("attempt %+v in biome %d", a.Door, a.Biome)
+		}
+	}
+	if s.Phase != game.PhaseCleared || routes == 0 {
+		t.Errorf("phase %s after %d routes", s.Phase, routes)
+	}
+}
+
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}

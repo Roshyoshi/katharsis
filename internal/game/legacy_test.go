@@ -11,6 +11,7 @@ import (
 
 	"katharsis/internal/game"
 	"katharsis/internal/game/sim"
+	"katharsis/internal/rules"
 )
 
 // legacyFixture is an in-flight boot saved by the engine before the cycles
@@ -96,6 +97,18 @@ func TestLegacySaves(t *testing.T) {
 			}
 			if got, w := mustJSON(t, &m), mustJSON(t, &wantM); got != w {
 				t.Errorf("%s cont %d: meta ends\n%s\nwant\n%s", fx.Name, ci, got, w)
+			}
+			// The old save's next boot plays today's standard: the map,
+			// in cycles, with the core dump the old boots left at risk.
+			dump := mustJSON(t, m.CoreDump)
+			next, _, err := game.NewBoot(rules.Standard(), &m, ps, min(m.Prestige, game.MaxPrestige), 5, c.EndNow.Add(time.Hour))
+			if err != nil {
+				t.Fatalf("%s cont %d: the next boot: %v", fx.Name, ci, err)
+			}
+			at := next.AtStart
+			if len(next.Rules.Nodes) == 0 && m.Boots > m.Trials+1 || next.Cycles < 20 || at == nil || mustJSON(t, at.Dump) != dump {
+				t.Errorf("%s cont %d: the next boot: nodes %d, cycles %d, dump at risk %+v (meta's %s)",
+					fx.Name, ci, len(next.Rules.Nodes), next.Cycles, at, dump)
 			}
 		}
 	}
