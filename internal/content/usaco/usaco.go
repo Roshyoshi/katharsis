@@ -41,8 +41,7 @@ type Catalog struct {
 	entries map[catalog.ID]*entry
 	order   []catalog.ID // cpid order
 
-	flightMu sync.Mutex
-	flights  map[catalog.ID]*flight
+	flights web.Flights[catalog.ID, catalog.Assets]
 }
 
 var _ catalog.Catalog = (*Catalog)(nil)
@@ -93,7 +92,6 @@ func open(ctx context.Context, root string, snapshot func(context.Context) (stri
 		base:    site,
 		client:  client,
 		entries: map[catalog.ID]*entry{},
-		flights: map[catalog.ID]*flight{},
 	}
 	for i := range idx.Entries {
 		e := &idx.Entries[i]
@@ -174,14 +172,6 @@ func (c *Catalog) persist() error {
 	return saveIndex(filepath.Join(c.root, "index.json"), idx)
 }
 
-// flight is one in-progress Fetch that later callers for the same id wait
-// on instead of downloading again.
-type flight struct {
-	done   chan struct{}
-	assets catalog.Assets
-	err    error
-}
-
 // Fetch materializes id under the cache and returns its asset paths. A
 // finished problem dir is reused without the network. Concurrent calls for
 // one id share a single download; calls for different ids proceed in
@@ -191,35 +181,7 @@ func (c *Catalog) Fetch(ctx context.Context, id catalog.ID) (catalog.Assets, err
 	if !ok {
 		return catalog.Assets{}, errors.New(string(id) + ": not a USACO problem in the catalog")
 	}
-	for {
-		c.flightMu.Lock()
-		f, waiting := c.flights[id]
-		if !waiting {
-			f = &flight{done: make(chan struct{})}
-			c.flights[id] = f
-		}
-		c.flightMu.Unlock()
-
-		if !waiting {
-			f.assets, f.err = c.fetch(ctx, e)
-			c.flightMu.Lock()
-			delete(c.flights, id)
-			c.flightMu.Unlock()
-			close(f.done)
-			return f.assets, f.err
-		}
-		select {
-		case <-ctx.Done():
-			return catalog.Assets{}, ctx.Err()
-		case <-f.done:
-		}
-		// The leader's context may have been cancelled while ours is
-		// fine; take over instead of failing with someone else's error.
-		if f.err != nil && isCtxErr(f.err) && ctx.Err() == nil {
-			continue
-		}
-		return f.assets, f.err
-	}
+	return c.flights.Do(ctx, id, func() (catalog.Assets, error) { return c.fetch(ctx, e) })
 }
 
 // fetch runs as the only flight for e, so its cache check cannot miss a
@@ -246,8 +208,4 @@ func (c *Catalog) fetch(ctx context.Context, e entry) (catalog.Assets, error) {
 		}
 	}
 	return a, nil
-}
-
-func isCtxErr(err error) bool {
-	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }

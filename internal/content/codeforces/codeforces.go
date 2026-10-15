@@ -53,8 +53,7 @@ type Catalog struct {
 	entries map[catalog.ID]*entry
 	order   []catalog.ID // contest, then problem index
 
-	flightMu sync.Mutex
-	flights  map[catalog.ID]*flight
+	flights web.Flights[catalog.ID, catalog.Assets]
 }
 
 var _ catalog.Catalog = (*Catalog)(nil)
@@ -151,7 +150,6 @@ func newCatalog(root, base string, l layout, pc *web.Client) *Catalog {
 	return &Catalog{
 		root: root, base: base, lay: l, client: pc,
 		entries: map[catalog.ID]*entry{},
-		flights: map[catalog.ID]*flight{},
 	}
 }
 
@@ -276,14 +274,6 @@ func (c *Catalog) persist() error {
 	return web.WriteFile(filepath.Join(c.root, "index.json"), b)
 }
 
-// flight is one in-progress Fetch that later callers for the same id wait
-// on instead of downloading again.
-type flight struct {
-	done   chan struct{}
-	assets catalog.Assets
-	err    error
-}
-
 // Fetch materializes id under the cache and returns its asset paths. A
 // finished problem dir is reused without the network. Concurrent calls for
 // one id share a single download; calls for different ids proceed in
@@ -296,44 +286,17 @@ func (c *Catalog) Fetch(ctx context.Context, id catalog.ID) (catalog.Assets, err
 		return catalog.Assets{}, errors.New(string(id) + ": not a Codeforces problem in the catalog")
 	}
 	dir := filepath.Join(c.root, dirName(e))
-	for {
+	// The cache is checked inside the flight, so a download of the same
+	// problem that finishes a moment earlier cannot be missed and started
+	// again.
+	return c.flights.Do(ctx, id, func() (catalog.Assets, error) {
 		if a, ok := loadAssets(dir); usable(a, ok, e) {
 			return a, nil
 		}
-		c.flightMu.Lock()
-		f, waiting := c.flights[id]
-		if !waiting {
-			f = &flight{done: make(chan struct{})}
-			c.flights[id] = f
-		}
-		c.flightMu.Unlock()
-
-		if !waiting {
-			f.assets, f.err = c.materialize(ctx, e, dir)
-			c.flightMu.Lock()
-			delete(c.flights, id)
-			c.flightMu.Unlock()
-			close(f.done)
-			return f.assets, f.err
-		}
-		select {
-		case <-ctx.Done():
-			return catalog.Assets{}, ctx.Err()
-		case <-f.done:
-		}
-		// The leader's context may have been cancelled while ours is
-		// fine; take over instead of failing with someone else's error.
-		if f.err != nil && isCtxErr(f.err) && ctx.Err() == nil {
-			continue
-		}
-		return f.assets, f.err
-	}
+		return c.materialize(ctx, e, dir)
+	})
 }
 
 // dirName is "1899C": the id without "cf:". newEntry admits only digits
 // and an index of capital letters and digits, so it is a safe path.
 func dirName(e entry) string { return e.ID.Native() }
-
-func isCtxErr(err error) bool {
-	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
-}

@@ -270,7 +270,7 @@ func TestFetchErrors(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := c.Fetch(ctx, "cf:1791A"); !isCtxErr(err) {
+	if _, err := c.Fetch(ctx, "cf:1791A"); !errors.Is(err, context.Canceled) {
 		t.Errorf("cancelled fetch: %v", err)
 	}
 	assertNoDebris(t, c.root)
