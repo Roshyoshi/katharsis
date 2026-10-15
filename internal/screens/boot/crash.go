@@ -393,7 +393,7 @@ func (c *Crash) next(b game.Brief, width int) []string {
 		s = upsolveText(env, b.Next, b.Dump)
 	case env.End.Learn != nil:
 		l := env.End.Learn
-		s = ui.Strong.Render(learnKey) + " RTFM " + l.Topic +
+		s = ui.Strong.Render(learnKey) + " RTFM " + topicName(l.Topic) +
 			ui.Muted.Render(ui.G.Sep+fmt.Sprintf("%d crashes on it in 14 days", l.Crashes))
 	default:
 		s = rebootStep(env)
@@ -630,4 +630,13 @@ func (c *Crash) quote(cr game.Crash, verdict string, seed uint64, width int) []s
 		out = append(out, strings.Repeat(" ", max(right-widthOf(attr), 4))+ui.Muted.Render(attr))
 	}
 	return out
+}
+
+// topicName is a topic as the player meets it, by its biome's name ("dp"
+// is The Cache), or its slug for a topic with no name.
+func topicName(topic string) string {
+	if n := fl.BiomeName(topic); n != "" {
+		return n
+	}
+	return topic
 }

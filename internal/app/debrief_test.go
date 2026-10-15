@@ -268,8 +268,9 @@ func TestRTFMAfterTwoCrashesOnATopic(t *testing.T) {
 		if l == nil || *l != (bootui.Learn{Topic: "prefix-sums", Crashes: 3}) {
 			t.Fatalf("RTFM %+v, want prefix-sums after 3 crashes in 14 days", l)
 		}
-		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "m RTFM prefix-sums") {
-			t.Fatalf("crash screen has no RTFM step:\n%s", v)
+		// The topic by its name, as the route cards give it, not its slug.
+		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "m RTFM The Accumulator") || strings.Contains(v, "RTFM prefix-sums") {
+			t.Fatalf("crash screen has no RTFM step on The Accumulator:\n%s", v)
 		}
 		loadGuide(h)
 		h.send(key("m"))

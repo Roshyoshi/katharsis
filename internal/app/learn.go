@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"time"
@@ -29,17 +30,14 @@ type learnLoadedMsg struct {
 	topic string // openLearn's
 }
 
-// openLearn shows the RTFM browser, with a topic at the first module
-// whose trial earns its capability. The curriculum loads from the USACO
-// Guide snapshot the USACO source already downloaded, once per session.
+// openLearn shows the RTFM browser, with a topic at its module nearest the
+// player (learnModule). The curriculum loads from the USACO Guide snapshot
+// the USACO source already downloaded, once per session.
 func (m *Model) openLearn(topic string) tea.Cmd {
 	if m.cur != nil {
 		b := rtfm.NewBrowser(m.cur, m.meta, m.judgeable, m.d.Catalog.Get)
-		for _, mod := range m.cur.Modules() {
-			if topic != "" && mod.Topic == topic {
-				b.Open(mod.ID)
-				break
-			}
+		if id := m.learnModule(topic); id != "" {
+			b.Open(id)
 		}
 		cmd := m.push(b)
 		// The Mock Turtle's school, over the first visit (story bible).
@@ -58,6 +56,30 @@ func (m *Model) openLearn(topic string) tea.Cmd {
 		cur, err := curriculum.Load(dir)
 		return learnLoadedMsg{cur: cur, err: err, topic: topic}
 	})
+}
+
+// learnModule is the module RTFM opens at for topic, "" for none: of the
+// modules on the topic, whose trials all earn its capability, the one
+// whose doors' band (the trial's, by division) is nearest the player's
+// rating on it, the first in guide order on a tie. Guide order alone sent
+// every player on graphs to Bronze's module, a 1850 one too.
+func (m *Model) learnModule(topic string) string {
+	if topic == "" {
+		return ""
+	}
+	r := m.aptRules()
+	rating := game.PlayerRating(&r, &m.meta, topic)
+	best, far := "", math.Inf(1)
+	for _, mod := range m.cur.Modules() {
+		if mod.Topic != topic || mod.Meta {
+			continue
+		}
+		band := curriculum.DivisionBand(mod.Division)
+		if d := max(float64(band[0])-rating, rating-float64(band[1]), 0); d < far {
+			best, far = mod.ID, d
+		}
+	}
+	return best
 }
 
 func (m *Model) onLearnLoaded(msg learnLoadedMsg) tea.Cmd {

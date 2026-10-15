@@ -211,3 +211,64 @@ func TestTrialStartsWithItsLine(t *testing.T) {
 		}
 	})
 }
+
+// graphGuide is a guide that teaches graphs in three divisions, each
+// module's trial earning CAP_GRAPH: Bronze ◆1000–1300, Silver ◆1350–1650,
+// Gold ◆1700–2000.
+func graphGuide(t *testing.T) *curriculum.Curriculum {
+	t.Helper()
+	dir := t.TempDir()
+	mod := func(id, title string) string {
+		return "---\nid: " + id + "\ntitle: " + title + "\nauthor: A\ndescription: d\n---\n\nHi.\n"
+	}
+	for name, body := range map[string]string{
+		"content/ordering.ts": `const MODULE_ORDERING = {
+  bronze: [{ name: 'Graphs', items: ['intro-graphs'] }],
+  silver: [{ name: 'Graphs', items: ['graph-traversal'] }],
+  gold: [{ name: 'Graphs', items: ['toposort'] }],
+};
+`,
+		"content/2_Bronze/Intro_Graphs.mdx":    mod("intro-graphs", "Introduction to Graphs"),
+		"content/3_Silver/Graph_Traversal.mdx": mod("graph-traversal", "Graph Traversal"),
+		"content/4_Gold/Toposort.mdx":          mod("toposort", "Topological Sort"),
+	} {
+		p := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cur, err := curriculum.Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cur
+}
+
+// RTFM on a topic opens at the module nearest the player's rating among
+// those whose trial earns the topic's capability, not the first in guide
+// order: a 1365 player gets Silver's, a 1850 one Gold's, a 900 one
+// Bronze's.
+func TestRTFMOpensTheNearestModule(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.m.cur = graphGuide(t)
+		for _, tc := range []struct {
+			rating float64
+			want   string
+		}{{1365, "graph-traversal"}, {1850, "toposort"}, {900, "intro-graphs"}} {
+			h.m.meta.Rating = tc.rating
+			h.send(screens.OpenLearn{Topic: "graphs"})
+			b, ok := h.m.top().(*rtfm.Browser)
+			if !ok {
+				t.Fatalf("OpenLearn shows %T", h.m.top())
+			}
+			if v := ansi.Strip(b.View(100, 30)); !strings.Contains(v, tc.want+" - ") {
+				t.Errorf("rating %v: RTFM opened elsewhere, want %s:\n%s", tc.rating, tc.want, v)
+			}
+			h.send(screens.Back{})
+		}
+	})
+}

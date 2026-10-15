@@ -114,10 +114,7 @@ type route struct {
 
 func (r *Route) describe(topic string) route {
 	st := r.env.State
-	out := route{name: fl.BiomeName(topic), topic: topic, blurb: fl.BiomeBlurb(topic)}
-	if out.name == "" {
-		out.name = topic
-	}
+	out := route{name: topicName(topic), topic: topic, blurb: fl.BiomeBlurb(topic)}
 	rooms := st.Biomes[st.Biome].Rooms
 	out.rooms = units.Plural(rooms, "room")
 	rb, ok := ruleBiome(st, st.Biome)
