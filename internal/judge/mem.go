@@ -16,23 +16,24 @@ var HardMemCap int64 = 4 << 30
 // cap.
 const memPoll = 20 * time.Millisecond
 
-// memCap is the size past which the watchdog kills a run. macOS rejects
-// RLIMIT_AS and RLIMIT_DATA, so nothing else stops a program that allocates
-// without bound. The 1.25x margin keeps the watchdog from deciding a close
-// call: a run just over its limit finishes and is judged MLE on its peak
-// (ru_maxrss), like on a real judge.
-func memCap(lim Limits, p Profile) int64 {
-	if p.Sanitized || lim.Mem <= 0 {
+// memCap is the size past which the watchdog kills a run held to mem bytes
+// (none when mem <= 0). macOS rejects RLIMIT_AS and RLIMIT_DATA, so nothing
+// else stops a program that allocates without bound. The 1.25x margin keeps
+// the watchdog from deciding a close call: a run just over its limit
+// finishes and is judged MLE on its peak (ru_maxrss), like on a real judge.
+func memCap(mem int64) int64 {
+	if mem <= 0 {
 		return HardMemCap
 	}
-	return lim.Mem + lim.Mem/4
+	return mem + mem/4
 }
 
 // watchMemory samples proc's memory every memPoll and kills it once it
 // grows past limit. stop ends the watch and returns the size that triggered
-// the kill, or 0 if there was none. Call stop after Wait: a kill after the
-// process is reaped is refused by os.Process (ErrProcessDone), so a reused
-// pid is never signalled.
+// the kill, or 0 if there was none. Call stop after Wait: os.Process refuses
+// to signal a process Wait has reaped (ErrProcessDone), which keeps the kill
+// off a reused pid. On darwin the refusal starts just after wait4 returns
+// rather than before it, a window of a few instructions.
 func watchMemory(proc *os.Process, limit int64) (stop func() (killedAt int64)) {
 	done := make(chan struct{})
 	res := make(chan int64, 1)
@@ -48,7 +49,7 @@ func watchMemory(proc *os.Process, limit int64) (stop func() (killedAt int64)) {
 				return
 			}
 			if n > limit {
-				proc.Kill()
+				_ = proc.Kill() // ErrProcessDone if it exited meanwhile
 				res <- n
 				return
 			}

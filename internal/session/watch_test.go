@@ -156,7 +156,10 @@ func TestWatchIgnoresSiblings(t *testing.T) {
 		write(t, p, "x")
 		write(t, p, "xy")
 		if name == "4913" {
-			os.Remove(p) // vim deletes its probe right away
+			// vim deletes its probe right away
+			if err := os.Remove(p); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	expectFires(t, fired, 0)
@@ -306,7 +309,7 @@ func logRaw(t *testing.T, dir string) {
 		}
 	}()
 	t.Cleanup(func() {
-		w.Close()
+		_ = w.Close()
 		<-stopped
 	})
 }

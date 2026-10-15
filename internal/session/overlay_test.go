@@ -12,7 +12,7 @@ import (
 
 func TestOverlayScript(t *testing.T) {
 	o := Overlay{Ctl: []string{"/opt/it's here/katharsis", "ctl"}}
-	s := o.Script()
+	s := o.script()
 	if !strings.Contains(s, `let s:ctl = ['/opt/it''s here/katharsis', 'ctl']`) {
 		t.Errorf("ctl argv not quoted for vim:\n%s", s)
 	}
@@ -24,7 +24,7 @@ func TestOverlayScript(t *testing.T) {
 	if strings.Contains(s, "cnoreabbrev") {
 		t.Error(":q! is rewritten without QuitGivesUp")
 	}
-	if o.QuitGivesUp = true; !strings.Contains(o.Script(), "cnoreabbrev") {
+	if o.QuitGivesUp = true; !strings.Contains(o.script(), "cnoreabbrev") {
 		t.Error(":q! not rewritten with QuitGivesUp")
 	}
 }

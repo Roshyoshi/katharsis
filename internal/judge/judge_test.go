@@ -32,12 +32,13 @@ func TestMain(m *testing.M) {
 	// os.UserCacheDir, which is $HOME/Library/Caches on macOS. Point HOME at a
 	// scratch dir so every run starts cold and the real cache is left alone.
 	home, err := os.MkdirTemp("", "katharsis-judge-test-")
+	if err == nil {
+		err = errors.Join(os.Setenv("HOME", home), os.Setenv("XDG_CACHE_HOME", filepath.Join(home, ".cache")))
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	os.Setenv("HOME", home)
-	os.Setenv("XDG_CACHE_HOME", filepath.Join(home, ".cache"))
 	_, err = exec.LookPath(judge.Compiler)
 	haveCompiler = err == nil
 	if haveCompiler {
@@ -48,7 +49,7 @@ func TestMain(m *testing.M) {
 		samples = []judge.Profile{sample}
 	}
 	code := m.Run()
-	os.RemoveAll(home)
+	_ = os.RemoveAll(home)
 	os.Exit(code)
 }
 
@@ -266,9 +267,21 @@ func TestRun(t *testing.T) {
 			profs: full, want: judge.TLE,
 			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
 				// The wall-clock kill is at 1.3 s; finishing earlier shows
-				// the verdict came from CPU time.
+				// the verdict came from CPU time. A machine too busy to give
+				// it 500 ms of CPU by then cannot show that.
 				if r.Wall >= 1300*time.Millisecond {
+					if r.CPU < 500*time.Millisecond {
+						t.Skipf("starved: cpu %v by the kill", r.CPU)
+					}
 					t.Errorf("Wall = %v, want under the 1.3s kill", r.Wall)
+				}
+			}},
+		// A blocked run only the wall-clock kill stops: its reason must not
+		// claim it used more CPU than the budget.
+		{name: "TLE idle", src: "idle.cpp", lim: judge.Limits{Time: tl}, profs: full, want: judge.TLE,
+			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
+				if !strings.HasPrefix(r.Reason, "wall ") {
+					t.Errorf("Reason = %q, want wall ...", r.Reason)
 				}
 			}},
 		{name: "AC slow within sanitizer slack", src: "burn.cpp", in: "1 2\n", out: "3\n",
@@ -538,13 +551,11 @@ func load(t *testing.T, src string, tests []testFile) *problem.Problem {
 }
 
 // kinds renders an event stream as one line, e.g.
-// "BuildStarted BuildDone(ok) Test0(AC) Finished".
+// "BuildDone(ok) Test0(AC) Finished".
 func kinds(evs []judge.Event) string {
 	var s []string
 	for _, e := range evs {
 		switch e := e.(type) {
-		case judge.BuildStarted:
-			s = append(s, "BuildStarted")
 		case judge.BuildDone:
 			if e.Build.OK {
 				s = append(s, "BuildDone(ok)")
@@ -579,11 +590,11 @@ func TestJudgeEvents(t *testing.T) {
 	}{
 		{"tests in natural order", "ab.cpp",
 			[]testFile{{"10", "5 5\n", "10\n"}, {"2", "2 2\n", "5\n"}, {"1", "1 2\n", "3\n"}},
-			"BuildStarted BuildDone(ok) Test0(AC) Test1(WA) Test2(AC) Finished"},
-		{"no tests", "ab.cpp", nil, "BuildStarted BuildDone(ok) Finished"},
-		{"compile error", "ce.cpp", []testFile{{"1", "1 2\n", "3\n"}}, "BuildStarted BuildDone(ce) Finished"},
+			"BuildDone(ok) Test0(AC) Test1(WA) Test2(AC) Finished"},
+		{"no tests", "ab.cpp", nil, "BuildDone(ok) Finished"},
+		{"compile error", "ce.cpp", []testFile{{"1", "1 2\n", "3\n"}}, "BuildDone(ce) Finished"},
 		{"file io", "fileio.cpp", []testFile{{"1", "1 2\n", "3\n"}, {"2", "4 4\n", "8\n"}},
-			"BuildStarted BuildDone(ok) Test0(AC) Test1(AC) Finished"},
+			"BuildDone(ok) Test0(AC) Test1(AC) Finished"},
 	}
 	for _, tc := range tests {
 		for _, p := range both {
@@ -616,8 +627,8 @@ func TestJudgeCancelled(t *testing.T) {
 		cancel()
 		var evs []judge.Event
 		judge.Judge(ctx, load(t, "ab.cpp", files), judge.Full, quick, func(e judge.Event) { evs = append(evs, e) })
-		if got := kinds(evs); got != "BuildStarted" {
-			t.Errorf("events = %s, want BuildStarted only", got)
+		if len(evs) != 0 {
+			t.Errorf("events = %s, want none", kinds(evs))
 		}
 	})
 
@@ -639,7 +650,7 @@ func TestJudgeCancelled(t *testing.T) {
 		if el := time.Since(start); el > 5*time.Second {
 			t.Errorf("Judge returned after %v, want soon after the cancel", el)
 		}
-		if got, want := kinds(evs), "BuildStarted BuildDone(ok) Test0(AC)"; got != want {
+		if got, want := kinds(evs), "BuildDone(ok) Test0(AC)"; got != want {
 			t.Errorf("events:\n got %s\nwant %s", got, want)
 		}
 	})
@@ -654,7 +665,7 @@ func TestJudgeMissingCompiler(t *testing.T) {
 	var evs []judge.Event
 	judge.Judge(context.Background(), load(t, "ab.cpp", []testFile{{"1", "1 2\n", "3\n"}}), judge.Full, quick,
 		func(e judge.Event) { evs = append(evs, e) })
-	if got := kinds(evs); got != "BuildStarted Finished(err)" {
-		t.Errorf("events = %s, want BuildStarted Finished(err)", got)
+	if got := kinds(evs); got != "Finished(err)" {
+		t.Errorf("events = %s, want Finished(err)", got)
 	}
 }

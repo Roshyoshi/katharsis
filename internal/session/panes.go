@@ -32,10 +32,10 @@ func lldbQuote(s string) string {
 	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(s) + `"`
 }
 
-// KillPane closes a pane, whatever runs in it. A pane already gone is not
-// an error.
+// KillPane closes a pane, whatever runs in it, including a dead one that
+// remain-on-exit keeps on screen. A pane already gone is not an error.
 func KillPane(pane string) error {
-	if !PaneAlive(pane) {
+	if _, ok := paneDead(pane); !ok {
 		return nil
 	}
 	_, err := tmux("kill-pane", "-t", pane)
@@ -54,12 +54,11 @@ func CloseEditor(pane string) error {
 }
 
 // SaveAndCloseEditor writes every modified buffer, then quits as CloseEditor
-// does. The game uses it when a door ends on its own (AC, a crash, quitting
-// the game): the player is not at the keyboard to answer a save prompt, and
-// a prompt left behind would eat their next keystroke and leave a swap file
-// for the next session. The door's source on disk is what resume and
-// upsolve start from, so writing it is the safe answer. Only a buffer that
-// cannot be written (no name, read-only) still asks.
+// does. It is for a door that ends on its own (AC, a crash, quitting the
+// game): nobody is at the keyboard to answer a save prompt, and one left
+// behind eats the player's next keystroke and leaves a swap file. Resume and
+// upsolve start from the source on disk, so saving is the safe answer. Only
+// a buffer that cannot be written (no name, read-only) still asks.
 func SaveAndCloseEditor(pane string) error {
 	_, err := tmux("send-keys", "-t", pane, "Escape", ":silent! wall | confirm qa", "Enter")
 	return err
@@ -123,7 +122,7 @@ func ShowBorder(window string) (*Border, error) {
 	}
 	for _, o := range borderOptions {
 		if _, err := tmux("set-option", "-w", "-t", window, o[0], o[1]); err != nil {
-			b.Restore()
+			_ = b.Restore() // best effort; err says why the border failed
 			return nil, err
 		}
 	}

@@ -34,7 +34,8 @@ func SplitEditor(dir, file string, editor []string, pct int) (paneID string, err
 	case len(editor) == 0:
 		return "", errors.New("session: no editor command")
 	}
-	// With file appended there are always two words; see splitPane.
+	// With file appended argv has two words or more, which tmux execs
+	// without a shell.
 	return splitPane(pane, dir, []string{"-h", "-b"}, pct, append(slices.Clone(editor), file))
 }
 
@@ -67,8 +68,6 @@ func splitPane(target, dir string, flags []string, pct int, argv []string) (stri
 		"-c", strings.ReplaceAll(dir, "#", "##"),
 		"-l", fmt.Sprintf("%d%%", pct),
 		"-P", "-F", "#{pane_id}",
-		// Two or more words are exec'd as they are; a single word would go
-		// through the user's shell.
 		"--",
 	)
 	id, err := tmux(append(args, argv...)...)
@@ -85,13 +84,24 @@ func splitPane(target, dir string, flags []string, pct int, argv []string) (stri
 // pane kept on screen by remain-on-exit after its command exited counts as
 // gone.
 func PaneAlive(paneID string) bool {
-	if paneID == "" {
-		return false
+	dead, ok := paneDead(paneID)
+	return ok && !dead
+}
+
+// paneDead reports whether pane's command has exited, leaving the pane to
+// remain-on-exit; ok is false when there is no such pane.
+func paneDead(pane string) (dead, ok bool) {
+	if pane == "" {
+		return false, false
 	}
 	// display-message tolerates a missing target: tmux 3.6a prints empty
 	// fields and exits 0, so only an echoed id proves the pane exists.
-	out, err := tmux("display-message", "-p", "-t", paneID, "#{pane_id} #{pane_dead}")
-	return err == nil && out == paneID+" 0"
+	out, err := tmux("display-message", "-p", "-t", pane, "#{pane_id} #{pane_dead}")
+	id, state, _ := strings.Cut(out, " ")
+	if err != nil || id != pane {
+		return false, false
+	}
+	return state == "1", true
 }
 
 // ExecInTmux replaces the process with tmux running argv in a new session

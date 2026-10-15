@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -50,9 +49,9 @@ type Limits struct {
 	AnyCase bool
 }
 
-// Budget is the CPU time a run may use before it is TLE: Time × Slack ×
+// budget is the CPU time a run may use before it is TLE: Time × Slack ×
 // Scale.
-func (l Limits) Budget(p Profile) time.Duration {
+func (l Limits) budget(p Profile) time.Duration {
 	slack, scale := p.Slack, l.Scale
 	if slack <= 0 {
 		slack = 1
@@ -91,7 +90,7 @@ const DefaultOutputLimit = 64 << 20
 
 // Run executes bin on one case and judges the result.
 //
-// TLE is decided on CPU time against lim.Budget(p); the wall-clock kill
+// TLE is decided on CPU time against lim.budget(p); the wall-clock kill
 // happens later (2x that, plus 0.5 s) so a slow-but-finishing program
 // reports how slow it was instead of just "killed". A watchdog kills a run
 // whose memory grows past memCap (MLE) while it runs; a run under that cap
@@ -101,7 +100,7 @@ func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result
 	if err != nil {
 		return Result{}, err
 	}
-	defer os.RemoveAll(work)
+	defer func() { _ = os.RemoveAll(work) }()
 
 	inPath := c.In
 	if c.FileIO != "" {
@@ -114,18 +113,23 @@ func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result
 	if err != nil {
 		return Result{}, err
 	}
-	defer stdin.Close()
+	defer func() { _ = stdin.Close() }()
 
 	if lim.Output <= 0 {
 		lim.Output = DefaultOutputLimit
 	}
-	budget := lim.Budget(p)
-	memLimit := memCap(lim, p)
-	runCtx, cancel := context.WithTimeout(ctx, 2*budget+500*time.Millisecond)
+	mem := lim.Mem // what the run is held to; 0 for nothing
+	if p.Sanitized {
+		mem = 0
+	}
+	memLimit := memCap(mem)
+	budget := lim.budget(p)
+	wall := 2*budget + 500*time.Millisecond
+	runCtx, cancel := context.WithTimeout(ctx, wall)
 	defer cancel()
 
 	stdout := &capWriter{max: lim.Output, onOverflow: cancel}
-	stderr := &capWriter{max: stderrCap, truncate: true}
+	stderr := &capWriter{max: stderrCap}
 	cmd := exec.CommandContext(runCtx, bin)
 	cmd.Dir = work
 	cmd.Stdin = stdin
@@ -145,7 +149,7 @@ func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result
 	stopWatch := watchMemory(cmd.Process, memLimit)
 	runErr := cmd.Wait()
 	killedAt := stopWatch()
-	res := Result{Wall: time.Since(start), Stderr: stderr.String()}
+	res := Result{Wall: time.Since(start), Stderr: stderr.buf.String()}
 	if ps := cmd.ProcessState; ps != nil {
 		if ru, ok := ps.SysUsage().(*syscall.Rusage); ok {
 			res.CPU = tv(ru.Utime) + tv(ru.Stime)
@@ -164,15 +168,19 @@ func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result
 		res.Verdict, res.Reason = OLE, fmt.Sprintf("output over %s", Bytes(lim.Output))
 		return res, nil
 	case killedAt > 0:
-		res.Verdict = MLE
-		if p.Sanitized || lim.Mem <= 0 {
-			res.Reason = fmt.Sprintf("killed at %s > %s cap", Bytes(killedAt), Bytes(memLimit))
-		} else {
-			res.Reason = fmt.Sprintf("killed at %s > %s", Bytes(killedAt), Bytes(lim.Mem))
+		limit := Bytes(memLimit) + " cap"
+		if mem > 0 {
+			limit = Bytes(mem)
 		}
+		res.Verdict, res.Reason = MLE, fmt.Sprintf("killed at %s > %s", Bytes(killedAt), limit)
 		return res, nil
-	case runCtx.Err() != nil || res.CPU > budget:
+	case res.CPU > budget:
 		res.Verdict, res.Reason = TLE, fmt.Sprintf("cpu %s > %s", ms(res.CPU), ms(budget))
+		return res, nil
+	case runCtx.Err() != nil:
+		// Killed on the wall clock within its CPU budget: blocked, or
+		// starved by a busy machine.
+		res.Verdict, res.Reason = TLE, fmt.Sprintf("wall %s > %s, cpu %s", ms(res.Wall), ms(wall), ms(res.CPU))
 		return res, nil
 	case runErr != nil:
 		var exit *exec.ExitError
@@ -181,12 +189,12 @@ func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result
 		}
 		res.Verdict, res.Reason = RE, crashReason(exit, res.Stderr)
 		return res, nil
-	case !p.Sanitized && lim.Mem > 0 && res.MaxRSS > lim.Mem:
-		res.Verdict, res.Reason = MLE, fmt.Sprintf("peak %s > %s", Bytes(res.MaxRSS), Bytes(lim.Mem))
+	case mem > 0 && res.MaxRSS > mem:
+		res.Verdict, res.Reason = MLE, fmt.Sprintf("peak %s > %s", Bytes(res.MaxRSS), Bytes(mem))
 		return res, nil
 	}
 
-	got := stdout.Bytes()
+	got := stdout.buf.Bytes()
 	if c.FileIO != "" {
 		got, err = readCapped(filepath.Join(work, c.FileIO+".out"), lim.Output)
 		if errors.Is(err, os.ErrNotExist) {
@@ -249,48 +257,36 @@ func crashReason(exit *exec.ExitError, stderr string) string {
 	return fmt.Sprintf("exit %d", exit.ExitCode())
 }
 
-// capWriter keeps at most max bytes. Past that it either truncates quietly
-// (stderr) or records the overflow and kills the run (stdout).
+// capWriter keeps the first max bytes written to it and drops the rest,
+// calling onOverflow, if set, at the first byte dropped. Only exec's copying
+// goroutine writes to it, and Wait returns after that goroutine does, so buf
+// is safe to read after Wait.
 type capWriter struct {
-	mu         sync.Mutex
 	buf        bytes.Buffer
 	max        int64
-	truncate   bool
 	overflow   bool
 	onOverflow func()
 }
 
 func (w *capWriter) Write(p []byte) (int, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
 	room := w.max - int64(w.buf.Len())
 	if int64(len(p)) <= room {
 		return w.buf.Write(p)
 	}
-	if room > 0 {
-		w.buf.Write(p[:room])
-	}
-	if !w.truncate && !w.overflow {
-		w.overflow = true
+	w.buf.Write(p[:room])
+	if !w.overflow && w.onOverflow != nil {
 		w.onOverflow()
 	}
+	w.overflow = true
 	return len(p), nil
 }
-
-func (w *capWriter) Bytes() []byte {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	return w.buf.Bytes()
-}
-
-func (w *capWriter) String() string { return string(w.Bytes()) }
 
 func readCapped(path string, max int64) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	b, err := io.ReadAll(io.LimitReader(f, max+1))
 	if err == nil && int64(len(b)) > max {
 		return nil, fmt.Errorf("%s over %s", filepath.Base(path), Bytes(max))

@@ -22,10 +22,14 @@ const eof = "<EOF>"
 // exact-match problems.
 func Check(want, got []byte) (bool, *Diff) {
 	w, g := lines(want), lines(got)
-	for i := 0; i < max(len(w), len(g)); i++ {
-		wl, gl := at(w, i), at(g, i)
-		if wl != gl {
-			return false, &Diff{Line: i + 1, Want: clip(wl), Got: clip(gl)}
+	for i := range max(len(w), len(g)) {
+		switch {
+		case i >= len(g):
+			return false, &Diff{Line: i + 1, Want: clip(w[i]), Got: eof}
+		case i >= len(w):
+			return false, &Diff{Line: i + 1, Want: eof, Got: clip(g[i])}
+		case w[i] != g[i]:
+			return false, &Diff{Line: i + 1, Want: clip(w[i]), Got: clip(g[i])}
 		}
 	}
 	return true, nil
@@ -103,13 +107,6 @@ func lines(b []byte) []string {
 		ls = ls[:len(ls)-1]
 	}
 	return ls
-}
-
-func at(ls []string, i int) string {
-	if i < len(ls) {
-		return ls[i]
-	}
-	return eof
 }
 
 func clip(s string) string {

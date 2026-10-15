@@ -8,12 +8,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -92,7 +90,7 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	h := sha256.New()
 	// Key on the resolved compiler path: nix store paths change with the
 	// compiler version, so an upgrade never reuses an old build.
-	fmt.Fprintf(h, "%s\x00%s\x00", resolve(p.compiler()), strings.Join(p.Flags, " "))
+	h.Write([]byte(resolve(p.compiler()) + "\x00" + strings.Join(p.Flags, " ") + "\x00"))
 	h.Write(src)
 	bin := filepath.Join(dir, hex.EncodeToString(h.Sum(nil))[:24])
 	if _, err := os.Stat(bin); err == nil {
@@ -108,7 +106,7 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	if err != nil {
 		return Build{}, err
 	}
-	defer os.RemoveAll(work)
+	defer func() { _ = os.RemoveAll(work) }()
 	out := filepath.Join(work, filepath.Base(bin))
 	args := append(append([]string{}, p.Flags...),
 		"-fno-color-diagnostics", "-x", "c++", source, "-o", out)
@@ -130,8 +128,8 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	if _, err := os.Stat(out + ".dSYM"); err == nil {
 		// Best effort: a concurrent build of the same source may have put
 		// identical symbols there first.
-		os.RemoveAll(bin + ".dSYM")
-		os.Rename(out+".dSYM", bin+".dSYM")
+		_ = os.RemoveAll(bin + ".dSYM")
+		_ = os.Rename(out+".dSYM", bin+".dSYM")
 	}
 	if err := os.Rename(out, bin); err != nil {
 		return b, err
@@ -167,27 +165,14 @@ func (p Profile) compiler() string {
 	return Compiler
 }
 
-var (
-	resolveMu sync.Mutex
-	resolved  = map[string]string{}
-)
-
-// resolve maps a compiler name to its absolute path (symlinks followed),
-// once per process.
+// resolve maps a compiler name to its absolute path, symlinks followed.
 func resolve(name string) string {
-	resolveMu.Lock()
-	defer resolveMu.Unlock()
-	if p, ok := resolved[name]; ok {
-		return p
-	}
 	p, err := exec.LookPath(name)
-	if err == nil {
-		if r, err := filepath.EvalSymlinks(p); err == nil {
-			p = r
-		}
-	} else {
-		p = name
+	if err != nil {
+		return name
 	}
-	resolved[name] = p
+	if r, err := filepath.EvalSymlinks(p); err == nil {
+		return r
+	}
 	return p
 }

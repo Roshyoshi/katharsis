@@ -28,8 +28,7 @@ type Overlay struct {
 	QuitGivesUp bool
 }
 
-// Script is the overlay's vimscript.
-func (o Overlay) Script() string {
+func (o Overlay) script() string {
 	var ctl []string
 	for _, a := range o.Ctl {
 		ctl = append(ctl, vimString(a))
@@ -48,9 +47,9 @@ func (o Overlay) Write(path string) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmp.Name())
-	if _, err := tmp.WriteString(o.Script()); err != nil {
-		tmp.Close()
+	defer func() { _ = os.Remove(tmp.Name()) }() // gone once renamed
+	if _, err := tmp.WriteString(o.script()); err != nil {
+		_ = tmp.Close()
 		return err
 	}
 	if err := tmp.Close(); err != nil {
@@ -60,11 +59,11 @@ func (o Overlay) Write(path string) error {
 }
 
 // EditorArgv is the editor command to hand SplitEditor: the editor under
-// env(1) with SockEnv set, because the pane gets the tmux server's
+// env(1) with $KATHARSIS_SOCK set, because the pane gets the tmux server's
 // environment rather than ours, plus `-S overlay` when the editor is vim
 // (neovim's job API differs; it gets the variable only).
 func EditorArgv(editor []string, sock, overlay string) []string {
-	argv := append([]string{"env", SockEnv + "=" + sock}, editor...)
+	argv := append([]string{"env", sockEnv + "=" + sock}, editor...)
 	if overlay != "" && len(editor) > 0 && isVim(editor[0]) {
 		argv = append(argv, "-S", overlay)
 	}

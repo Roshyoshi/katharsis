@@ -39,7 +39,7 @@ func watch(ctx context.Context, path string, debounce time.Duration, onChange, r
 	if err != nil {
 		return fmt.Errorf("session: watch %s: %w", dir, err)
 	}
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 	if err := w.Add(dir); err != nil {
 		return fmt.Errorf("session: watch %s: %w", dir, err)
 	}

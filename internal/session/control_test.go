@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -31,8 +33,26 @@ func sockDir(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.RemoveAll(dir) })
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	return dir
+}
+
+// send writes raw protocol lines to the server at path and returns the
+// connection, which closes when the test ends.
+func send(t *testing.T, path, lines string) net.Conn {
+	t.Helper()
+	c, err := net.Dial("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = c.Close() })
+	if err := c.SetDeadline(time.Now().Add(patience)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Write([]byte(lines)); err != nil {
+		t.Fatal(err)
+	}
+	return c
 }
 
 // serve runs a control server until the test ends and returns its path and
@@ -62,11 +82,12 @@ func serve(t *testing.T) (string, <-chan Request) {
 }
 
 // answer replies to the next request with rep once it arrives, and returns
-// what was asked.
+// what was asked; the channel closes empty if nothing was.
 func answer(t *testing.T, reqs <-chan Request, rep Reply) <-chan Command {
 	t.Helper()
 	got := make(chan Command, 1)
 	go func() {
+		defer close(got)
 		select {
 		case r := <-reqs:
 			got <- r.Command
@@ -77,33 +98,11 @@ func answer(t *testing.T, reqs <-chan Request, rep Reply) <-chan Command {
 	return got
 }
 
-func TestControlRoundTrip(t *testing.T) {
-	path, reqs := serve(t)
-	got := answer(t, reqs, Reply{OK: true, Text: "WA 37/52"})
-	rep, err := Call(path, Command{Cmd: CmdDebug, Args: []string{"3"}}, time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rep != (Reply{OK: true, Text: "WA 37/52"}) {
-		t.Errorf("reply = %+v", rep)
-	}
-	if c := <-got; c.Cmd != CmdDebug || len(c.Args) != 1 || c.Args[0] != "3" {
-		t.Errorf("server saw %+v, want debug [3]", c)
-	}
-}
-
 // Commands outside the protocol, and lines that are not JSON, are refused
 // by the server; the game never sees them.
 func TestControlRefusesUnknown(t *testing.T) {
 	path, reqs := serve(t)
-	c, err := net.Dial("unix", path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer c.Close()
-	c.SetDeadline(time.Now().Add(patience))
-	c.Write([]byte("{\"cmd\":\"rm -rf\"}\nnot json\n"))
-	dec := json.NewDecoder(c)
+	dec := json.NewDecoder(send(t, path, "{\"cmd\":\"rm -rf\"}\nnot json\n"))
 	for _, want := range []string{"unknown command", "bad request"} {
 		var rep Reply
 		if err := dec.Decode(&rep); err != nil {
@@ -129,14 +128,7 @@ func TestControlPipelined(t *testing.T) {
 			r.Answer(Reply{OK: true, Text: r.Cmd + strconv.Itoa(i)})
 		}
 	}()
-	c, err := net.Dial("unix", path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer c.Close()
-	c.SetDeadline(time.Now().Add(patience))
-	c.Write([]byte("{\"cmd\":\"status\"}\n{\"cmd\":\"quack\"}\n{\"cmd\":\"submit\"}\n"))
-	dec := json.NewDecoder(c)
+	dec := json.NewDecoder(send(t, path, "{\"cmd\":\"status\"}\n{\"cmd\":\"quack\"}\n{\"cmd\":\"submit\"}\n"))
 	for _, want := range []string{"status0", "quack1", "submit2"} {
 		var rep Reply
 		if err := dec.Decode(&rep); err != nil {
@@ -151,27 +143,32 @@ func TestControlPipelined(t *testing.T) {
 // A request the game never answered is answered at Close, so `ctl` does
 // not hang on a game that quit.
 func TestControlCloseAnswersPending(t *testing.T) {
+	// With one P, Close runs on before the handler wakes, which is when the
+	// answer used to be lost with the connection.
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
 	path := filepath.Join(sockDir(t), "g.sock")
 	s, err := Listen(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	delivered := make(chan struct{})
-	go s.Serve(func(Request) { close(delivered) })
+	go func() { _ = s.Serve(func(Request) { close(delivered) }) }()
 	type result struct {
 		rep Reply
 		err error
 	}
 	res := make(chan result, 1)
 	go func() {
-		rep, err := Call(path, Command{Cmd: CmdSubmit}, patience)
+		rep, err := call(path, Command{Cmd: CmdSubmit}, patience)
 		res <- result{rep, err}
 	}()
 	<-delivered
-	s.Close()
+	if err := s.Close(); err != nil {
+		t.Error(err)
+	}
 	r := <-res
-	if r.err == nil && (r.rep.OK || !strings.Contains(r.rep.Text, "shutting down")) {
-		t.Errorf("pending call got %+v, want a shutting-down refusal or an error", r.rep)
+	if r.err != nil || r.rep.OK || !strings.Contains(r.rep.Text, "shutting down") {
+		t.Errorf("pending call got %+v, %v; want a shutting-down refusal", r.rep, r.err)
 	}
 }
 
@@ -185,7 +182,9 @@ func TestListenStaleAndLive(t *testing.T) {
 		t.Fatal(err)
 	}
 	ln.SetUnlinkOnClose(false)
-	ln.Close()
+	if err := ln.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := os.Lstat(path); err != nil {
 		t.Fatalf("stale socket not left behind: %v", err)
 	}
@@ -193,16 +192,16 @@ func TestListenStaleAndLive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Listen over a stale socket: %v", err)
 	}
-	defer s.Close()
+	t.Cleanup(func() { _ = s.Close() })
 
 	if s2, err := Listen(path); err == nil {
-		s2.Close()
+		_ = s2.Close()
 		t.Fatal("Listen over a live socket succeeded")
 	}
 
 	long := filepath.Join(dir, strings.Repeat("x", 120)+".sock")
 	if s3, err := Listen(long); err == nil {
-		s3.Close()
+		_ = s3.Close()
 		t.Fatal("Listen on a 130-byte path succeeded")
 	} else if !strings.Contains(err.Error(), "bytes") {
 		t.Errorf("long path error %q should say why", err)
@@ -220,22 +219,29 @@ func TestCtlMain(t *testing.T) {
 		stdout string
 		stderr string
 	}{
-		{"ok", path, []string{"submit"}, &Reply{OK: true, Text: "AC 52/52"}, 0, "AC 52/52\n", ""},
+		{"ok", path, []string{"debug", "3"}, &Reply{OK: true, Text: "lldb on #3"}, 0, "lldb on #3\n", ""},
 		{"refused", path, []string{"quack"}, &Reply{Text: "no ducks left"}, 1, "no ducks left\n", ""},
 		{"no args", path, nil, nil, 2, "", "usage"},
-		{"no socket variable", "", []string{"status"}, nil, 2, "", SockEnv},
+		{"no socket variable", "", []string{"status"}, nil, 2, "", sockEnv},
 		{"no game", path + ".gone", []string{"status"}, nil, 2, "", "no game"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv(SockEnv, tc.sock)
+			t.Setenv(sockEnv, tc.sock)
+			var asked <-chan Command
 			if tc.rep != nil {
-				answer(t, reqs, *tc.rep)
+				asked = answer(t, reqs, *tc.rep)
 			}
 			var out, errb bytes.Buffer
 			code := CtlMain(tc.args, &out, &errb)
 			if code != tc.code || out.String() != tc.stdout || !strings.Contains(errb.String(), tc.stderr) {
 				t.Errorf("CtlMain = %d, stdout %q, stderr %q; want %d, %q, stderr with %q",
 					code, out.String(), errb.String(), tc.code, tc.stdout, tc.stderr)
+			}
+			if asked == nil {
+				return
+			}
+			if c := <-asked; c.Cmd != tc.args[0] || !slices.Equal(c.Args, tc.args[1:]) {
+				t.Errorf("game was asked %+v, want %q", c, tc.args)
 			}
 		})
 	}

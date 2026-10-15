@@ -28,7 +28,7 @@ func privateTmux(t *testing.T) (pane string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.RemoveAll(tmp) })
+	t.Cleanup(func() { _ = os.RemoveAll(tmp) })
 	t.Setenv("TMUX", "")
 	t.Setenv("TMUX_TMPDIR", tmp)
 	// Panes inherit the server's environment; a pane that misses its -c
@@ -157,8 +157,9 @@ func TestSplitEditor(t *testing.T) {
 	}
 }
 
-// With remain-on-exit the pane outlives its command; that is not alive.
-func TestPaneAliveDeadPane(t *testing.T) {
+// With remain-on-exit the pane outlives its command; that is not alive, and
+// KillPane still closes it.
+func TestDeadPane(t *testing.T) {
 	privateTmux(t)
 	if _, err := tmux("set-option", "-w", "-t", "t:", "remain-on-exit", "on"); err != nil {
 		t.Fatal(err)
@@ -170,6 +171,12 @@ func TestPaneAliveDeadPane(t *testing.T) {
 	waitFor(t, "PaneAlive to go false", func() bool { return !PaneAlive(id) })
 	if dead, err := tmux("display-message", "-p", "-t", id, "#{pane_id} #{pane_dead}"); err != nil || dead != id+" 1" {
 		t.Fatalf("pane %s should remain, dead: got %q, %v", id, dead, err)
+	}
+	if err := KillPane(id); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(panes(t)); n != 1 {
+		t.Errorf("%d panes after KillPane of the dead pane, want 1", n)
 	}
 }
 
@@ -242,16 +249,5 @@ func TestShellQuote(t *testing.T) {
 		if string(out) != s {
 			t.Errorf("sh read %s as %q, want %q", shellQuote(s), out, s)
 		}
-	}
-}
-
-func TestInTmux(t *testing.T) {
-	t.Setenv("TMUX", "")
-	if InTmux() {
-		t.Error("InTmux with $TMUX empty")
-	}
-	t.Setenv("TMUX", "/tmp/tmux-501/default,1234,0")
-	if !InTmux() {
-		t.Error("not InTmux with $TMUX set")
 	}
 }

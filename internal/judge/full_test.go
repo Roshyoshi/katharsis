@@ -193,23 +193,19 @@ func TestJudgeFullRunError(t *testing.T) {
 }
 
 // sortTests orders the TestDone events within a kinds() line, since a full
-// pass emits them in completion order.
+// pass emits them, all in a row, in completion order.
 func sortTests(s string) string {
 	f := strings.Fields(s)
-	var tests []string
-	var rest []string
-	for _, w := range f {
+	lo, hi := len(f), 0
+	for i, w := range f {
 		if strings.HasPrefix(w, "Test") {
-			tests = append(tests, w)
-		} else {
-			rest = append(rest, w)
+			lo, hi = min(lo, i), i+1
 		}
 	}
-	slices.Sort(tests)
-	if len(rest) < 2 {
-		return strings.Join(append(rest, tests...), " ")
+	if lo < hi {
+		slices.Sort(f[lo:hi])
 	}
-	return strings.Join(slices.Concat(rest[:2], tests, rest[2:]), " ")
+	return strings.Join(f, " ")
 }
 
 func TestSubmit(t *testing.T) {
@@ -224,13 +220,13 @@ func TestSubmit(t *testing.T) {
 		passed  int
 	}{
 		{"all pass", "ab.cpp", []testFile{{"1", "1 2\n", "3\n"}, {"2", "2 2\n", "4\n"}, {"3", "3 3\n", "6\n"}},
-			"BuildStarted BuildDone(ok) Test0(AC) Test1(AC) Test2(AC) Finished", judge.AC, 3},
+			"BuildDone(ok) Test0(AC) Test1(AC) Test2(AC) Finished", judge.AC, 3},
 		{"one wrong", "ab.cpp", []testFile{{"1", "1 2\n", "3\n"}, {"2", "2 2\n", "5\n"}},
-			"BuildStarted BuildDone(ok) Test0(AC) Test1(WA) Finished", judge.WA, 1},
+			"BuildDone(ok) Test0(AC) Test1(WA) Finished", judge.WA, 1},
 		{"file io", "fileio.cpp", []testFile{{"1", "1 2\n", "3\n"}, {"2", "4 4\n", "8\n"}},
-			"BuildStarted BuildDone(ok) Test0(AC) Test1(AC) Finished", judge.AC, 2},
+			"BuildDone(ok) Test0(AC) Test1(AC) Finished", judge.AC, 2},
 		{"compile error", "ce.cpp", []testFile{{"1", "1 2\n", "3\n"}},
-			"BuildStarted BuildDone(ce) Finished", judge.CE, 0},
+			"BuildDone(ce) Finished", judge.CE, 0},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -23,7 +23,14 @@ const appleClang = "/usr/bin/clang++"
 
 var (
 	// AppleSamples: ASan + UBSan through Xcode's toolchain.
-	AppleSamples = withCompiler(Samples, "asan+ubsan (apple)", appleClang, true)
+	AppleSamples = Profile{
+		Name:      "asan+ubsan (apple)",
+		Flags:     Samples.Flags,
+		Slack:     Samples.Slack,
+		Sanitized: true,
+		Compiler:  appleClang,
+		CleanEnv:  true,
+	}
 	// HardenedSamples: no ASan; UBSan plus libc++'s debug bounds checks,
 	// which still catch out-of-range vector/string indexing.
 	HardenedSamples = Profile{
@@ -39,23 +46,27 @@ var (
 	}
 )
 
-func withCompiler(p Profile, name, cxx string, clean bool) Profile {
-	p.Name, p.Compiler, p.CleanEnv = name, cxx, clean
-	return p
-}
-
 var (
-	probeOnce sync.Once
-	probed    Profile
+	probeMu sync.Mutex
+	probed  *Profile // nil until a probe ran to the end
 )
 
 // SampleProfile returns the first sample profile whose binaries actually
 // run here: nix ASan, then Apple ASan, then HardenedSamples. The answer is
 // cached on disk per compiler and OS release, since a failing ASan probe
-// costs a few seconds of timeout.
+// costs a few seconds of timeout, and kept for the process unless ctx cut
+// the probe short.
 func SampleProfile(ctx context.Context) Profile {
-	probeOnce.Do(func() { probed = probeSamples(ctx) })
-	return probed
+	probeMu.Lock()
+	defer probeMu.Unlock()
+	if probed != nil {
+		return *probed
+	}
+	p := probeSamples(ctx)
+	if ctx.Err() == nil {
+		probed = &p
+	}
+	return p
 }
 
 func probeSamples(ctx context.Context) Profile {
@@ -87,7 +98,7 @@ func probeSamples(ctx context.Context) Profile {
 	// A cancelled probe proves nothing; caching its fallback would downgrade
 	// this machine for good.
 	if cache != "" && ctx.Err() == nil {
-		os.WriteFile(cache, []byte(chosen.Name+"\n"), 0o644)
+		_ = os.WriteFile(cache, []byte(chosen.Name+"\n"), 0o644)
 	}
 	return chosen
 }
@@ -98,7 +109,7 @@ func runs(ctx context.Context, p Profile) bool {
 	if err != nil {
 		return false
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 	src := filepath.Join(dir, "probe.cpp")
 	bin := filepath.Join(dir, "probe")
 	prog := "#include <cstdio>\nint main() { std::puts(\"ok\"); }\n"
@@ -120,12 +131,12 @@ func probeKey() string {
 	h := sha256.New()
 	for _, c := range []string{Compiler, appleClang} {
 		path, _ := exec.LookPath(c)
-		fmt.Fprintf(h, "%s\x00", path)
+		h.Write([]byte(path + "\x00"))
 		if fi, err := os.Stat(path); err == nil {
-			fmt.Fprintf(h, "%d\x00", fi.ModTime().Unix())
+			h.Write(fmt.Appendf(nil, "%d\x00", fi.ModTime().Unix()))
 		}
 	}
-	fmt.Fprintf(h, "%s", osRelease())
+	h.Write([]byte(osRelease()))
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 

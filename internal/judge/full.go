@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"katharsis/internal/problem"
@@ -80,9 +81,6 @@ func Summarize(rs []Result) Summary {
 // Cancelling ctx stops the pass: JudgeFull returns ctx.Err() and emits
 // nothing more. An error running a test (an unreadable .out) stops it too.
 func JudgeFull(ctx context.Context, tests []problem.Test, fileIO string, b Build, lim Limits, prof Profile, emit func(Event)) (Summary, error) {
-	results := make([]Result, len(tests))
-	workers := min(Workers, len(tests))
-	budget := lim.Budget(prof)
 	run := func(ctx context.Context, i int) (Result, error) {
 		t := tests[i]
 		return Run(ctx, b.Binary, Case{In: t.In, Out: t.Out, FileIO: fileIO}, lim, prof)
@@ -93,29 +91,22 @@ func JudgeFull(ctx context.Context, tests []problem.Test, fileIO string, b Build
 		r   Result
 		err error
 	}
+	// pass also ends when a run fails, so the other workers stop early.
 	pass, stop := context.WithCancel(ctx)
 	defer stop()
-	jobs, out := make(chan int), make(chan done)
-	go func() {
-		defer close(jobs)
-		for i := range tests {
-			select {
-			case jobs <- i:
-			case <-pass.Done():
-				return
-			}
-		}
-	}()
+	out := make(chan done)
+	var next atomic.Int64
 	var wg sync.WaitGroup
+	workers := min(Workers, len(tests))
 	for range workers {
 		wg.Go(func() {
-			for i := range jobs {
-				r, err := run(pass, i)
-				select {
-				case out <- done{i, r, err}:
-				case <-pass.Done():
+			for pass.Err() == nil {
+				i := int(next.Add(1) - 1)
+				if i >= len(tests) {
 					return
 				}
+				r, err := run(pass, i)
+				out <- done{i, r, err}
 			}
 		})
 	}
@@ -124,12 +115,14 @@ func JudgeFull(ctx context.Context, tests []problem.Test, fileIO string, b Build
 		close(out)
 	}()
 
+	results := make([]Result, len(tests))
+	budget := lim.budget(prof)
 	var retry []int
 	var failed error
 	for d := range out {
 		switch {
 		case failed != nil || ctx.Err() != nil:
-			// Draining: the workers stop once their runs see the cancel.
+			// Drain: the workers stop once their runs see the cancel.
 		case d.err != nil:
 			failed = d.err
 			stop()
@@ -163,21 +156,14 @@ func JudgeFull(ctx context.Context, tests []problem.Test, fileIO string, b Build
 }
 
 // Submit compiles source with prof (Full, normally) and judges it on every
-// test with JudgeFull. Events: BuildStarted, BuildDone, a TestDone per test
-// in completion order, then Finished carrying the Summary, whose Verdict is
-// CE when the build failed. Cancelling ctx stops it without a Finished
-// event, like Judge.
+// test with JudgeFull. Events: BuildDone, a TestDone per test in completion
+// order, then Finished carrying the Summary, whose Verdict is CE when the
+// build failed. Cancelling ctx stops it without a Finished event, like Judge.
 func Submit(ctx context.Context, source string, tests []problem.Test, prof Profile, lim Limits, emit func(Event)) {
-	emit(BuildStarted{})
-	b, err := Compile(ctx, source, prof)
-	if ctx.Err() != nil {
+	b, ok := build(ctx, source, prof, emit)
+	if !ok {
 		return
 	}
-	if err != nil {
-		emit(Finished{Err: err})
-		return
-	}
-	emit(BuildDone{Build: b})
 	if !b.OK {
 		emit(Finished{Summary: &Summary{Total: len(tests), First: -1, Verdict: CE}})
 		return

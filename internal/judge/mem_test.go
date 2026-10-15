@@ -29,8 +29,10 @@ func TestRSS(t *testing.T) {
 	if n, err := rss(cmd.Process.Pid); err != nil || n <= 0 {
 		t.Errorf("rss(sleep) = %d, %v; want a size", n, err)
 	}
-	cmd.Process.Kill()
-	cmd.Wait()
+	if err := cmd.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	_ = cmd.Wait() // "signal: killed"
 	if n, err := rss(cmd.Process.Pid); err == nil {
 		t.Errorf("rss of a reaped process = %d, want an error", n)
 	}

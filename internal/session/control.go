@@ -26,8 +26,8 @@ import (
 //	→ {"cmd":"debug","args":["3"]}
 //	← {"ok":true,"text":"lldb on #3: type run"}
 
-// SockEnv carries the socket path to the editor and to `katharsis ctl`.
-const SockEnv = "KATHARSIS_SOCK"
+// sockEnv carries the socket path to the editor and to `katharsis ctl`.
+const sockEnv = "KATHARSIS_SOCK"
 
 // Commands the game answers. Anything else is refused by the server without
 // reaching the game.
@@ -40,7 +40,7 @@ const (
 	CmdStatus  = "status"  // one line: timer, lives, tests
 )
 
-var Commands = []string{CmdSubmit, CmdDebug, CmdQuack, CmdGiveUp, CmdRetreat, CmdStatus}
+var commands = []string{CmdSubmit, CmdDebug, CmdQuack, CmdGiveUp, CmdRetreat, CmdStatus}
 
 type Command struct {
 	Cmd  string   `json:"cmd"`
@@ -124,7 +124,7 @@ func SweepRunDir() error {
 			continue
 		}
 		if errors.Is(syscall.Kill(pid, 0), syscall.ESRCH) {
-			os.RemoveAll(filepath.Join(dir, e.Name()))
+			_ = os.RemoveAll(filepath.Join(dir, e.Name()))
 		}
 	}
 	return nil
@@ -136,8 +136,7 @@ const maxSockPath = 104
 
 // Server is a listening control socket.
 type Server struct {
-	ln   *net.UnixListener
-	path string
+	ln *net.UnixListener
 
 	done chan struct{}
 	once sync.Once
@@ -161,23 +160,21 @@ func Listen(path string) (*Server, error) {
 	}
 	if _, err := os.Lstat(path); err == nil {
 		if c, err := net.DialTimeout("unix", path, 200*time.Millisecond); err == nil {
-			c.Close()
+			_ = c.Close()
 			return nil, fmt.Errorf("session: another game is listening on %s", path)
 		}
-		os.Remove(path)
+		_ = os.Remove(path) // if this fails, so does the listen below
 	}
 	ln, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
 	if err != nil {
 		return nil, fmt.Errorf("session: listen: %w", err)
 	}
 	if err := os.Chmod(path, 0o600); err != nil {
-		ln.Close()
+		_ = ln.Close()
 		return nil, err
 	}
-	return &Server{ln: ln, path: path, done: make(chan struct{}), conns: map[net.Conn]struct{}{}}, nil
+	return &Server{ln: ln, done: make(chan struct{}), conns: map[net.Conn]struct{}{}}, nil
 }
-
-func (s *Server) Path() string { return s.path }
 
 // Serve accepts connections until Close, hands each command to deliver as
 // a Request, and writes back its answer. Each connection has its own
@@ -198,7 +195,7 @@ func (s *Server) Serve(deliver func(Request)) error {
 		s.mu.Lock()
 		if s.closed {
 			s.mu.Unlock()
-			c.Close()
+			_ = c.Close()
 			return nil
 		}
 		s.conns[c] = struct{}{}
@@ -206,13 +203,11 @@ func (s *Server) Serve(deliver func(Request)) error {
 		s.mu.Unlock()
 		go func() {
 			defer s.wg.Done()
-			defer func() {
-				s.mu.Lock()
-				delete(s.conns, c)
-				s.mu.Unlock()
-				c.Close()
-			}()
 			s.handle(c, deliver)
+			s.mu.Lock()
+			delete(s.conns, c)
+			s.mu.Unlock()
+			_ = c.Close()
 		}()
 	}
 }
@@ -226,8 +221,8 @@ func (s *Server) handle(c net.Conn, deliver func(Request)) {
 		switch err := json.Unmarshal(sc.Bytes(), &cmd); {
 		case err != nil:
 			rep.Text = "bad request: " + err.Error()
-		case !slices.Contains(Commands, cmd.Cmd):
-			rep.Text = fmt.Sprintf("unknown command %q (have %s)", cmd.Cmd, strings.Join(Commands, ", "))
+		case !slices.Contains(commands, cmd.Cmd):
+			rep.Text = fmt.Sprintf("unknown command %q (have %s)", cmd.Cmd, strings.Join(commands, ", "))
 		default:
 			req, ch := NewRequest(cmd)
 			deliver(req)
@@ -253,7 +248,12 @@ func (s *Server) Close() error {
 		s.mu.Lock()
 		s.closed = true
 		for c := range s.conns {
-			c.Close()
+			// Not c.Close: that races a waiting request's "shutting down"
+			// answer out of the socket. Ending reads stops the handler
+			// once it has written; the write deadline covers a client that
+			// stopped reading.
+			_ = c.SetReadDeadline(time.Now())
+			_ = c.SetWriteDeadline(time.Now().Add(time.Second))
 		}
 		s.mu.Unlock()
 		s.wg.Wait()
@@ -261,15 +261,17 @@ func (s *Server) Close() error {
 	return err
 }
 
-// Call sends one command to the game at path and waits up to timeout for
+// call sends one command to the game at path and waits up to timeout for
 // the answer.
-func Call(path string, c Command, timeout time.Duration) (Reply, error) {
+func call(path string, c Command, timeout time.Duration) (Reply, error) {
 	conn, err := net.DialTimeout("unix", path, time.Second)
 	if err != nil {
 		return Reply{}, fmt.Errorf("no game at %s: %w", path, err)
 	}
-	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(timeout))
+	defer func() { _ = conn.Close() }()
+	if err := conn.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return Reply{}, err
+	}
 	if err := json.NewEncoder(conn).Encode(c); err != nil {
 		return Reply{}, err
 	}
@@ -283,11 +285,11 @@ func Call(path string, c Command, timeout time.Duration) (Reply, error) {
 	return rep, nil
 }
 
-// CallTimeout is how long `katharsis ctl` waits for cmd. A submit answers
+// callTimeout is how long `katharsis ctl` waits for cmd. A submit answers
 // when the judge finishes, which a slow solution on many tests can stretch
 // to a minute or more; the editor runs it as a job, so waiting costs
 // nothing.
-func CallTimeout(cmd string) time.Duration {
+func callTimeout(cmd string) time.Duration {
 	switch cmd {
 	case CmdSubmit, CmdDebug:
 		return 10 * time.Minute
@@ -298,26 +300,32 @@ func CallTimeout(cmd string) time.Duration {
 // CtlMain is `katharsis ctl <cmd> [args]`: it sends one command to the game
 // whose socket $KATHARSIS_SOCK names and prints the answer on stdout. The
 // exit status is 0 when the game said OK, 1 when it refused, 2 when it could
-// not be asked.
+// not be asked, with the reason on stderr.
 func CtlMain(args []string, stdout, stderr io.Writer) int {
-	if len(args) == 0 {
-		fmt.Fprintf(stderr, "usage: katharsis ctl <%s> [args]\n", strings.Join(Commands, "|"))
-		return 2
+	text, code := ctl(args)
+	w := stdout
+	if code == 2 {
+		w = stderr
 	}
-	path := os.Getenv(SockEnv)
+	_, _ = fmt.Fprintln(w, text)
+	return code
+}
+
+func ctl(args []string) (text string, code int) {
+	if len(args) == 0 {
+		return fmt.Sprintf("usage: katharsis ctl <%s> [args]", strings.Join(commands, "|")), 2
+	}
+	path := os.Getenv(sockEnv)
 	if path == "" {
-		fmt.Fprintf(stderr, "katharsis ctl: $%s is not set; run this from the game's editor\n", SockEnv)
-		return 2
+		return fmt.Sprintf("katharsis ctl: $%s is not set; run this from the game's editor", sockEnv), 2
 	}
 	c := Command{Cmd: args[0], Args: args[1:]}
-	rep, err := Call(path, c, CallTimeout(c.Cmd))
-	if err != nil {
-		fmt.Fprintln(stderr, "katharsis ctl:", err)
-		return 2
+	rep, err := call(path, c, callTimeout(c.Cmd))
+	switch {
+	case err != nil:
+		return "katharsis ctl: " + err.Error(), 2
+	case !rep.OK:
+		return rep.Text, 1
 	}
-	fmt.Fprintln(stdout, rep.Text)
-	if !rep.OK {
-		return 1
-	}
-	return 0
+	return rep.Text, 0
 }

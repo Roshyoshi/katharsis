@@ -33,6 +33,7 @@ func TestCheck(t *testing.T) {
 		{"got shorter", "1\n2\n", "1\n", &judge.Diff{Line: 2, Want: "2", Got: "<EOF>"}},
 		{"want shorter", "1\n", "1\n2\n", &judge.Diff{Line: 2, Want: "<EOF>", Got: "2"}},
 		{"no output", "7\n", "", &judge.Diff{Line: 1, Want: "7", Got: "<EOF>"}},
+		{"missing line that reads <EOF>", "1\n<EOF>\n", "1\n", &judge.Diff{Line: 2, Want: "<EOF>", Got: "<EOF>"}},
 		{"long lines clipped", long('a'), long('b'),
 			&judge.Diff{Line: 1, Want: long('a')[:120] + "…", Got: long('b')[:120] + "…"}},
 	}
