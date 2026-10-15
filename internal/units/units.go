@@ -1,7 +1,8 @@
 // Package units formats the game's numbers the one way every screen and log
 // shows them (docs/design/ui-system.md, "Number formats"): the byte
 // currency, memory, clocks, countdowns and hearts. It imports nothing from
-// the game, so the engine can use it as well as the screens.
+// the game, so the engine can use it as well as the screens. Plural counts
+// nouns the same way everywhere ("1 boot", "2 boots").
 package units
 
 import (
@@ -85,4 +86,22 @@ func Hearts(lives, maxLives int) string {
 		return fmt.Sprintf("♥ %d/%d", lives, maxLives)
 	}
 	return strings.Repeat("♥", lives) + strings.Repeat("♡", max(maxLives-lives, 0))
+}
+
+// Plural counts n of a regular English noun: "1 boot", "2 boots",
+// "3 matches", "2 crashes", "4 entries". Irregular nouns (life, lives)
+// spell their own forms.
+func Plural(n int, noun string) string {
+	s := strconv.Itoa(n) + " "
+	if n == 1 || noun == "" {
+		return s + noun
+	}
+	switch last := noun[len(noun)-1]; {
+	case strings.HasSuffix(noun, "ch"), strings.HasSuffix(noun, "sh"),
+		last == 's', last == 'x', last == 'z':
+		return s + noun + "es"
+	case last == 'y' && len(noun) > 1 && !strings.ContainsRune("aeiou", rune(noun[len(noun)-2])):
+		return s + noun[:len(noun)-1] + "ies"
+	}
+	return s + noun + "s"
 }

@@ -1,6 +1,10 @@
 # katharsis UI system: audit and proposal
 
 Status: proposal, report only. No code was changed for this report.
+Implemented in `internal/ui` (phase C), with the owner decisions of
+2026-10-14 in place of §5: dark terminals and the 16 ANSI colors only, so
+no `adaptive` palette (D26); difficulty stays `◆1300` in the rank ramp
+everywhere, and capabilities move to `■`/`□` (D27).
 Lens: the visual system (color, glyphs, borders, type, spacing, components).
 The player journey is covered in `docs/design/ux-journey.md`; this report does
 not repeat it.

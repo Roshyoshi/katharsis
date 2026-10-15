@@ -91,3 +91,20 @@ func TestHearts(t *testing.T) {
 		}
 	}
 }
+
+func TestPlural(t *testing.T) {
+	for _, c := range []struct {
+		n    int
+		noun string
+		want string
+	}{
+		{1, "boot", "1 boot"}, {2, "boot", "2 boots"}, {0, "boot", "0 boots"},
+		{1, "crash", "1 crash"}, {2, "crash", "2 crashes"}, {3, "match", "3 matches"},
+		{2, "box", "2 boxes"}, {2, "pass", "2 passes"}, {4, "entry", "4 entries"},
+		{2, "day", "2 days"}, {-1, "module", "-1 modules"}, {2, "", "2 "},
+	} {
+		if got := Plural(c.n, c.noun); got != c.want {
+			t.Errorf("Plural(%d, %q) = %q, want %q", c.n, c.noun, got, c.want)
+		}
+	}
+}
