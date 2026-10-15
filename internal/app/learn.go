@@ -12,6 +12,7 @@ import (
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/guide"
 	"katharsis/internal/curriculum"
+	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/libs"
 	"katharsis/internal/rules"
@@ -40,7 +41,12 @@ func (m *Model) openLearn(topic string) tea.Cmd {
 				break
 			}
 		}
-		return m.push(b)
+		cmd := m.push(b)
+		// The Mock Turtle's school, over the first visit (story bible).
+		if m.d.Story && m.unseen("story.first-rtfm") {
+			cmd = tea.Batch(cmd, m.readBeat("story.first-rtfm"))
+		}
+		return cmd
 	}
 	return m.background(func(ctx context.Context) tea.Msg {
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
@@ -106,8 +112,8 @@ func (m *Model) startTrial(id string) tea.Cmd {
 	return m.beginTrial(t.Spec())
 }
 
-// beginTrial starts the trial t. Like a boot, it gives up a boot still
-// running.
+// beginTrial starts the trial t, in the Mock Turtle's words
+// (rtfm.trial.start). Like a boot, it gives up a boot still running.
 func (m *Model) beginTrial(t game.TrialSpec) tea.Cmd {
 	if err := m.abandon(); err != nil {
 		return fail("abandon boot %d: %v", m.state.Boot, err)
@@ -117,7 +123,7 @@ func (m *Model) beginTrial(t game.TrialSpec) tea.Cmd {
 	if err != nil {
 		return fail("trial: %v", err)
 	}
-	return m.begin(st, effs)
+	return tea.Batch(m.begin(st, effs), note("%s", flavor.Story("rtfm.trial.start", 0)))
 }
 
 // sourceRunner is a Runner that can name the open door's source file, so
