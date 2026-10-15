@@ -67,7 +67,7 @@ func easeTerms(st *game.State, es game.Ease, after bool) []string {
 		out = append(out, fmt.Sprintf("+%d ", es.Lives)+ui.Life.Render(ui.G.Life))
 	}
 	if es.Ducks > 0 {
-		out = append(out, fmt.Sprintf("+%d ", es.Ducks)+ui.G.Duck)
+		out = append(out, "+"+ui.G.Duck+fmt.Sprint(es.Ducks))
 	}
 	if es.Buyback {
 		out = append(out, "longer timers on "+biomeLabel(st, 0)+"'s floor doors")

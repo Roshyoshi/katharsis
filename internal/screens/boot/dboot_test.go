@@ -231,7 +231,7 @@ func TestEasingCopy(t *testing.T) {
 	if got, want := ansi.Strip(items[2]), "eased: aims 90%/70%/60%/50% → 95%/78%/65%/55%, +1 ♥ (the last 2 boots ended in Userland)"; got != want {
 		t.Errorf("governor kept item\n got %q\nwant %q", got, want)
 	}
-	if got, want := ansi.Strip(items[3]), "eased: +2 ♥, +1 🦆, longer timers on Userland's floor doors (Userland's easiest doors in the pool are rated 800)"; got != want {
+	if got, want := ansi.Strip(items[3]), "eased: +2 ♥, +🦆1, longer timers on Userland's floor doors (Userland's easiest doors in the pool are rated 800)"; got != want {
 		t.Errorf("floor kept item\n got %q\nwant %q", got, want)
 	}
 }

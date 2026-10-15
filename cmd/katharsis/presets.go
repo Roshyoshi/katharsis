@@ -53,9 +53,9 @@ func (p *presets) loadDir(dir string) (errs []error) {
 // add loads one preset file on top of rules.Standard(). It is named by
 // its `name` key, else its file name without .toml; the name is what GRUB
 // lists and what the boot records, so the built-ins' names (standard,
-// short, patch) stay theirs and two files cannot share one. A key the rules do not have is an error, not
-// a silent no-op: a misspelt override would play as standard while the
-// player believes it changed.
+// short, patch) stay theirs and two files cannot share one. A key the
+// rules do not have is an error, not a silent no-op: a misspelt override
+// would play as standard while the player believes it changed.
 func (p *presets) add(path string) error {
 	r, err := rules.Load(path)
 	if err != nil {
