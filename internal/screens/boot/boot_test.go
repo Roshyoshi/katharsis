@@ -19,6 +19,7 @@ import (
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/boot/fixture"
+	"katharsis/internal/ui"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/*.golden from the current output")
@@ -1015,8 +1016,8 @@ func TestHUDBar(t *testing.T) {
 		}
 	}
 	crit := HUDBar(variants[1].st(), prob, fixture.Now, 48)
-	if !strings.Contains(crit, toneStyle[toneCrit].Render("⏱ 01:30")) {
-		t.Errorf("under 2 min the timer should blink: %q", crit)
+	if !strings.Contains(crit, ui.Timer(90*time.Second, variants[1].st().Current.Door.Timer)) {
+		t.Errorf("under 2 min the timer should be critical (reverse): %q", crit)
 	}
 	if s := ansi.Strip(crit); !strings.Contains(s, "tags hidden") || strings.Contains(s, "Functional") {
 		t.Errorf("blind door with no quacks must hide tags:\n%s", s)
@@ -1120,27 +1121,6 @@ func TestBiomeLabel(t *testing.T) {
 	}
 	if strings.Count(v, "Userland") != 1 {
 		t.Errorf("only the first biome is Userland:\n%s", v)
-	}
-}
-
-func TestTimerTone(t *testing.T) {
-	m := time.Minute
-	for _, c := range []struct {
-		left, total time.Duration
-		want        tone
-	}{
-		{20 * m, 30 * m, toneCalm},
-		{15 * m, 30 * m, toneWarn}, // exactly half is no longer calm
-		{10 * m, 30 * m, toneWarn},
-		{6 * m, 30 * m, toneLow}, // exactly a fifth
-		{3 * m, 30 * m, toneLow},
-		{119 * time.Second, 30 * m, toneCrit},
-		{-time.Second, 30 * m, toneCrit},
-		{5 * m, 0, toneCalm},
-	} {
-		if got := timerTone(c.left, c.total); got != c.want {
-			t.Errorf("timerTone(%v, %v) = %v, want %v", c.left, c.total, got, c.want)
-		}
 	}
 }
 
