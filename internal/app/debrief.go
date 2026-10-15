@@ -2,10 +2,12 @@ package app
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
@@ -213,6 +215,31 @@ func resumeNote(left time.Duration) string {
 		return flavor.Fill(s, "time", units.Countdown(left))
 	}
 	return "the door's timer kept running while katharsis was closed: " + leftText(left)
+}
+
+// upsolveOf records the open upsolve of id as solved (game.Upsolve) and
+// reports what it banked and whether it fixed a regression that was due:
+// one solved again without the editorial, as the schedule counts it.
+func (m *Model) upsolveOf(id catalog.ID, kind game.SolveKind) (got int64, fixed bool) {
+	now := m.d.Now()
+	fixed = kind != game.Editorial && slices.ContainsFunc(game.DueRegressions(&m.meta, now),
+		func(g game.Regression) bool { return g.Problem == id })
+	return game.Upsolve(&m.meta, id, kind, now.Sub(m.open.Opened), now), fixed
+}
+
+// upsolveNote is the flash after an accepted upsolve: the core dump it
+// banked (coredump.recovered), else the regression it fixed
+// (regression.cleared), else nothing.
+func upsolveNote(got int64, fixed bool) tea.Cmd {
+	switch {
+	case got > 0:
+		return note("%s", recoveredNote(got))
+	case fixed:
+		if s := flavor.Story("regression.cleared", 0); s != "" {
+			return note("%s", s)
+		}
+	}
+	return nil
 }
 
 // recoveredNote is the flash after an upsolve banks a core dump

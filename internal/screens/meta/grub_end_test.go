@@ -127,3 +127,15 @@ func TestLogNightlies(t *testing.T) {
 	}
 	wantMsg(t, press(t, l, "r"), screens.StartBoot{Prestige: 1, Preset: "standard", Seed: seed})
 }
+
+// The regressions submenu's first opening plays the White Queen's beat,
+// once; a player who has seen it goes straight in.
+func TestGrubFirstRegression(t *testing.T) {
+	regs := []string{"down", "down", "down", "down", "down", "down", "down", "enter"}
+	g := grub()
+	wantMsg(t, press(t, g, regs...), story.Read{ID: "story.first-regression"})
+	wantMsg(t, press(t, g, "esc", "enter"), nil)
+	c := fixture.GrubConfig()
+	game.MarkSeen(&c.Meta, "story.first-regression")
+	wantMsg(t, press(t, meta.NewGrub(c), regs...), nil)
+}

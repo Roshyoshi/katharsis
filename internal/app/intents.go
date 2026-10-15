@@ -282,7 +282,7 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 		kind = game.Editorial
 	}
 	id := m.open.Door.Problem
-	got := game.Upsolve(&m.meta, id, kind, m.d.Now().Sub(m.open.Opened), m.d.Now())
+	got, fixed := m.upsolveOf(id, kind) // game.Upsolve, and whether a due regression was fixed (debrief.go)
 	// The solve is recorded either way: unsaved, it goes with the next
 	// save, and a door left open would let it count twice.
 	m.closeDoor()
@@ -290,10 +290,7 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 	if !m.saved(m.d.Store.SaveMeta(m.meta)) {
 		return nil // the banner says so
 	}
-	if got > 0 {
-		return note("%s", recoveredNote(got)) // coredump.recovered (debrief.go)
-	}
-	return nil
+	return upsolveNote(got, fixed) // coredump.recovered, regression.cleared (debrief.go)
 }
 
 func openURL(url string) tea.Cmd {

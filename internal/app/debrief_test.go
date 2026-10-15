@@ -167,3 +167,19 @@ func TestGrubNightlyBest(t *testing.T) {
 		t.Errorf("GRUB lacks the nightly's best or the budget:\n%s", v)
 	}
 }
+
+// A due regression solved again from GRUB, without the editorial, gets
+// the White Queen's line (regression.cleared).
+func TestRegressionFixedNote(t *testing.T) {
+	h := newHarness(t)
+	h.crashWithDump()
+	id := h.m.state.Crash.Door.Problem
+	h.send(screens.OpenGrub{})
+	game.Upsolve(&h.m.meta, id, game.Editorial, time.Minute, h.clock.t) // banks the dump; the regression stays
+	h.clock.t = h.clock.t.Add(4 * 24 * time.Hour)                       // due now
+	h.send(screens.Upsolve{Problem: id})
+	h.send(submitMsg{})
+	if !strings.Contains(h.m.flash, "White Queen forgets it") {
+		t.Errorf("flash %q, want regression.cleared", h.m.flash)
+	}
+}

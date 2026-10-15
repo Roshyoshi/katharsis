@@ -72,8 +72,11 @@ type Menu struct {
 	status  string
 	gate    string // the prestige gate line under the status, "" for none
 	motd    string // boot.motd, on the status line when it fits
-	lastH   int    // box rows at the last View, for page up/down
-	sources func() string
+	// firstRegression is set until the regressions submenu has opened
+	// with story.first-regression unseen: the first open plays it.
+	firstRegression bool
+	lastH           int // box rows at the last View, for page up/down
+	sources         func() string
 }
 
 type page struct {
@@ -194,6 +197,7 @@ func NewGrub(c GrubConfig) *Menu {
 			page.entries = append(page.entries, entry{
 				label: fmt.Sprintf("regression: %s (due %s, stage %d)", title(r.Problem), ago(r.Due, now), r.Stage+1),
 				msg:   screens.Upsolve{Problem: r.Problem},
+				note:  regressionNote(r, c.Story),
 			})
 		}
 		label := fmt.Sprintf("regressions due: %d", len(regs))
@@ -201,6 +205,8 @@ func NewGrub(c GrubConfig) *Menu {
 			label = fmt.Sprintf("regressions due: %d+", maxDue)
 		}
 		es = append(es, entry{label: label, sub: page, note: sub("regressions")})
+		// The White Queen's beat, the first time the player opens it.
+		m.firstRegression = !game.HasSeen(&c.Meta, firstRegression)
 	}
 	if len(c.Packages) > 0 {
 		es = append(es, entry{label: aptLabel(c.Packages, c.Meta.Bank), msg: screens.OpenShop{}})
@@ -364,6 +370,10 @@ func (m *Menu) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		case e.sub != nil:
 			e.sub.sel, e.sub.top = 0, 0
 			m.stack = append(m.stack, e.sub)
+			if e.sub.pick && m.firstRegression {
+				m.firstRegression = false
+				return m, screens.Emit(story.Read{ID: firstRegression})
+			}
 		case e.boot != nil:
 			return m, screens.Emit(*e.boot)
 		case e.msg != nil:
@@ -671,4 +681,21 @@ func (m *Menu) subtitle(w int) string {
 		return ""
 	}
 	return ui.Center(ui.Voice.Render(ui.Muted.Render(ui.Clip(p.entries[p.sel].note, max(w-4, 1)))), w)
+}
+
+// firstRegression is the White Queen's beat: the first regression back
+// (docs/story/text.md).
+const firstRegression = "story.first-regression"
+
+// regressionNote is a due regression's subtitle: its stage's line, for
+// the standard returns on day 3 and day 17 (regression.stage.1, .2). A
+// preset with more stages has no line for the rest, so they get the
+// submenu's own.
+func regressionNote(r game.Regression, story func(string, uint64) string) string {
+	if r.Stage < 2 {
+		if s := story(fmt.Sprintf("regression.stage.%d", r.Stage+1), 0); s != "" {
+			return s
+		}
+	}
+	return story("grub.subtitle.regressions", 0)
 }
