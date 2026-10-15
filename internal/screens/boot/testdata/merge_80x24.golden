@@ -10,7 +10,7 @@ Boot #42 · Silver · merge window                                  uptime 1:03:
         Duck       +1 rubber duck
 
     spend    uncommitted bytes, for this boot only
-        fsck  +10 cycles now · 64 B
+        fsck  +1 cycles now · 64 B
         dup   +1 rubber duck · 48 B
         shuf  re-roll one room's doors · 32 B
 

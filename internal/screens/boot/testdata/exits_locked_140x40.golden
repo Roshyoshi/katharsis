@@ -21,7 +21,7 @@ Boot #42 · Silver · route · act II                                           
   ┃ □ locked: CAP_BSEARCH or apt git         ┃  │ □ locked: CAP_TWOPTR                     │  │ ◆950–1150 · aim 70% clear                │
   ┃ Stub line for route.locked.              ┃  │ Stub line for route.locked.              │  │ a fail −12 ♥, the room lost              │
   ┃ +1 upgrade pick                          ┃  │ +1 upgrade pick                          │  │ → ⚔ Heisenbug                            │
-  ┃ → ⚔ Heisenbug                            ┃  │ → ⚔ race-condition                       │  │ → ⚔ race-condition                       │
+  ┃ → ⚔ Heisenbug                            ┃  │ → ⚔ Race Condition                       │  │ → ⚔ Race Condition                       │
   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ╰──────────────────────────────────────────╯  ╰──────────────────────────────────────────╯
 
                                                               the boot so far

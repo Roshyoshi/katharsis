@@ -1,0 +1,40 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+[ 3180.000] Out of cycles: Killed process 1 (you) verdict:WA passed:9/14 submits:3
+[ 3180.000] Kernel panic - not syncing: out of cycles in "MooBuzz"
+[ 3180.000] CPU: 0 PID: 1 Comm: you Not tainted
+[ 3180.000] Hardware name: katharsis Silver, preset standard, seed 51c3
+[ 3180.000] Modules linked in: strace(O)
+[ 3180.000] Call Trace:
+[ 3180.000]  do_exit+0x3a/0xc0
+[ 3180.000]  door_5+0x9/0x18 [The ALU]
+[ 3180.000]  door_4+0xb/0x20 [Off-by-One]
+[ 3180.000]  door_3+0xb/0x15 [The Scheduler]
+[ 3180.000]  door_2+0xb/0xa [Userland]
+[ 3180.000]  door_1+0xb/0xa [Userland]
+[ 3180.000]  boot_57+0x35/0x61
+[ 3180.000] ---[ end Kernel panic ]---
+
+  "Program testing can be used to show the presence of bugs, but
+   never to show their absence!"
+                — Edsger W. Dijkstra, Notes on Structured Programming (1970)
+     Stub crash.epitaph.out-of-lives.WA, a line in the story's voice.
+
+  no core dump left to recover
+  kept   rating 1214 → 1180 ▼34 · bank 2.1 KiB
+         Gold ▓▓░░░░░░ 22/60 rated doors, then a clear
+  lever  3 failed submits burned the last 6 cycles, the best WA 9/14 tests → a case the samples missed; an upsolve shows the failing test ·
+         ≈70% predicted
+  next ▸ r reboot at Silver · ♥ 30 cycles
+  [u] upsolve  [e] editorial  [l] git log  [g] GRUB

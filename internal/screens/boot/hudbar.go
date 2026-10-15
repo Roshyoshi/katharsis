@@ -92,7 +92,11 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	}
 	out = append(out, pack(mods, ui.Muted.Render(ui.G.Sep), width)...)
 	// What a timeout or :q! burns, the act's price (D47), or a boss's rule.
-	if t, ok := failNote(st); ok && open {
+	t, ok := failNote(st)
+	if inBoss(st) {
+		t = bossPriceShort(st)
+	}
+	if ok && open {
 		for _, l := range ui.WrapN(ui.G.Timer+t, width, 2) {
 			out = append(out, ui.Muted.Render(l))
 		}

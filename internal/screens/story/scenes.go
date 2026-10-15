@@ -112,6 +112,24 @@ func NewPrologue() *Scene {
 // (story.first-boss: the King's rule first) or first final boss
 // (reveal.final-boss, which takes the place of the entrance line).
 func NewBossIntro(key string, seed uint64, first bool) *Scene {
+	return NewBossCard(key, seed, first, BossRules{})
+}
+
+// BossRules are what a boss card says of the boss's rules under cycles
+// (map.md §(g), D54), from the boot as it meets the boss: Twist when its
+// doors bend the boss's rule (game.Door.Twist), named in the boss's voice
+// (boss.rule.<key>); Price, what a fail or :q! costs ("a fail or :q!
+// burns 20 cycles and deals a new boss door (22 left)"); OneShot when
+// either ends the boot, said once more by the story (boss.oneshot).
+type BossRules struct {
+	Twist   bool
+	Price   string
+	OneShot bool
+}
+
+// NewBossCard is NewBossIntro with the boss's rules under its lines: its
+// twist, its price, and a one-shot boss's warning.
+func NewBossCard(key string, seed uint64, first bool, br BossRules) *Scene {
 	label := ui.G.Boss + " BOSS"
 	if key == game.FinalBoss {
 		label = ui.G.Boss + " FINAL BOSS"
@@ -127,13 +145,41 @@ func NewBossIntro(key string, seed uint64, first bool) *Scene {
 		said := flavor.StoryBlock(id)
 		pages = append(pages, func(w, _ int) anim.Clip { return typed(said, w) })
 	}
-	paras := []anim.Para{{Text: flavor.BossBlurb(key), Style: muted()}}
-	if enter != "" {
-		paras = append(paras, anim.Para{Text: enter, Style: voice()})
+	// Each paragraph with the order it gives way in on a short pane, 0 for
+	// never: the rules stay, the story's lines go first.
+	type para struct {
+		anim.Para
+		drop int
 	}
-	pages = append(pages, func(w, _ int) anim.Clip {
-		return anim.Card{Label: label, Name: flavor.BossName(key), NameStyle: strong(),
-			Paras: paras, W: min(w, cardWidth), D: cardTime}
+	paras := []para{{anim.Para{Text: flavor.BossBlurb(key), Style: muted()}, 3}}
+	if enter != "" {
+		paras = append(paras, para{anim.Para{Text: enter, Style: voice()}, 1})
+	}
+	if br.Twist {
+		paras = append(paras, para{anim.Para{Text: flavor.Story("boss.rule."+key, seed), Style: voice()}, 0})
+	}
+	if br.Price != "" {
+		paras = append(paras, para{anim.Para{Text: br.Price, Style: plain()}, 0})
+	}
+	if br.OneShot {
+		paras = append(paras, para{anim.Para{Text: flavor.Story("boss.oneshot", seed), Style: voice()}, 2})
+	}
+	pages = append(pages, func(w, h int) anim.Clip {
+		card := func(dropped int) anim.Card {
+			var ps []anim.Para
+			for _, p := range paras {
+				if p.drop == 0 || p.drop > dropped {
+					ps = append(ps, p.Para)
+				}
+			}
+			return anim.Card{Label: label, Name: flavor.BossName(key), NameStyle: strong(),
+				Paras: ps, W: min(w, cardWidth), D: cardTime}
+		}
+		c := card(0)
+		for d := 1; d <= 3 && len(c.Frame(cardTime)) > h-1; d++ {
+			c = card(d) // the footer keeps its row
+		}
+		return c
 	})
 	return newScene(id, 0, pages...)
 }

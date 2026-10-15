@@ -116,6 +116,13 @@ type Options struct {
 	// with what it cost, which the HUD cannot know. It must answer every
 	// SubmittedMsg it takes; one with no verdict the HUD has answered.
 	HostAnswers bool
+	// Quiet reports the sample pass only as pass or fail (Heisenbug's
+	// twist, D54: the bug hides when looked at): no per-sample rows, no
+	// counts, no diffs or crash reports, in the pane, the border, the
+	// pinned judgement and `ctl status`. The pass itself, the build and
+	// its errors, :Submit and :Debug are as ever; SamplesMsg and Samples
+	// still carry the counts, for the host's own bookkeeping.
+	Quiet bool
 }
 
 type row struct {
@@ -520,6 +527,9 @@ func (m *Model) status(clock string, paint func(ui.Token, string) string) string
 		parts = append(parts, paint(ui.FG, "samples not run"))
 	case m.build != nil && !m.build.OK:
 		parts = append(parts, paint(ui.FG, "samples ")+paint(ui.Danger, "CE"))
+	case len(m.rows) > 0 && m.opt.Quiet:
+		word, tone := m.quiet()
+		parts = append(parts, paint(ui.FG, "samples ")+paint(tone, word))
 	case len(m.rows) > 0:
 		parts = append(parts, paint(ui.FG, fmt.Sprintf("samples %d/%d", m.passed(), len(m.rows))))
 	}
@@ -582,6 +592,11 @@ func (m *Model) View() tea.View {
 		for _, l := range firstLines(m.compilerLog(m.build.Log), max(m.height-used()-help, 4)) {
 			line(l)
 		}
+	case m.opt.Quiet && len(m.rows) > 0:
+		// Heisenbug's twist: the pass says pass or fail, and no more.
+		word, tone := m.quiet()
+		line(ui.Muted.Render("samples ") + tone.Render(word))
+		line(ui.Muted.Render("pass or fail is all :w says on this door"))
 	default:
 		// Rows get the lines the header, the detail and the key help leave,
 		// and scroll to keep the selected one in view: a full test set is
@@ -636,6 +651,21 @@ func (m *Model) View() tea.View {
 	return v
 }
 
+// quiet is the sample pass as Options.Quiet reports it, in its tone:
+// "fail" once any sample fails (a pass still running can have disproved
+// the source already), "pass" once every one passed, "running…" between.
+func (m *Model) quiet() (string, ui.Token) {
+	switch {
+	case m.firstFailure() >= 0:
+		return ui.G.Fail + " fail", ui.Danger
+	case m.running:
+		return "running…", ui.Muted
+	case m.build == nil:
+		return "not run", ui.Muted
+	}
+	return ui.G.Pass + " pass", ui.OK
+}
+
 // passed counts the samples judged AC so far.
 func (m *Model) passed() int {
 	n := 0
@@ -669,6 +699,10 @@ func (m *Model) statusLine() string {
 	built := fmt.Sprintf("built %.1fs", m.build.Duration.Seconds())
 	if m.build.Cached {
 		built = "cached build"
+	}
+	if m.opt.Quiet && len(m.rows) > 0 {
+		word, tone := m.quiet()
+		return "samples " + tone.Render(word) + ui.Muted.Render(ui.G.Sep+prof+ui.G.Sep+built)
 	}
 	pass := m.passed()
 	s := fmt.Sprintf("samples %d/%d", pass, len(m.rows))

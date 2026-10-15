@@ -1,0 +1,40 @@
+Boot #57 · Silver · ⚔ Off-by-One                                                                                                uptime 33:00
+♥ 24/30 cycles  🦆1  128 B uncommitted · 256 B committed                                                                      daemons strace
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+                                            ╔═ ▸ 1 ⚔ BOSS ═════════════════════════════════════╗
+                                            ║                                                  ║
+                                            ║               O F F - B Y - O N E                ║
+                                            ║       Stub line for boss.enter.off-by-one.       ║
+                                            ║                                                  ║
+                                            ║     It disappears the moment you add a print     ║
+                                            ║                    statement.                    ║
+                                            ║                                                  ║
+                                            ║       Stub line for boss.rule.off-by-one.        ║
+                                            ║            ⚔ one test short burns ×2             ║
+                                            ║    a fail or :q! burns 20 cycles and deals a     ║
+                                            ║              new boss door (4 left)              ║
+                                            ║                                                  ║
+                                            ║                    Cow Poetry                    ║
+                                            ║       Knapsack DP · Modular Exponentiation       ║
+                                            ║              ◆1700  ⏱ 32:00  +576 B              ║
+                                            ║                                                  ║
+                                            ╚══════════════════════════════════════════════════╝
+
+ ╭─ Userland ─╮   ╭─ The Scheduler ─╮   ╭─ Off-by-One ─╮   ╭─ The ALU ─╮   ╭─ Heisenbug ─╮   ╭─ Kernel Space ─╮   ╭─ The Halting Problem ─╮
+ │    ✓ ✓     │───│        ✓        │───│      ●       │───│     ○     │───│      ⚔      │───│       ○        │───│           ⚔           │
+ ╰────────────╯   ╰─────────────────╯   ╰──────────────╯   ╰───────────╯   ╰─────────────╯   ╰────────────────╯   ╰───────────────────────╯
+
+
+
+
+
+
+
+enter open door · m map

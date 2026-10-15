@@ -414,8 +414,13 @@ func leverText(env Env, l game.Lever) string {
 		} else {
 			s += " at " + verdict() + tests
 		}
+		s += failCause(env.State, game.TimedOut, l)
 	case game.LeverLives:
-		s = units.Plural(l.Failed, "failed submit") + ", the best " + verdict() + tests
+		s = units.Plural(l.Failed, "failed submit")
+		if n := leverAttempt(env.State, l).CyclesAtOpen; n > 0 {
+			s += " burned the last " + units.Plural(n, "cycle")
+		}
+		s += ", the best " + verdict() + tests
 	case game.LeverCursed:
 		s = "cursed: the first failed submit ended it, " + verdict() + tests
 	case game.LeverGaveUp:
@@ -423,6 +428,9 @@ func leverText(env Env, l game.Lever) string {
 		if l.Submits > 0 {
 			s += ", the best " + verdict() + tests
 		}
+		s += failCause(env.State, game.GaveUp, l)
+	case game.LeverAbandoned:
+		return "a new boot started while this one was suspended between doors"
 	case game.LeverCleared:
 		s = fmt.Sprintf("%q %s cleared in %s of %s", env.problem(l.Door.Problem).Title, ui.Rating(l.Door.Rating),
 			units.Clock(l.Elapsed), units.Clock(l.Timer))
@@ -443,6 +451,32 @@ func leverText(env Env, l game.Lever) string {
 		s += ui.Muted.Render(ui.G.Sep + p)
 	}
 	return s
+}
+
+// failCause is why a timeout or a give-up (o) ended the boot under cycles,
+// for the lever (D47, map.md §(f)): a one-shot boss deals no second door,
+// or its burn took the last cycles. "" when the rules before cycles made
+// it fatal anyway, outside a boss.
+func failCause(st *game.State, o game.Outcome, l game.Lever) string {
+	cost, _ := st.FailCost(o)
+	switch {
+	case l.Door.Boss != "" && st.OneShot():
+		return ui.Muted.Render(ui.G.Sep) + "one shot, no second door"
+	case cost > 0:
+		return ui.Muted.Render(ui.G.Sep) + "its " + units.Plural(cost, "cycle") + " were the last"
+	}
+	return ""
+}
+
+// leverAttempt is the attempt behind lever l: the boot's last on its door.
+func leverAttempt(st *game.State, l game.Lever) game.Attempt {
+	ss := steps(st)
+	for i := len(ss) - 1; i >= 0; i-- {
+		if ss[i].Attempt.Door.Problem == l.Door.Problem {
+			return ss[i].Attempt
+		}
+	}
+	return game.Attempt{}
 }
 
 // forecastItem is the engine's forecast, as the boot began, of a crash in
@@ -559,7 +593,11 @@ func rebootStep(env Env) string {
 	if t := env.State.Trial; t != nil {
 		return ui.Strong.Render("r") + " retry the " + t.Module + " trial"
 	}
-	return ui.Strong.Render("r") + " reboot at " + prestigeLabel(next(env)) + eta(env.End.ETA)
+	// The pool the reboot is dealt, which prestige cuts (P4, P7).
+	r := env.State.Rules
+	pool := max(1, r.Cycles+r.Ascend(next(env)).Cycles)
+	return ui.Strong.Render("r") + " reboot at " + prestigeLabel(next(env)) + eta(env.End.ETA) +
+		ui.Muted.Render(ui.G.Sep) + ui.Life.Render(ui.G.Life) + " " + units.Plural(pool, "cycle")
 }
 
 // rebootPairs are the footer's reboot keys with their ETAs.

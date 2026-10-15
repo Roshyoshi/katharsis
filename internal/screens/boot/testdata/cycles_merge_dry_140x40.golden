@@ -1,0 +1,40 @@
+Boot #57 · Advanced · merge window                                                                                              uptime 44:00
+♥ 17/25 cycles  🦆1  640 B uncommitted · 256 B committed                                                                      daemons strace
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+ ╭─ Userland ─╮   ╭─ The Scheduler ─╮   ╭─ Off-by-One ─╮   ╭─ The ALU ─╮   ╭─ Heisenbug ─╮   ╭─ Kernel Space ─╮   ╭─ The Halting Problem ─╮
+ │    ✓ ✓     │───│        ✓        │───│      ✓       │─●─│     ○     │───│      ⚔      │───│       ○        │───│           ⚔           │
+ ╰────────────╯   ╰─────────────────╯   ╰──────────────╯   ╰───────────╯   ╰─────────────╯   ╰────────────────╯   ╰───────────────────────╯
+
+                                                         Stub line for merge.line.
+
+                                  fountain dry at Advanced: no heal between acts
+                                  commit   640 B uncommitted: a crash loses it, the bank keeps it
+
+                                  Stub line for boss.defeat.off-by-one.
+                                  upgrade  a clear earned one; pick it before you leave
+                                    ▸ Overclock  +15% timer; 5 cycles a pick, 2 at most; 1 of 2 taken
+                                      ECC        a failed submit costs 05:00, not cycles
+                                      Duck       +1 rubber duck
+
+                                  spend    uncommitted bytes, for this boot only
+                                      fsck  +5 cycles now · 64 B
+                                      dup   +1 rubber duck · 48 B
+                                      shuf  re-roll one room's doors · 32 B
+
+                                  Stub block for daemon.intro, line one.
+                                  Stub block, line two.
+                                  daemon   pick one, it runs for the rest of the boot · held 1/3: strace
+                                      kexec     a free swap per act, else 5 cycles
+                                      nice -20  +20% timer, but every door pays 0.8x
+
+                                  leave → biome 4: The ALU
+
+
+
+
+
+↑/↓ move · enter pick, buy or leave · c commit · f fsck

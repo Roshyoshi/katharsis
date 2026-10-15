@@ -12,6 +12,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/story"
 	"katharsis/internal/ui"
 	"katharsis/internal/units"
@@ -183,7 +184,11 @@ func (m *Model) arrival(noDrop bool) []queued {
 		if !first {
 			id = ""
 		}
-		q = append(q, queued{id, func() *story.Scene { return story.NewBossIntro(key, seed, first) }})
+		// The card says the boss's rules as the boot meets it (map.md
+		// §(g), D54): its twist, its price, one shot or a retry.
+		twist, _ := bootui.BossTwist(s)
+		br := story.BossRules{Twist: twist == key, Price: bootui.BossPrice(s), OneShot: s.OneShot()}
+		q = append(q, queued{id, func() *story.Scene { return story.NewBossCard(key, seed, first, br) }})
 	case !noDrop && b.Topic != "":
 		q = append(q, queued{"", func() *story.Scene { return m.biomeFall(b) }}) // a map node's own line (hub.go)
 	}

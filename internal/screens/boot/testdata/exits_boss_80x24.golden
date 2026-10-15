@@ -6,7 +6,7 @@ Boot #42 · Silver · route · act I                                   uptime 29
           Pick an exit. It sets the next door and the boss behind it.
 
 ╔═ ▸ 1 ═══════════════════════════════╗  ╔═ 2 ═════════════════════════════════╗
-║ ⚔ off-by-one                        ║  ║ ⚔ oom-killer                        ║
+║ ⚔ Off-by-One                        ║  ║ ⚔ OOM Killer                        ║
 ║ act I boss                          ║  ║ act I boss                          ║
 ║ It disappears the moment you add a  ║  ║ It disappears the moment you add a  ║
 ║ print statement.                    ║  ║ print statement.                    ║

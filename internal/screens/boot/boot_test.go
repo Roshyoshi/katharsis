@@ -41,24 +41,35 @@ var stubFlavor = flavorSource{
 		return "Stub blurb for " + t + ", long enough to wrap onto a second line of a card."
 	},
 	BossName: func(k string) string {
-		return map[string]string{"heisenbug": "Heisenbug", game.FinalBoss: "The Halting Problem"}[k]
+		return map[string]string{
+			"heisenbug": "Heisenbug", "off-by-one": "Off-by-One", "oom-killer": "OOM Killer",
+			"race-condition": "Race Condition", "undefined-behavior": "Undefined Behavior",
+			game.FinalBoss: "The Halting Problem",
+		}[k]
 	},
 	BossBlurb: func(string) string { return "It disappears the moment you add a print statement." },
 	PrestigeName: func(p int) string {
 		return []string{"Bronze", "Silver", "Gold", "Platinum", "Advanced"}[min(max(p, 0), 4)]
 	},
-	UpgradeText: func(u game.Upgrade, _ rules.Rules) (string, string) {
+	// Prices the cycles goldens pin (D50) quote the rules, as flavor does.
+	UpgradeText: func(u game.Upgrade, r rules.Rules) (string, string) {
 		switch u {
 		case game.Overclock:
+			if r.OverclockMax > 0 {
+				return "Overclock", fmt.Sprintf("+15%% timer; %d cycles a pick, %d at most", r.OverclockCycles, r.OverclockMax)
+			}
 			return "Overclock", "+15% timer on every later door"
 		case game.ECC:
+			if p := r.ECCPenalty.Duration; p > 0 {
+				return "ECC", "a failed submit costs " + units.Clock(p) + ", not cycles"
+			}
 			return "ECC", "+10 cycles"
 		case game.Duck:
 			return "Duck", "+1 rubber duck"
 		}
 		return string(u), ""
 	},
-	DaemonText: func(d game.Daemon, _ rules.Rules) (string, string) {
+	DaemonText: func(d game.Daemon, r rules.Rules) (string, string) {
 		switch d {
 		case game.Strace:
 			return "strace", "the failing test's input is shown"
@@ -68,13 +79,15 @@ var stubFlavor = flavorSource{
 			return "fork", "4 doors per room after an AC"
 		case game.DevRandom:
 			return "/dev/random", "mystery doors pay 2x"
+		case game.Kexec:
+			return "kexec", fmt.Sprintf("a free swap per %s, else %d cycles", map[bool]string{true: "act", false: "biome"}[r.KexecPerAct], r.RetreatPrice())
 		}
 		return string(d), ""
 	},
 	// Full stops as flavor writes them: a spend row drops them.
 	ItemText: func(it game.Item, r rules.Rules) (string, string) {
 		return string(it), map[game.Item]string{
-			game.Fsck: "+10 cycles now.", game.Dup: "+1 rubber duck.", game.Shuf: "re-roll one room's doors.",
+			game.Fsck: fmt.Sprintf("+%d cycles now.", r.FsckHeal()), game.Dup: "+1 rubber duck.", game.Shuf: "re-roll one room's doors.",
 			game.At: "+" + units.Clock(r.AtTime.Duration) + " on the next door's timer.",
 		}[it]
 	},
@@ -101,7 +114,7 @@ var stubFlavor = flavorSource{
 	},
 	PanicReason: func(c game.Outcome, _ string) string {
 		return map[game.Outcome]string{
-			game.TimedOut: "timer expired", game.OutOfLives: "out of lives",
+			game.TimedOut: "timer expired", game.OutOfLives: "out of cycles",
 			game.GaveUp: "Attempted to kill init! exitcode=0x00000009",
 		}[c]
 	},
@@ -840,7 +853,7 @@ func TestCrashContent(t *testing.T) {
 
 	lives := ansi.Strip(NewCrash(env(fixture.Crash(game.OutOfLives))).View(120, 40))
 	for _, want := range []string{
-		`out of lives in "The Bovine Shuffle"`,
+		`out of cycles in "The Bovine Shuffle"`,
 		"Killed process 1 (you) verdict:WA passed:37/52 submits:2",
 		"Not tainted",
 	} {
@@ -986,12 +999,12 @@ func TestCrashTailSkipsEngineEchoes(t *testing.T) {
 		if !strings.Contains(v, "regression: ") {
 			t.Errorf("%s: crash screen dropped the regression line:\n%s", tc.cause, v)
 		}
-		if want := map[bool]string{false: "Out of lives: Killed", true: "Cursed door: Killed"}[tc.cursed]; tc.cause == game.OutOfLives && !strings.Contains(v, want) {
+		if want := map[bool]string{false: "Out of cycles: Killed", true: "Cursed door: Killed"}[tc.cursed]; tc.cause == game.OutOfLives && !strings.Contains(v, want) {
 			t.Errorf("%s cursed=%v: want precursor %q:\n%s", tc.cause, tc.cursed, want, v)
 		}
 		// The curse crashes with lives left, so the panic must not blame
 		// the lives.
-		if want := map[bool]string{false: "not syncing: out of lives in", true: "not syncing: curse triggered in"}[tc.cursed]; tc.cause == game.OutOfLives && !strings.Contains(v, want) {
+		if want := map[bool]string{false: "not syncing: out of cycles in", true: "not syncing: curse triggered in"}[tc.cursed]; tc.cause == game.OutOfLives && !strings.Contains(v, want) {
 			t.Errorf("%s cursed=%v: want panic %q:\n%s", tc.cause, tc.cursed, want, v)
 		}
 	}
@@ -1255,7 +1268,7 @@ func TestBiomeLabel(t *testing.T) {
 		// biome's: the boss names it instead.
 		{"boss", game.BiomeState{Topic: "mixed", Kind: rules.Boss, Boss: "heisenbug"}, "Heisenbug"},
 		{"final boss", game.BiomeState{Topic: "mixed", Kind: rules.Boss, Boss: game.FinalBoss}, "The Halting Problem"},
-		{"boss without flavor", game.BiomeState{Topic: "mixed", Kind: rules.Boss, Boss: "oom-killer"}, "oom-killer"},
+		{"boss without flavor", game.BiomeState{Topic: "mixed", Kind: rules.Boss, Boss: "no-such-boss"}, "no-such-boss"},
 		{"boss named by preset", game.BiomeState{Name: "Ring 0", Topic: "mixed", Kind: rules.Boss, Boss: "heisenbug"}, "Ring 0"},
 		{"boss without key", game.BiomeState{Kind: rules.Boss}, "boss"},
 		{"choice not taken", game.BiomeState{Kind: rules.Choice}, "?"},

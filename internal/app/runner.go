@@ -126,19 +126,14 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 	// untagged, the pane is only left behind.
 	_ = session.TagPane(pane, session.RoleEditor)
 
+	tc := judge.Profiles(ctx)
+	samples, lim, quiet := judging(tc, d, r.Scale)
 	opt := hud.Options{
-		Dir:     dir,
-		Profile: judge.SampleProfile(ctx),
-		Limits: judge.Limits{
-			Time:           d.Problem.TimeLimit,
-			Mem:            d.Problem.MemLimit,
-			Output:         judge.DefaultOutputLimit,
-			Scale:          r.Scale,
-			FloatTolerance: d.Problem.FloatTolerance,
-			FileIO:         d.Problem.FileIO, // a stem the source hides from detection
-			AnyCase:        d.Problem.AnyCase,
-		},
-		SubmitProfile: judge.Profiles(ctx).Full,
+		Dir:           dir,
+		Profile:       samples,
+		Limits:        lim,
+		Quiet:         quiet,
+		SubmitProfile: tc.Full,
 		FullTests:     d.Assets.Tests,
 		// A hidden directory: the door's own source stays the only .cpp
 		// in it, and a compile error names the file the player knows.
@@ -187,6 +182,45 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 	r.hud = hud.New(opt)
 	return nil
 }
+
+// judging is how door d's samples and full tests are judged on toolchain
+// tc: the sample profile and the problem's limits, as a boss's twist bends
+// them (D54; game.Door's flags, set by the engine on the doors it bends).
+// The OOM Killer multiplies the memory limit (MemMult), from defaultMem
+// when the problem names none: the full tests are held to it, and so are
+// samples built without sanitizers (judge.Profile.Sanitized builds carry
+// shadow memory and are not).
+// Undefined Behavior builds the samples with the toolchain's full-test
+// profile, which has no sanitizers (NoSanitizers). Heisenbug reports the
+// samples as pass or fail only (QuietSamples, hud.Options.Quiet). An
+// upsolve has no twist.
+func judging(tc judge.Toolchain, d Door, scale float64) (samples judge.Profile, lim judge.Limits, quiet bool) {
+	lim = judge.Limits{
+		Time:           d.Problem.TimeLimit,
+		Mem:            d.Problem.MemLimit,
+		Output:         judge.DefaultOutputLimit,
+		Scale:          scale,
+		FloatTolerance: d.Problem.FloatTolerance,
+		FileIO:         d.Problem.FileIO, // a stem the source hides from detection
+		AnyCase:        d.Problem.AnyCase,
+	}
+	samples = tc.Samples
+	if d.Upsolve {
+		return samples, lim, false
+	}
+	t := d.Door
+	if t.MemMult > 0 && t.MemMult != 1 {
+		lim.Mem = int64(float64(cmp.Or(lim.Mem, defaultMem)) * t.MemMult)
+	}
+	if t.NoSanitizers {
+		samples = tc.Full
+	}
+	return samples, lim, t.QuietSamples
+}
+
+// defaultMem is the memory limit a twist scales when the problem names
+// none: the common contest 256 MiB.
+const defaultMem = 256 << 20
 
 // EditorFailed says why the editor pane is gone when it died within
 // editorGrace of opening: the command could not start (not found, a bad

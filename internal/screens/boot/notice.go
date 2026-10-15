@@ -109,6 +109,19 @@ func BossPrice(st *game.State) string {
 	return fmt.Sprintf("a fail or :q! burns %d cycles and deals a new boss door (%d left)", c, st.Cycles-c)
 }
 
+// bossPriceShort is BossPrice for the HUD bar's 36 columns: "fail or :q!
+// -20, new door, 4 left"; "one shot: a fail or :q! ends it".
+func bossPriceShort(st *game.State) string {
+	c, ok := st.FailCost(game.TimedOut)
+	switch {
+	case st.OneShot() || c == 0:
+		return "one shot: a fail or :q! ends it"
+	case !ok:
+		return fmt.Sprintf("fail or :q! -%d: the last, it ends", c)
+	}
+	return fmt.Sprintf("fail or :q! -%d, new door, %d left", c, st.Cycles-c)
+}
+
 // BossTwist reports whether a door of the boss biome bends its boss's rule
 // (game.Door.Twist), so its card names the rule (boss.rule.<key>). The
 // engine sets the twist on the doors it carries it out on; a boot without

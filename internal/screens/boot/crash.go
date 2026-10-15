@@ -119,7 +119,9 @@ func (c *Crash) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		}
 		switch key {
 		case "u":
-			return c, screens.Emit(screens.Upsolve{Problem: c.crash().Door.Problem})
+			if id := c.crash().Door.Problem; id != "" { // an abandoned boot has no door
+				return c, screens.Emit(screens.Upsolve{Problem: id})
+			}
 		case "e":
 			if id := c.crash().Door.Problem; c.env.hasEditorial(id) {
 				return c, screens.Emit(screens.OpenEditorial{Problem: id})
@@ -239,11 +241,16 @@ func (c *Crash) panic(cr game.Crash, verdict, title string, seed uint64, width, 
 	reason := fl.PanicReason(cr.Cause, verdict)
 	switch {
 	case cr.Cursed:
-		// Cause is OutOfLives for the curse too, but lives are left; the
+		// Cause is OutOfLives for the curse too, but cycles are left; the
 		// engine's own panic line names the curse.
 		reason = "curse triggered"
 	case reason == "":
 		reason = "unknown cause"
+	}
+	panicLine := fmt.Sprintf("Kernel panic - not syncing: %s in %q", reason, title)
+	if cr.Door.Problem == "" {
+		// An abandoned boot crashed between doors: no door to name.
+		panicLine = "Kernel panic - not syncing: " + reason
 	}
 	// The head's lines in order; drop says which give way, and in what
 	// order, when even the shortest trace does not fit: the modules, the
@@ -257,7 +264,7 @@ func (c *Crash) panic(cr game.Crash, verdict, title string, seed uint64, width, 
 		heads = append(heads, headLine{dline{at: up, text: pre}, 3})
 	}
 	heads = append(heads,
-		headLine{dline{at: up, text: fmt.Sprintf("Kernel panic - not syncing: %s in %q", reason, title), style: ui.Danger, bold: true}, 0},
+		headLine{dline{at: up, text: panicLine, style: ui.Danger, bold: true}, 0},
 		headLine{dline{at: up, text: "CPU: 0 PID: 1 Comm: you " + taint(cr.Door)}, 0},
 		headLine{dline{at: up, text: fmt.Sprintf("Hardware name: katharsis %s, preset %s, seed %x",
 			prestigeLabel(st.Prestige), st.Rules.Name, st.Seed)}, 2},
@@ -405,7 +412,7 @@ func (c *Crash) keys(b game.Brief, width int) []string {
 	var pairs []string
 	// No upsolve key once the dump is banked (UX J31), nor twice when it
 	// is the highlighted step.
-	if b.Next.Kind != game.NextUpsolve && b.Dump.Kind != game.DumpRecovered {
+	if b.Next.Kind != game.NextUpsolve && b.Dump.Kind != game.DumpRecovered && c.crash().Door.Problem != "" {
 		pairs = append(pairs, "u", "upsolve")
 	}
 	if c.env.hasEditorial(c.crash().Door.Problem) {
@@ -445,7 +452,7 @@ func (c *Crash) keys(b game.Brief, width int) []string {
 
 // epitaph is the story's line under the quote (text.md, Crash): a trial's
 // is the Gryphon's (rtfm.trial.fail), whatever ended it; a boot's is by
-// cause, the curse first, and out of lives by its verdict where it has
+// cause, the curse first, and out of cycles by its verdict where it has
 // one.
 func (c *Crash) epitaph(cr game.Crash, verdict string, seed uint64) []string {
 	hook := "crash.epitaph." + string(cr.Cause)
@@ -468,7 +475,7 @@ func (c *Crash) epitaph(cr game.Crash, verdict string, seed uint64) []string {
 // echoes reports whether engine log line l only repeats what the screen
 // prints itself: the engine's own panic line (the header says it with the
 // title), its "core dumped" line (the core dump line under the quote), and
-// on running out of lives the fatal submit (the precursor has the verdict
+// on running out of cycles the fatal submit (the precursor has the verdict
 // and the tests passed). Everything else in the tail stays, the coredump
 // overwrite and the regression schedule included.
 func echoes(l game.LogLine, cr game.Crash, verdict string) bool {
@@ -499,26 +506,50 @@ func dlines(at time.Duration, texts []string) []dline {
 }
 
 // precursor is a log line printed just before the panic when the panic
-// line alone hides what happened: running out of lives gets the OOM
-// killer's report with the verdict and the HP bar, and :q! names itself
-// (the panic reads as init being killed). A cursed door crashes on its
-// first failure with lives to spare, so its report says cursed, not out of
-// lives.
+// line alone hides what happened: running out of cycles on submits gets
+// the OOM killer's report with the verdict and the HP bar; a timeout or
+// :q! that ended the boot says why it did, a one-shot boss's door (the
+// final, D52) or the burn that took the last cycles (D47); a :q! names
+// itself (the panic reads as init being killed); an abandoned boot, the
+// new one that ended it. A cursed door crashes on its first failure with
+// cycles to spare, so its report says cursed, not out of cycles.
 func (c *Crash) precursor(cr game.Crash, verdict string) string {
+	st := c.env.State
+	quit := "you[1]: :q! sent SIGKILL to init"
 	switch cr.Cause {
 	case game.OutOfLives:
 		a := c.attempt(cr)
 		if verdict == "" {
 			verdict = "?"
 		}
-		who := "Out of lives"
-		if cr.Cursed || cr.Door.Cursed && c.env.State.Cycles > 0 {
+		who := "Out of cycles"
+		if cr.Cursed || cr.Door.Cursed && st.Cycles > 0 {
 			who = "Cursed door"
 		}
 		return fmt.Sprintf("%s: Killed process 1 (you) verdict:%s passed:%d/%d submits:%d",
 			who, verdict, a.BestPass, a.Total, a.Submits)
-	case game.GaveUp:
-		return "you[1]: :q! sent SIGKILL to init"
+	case game.TimedOut, game.GaveUp:
+		what := "the timeout"
+		if cr.Cause == game.GaveUp {
+			what = ":q!"
+		}
+		cost, _ := st.FailCost(cr.Cause)
+		switch {
+		case cr.Door.Boss != "" && st.OneShot():
+			s := strings.ReplaceAll(cr.Door.Boss, "-", "_") + ": one shot, no second door"
+			if cr.Cause == game.GaveUp {
+				s += ui.G.Sep + quit
+			}
+			return s
+		case cost > 0 && st.Cycles > 0 && st.Cycles <= cost:
+			return fmt.Sprintf("Out of cycles: %s burns %d, %d were left", what, cost, st.Cycles)
+		case cost > 0:
+			return fmt.Sprintf("Out of cycles: %s burns the last %d", what, cost)
+		case cr.Cause == game.GaveUp:
+			return quit
+		}
+	case game.Abandoned:
+		return "you[1]: a new boot sent SIGTERM to init"
 	}
 	return ""
 }

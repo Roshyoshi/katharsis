@@ -1,0 +1,24 @@
+Boot #57 · Silver · upgrade                                         uptime 55:00
+♥ 24/30 cycles  🦆1  128 B uncommitted · 256 B committed          daemons strace
+────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+                        ✓ AC  MooBuzz  in 11:00 of 24:00
+                               +64 B uncommitted
+
+                                Pick an upgrade.
+
+┏━ ▸ 1 ━━━━━━━━━━━━━━━━━┓  ╭─ 2 ───────────────────╮  ╭─ 3 ───────────────────╮
+┃ Overclock             ┃  │ ECC                   │  │ Duck                  │
+┃                       ┃  │                       │  │                       │
+┃ +15% timer; 5 cycles  ┃  │ a failed submit costs │  │ +1 rubber duck        │
+┃ a pick, 2 at most; 1  ┃  │ 05:00, not cycles     │  │                       │
+┃ of 2 taken            ┃  │                       │  │                       │
+┗━━━━━━━━━━━━━━━━━━━━━━━┛  ╰───────────────────────╯  ╰───────────────────────╯
+
+
+
+
+←/→ choose · enter take upgrade

@@ -12,12 +12,12 @@ Boot #42 · Silver · route · act II                                  uptime 44
     ╭─ 2 ──────────────────────────────────────────────────────────────────╮
     │ The Sliding Window · two-pointers               □ locked: CAP_TWOPTR │
     │ Stub line for route.locked.                                          │
-    │ 1 room · ⏱ ~26:00 · +1 upgrade pick               → ⚔ race-condition │
+    │ 1 room · ⏱ ~26:00 · +1 upgrade pick               → ⚔ Race Condition │
     ╰──────────────────────────────────────────────────────────────────────╯
     ╭─ 3 ──────────────────────────────────────────────────────────────────╮
     │ The ALU · math                             ◆950–1150 · aim 70% clear │
     │ Stub blurb for alu, long enough to wrap onto a second line of a car… │
-    │ 1 room · ⏱ ~26:00                   → ⚔ Heisenbug → ⚔ race-condition │
+    │ 1 room · ⏱ ~26:00                   → ⚔ Heisenbug → ⚔ Race Condition │
     ╰──────────────────────────────────────────────────────────────────────╯
 
 

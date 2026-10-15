@@ -1,0 +1,24 @@
+[ 7020.000] halting_problem: one shot, no second door
+[ 7020.000] Kernel panic - not syncing: timer expired in "Cow Poetry"
+[ 7020.000] CPU: 0 PID: 1 Comm: you Tainted: X (boss)
+[ 7020.000] Hardware name: katharsis Silver, preset standard, seed 51c3
+[ 7020.000] Modules linked in: strace(O)
+[ 7020.000] Call Trace:
+[ 7020.000]  it_real_fn+0x1d/0x80
+[ 7020.000]  hrtimer_interrupt+0x10f/0x240
+[ 7020.000]  door_8+0x28/0x28 [The Halting Problem]
+[ 7020.000]  ... 7 older doors
+[ 7020.000]  boot_57+0x75/0xc9
+[ 7020.000] ---[ end Kernel panic ]---
+
+  "It always takes longer than you expect, even when you take into
+   account Hofstadter's Law."               — Douglas Hofstadter, GEB (1979)
+     Stub crash.epitaph.timed-out, a line in the story's voice.
+
+  no core dump left to recover
+  kept   rating 1214 → 1180 ▼34 · dp 1120 → 1120 ±0 · bank 2.1 KiB
+         Gold ▓▓░░░░░░ 22/60 rated doors, then a clear
+  lever  ⏱ 40:00 ran out at WA 9/14 tests · one shot, no second door → a case
+         the samples missed; an upsolve shows the failing test · ≈50% predicted
+  next ▸ r reboot at Silver · ♥ 30 cycles
+  [u] upsolve  [e] editorial  [l] git log  [g] GRUB

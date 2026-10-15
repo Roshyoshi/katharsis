@@ -94,6 +94,9 @@ func (m *Model) samplesLine() string {
 		return label + ui.Muted.Render("not run")
 	case !m.build.OK:
 		return label + ui.Danger.Render("CE") + " " + ui.Muted.Render(firstError(m.compilerLog(m.build.Log)))
+	case m.opt.Quiet && len(m.rows) > 0:
+		word, tone := m.quiet()
+		return label + tone.Render(word) // no count, no failing test (Options.Quiet)
 	}
 	s := fmt.Sprintf("%s%d/%d", label, m.passed(), len(m.rows))
 	i := m.firstFailure()

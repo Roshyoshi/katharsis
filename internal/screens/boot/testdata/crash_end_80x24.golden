@@ -1,4 +1,4 @@
-[ 3521.000] Kernel panic - not syncing: out of lives in "The Bovine Shuffle"
+[ 3521.000] Kernel panic - not syncing: out of cycles in "The Bovine Shuffle"
 [ 3521.000] CPU: 0 PID: 1 Comm: you Not tainted
 [ 3521.000] Call Trace:
 [ 3521.000]  do_exit+0x3a/0xc0
