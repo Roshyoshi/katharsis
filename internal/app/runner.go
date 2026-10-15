@@ -83,6 +83,11 @@ func (r *TmuxRunner) Listen() error {
 			r.Send(errMsg{fmt.Errorf("control socket: %w; editor commands are off", err)})
 		}
 	}()
+	// The editor and lldb panes a killed game left: before this game
+	// resumes its door, so the door opens one vim on its file, not a
+	// second beside the orphan. Best effort; an orphan left only costs
+	// the swap-file prompt.
+	_, _ = session.SweepOrphans(reapWait)
 	return nil
 }
 
@@ -113,6 +118,9 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 		return fmt.Errorf("open editor: %w", err)
 	}
 	r.opened = time.Now()
+	// Tagged for the next game's SweepOrphans, should this one be killed;
+	// untagged, the pane is only left behind.
+	_ = session.TagPane(pane, session.RoleEditor)
 
 	opt := hud.Options{
 		Dir:     dir,
@@ -151,6 +159,7 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 		if err != nil {
 			return nil, err
 		}
+		_ = session.TagPane(dbg, session.RoleLLDB) // for SweepOrphans; best effort
 		return func() { _ = session.KillPane(dbg) }, nil
 	}
 

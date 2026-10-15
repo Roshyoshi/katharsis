@@ -1,8 +1,14 @@
 package session
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"slices"
+	"strconv"
 	"strings"
+	"syscall"
+	"time"
 )
 
 // LLDB is the debugger :Debug runs; Xcode's, as `make lldb` in ~/cp uses.
@@ -151,4 +157,81 @@ func (b *Border) Restore() error {
 		}
 	}
 	return first
+}
+
+// gameOption, a pane option, names the game process that opened an editor
+// or lldb pane, and roleOption says which of the two it is (TagPane). A
+// pane whose game is gone is an orphan: the game was killed (kill -9, a
+// crash) before it could close it.
+const (
+	gameOption = "@katharsis_game"
+	roleOption = "@katharsis_role"
+)
+
+// Pane roles, for TagPane.
+const (
+	RoleEditor = "editor"
+	RoleLLDB   = "lldb"
+)
+
+// TagPane marks pane as this process's, in role, for SweepOrphans.
+func TagPane(pane, role string) error {
+	if _, err := tmux("set-option", "-p", "-t", pane, gameOption, strconv.Itoa(os.Getpid())); err != nil {
+		return err
+	}
+	_, err := tmux("set-option", "-p", "-t", pane, roleOption, role)
+	return err
+}
+
+// SweepOrphans closes the panes of games that are gone. A game killed
+// mid-door left its vim, with the player's unsaved edits, and lldb
+// running, and the resumed door opened a second vim on the same file
+// (E325, swap file in use). An orphan editor is saved and closed as a door
+// that ends does it (SaveAndCloseEditor), so its edits reach the file the
+// resumed door opens; lldb is killed. It waits up to wait for the editors
+// to go, killing each pane once its editor has quit (remain-on-exit would
+// keep it); one still asking (a buffer it cannot write) is the player's to
+// answer, and stays. It returns how many orphan panes it found.
+func SweepOrphans(wait time.Duration) (int, error) {
+	out, err := tmux("list-panes", "-a", "-F", "#{pane_id} #{"+gameOption+"} #{"+roleOption+"}")
+	if err != nil {
+		return 0, err
+	}
+	var editors []string
+	found := 0
+	for line := range strings.Lines(out) {
+		f := strings.Fields(line)
+		if len(f) < 3 {
+			continue // not a game's pane
+		}
+		pid, err := strconv.Atoi(f[1])
+		if err != nil || pid == os.Getpid() || !errors.Is(syscall.Kill(pid, 0), syscall.ESRCH) {
+			continue
+		}
+		found++
+		switch pane := f[0]; f[2] {
+		case RoleEditor:
+			if dead, ok := paneDead(pane); ok && !dead {
+				// Best effort, like Close: a failure leaves it open.
+				_ = SaveAndCloseEditor(pane)
+			}
+			editors = append(editors, pane)
+		default:
+			_ = KillPane(pane)
+		}
+	}
+	for deadline := time.Now().Add(wait); len(editors) > 0; {
+		editors = slices.DeleteFunc(editors, func(pane string) bool {
+			if dead, ok := paneDead(pane); ok && !dead {
+				return false
+			}
+			_ = KillPane(pane) // a dead pane remain-on-exit keeps
+			return true
+		})
+		if len(editors) == 0 || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return found, nil
 }
