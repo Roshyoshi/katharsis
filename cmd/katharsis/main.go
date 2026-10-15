@@ -43,6 +43,7 @@ func main() {
 			run, args = runAudio, args[1:]
 		}
 	}
+	pickUI(os.Getenv)
 	if err := run(args); errors.Is(err, flag.ErrHelp) {
 		os.Exit(0) // -h printed the usage; that is not a failure
 	} else if err != nil {
@@ -51,6 +52,18 @@ func main() {
 			waitEnter(os.Stdin, os.Stderr)
 		}
 		os.Exit(1)
+	}
+}
+
+// pickUI sets the glyph set and palette once, before any screen draws.
+// There is no flag (D26: dark terminals, the terminal's own 16 colors):
+// ASCII where the locale or the Linux console cannot draw the Unicode
+// set, and Mono under NO_COLOR for what Bubble Tea does not strip from
+// the screen, such as the tmux border's styles.
+func pickUI(getenv func(string) string) {
+	ui.SetGlyphs(ui.AutoGlyphs(getenv))
+	if getenv("NO_COLOR") != "" {
+		ui.SetPalette(ui.Mono)
 	}
 }
 
