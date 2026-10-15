@@ -5,11 +5,11 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/game"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/store"
+	"katharsis/internal/ui"
 )
 
 // Retention (docs/research/retention.md RT9, RT13): the load average on
@@ -170,6 +170,6 @@ func (m *Model) body(w, h int) string {
 	if e.felt {
 		parts = append(parts, "this boot felt: 1 easy · 2 about right · 3 hard")
 	}
-	line := ansi.Truncate(faint.Render(strings.Join(parts, "  ·  ")), w, "…")
+	line := ui.Clip(ui.Muted.Render(strings.Join(parts, "  ·  ")), w)
 	return m.top().View(w, h-1) + "\n" + line
 }

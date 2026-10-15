@@ -18,6 +18,8 @@ import (
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/screens/rtfm"
+	"katharsis/internal/ui"
+	"katharsis/internal/units"
 )
 
 type learnLoadedMsg struct {
@@ -190,25 +192,26 @@ func (s *linkScreen) count() int {
 
 func (s *linkScreen) View(w, h int) string {
 	var b strings.Builder
-	b.WriteString(bold.Render("ld: link libs into this boot") + faint.Render(fmt.Sprintf("  %d/%d slots", s.count(), s.slots)) + "\n\n")
+	b.WriteString(ui.Strong.Render("ld: link libs into this boot") + ui.Muted.Render(fmt.Sprintf("  %d/%d slots", s.count(), s.slots)) + "\n\n")
 	for i, l := range s.all {
+		// [x] is a checkbox, not a capability: it stays bracketed.
 		mark := "[ ]"
 		if s.on[i] {
 			mark = "[x]"
 		}
 		cursor := "  "
 		if i == s.cur {
-			cursor = "▸ "
+			cursor = ui.Focus.Render(ui.G.Cursor) + " "
 		}
 		lines := strings.Count(strings.TrimRight(l.Source, "\n"), "\n") + 1
-		fmt.Fprintf(&b, "%s%s %-20s %s\n", cursor, mark, l.Name, faint.Render(fmt.Sprintf("%d lines", lines)))
+		fmt.Fprintf(&b, "%s%s %-20s %s\n", cursor, mark, l.Name, ui.Muted.Render(units.Plural(lines, "line")))
 	}
-	b.WriteString("\n" + faint.Render("linked libs are pasted above main in each new door's source"))
+	b.WriteString("\n" + ui.Muted.Render("linked libs are pasted above main in each new door's source"))
 	used := strings.Count(b.String(), "\n")
 	for i := used; i < h-1; i++ {
 		b.WriteString("\n")
 	}
-	b.WriteString(faint.Render("space toggle · enter link · esc none"))
+	b.WriteString(ui.Footer(w, "space", "toggle", "enter", "link", "esc", "none"))
 	return b.String()
 }
 

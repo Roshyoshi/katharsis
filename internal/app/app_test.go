@@ -1057,9 +1057,21 @@ func TestProblemScreenFillsThePane(t *testing.T) {
 			t.Fatalf("%d lines at height %d, want %d", len(lines), size[1], size[1])
 		}
 		vim, keys := ansi.Strip(lines[len(lines)-2]), ansi.Strip(lines[len(lines)-1])
-		if !strings.HasPrefix(vim, "vim ") || !strings.HasPrefix(keys, "s submit") {
+		if !strings.HasPrefix(vim, ":w ") || !strings.HasPrefix(keys, "s submit") {
 			t.Fatalf("footer at height %d is %q / %q, want the vim and key help", size[1], vim, keys)
 		}
+		// Under 52 columns the vim row is bare command names and the
+		// pane's drops Q, whose :q! the vim row has (C8).
+		if narrow := size[0] < 52; narrow != !strings.Contains(vim, "samples") || narrow != !strings.Contains(keys, "Q ") {
+			t.Errorf("footer at width %d is %q / %q", size[0], vim, keys)
+		}
+		// The :q! confirm takes the keys' row: the pane keeps its height.
+		h.send(key("Q"))
+		lines = strings.Split(h.m.View().Content, "\n")
+		if last := ansi.Strip(lines[len(lines)-1]); len(lines) != size[1] || !strings.Contains(last, "Q again") {
+			t.Errorf("confirm at %dx%d: %d lines, last %q", size[0], size[1], len(lines), last)
+		}
+		h.send(key("x")) // any other key cancels the confirm
 	}
 }
 

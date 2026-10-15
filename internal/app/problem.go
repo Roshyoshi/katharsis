@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/game"
@@ -149,43 +148,35 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	return s, nil
 }
 
-var (
-	faint = lipgloss.NewStyle().Faint(true)
-	bold  = lipgloss.NewStyle().Bold(true)
-	red   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-)
-
 func (s *problemScreen) View(w, h int) string {
 	var top []string
 	p, _ := s.m.d.Catalog.Get(s.door.Problem)
 	switch {
 	case s.upsolve:
-		top = append(top, bold.Render("upsolve · "+p.Title)+faint.Render("  untimed, editorial allowed"))
+		top = append(top, ui.Strong.Render("upsolve · "+p.Title)+ui.Muted.Render("  untimed, editorial allowed"))
 	case s.m.state != nil:
 		top = append(top, strings.Split(bootui.HUDBar(s.m.state, p, s.m.d.Now(), w), "\n")...)
-	}
-	if s.confirm {
-		top = append(top, red.Render(":q! crashes the boot. Q again to confirm."))
 	}
 	switch {
 	case s.closed && s.editorErr != "":
 		// Wrapped, not cut: the command is the point.
 		for _, l := range strings.Split(ansi.Wrap(s.editorErr+" · e retries", max(w, 10), ""), "\n") {
-			top = append(top, red.Render(l))
+			top = append(top, ui.Danger.Render(l))
 		}
 	case s.closed:
-		top = append(top, red.Render("editor closed · e reopens it"))
+		top = append(top, ui.Danger.Render("editor closed · e reopens it"))
 	}
-	help := "s submit · t statement · ? duck · R retreat · Q :q! · r rerun · j/k"
-	vimHelp := "vim  :w samples · :Submit · :Debug n · :Quack · :Retreat · :q!"
-	if s.upsolve {
-		help = "s submit · t statement · e editorial · Q leave · r rerun · j/k"
-		vimHelp = "vim  :w samples · :Submit · :Debug n"
+	// The vitals end in a rule; the judgement starts under it (C8).
+	top = append(top, ui.Rule(w))
+	vimHelp, help := s.footers(w)
+	if s.confirm {
+		// The confirm takes the keys' row, so the pane does not move.
+		help = ui.Alert.Render(ui.Fit(" Q again: :q! crashes the boot", w))
 	}
 
 	var b strings.Builder
 	for _, l := range top {
-		b.WriteString(ansi.Truncate(l, w, "…") + "\n")
+		b.WriteString(ui.Clip(l, w) + "\n")
 	}
 	// Two footer rows: the editor's commands, then this pane's keys. The
 	// HUD runs embedded (no header or key help of its own) and is exactly
@@ -200,15 +191,37 @@ func (s *problemScreen) View(w, h int) string {
 		// Exactly room lines, the last of them often blank padding: trimming
 		// a trailing newline here would drop a row and lift the footer.
 		b.WriteString(hm.View().Content + "\n")
-		b.WriteString(ansi.Truncate(faint.Render(vimHelp), w, "…") + "\n")
+		b.WriteString(ui.Clip(vimHelp, w) + "\n")
 	} else {
 		b.WriteString(s.headless(w))
 		for i := strings.Count(b.String(), "\n"); i < h-1; i++ {
 			b.WriteString("\n")
 		}
 	}
-	b.WriteString(ansi.Truncate(faint.Render(help), w, "…"))
+	b.WriteString(ui.Clip(help, w))
 	return b.String()
+}
+
+// footers are the two key rows (C8): the editor's commands, then this
+// pane's keys. Under 52 columns the editor's are bare names, and the
+// pane's drop Q, whose :q! the editor row already has.
+func (s *problemScreen) footers(w int) (vim, keys string) {
+	narrow := w < 52
+	switch {
+	case s.upsolve && narrow:
+		return ui.Muted.Render(":w :Submit :Debug n"),
+			ui.Footer(w, "s", "submit", "t", "stmt", "e", "editorial", "Q", "leave")
+	case s.upsolve:
+		return ui.Footer(w, ":w", "samples", ":Submit", "judge", ":Debug n", "debug"),
+			ui.Footer(w, "s", "submit", "t", "statement", "e", "editorial", "r", "rerun", "j/k", "move", "Q", "leave")
+	case narrow:
+		return ui.Muted.Render(":w :Submit :Debug n :Quack :Retreat :q!"),
+			ui.Footer(w, "s", "submit", "t", "stmt", "?", "duck", "R", "retreat")
+	}
+	return ui.Footer(w, ":w", "samples", ":Submit", "judge", ":Debug n", "debug", ":Quack", "duck",
+			":Retreat", "retreat", ":q!", "give up"),
+		ui.Footer(w, "s", "submit", "t", "statement", "?", "duck", "R", "retreat", "r", "rerun",
+			"j/k", "move", "Q", "give up")
 }
 
 // headless is the body without a HUD: the pane's one HP bar (C6), the
@@ -330,7 +343,7 @@ func readFile(path string) (string, error) {
 // show without resizing the screen.
 func overlayFlash(body, msg string, w int) string {
 	lines := strings.Split(body, "\n")
-	lines[len(lines)-1] = ansi.Truncate(lipgloss.NewStyle().Reverse(true).Render(" "+msg+" "), w, "…")
+	lines[len(lines)-1] = ui.Select.Render(ui.Clip(" "+msg+" ", w))
 	return strings.Join(lines, "\n")
 }
 
@@ -339,6 +352,6 @@ func overlayFlash(body, msg string, w int) string {
 func overlayBanner(body, msg string, w int) string {
 	lines := strings.Split(body, "\n")
 	i := max(len(lines)-2, 0)
-	lines[i] = ansi.Truncate(lipgloss.NewStyle().Reverse(true).Foreground(lipgloss.Color("1")).Render(" "+msg+" "), w, "…")
+	lines[i] = ui.Alert.Render(ui.Clip(" "+msg+" ", w))
 	return strings.Join(lines, "\n")
 }
