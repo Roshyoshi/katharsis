@@ -45,9 +45,16 @@ func taught(rep sim.Report, i int) (observed, expected float64) {
 // than 100 points from boot to boot (seeds 1 to 8 end between 1516 and
 // 1776 with packages, 1561 and 1739 without), and the mean does not. So
 // are the calibration offsets: one tier's offset learns from a few doors a
-// boot and ends anywhere in about ±100 (the mid tier's, over seeds 1 to 8:
-// -104 to +63, mean -52; kexec's unrated swaps leave Elo a little high,
-// which the offsets take back).
+// boot and ends anywhere in about ±100.
+//
+// The mid and boss tiers lean low. This player swaps with kexec exactly
+// the doors it would fail; Elo does not rate a swap (close), so it sees
+// only the doors kept and settles high, and the offsets, which count a
+// swap as a failure (calibrate), take that back. Over seeds 1 to 8 the
+// last 200 boots average Elo 1642 and offsets -2, -54 and -71 (Userland,
+// mid, boss); rating the swaps as losses gives 1600 and +11, +8, -11.
+// The plain doors clear on target either way, so the aim is right; only
+// the rating reads high for a player who swaps.
 
 func TestIdealPlayerHitsTargets(t *testing.T) {
 	t.Parallel()
@@ -100,8 +107,9 @@ func TestIdealPlayerHitsTargets(t *testing.T) {
 // with a MinClear offers no door under it (D22), so its doors are the ±100
 // window's above the floor, and the aim is their mean (windowMean). The
 // aim is read off every plain door on offer, not the ones the model took:
-// with fork's fourth door and shufs to spend, the model's pick leans to
-// the easier doors by a few points, which is its choice, not the aim.
+// with a fourth door (fork or tmux) and shufs to spend, the model's pick
+// leans to the easier doors by a few points, which is its choice, not the
+// aim.
 func TestCalibrationHitsTargets(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
