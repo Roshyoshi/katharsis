@@ -137,7 +137,7 @@ func compilerID(p Profile) string {
 	if v, ok := compilerVersions.Load(id); ok {
 		return v.(string)
 	}
-	out, _ := runCompiler(context.Background(), p, []string{"--version"})
+	out, _ := runCompiler(context.Background(), p, "", []string{"--version"})
 	v := id + "\x00" + out
 	compilerVersions.Store(id, v)
 	return v
@@ -211,7 +211,7 @@ func (c pch) make(ctx context.Context, p Profile, base, headers []string) error 
 	}
 	defer func() { _ = os.RemoveAll(work) }()
 	out := filepath.Join(work, filepath.Base(c.file()))
-	if log, err := runCompiler(ctx, p, slices.Concat(base, []string{"-c", "-x", "c++-header", c.header(), "-o", out})); err != nil {
+	if log, err := runCompiler(ctx, p, work, slices.Concat(base, []string{"-c", "-x", "c++-header", c.header(), "-o", out})); err != nil {
 		return fmt.Errorf("precompiling %s: %v\n%s", c.header(), err, log)
 	}
 	if err := c.check(ctx, p, base, work, out); err != nil {
@@ -232,7 +232,7 @@ func (c pch) check(ctx context.Context, p Profile, base []string, work, out stri
 		}
 		args = []string{"-H", "-include", h}
 	}
-	log, err := runCompiler(ctx, p, slices.Concat(base, args, []string{"-fsyntax-only", "-x", "c++", os.DevNull}))
+	log, err := runCompiler(ctx, p, work, slices.Concat(base, args, []string{"-fsyntax-only", "-x", "c++", os.DevNull}))
 	switch {
 	case err != nil:
 		return fmt.Errorf("checking %s: %v\n%s", out, err, log)

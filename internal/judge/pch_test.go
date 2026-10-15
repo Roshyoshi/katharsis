@@ -239,7 +239,7 @@ func TestPCHStale(t *testing.T) {
 	// headers, saying so under -Winvalid-pch only.
 	mismatched := spoil{"built with other flags", func(t *testing.T, c pch, p Profile) {
 		args := slices.Concat(p.Flags, commonFlags(p, ""), []string{"-std=gnu++20", "-c", "-x", "c++-header", c.header(), "-o", c.file()})
-		if log, err := runCompiler(context.Background(), p, args); err != nil {
+		if log, err := runCompiler(context.Background(), p, "", args); err != nil {
 			t.Fatalf("%v\n%s", err, log)
 		}
 	}}

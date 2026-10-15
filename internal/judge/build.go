@@ -187,7 +187,7 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 		pc = precompiled(dir, p, base, compiled)
 	}
 	if pc != nil {
-		b.Log, err = runCompiler(ctx, p, slices.Concat(base, pc.args(), tail))
+		b.Log, err = runCompiler(ctx, p, work, slices.Concat(base, pc.args(), tail))
 		b.PCH = true
 		if ctx.Err() == nil && pc.blamed(b.Log, err) {
 			pc.drop()
@@ -195,11 +195,11 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 			if err == nil {
 				b.Log = pc.unmention(b.Log) // g++ read the headers instead
 			} else {
-				b.Log, err = runCompiler(ctx, p, slices.Concat(base, tail))
+				b.Log, err = runCompiler(ctx, p, work, slices.Concat(base, tail))
 			}
 		}
 	} else {
-		b.Log, err = runCompiler(ctx, p, slices.Concat(base, tail))
+		b.Log, err = runCompiler(ctx, p, work, slices.Concat(base, tail))
 	}
 	b.Duration = time.Since(start)
 	if err != nil {
@@ -247,11 +247,18 @@ var errCompileTimeout = errors.New("compile timed out")
 // process group, killed whole on a cancel or at compileTimeout: g++ runs
 // cc1plus, as and ld as children, which outlive a g++ killed alone, keep
 // compiling, and hold the output pipe, and so runCompiler, until done.
-func runCompiler(ctx context.Context, p Profile, args []string) (out string, err error) {
+//
+// tmp, unless empty, is the compiler's TMPDIR. A killed compiler leaves
+// its temp files (g++'s cc*.s, clang's .o) behind, so they belong in a
+// dir that goes with the build.
+func runCompiler(ctx context.Context, p Profile, tmp string, args []string) (out string, err error) {
 	tctx, cancel := context.WithTimeout(ctx, compileTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(tctx, p.compiler(), args...)
 	cmd.Env = compileEnv(p)
+	if tmp != "" {
+		cmd.Env = append(cmd.Env, "TMPDIR="+tmp)
+	}
 	var buf bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &buf, &buf
 	inGroup(cmd)

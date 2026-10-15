@@ -12,13 +12,14 @@ import (
 )
 
 // hangingCompiler is a compiler that never finishes, like one stuck on a
-// template blowup or a wedged toolchain: it says it is working, then waits
-// on a child that holds its stderr and stdout, as g++ waits on cc1plus.
-// The child sleeps for mark seconds, so pgrep can find it.
+// template blowup or a wedged toolchain: it says it is working, starts a
+// temp file in $TMPDIR, as cc1plus starts its assembly, then waits on a
+// child that holds its stderr and stdout, as g++ waits on cc1plus. The
+// child sleeps for mark seconds, so pgrep can find it.
 func hangingCompiler(t *testing.T, mark string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "hang++")
-	script := fmt.Sprintf("#!/bin/sh\necho 'hang++: thinking' >&2\nsleep %s &\nwait\n", mark)
+	script := fmt.Sprintf("#!/bin/sh\necho 'hang++: thinking' >&2\n: > \"${TMPDIR:-/tmp}/hang++-$$.s\"\nsleep %s &\nwait\n", mark)
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -64,6 +65,7 @@ func TestCompileTimeout(t *testing.T) {
 	saved := compileTimeout
 	compileTimeout = time.Second
 	t.Cleanup(func() { compileTimeout = saved })
+	t.Setenv("TMPDIR", t.TempDir()) // for hang++ --version
 	const body = "#include <cstdio>\nint main() {}\n"
 	src := filepath.Join(t.TempDir(), "sol.cpp")
 	if err := os.WriteFile(src, []byte(body), 0o644); err != nil {
@@ -100,9 +102,13 @@ func TestCompileTimeout(t *testing.T) {
 		}
 	})
 
+	// A killed compiler cannot remove its temp files: they go in the
+	// build's own dir, which goes with the build.
 	t.Run("cancelled", func(t *testing.T) {
 		const mark = "3141.5926502"
 		p := Profile{Name: "hang", Compiler: hangingCompiler(t, mark)}
+		tmp := t.TempDir()
+		t.Setenv("TMPDIR", tmp)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		time.AfterFunc(200*time.Millisecond, cancel)
@@ -118,6 +124,9 @@ func TestCompileTimeout(t *testing.T) {
 		}
 		if lingers(mark) {
 			t.Error("the compiler's child outlived the cancel")
+		}
+		if left, _ := os.ReadDir(tmp); len(left) > 0 {
+			t.Errorf("the killed compiler left %s in TMPDIR", left[0].Name())
 		}
 	})
 
