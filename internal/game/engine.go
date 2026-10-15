@@ -311,7 +311,7 @@ func (e *engine) quack() error {
 		return invalid("the duck has nothing left to say")
 	}
 	level := a.Hint + 1
-	if level == 1 && !a.Door.Blind {
+	if level == 1 && !a.Door.TagsHidden() {
 		level = 2 // tags are already on screen; don't spend a duck on them
 	}
 	s.Ducks--

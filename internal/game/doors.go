@@ -259,6 +259,10 @@ func (e *engine) makeDoor(p *catalog.Problem, rb rules.Biome, boss string, regre
 		// The unit shows tags; the integration doors are blind.
 		d.Blind, d.Mystery, d.Cursed = e.s.Biome > 0 || r.BlindAll, false, false
 	}
+	// A mastered door teaches the calibration like any plain door: once most
+	// doors of the known topics hide their tags, they are most of what the
+	// aim can learn from.
+	d.Mastered = e.s.Trial == nil && !d.Blind && mastered(r, e.meta, topic, p.Rating)
 	plain := !d.Blind && !d.Cursed && !regression && e.s.Trial == nil
 	if plain && math.Abs(float64(p.Rating)-e.target(topic, rb)) <= float64(r.RatingWindows[0]) {
 		d.Tier = CalibrationTier(rb)
@@ -266,6 +270,18 @@ func (e *engine) makeDoor(p *catalog.Problem, rb rules.Biome, boss string, regre
 	d.Timer = e.doorTimer(rb, boss != "", float64(p.Rating)-R)
 	d.Bytes = e.doorBytes(d)
 	return d
+}
+
+// mastered reports whether a door rated rating on topic hides its tags for
+// m: the topic has r.MasteryAttempts rated attempts behind it and a rating
+// at least r.MasteryMargin above the door's. Mixed has no rating of its
+// own, so its doors keep their tags.
+func mastered(r *rules.Rules, m *Meta, topic string, rating int) bool {
+	if r.MasteryAttempts <= 0 || topic == Mixed || m.TopicAttempts[topic] < r.MasteryAttempts {
+		return false
+	}
+	tr, ok := m.TopicRating[topic]
+	return ok && tr-float64(rating) >= r.MasteryMargin
 }
 
 // doorBytes prices a door. The difficulty factor 0.5/SolveP makes a door's
@@ -381,6 +397,7 @@ func doorMods(d Door) string {
 	}{
 		{d.Boss != "", "boss " + d.Boss}, {d.Regression, "regression"},
 		{d.Mystery, "mystery"}, {d.Blind && !d.Mystery, "blind"}, {d.Cursed, "cursed"},
+		{d.Mastered, "mastered"},
 	} {
 		if f.on {
 			m = append(m, f.name)

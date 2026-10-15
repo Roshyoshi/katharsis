@@ -99,11 +99,11 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	}
 	out = append(out, pack(mods, sFaint.Render(" · "), width)...)
 
-	// Tags: hidden on blind doors until the duck reveals them (level 1);
-	// level 2 adds the technique. This keys on Hint, the level shown, not
-	// on Quacks: a door whose tags are already visible spends its first
-	// quack on the technique, so one quack can mean level 2.
-	hidden := door.Blind || door.Mystery || st.Rules.BlindAll
+	// Tags: hidden on blind doors and mastered topics until the duck reveals
+	// them (level 1); level 2 adds the technique. This keys on Hint, the
+	// level shown, not on Quacks: a door whose tags are already visible
+	// spends its first quack on the technique, so one quack can mean level 2.
+	hidden := door.Blind || door.Mystery || door.Mastered || st.Rules.BlindAll
 	switch {
 	case hidden && att.Hint < 1 && door.Cursed:
 		out = append(out, sFaint.Render("tags hidden · cursed: no ducks"))

@@ -106,6 +106,9 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 			if d.Boss != "" && d.Cursed || d.Mystery && !d.Blind {
 				fail("door modifiers %+v", d)
 			}
+			if d.Mastered && (d.Blind || s.Trial != nil) {
+				fail("mastered door %+v", d)
+			}
 		}
 	} else if len(s.Doors) != 0 {
 		fail("%d doors outside the doors phase", len(s.Doors))

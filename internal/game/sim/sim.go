@@ -359,7 +359,7 @@ func (b *boot) play() {
 // solveP is the model's own chance on d, which the engine only estimates.
 func (b *boot) solveP(d game.Door) float64 {
 	eff := b.p.Rating
-	if d.Blind {
+	if d.TagsHidden() {
 		eff -= b.p.BlindCost
 	}
 	if d.Mystery {

@@ -320,6 +320,25 @@ func TestDoorsContent(t *testing.T) {
 	}
 }
 
+// A door on a mastered topic hides its tags without the blind modifier's
+// pay, and the card says why; the HUD bar offers the duck for them.
+func TestMasteredDoor(t *testing.T) {
+	st := fixture.Doors()
+	st.Doors[0].Mastered = true
+	for _, w := range []int{140, 80} {
+		v := ansi.Strip(NewDoors(env(st)).View(w, 40))
+		if !strings.Contains(v, "mastered topic: tags hidden") || strings.Contains(v, "Functional Graphs") {
+			t.Errorf("at %d cols the mastered door should hide its tags and say why:\n%s", w, v)
+		}
+	}
+	p := fixture.Problem()
+	p.Current.Door.Mastered = true
+	prob, _ := fixture.Lookup(p.Current.Door.Problem)
+	if v := ansi.Strip(HUDBar(p, prob, fixture.Now, 60)); !strings.Contains(v, "quack to reveal") {
+		t.Errorf("HUD bar on a mastered door:\n%s", v)
+	}
+}
+
 func TestDoorsStackWhenNarrow(t *testing.T) {
 	d := NewDoors(env(fixture.Doors()))
 	narrow := ansi.Strip(d.View(89, 30))

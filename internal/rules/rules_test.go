@@ -44,7 +44,8 @@ func TestWithDefaults(t *testing.T) {
 	// fields existed.
 	if got.BlindChance != 0 || got.PrestigeOffset != 0 || got.Ascensions != nil ||
 		got.CalibRate != 0 || got.CalibWarm != 0 || got.CalibAfter != 0 || got.RatingColdAttempts != 0 ||
-		got.TopicFollow != 0 || got.OvertimeScore != 0 || got.OvertimeBytesMult != 0 || got.ShowFailingInput {
+		got.TopicFollow != 0 || got.OvertimeScore != 0 || got.OvertimeBytesMult != 0 || got.ShowFailingInput ||
+		got.MasteryAttempts != 0 || got.MasteryMargin != 0 || got.Biomes[0].MinClear != 0 {
 		t.Errorf("zero-is-meaningful fields defaulted: %+v", got)
 	}
 	empty := old
@@ -104,6 +105,7 @@ func TestValidate(t *testing.T) {
 		{"min_clear at target_clear", func(r *rules.Rules) { r.Biomes[1].MinClear = r.Biomes[1].TargetClear }, ""},
 		{"min_clear above target_clear", func(r *rules.Rules) { r.Biomes[1].MinClear = 0.8 }, "min_clear"},
 		{"negative min_clear", func(r *rules.Rules) { r.Biomes[0].MinClear = -0.1 }, "min_clear"},
+		{"negative mastery_attempts", func(r *rules.Rules) { r.MasteryAttempts = -1 }, "mastery_attempts"},
 	}
 	for _, tc := range tests {
 		r := rules.Standard()

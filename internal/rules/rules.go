@@ -77,6 +77,16 @@ type Rules struct {
 	// BlindAll hides tags on every door (a run modifier).
 	BlindAll bool `toml:"blind_all"`
 
+	// MasteryAttempts and MasteryMargin hide the tags of doors on a topic
+	// the player has mastered: one with MasteryAttempts rated attempts whose
+	// rating is at least MasteryMargin above the door's. Choosing the
+	// technique is what a known topic still trains; a topic being learned
+	// keeps its tags. Such a door is not blind: it pays and teaches the
+	// calibration like a plain door, and a duck still reveals its tags.
+	// MasteryAttempts 0 turns it off.
+	MasteryAttempts int     `toml:"mastery_attempts"`
+	MasteryMargin   float64 `toml:"mastery_margin"`
+
 	// BaseBytes pays for clearing a door the player clears half the time;
 	// easier doors pay less and harder ones more, so a door's expected
 	// payout stays near BaseBytes/2. Bosses pay BossMult on top.
@@ -328,6 +338,8 @@ func Standard() Rules {
 		BlindMult:       1.5,
 		MysteryMult:     2,
 		CursedMult:      2,
+		MasteryAttempts: 10,
+		MasteryMargin:   100,
 		BaseBytes:       64,
 		BossMult:        3,
 		O3Frac:          0.5,
@@ -416,6 +428,7 @@ func Trial() Rules {
 	}
 	r.BlindChance, r.MysteryChance, r.CursedChance = 0, 0, 0
 	r.Ascensions = nil
+	r.MasteryAttempts = 0 // the unit shows tags and the integration hides them
 	r.OnExpire = ExpireOvertime
 	r.ShowFailingInput = true
 	return r
@@ -488,6 +501,9 @@ func (r Rules) Validate() error {
 	}
 	if r.OnExpire != "" && r.OnExpire != ExpireCrash && r.OnExpire != ExpireOvertime {
 		return fmt.Errorf("rules %q: on_expire %q is not %q or %q", r.Name, r.OnExpire, ExpireCrash, ExpireOvertime)
+	}
+	if r.MasteryAttempts < 0 {
+		return fmt.Errorf("rules %q: need mastery_attempts >= 0", r.Name)
 	}
 	if r.CalibRate < 0 || r.CalibRate >= 1 || r.CalibWarm < 0 || r.CalibAfter < 0 || r.RatingColdAttempts < 0 {
 		return fmt.Errorf("rules %q: need 0 <= calib_rate < 1 and calib_warm, calib_after, rating_cold_attempts >= 0", r.Name)

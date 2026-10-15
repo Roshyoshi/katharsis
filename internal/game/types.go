@@ -145,12 +145,21 @@ type Door struct {
 	Regression bool   // a past crash returning
 	Boss       string // key from BossKeys (or FinalBoss), "" for normal doors
 
+	// Mastered hides the tags because the player has mastered the door's
+	// topic (rules.MasteryAttempts). Unlike Blind it is no modifier: the
+	// door pays and teaches like a plain one. Never set with Blind.
+	Mastered bool
+
 	// Tier is the calibration tier the door's outcome teaches, "" when it
 	// teaches none: a door with a modifier (blind, mystery, cursed), a
 	// regression, a trial door, or one the pool could not place near its
 	// target. SolveP already includes the tier's offset.
 	Tier string
 }
+
+// TagsHidden reports whether the door hides its tags until a duck reveals
+// them: a blind (or mystery) door, or one on a mastered topic.
+func (d Door) TagsHidden() bool { return d.Blind || d.Mastered }
 
 type BiomeState struct {
 	Name   string

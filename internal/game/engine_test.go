@@ -1276,3 +1276,66 @@ func TestInvalidActions(t *testing.T) {
 		}
 	}
 }
+
+// A topic with MasteryAttempts rated attempts and a rating MasteryMargin
+// above the door hides the door's tags (D24) without making it a blind
+// door: it pays and teaches like a plain one, and the first quack shows
+// the tags. A topic still being learned, or a door near the player's level,
+// keeps its tags.
+func TestMasteredTopicHidesTags(t *testing.T) {
+	t.Parallel()
+	ps := dense([]string{"dp"}, 800, 2600, 10)
+	meta := func(attempts int) *game.Meta {
+		return &game.Meta{
+			Rating:        1500,
+			TopicRating:   map[string]float64{"dp": 1500},
+			TopicAttempts: map[string]int{"dp": attempts},
+			Rated:         200,
+		}
+	}
+	tests := []struct {
+		name     string
+		attempts int
+		edit     func(*rules.Rules)
+		mastered bool
+	}{
+		{"mastered", 10, func(*rules.Rules) {}, true},
+		{"still learning", 9, func(*rules.Rules) {}, false},
+		// Userland aims about 424 below the player.
+		{"door near the player", 10, func(r *rules.Rules) { r.MasteryMargin = 450 }, false},
+		{"off", 50, func(r *rules.Rules) { r.MasteryAttempts = 0 }, false},
+	}
+	for _, tc := range tests {
+		r := plain()
+		r.Ducks = 3
+		tc.edit(&r)
+		h := newHarness(t, r, meta(tc.attempts), ps, 0, 1)
+		for _, d := range h.s.Doors {
+			if d.Mastered != tc.mastered || d.Blind {
+				t.Errorf("%s: door %d mastered %v blind %v", tc.name, d.Rating, d.Mastered, d.Blind)
+			}
+			if d.Tier == "" && math.Abs(float64(d.Rating)-h.s.Target(h.m, "dp")) <= 100 {
+				t.Errorf("%s: an aimed door teaches no tier", tc.name)
+			}
+		}
+		// The same seed rolls the same doors either way, so the prices
+		// must match those of a boot with mastery off.
+		off := r
+		off.MasteryAttempts = 0
+		ref := newHarness(t, off, meta(tc.attempts), ps, 0, 1)
+		for i, d := range h.s.Doors {
+			if d.Bytes != ref.s.Doors[i].Bytes || d.Problem != ref.s.Doors[i].Problem {
+				t.Errorf("%s: door %d pays %d, %d with mastery off", tc.name, i, d.Bytes, ref.s.Doors[i].Bytes)
+			}
+		}
+		h.open(0)
+		fx := h.do(game.Quack{})
+		want := 2
+		if tc.mastered {
+			want = 1
+		}
+		if rv, _ := has[game.RevealTags](fx); rv.Level != want {
+			t.Errorf("%s: first quack reveals level %d, want %d", tc.name, rv.Level, want)
+		}
+	}
+}

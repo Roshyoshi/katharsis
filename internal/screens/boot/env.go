@@ -218,8 +218,9 @@ func steps(st *game.State) []step {
 	return out
 }
 
-// doorText is what a door shows before it is opened. Blind hides tags;
-// mystery also hides the title, and the contest, which would name it.
+// doorText is what a door shows before it is opened. Blind hides tags, as
+// does a mastered topic; mystery also hides the title, and the contest,
+// which would name it.
 type doorText struct {
 	Title  string
 	Source string
@@ -233,7 +234,7 @@ func (e Env) doorText(d game.Door) doorText {
 	if d.Mystery {
 		t.Title = "???"
 	}
-	if d.Blind || d.Mystery || e.State.Rules.BlindAll {
+	if d.Blind || d.Mystery || d.Mastered || e.State.Rules.BlindAll {
 		t.Tags, t.Hidden = nil, true
 	}
 	return t

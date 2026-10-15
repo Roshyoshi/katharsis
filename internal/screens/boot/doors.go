@@ -267,8 +267,9 @@ func withMult(s string, m float64) string {
 	return s
 }
 
-// hiddenMod is the blind or mystery modifier: what it hides and what it
-// pays. The text is "" for a door that shows its tags.
+// hiddenMod is the blind or mystery modifier, what it hides and what it
+// pays, or a mastered topic, which hides the tags without paying more.
+// The text is "" for a door that shows its tags.
 func (d *Doors) hiddenMod(door game.Door) (lipgloss.Style, string) {
 	r := d.env.State.Rules
 	switch {
@@ -276,6 +277,8 @@ func (d *Doors) hiddenMod(door game.Door) (lipgloss.Style, string) {
 		return sMagenta, withMult("? mystery: title and tags hidden", r.MysteryMult)
 	case door.Blind:
 		return sCyan, withMult("◌ blind: tags hidden", r.BlindMult)
+	case door.Mastered:
+		return sFaint, "mastered topic: tags hidden"
 	}
 	return lipgloss.Style{}, ""
 }
