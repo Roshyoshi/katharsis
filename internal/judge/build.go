@@ -10,6 +10,7 @@ import (
 	"embed"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -118,7 +119,8 @@ type Build struct {
 var Compiler = "clang++"
 
 // Compile builds source with p into a content-addressed cache, so rejudging
-// an unchanged file skips the compiler.
+// an unchanged file skips the compiler. A build still compiling after
+// compileTimeout fails like a compile error, with a Log that says so.
 //
 // Every build, whatever the profile, also gets what contest code expects
 // of a judge's g++ (see commonFlags): ONLINE_JUDGE defined, so a template's
@@ -202,7 +204,14 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	b.Duration = time.Since(start)
 	if err != nil {
 		var exit *exec.ExitError
-		if errors.As(err, &exit) && ctx.Err() == nil {
+		switch {
+		case errors.Is(err, errCompileTimeout):
+			// A compile error, not a judge failure: the likely cause is the
+			// source (a template or constexpr blowup), and the pass ends
+			// with a verdict like any other compile error.
+			b.Log = fmt.Sprintf("error: compile timed out after %v\n", compileTimeout) + b.Log
+			return b, nil
+		case errors.As(err, &exit) && ctx.Err() == nil:
 			return b, nil // compile error: OK=false, Log has the reason
 		}
 		return b, err
@@ -222,14 +231,36 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	return b, nil
 }
 
-// runCompiler runs p's compiler with args and returns its stderr.
-func runCompiler(ctx context.Context, p Profile, args []string) (log string, err error) {
-	cmd := exec.CommandContext(ctx, p.compiler(), args...)
+// compileTimeout bounds every compiler run. Contest code compiles in
+// seconds even on a busy machine; a compiler still going after this is
+// stuck on a template or constexpr blowup, or wedged, and a :Submit
+// waiting on it would hold the door until its grace ran out (a :Submit
+// while one judges is refused).
+var compileTimeout = 30 * time.Second
+
+// errCompileTimeout is runCompiler's error for a run cut at
+// compileTimeout.
+var errCompileTimeout = errors.New("compile timed out")
+
+// runCompiler runs p's compiler with args and returns its output: stderr,
+// and stdout, which only --version writes. The compiler leads its own
+// process group, killed whole on a cancel or at compileTimeout: g++ runs
+// cc1plus, as and ld as children, which outlive a g++ killed alone, keep
+// compiling, and hold the output pipe, and so runCompiler, until done.
+func runCompiler(ctx context.Context, p Profile, args []string) (out string, err error) {
+	tctx, cancel := context.WithTimeout(ctx, compileTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(tctx, p.compiler(), args...)
 	cmd.Env = compileEnv(p)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	var buf bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &buf, &buf
+	inGroup(cmd)
+	cmd.WaitDelay = time.Second // for a child that left the group
 	err = cmd.Run()
-	return stderr.String(), err
+	if err != nil && ctx.Err() == nil && tctx.Err() != nil {
+		err = errCompileTimeout
+	}
+	return buf.String(), err
 }
 
 // commonFlags go into every build after the profile's own; see Compile.

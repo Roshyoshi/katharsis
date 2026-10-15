@@ -157,9 +157,7 @@ func runs(ctx context.Context, p Profile, timeout time.Duration) bool {
 	if os.WriteFile(src, []byte(probeProgram(p)), 0o644) != nil {
 		return false
 	}
-	cc := exec.CommandContext(ctx, p.compiler(), append(append([]string{}, p.Flags...), src, "-o", bin)...)
-	cc.Env = compileEnv(p)
-	if cc.Run() != nil {
+	if _, err := runCompiler(ctx, p, slices.Concat(p.Flags, []string{src, "-o", bin})); err != nil {
 		return false
 	}
 	rctx, cancel := context.WithTimeout(ctx, timeout)

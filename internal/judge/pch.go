@@ -109,30 +109,27 @@ var (
 	pchSlot = make(chan struct{}, 1)
 )
 
-// pchTimeout bounds a background PCH build; <bits/stdc++.h> takes 1-4 s.
-// pchRetry is how long a failed one stands before builds try again.
-const (
-	pchTimeout = 2 * time.Minute
-	pchRetry   = time.Hour
-)
+// pchRetry is how long a failed PCH stands before builds try again.
+const pchRetry = time.Hour
 
 // pchKey names a PCH by everything that must match for a build to load
 // it: the compiler (its resolved path, size, mtime and version), every
 // flag, and the headers.
 func pchKey(p Profile, base, headers []string) string {
 	h := sha256.New()
-	for _, s := range [][]string{{compilerID(p.compiler()), fmt.Sprint(p.GNU)}, base, headers} {
+	for _, s := range [][]string{{compilerID(p), fmt.Sprint(p.GNU)}, base, headers} {
 		h.Write([]byte(strings.Join(s, "\x00") + "\x00\x00"))
 	}
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
-// compilerID is name resolved, with its size, mtime and --version output.
-// A nix store path names one compiler for good; a compiler upgraded in
-// place keeps its path and changes the rest. --version runs once per
-// process and compiler.
-func compilerID(name string) string {
-	path := resolve(name)
+// compilerID is p's compiler resolved, with its size, mtime and --version
+// output. A nix store path names one compiler for good; a compiler
+// upgraded in place keeps its path and changes the rest. --version runs
+// once per process and compiler, never cut short by a build's cancel,
+// which would key this process's PCHs apart from every other's.
+func compilerID(p Profile) string {
+	path := resolve(p.compiler())
 	id := path
 	if fi, err := os.Stat(path); err == nil {
 		id = fmt.Sprintf("%s\x00%d\x00%d", path, fi.Size(), fi.ModTime().UnixNano())
@@ -140,8 +137,8 @@ func compilerID(name string) string {
 	if v, ok := compilerVersions.Load(id); ok {
 		return v.(string)
 	}
-	out, _ := exec.Command(path, "--version").Output()
-	v := id + "\x00" + string(out)
+	out, _ := runCompiler(context.Background(), p, []string{"--version"})
+	v := id + "\x00" + out
 	compilerVersions.Store(id, v)
 	return v
 }
@@ -185,9 +182,7 @@ func (c pch) build(p Profile, base, headers []string, done chan struct{}) {
 	defer pchBuilding.Delete(c.dir)
 	pchSlot <- struct{}{}
 	defer func() { <-pchSlot }()
-	ctx, cancel := context.WithTimeout(context.Background(), pchTimeout)
-	defer cancel()
-	if err := c.make(ctx, p, base, headers); err != nil {
+	if err := c.make(context.Background(), p, base, headers); err != nil {
 		_ = os.WriteFile(c.failed(), []byte(err.Error()+"\n"), 0o644)
 		return
 	}
