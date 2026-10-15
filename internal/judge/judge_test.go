@@ -527,6 +527,14 @@ func TestRun(t *testing.T) {
 				if tc.wantFor != nil {
 					want = tc.wantFor(p)
 				}
+				// A wall-clock kill with the CPU still under its limit
+				// is a starved machine, not the solution: at a load
+				// average of 30 or more, AC cases sat 400 ms on the CPU
+				// and 1.7 s on the wall.
+				if r.Verdict == judge.TLE && want != judge.TLE &&
+					strings.HasPrefix(r.Reason, "wall ") && r.CPU < lim.Time {
+					t.Skipf("starved: %q with cpu %v under the %v limit", r.Reason, r.CPU, lim.Time)
+				}
 				if r.Verdict != want {
 					t.Fatalf("Verdict = %s (%q), want %s\nstderr:\n%s", r.Verdict, r.Reason, want, r.Stderr)
 				}
