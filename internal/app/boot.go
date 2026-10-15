@@ -498,6 +498,7 @@ func (m *Model) onDoorReady(r doorReadyMsg) tea.Cmd {
 type judgedMsg struct {
 	verdict       string
 	passed, total int
+	sample        bool // a test that failed is one of the door's samples
 	err           error
 }
 
@@ -625,7 +626,7 @@ func (m *Model) onJudged(j judgedMsg) tea.Cmd {
 		return tea.Batch(harvest, m.onUpsolveJudged(j))
 	}
 	m.dmesg.Judged(j.passed, j.total) // the strip's verdict line
-	cmd, err := m.tryAt(game.SubmitResult{Verdict: game.Verdict(j.verdict), Passed: j.passed, Total: j.total}, at)
+	cmd, err := m.tryAt(game.SubmitResult{Verdict: game.Verdict(j.verdict), Passed: j.passed, Total: j.total, SampleFailed: j.sample}, at)
 	if err != nil {
 		cmd = func() tea.Msg { return errMsg{err} }
 	}

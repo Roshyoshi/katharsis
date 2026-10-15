@@ -2,9 +2,13 @@ package app
 
 import (
 	"fmt"
+	"os"
+	"slices"
+	"strings"
 	"time"
 
 	"katharsis/internal/game"
+	"katharsis/internal/problem"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/units"
 )
@@ -122,3 +126,38 @@ func (m *Model) charged(before doorCost) string {
 	}
 	return lost
 }
+
+// sampleFree is vim's :Submit reply after a failure on a sample.
+const sampleFree = "a sample failed: no charge"
+
+// sampleFailed reports whether one of failed, the full tests a submit of
+// the open boot door failed, is one of the door's samples. Such a submit
+// is free (meta.md §(b)): :w had already shown the sample failing. A full
+// test is a sample by its input's tokens, as a solution reads it: a
+// statement's sample can drop the blank lines between cases that the
+// official test keeps (Codeforces 1692C). A full test much larger than
+// every sample is not read.
+func (m *Model) sampleFailed(failed []problem.Test) bool {
+	if !m.inBootDoor() || len(failed) == 0 {
+		return false
+	}
+	var samples []string
+	var most int64
+	for _, s := range m.open.Assets.Samples {
+		if b, err := os.ReadFile(s.In); err == nil {
+			samples, most = append(samples, testText(b)), max(most, int64(len(b)))
+		}
+	}
+	for _, t := range failed {
+		if fi, err := os.Stat(t.In); err != nil || fi.Size() > 2*most+1024 {
+			continue
+		}
+		if b, err := os.ReadFile(t.In); err == nil && slices.Contains(samples, testText(b)) {
+			return true
+		}
+	}
+	return false
+}
+
+// testText is a test's input for comparing: its tokens, one space apart.
+func testText(b []byte) string { return strings.Join(strings.Fields(string(b)), " ") }

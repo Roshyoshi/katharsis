@@ -2,7 +2,9 @@ package app
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -12,6 +14,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/hud"
 	"katharsis/internal/judge"
+	"katharsis/internal/problem"
 	"katharsis/internal/screens"
 	"katharsis/internal/session"
 )
@@ -59,6 +62,29 @@ func TestSubmitBangOverFailingSamples(t *testing.T) {
 	}
 	if h.m.state.Cycles != lives-1 {
 		t.Errorf("lives %d after :Submit!'s WA, want %d", h.m.state.Cycles, lives-1)
+	}
+}
+
+// A submit that fails on one of the door's samples is free (meta.md §(b)):
+// the samples had said so. The full test that failed is the sample by its
+// input's tokens: a statement's sample can differ from the official test
+// in blank lines and line ends. vim's reply says why nothing burned.
+func TestSampleFailIsFree(t *testing.T) {
+	h := samplesFailed(t)
+	sample := filepath.Join(t.TempDir(), "1.in")
+	if err := os.WriteFile(sample, []byte("\n2 \r\n\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h.m.open.Assets.Samples = []problem.Test{{Name: "1", In: sample}}
+	lives := h.m.state.Cycles
+	req, reply := session.NewRequest(session.Command{Cmd: session.CmdSubmit, Args: []string{session.ArgForce}})
+	_, cmd := h.m.Update(req)
+	h.pump(cmd, func() bool { return !h.m.judging })
+	if rep, _ := answer(reply); !strings.HasPrefix(rep.Text, "WA 0/1") || !strings.HasSuffix(rep.Text, " · "+sampleFree) {
+		t.Errorf(":Submit! answered %+v, want its verdict and %q", rep, sampleFree)
+	}
+	if c := h.m.state.Current; h.m.state.Cycles != lives || c == nil || c.Submits != 1 {
+		t.Errorf("cycles %d (want %d), attempt %+v: a sample's fail must be judged and free", h.m.state.Cycles, lives, c)
 	}
 }
 

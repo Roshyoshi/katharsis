@@ -32,9 +32,12 @@ type WatchErrMsg struct{ Err error }
 // SubmittedMsg is emitted when a :Submit pass finishes, for a program that
 // embeds the HUD and feeds the result to the game engine.
 // Err is set when the submit ended without a verdict (a judge error, a
-// problem that failed to load); Summary is then empty.
+// problem that failed to load); Summary is then empty. Failed are the
+// tests that failed, in test order, for a host that prices a failure by
+// which tests they are (a sample's is free in a boot).
 type SubmittedMsg struct {
 	Summary judge.Summary
+	Failed  []problem.Test
 	Err     error
 
 	req   session.Request // the editor's :Submit

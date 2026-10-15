@@ -222,6 +222,11 @@ func (m *Model) applySubmit(ev judge.Event) tea.Cmd {
 		}
 		if ev.Summary != nil {
 			msg.Summary = *ev.Summary
+			for i, r := range m.sub.results {
+				if r.Verdict != "" && r.Verdict != judge.AC {
+					msg.Failed = append(msg.Failed, m.sub.tests[i])
+				}
+			}
 			return func() tea.Msg { return msg }
 		}
 		// A pass that ended without a verdict still ends the submit, so the

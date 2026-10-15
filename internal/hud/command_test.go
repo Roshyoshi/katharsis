@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -216,6 +217,10 @@ func TestHostAnswersWithTheCost(t *testing.T) {
 	}
 	if msg.Summary != sum {
 		t.Errorf("SubmittedMsg summary %+v, want %+v", msg.Summary, sum)
+	}
+	// The host prices a failure by which tests failed: a sample is free.
+	if want := m.prob.Tests[2:]; !slices.Equal(msg.Failed, want) {
+		t.Errorf("SubmittedMsg failed %+v, want %+v", msg.Failed, want)
 	}
 	msg.Answer("-1 ♥, 2 left")
 	msg.Answer("again")

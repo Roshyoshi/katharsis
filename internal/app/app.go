@@ -335,9 +335,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Err != nil {
 			return m, m.onJudged(judgedMsg{err: msg.Err}) // the HUD answered it
 		}
-		s, lives := msg.Summary, m.doorLives()
-		cmd := m.onJudged(judgedMsg{verdict: string(s.Verdict), passed: s.Passed, total: s.Total})
-		msg.Answer(m.charged(lives)) // hud.Options.HostAnswers
+		s, lives, sample := msg.Summary, m.doorLives(), m.sampleFailed(msg.Failed)
+		cmd := m.onJudged(judgedMsg{verdict: string(s.Verdict), passed: s.Passed, total: s.Total, sample: sample})
+		cost := m.charged(lives)
+		if cost == "" && sample {
+			cost = sampleFree
+		}
+		msg.Answer(cost) // hud.Options.HostAnswers
 		return m, cmd
 	case session.Request:
 		return m, m.onRequest(msg)
