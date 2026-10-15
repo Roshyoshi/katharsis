@@ -115,6 +115,27 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 			if d.Mastered && (d.Blind || s.Trial != nil) {
 				fail("mastered door %+v", d)
 			}
+			// Effort pays the same at every difficulty (retention GR5): a
+			// door without risk modifiers is expected to pay BaseBytes/2,
+			// times only what multiplies every such door alike (a boss,
+			// chrt, cron on a regression), wherever the difficulty factor
+			// is not clamped. Rounding a door's bytes moves it by at most
+			// half a byte.
+			if !d.Blind && !d.Cursed && 0.5/d.SolveP <= s.Rules.MaxBytesMult && 0.5/d.SolveP >= s.Rules.MinBytesMult {
+				flat := 1.0
+				if d.Boss != "" {
+					flat *= s.Rules.BossMult
+				}
+				if slices.Contains(s.Daemons, game.Chrt) {
+					flat *= s.Rules.ChrtBytesMult
+				}
+				if d.Regression && slices.Contains(s.Daemons, game.Cron) {
+					flat *= s.Rules.CronMult
+				}
+				if want := float64(s.Rules.BaseBytes) / 2 * flat; math.Abs(d.SolveP*float64(d.Bytes)-want) > 0.5 {
+					fail("door %+v is expected to pay %.1f B, want %.1f", d, d.SolveP*float64(d.Bytes), want)
+				}
+			}
 		}
 	} else if len(s.Doors) != 0 {
 		fail("%d doors outside the doors phase", len(s.Doors))

@@ -85,6 +85,22 @@ var themes = map[string]string{
   \  ^  /     Bootloader: GNU GRUB  version 2.12
    |||||      Shell: vim
 `),
+	"grub:cmatrix": trimArt(`
+ 0 1   1 0 0   1   0 1 1   0 1   0 0 1
+ 1 0 1   1   0 1 0   1   0 1   1 0   1
+   1 0 0 1 0   1 1 0   1   0 1   1 0
+ 0   1   wake up, katharsis...   0   1
+ 1 0     GNU GRUB  version 2.12    1 0
+   0 1 1   0 1 0   1 0 1   1 0 1   0
+`),
+	"grub:bastet": trimArt(`
+ |          |
+ |    []    |
+ |  [][][]  |   bastet: bastard tetris
+ |[][]  [][]|   GNU GRUB  version 2.12
+ |[][][][][]|
+ +----------+
+`),
 	"grub:figlet": strings.Join([]string{
 		" _                _     _                     _",
 		"| | __  __ _  _  | |__    __ _  _ __  ___  (_) ___",

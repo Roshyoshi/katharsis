@@ -231,14 +231,14 @@ func TestLoadStrictKeysAndFileName(t *testing.T) {
 // three, and the catalog lasts at least 40 boots. A capstone above three
 // boots may come only once the ladder under it has lasted 40 boots of the
 // weaker player. Boots are counted at what the sim's model players bank
-// per boot at prestige 0 (committed plus recovered dumps; sim
-// TestAptLadder measures them and holds the catalog to this against the
-// real rates).
+// per boot over their first 40 boots at prestige 0 (commits and upsolved
+// core dumps): sim TestAptLadder measures them (142 and 229 B when these
+// were set) and holds the catalog to the same rules at the real rates.
 func TestPackageLadder(t *testing.T) {
 	t.Parallel()
 	const (
-		weak   = 134 // B a boot, the 1000-rated model
-		strong = 220 // B a boot, the 1600-rated model
+		weak   = 140 // B a boot, the 1000-rated model
+		strong = 230 // B a boot, the 1600-rated model
 	)
 	ps := rules.Standard().Packages
 	if len(ps) < 14 {

@@ -2,8 +2,10 @@ package game_test
 
 import (
 	"errors"
+	"math"
 	"slices"
 	"testing"
+	"time"
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
@@ -145,6 +147,139 @@ func TestStandardPackages(t *testing.T) {
 		}
 		if p.Price <= 0 {
 			t.Errorf("%s is free", p.Name)
+		}
+	}
+}
+
+// Each kind of package does what it says in the boots after it, and
+// nothing without it.
+func TestPackageEffects(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	boot := func(installed ...string) *harness {
+		return newHarness(t, plain(), &game.Meta{Installed: installed}, ps, 0, 1)
+	}
+
+	// tmux: one more door per room.
+	if n, m := len(boot().s.Doors), len(boot("tmux").s.Doors); m != n+1 {
+		t.Errorf("tmux: %d doors, want %d", m, n+1)
+	}
+
+	// git: one more topic at each route.
+	h, g := boot(), boot("git")
+	for i, b := range h.s.Biomes {
+		if len(b.Offers) > 0 && len(g.s.Biomes[i].Offers) != len(b.Offers)+1 {
+			t.Errorf("git: biome %d offers %v, without %v", i, g.s.Biomes[i].Offers, b.Offers)
+		}
+	}
+
+	// coreutils: shuf joins the upgrade picks; a pick holds a shuf. At
+	// full lives the pool is overclock, duck and shuf, all on offer.
+	h = boot()
+	h.s.MaxLives = h.s.Lives
+	h.clearDoor(0, 10*time.Minute)
+	if slices.Contains(h.s.UpgradeOffers, game.ShufPick) {
+		t.Errorf("shuf offered without coreutils: %v", h.s.UpgradeOffers)
+	}
+	h = boot("coreutils")
+	h.s.MaxLives = h.s.Lives
+	h.clearDoor(0, 10*time.Minute)
+	if !slices.Contains(h.s.UpgradeOffers, game.ShufPick) {
+		t.Fatalf("coreutils: offers %v, want shuf among them", h.s.UpgradeOffers)
+	}
+	h.do(game.PickUpgrade{Upgrade: game.ShufPick})
+	if h.s.Rerolls != 1 {
+		t.Errorf("shuf pick: %d shufs held", h.s.Rerolls)
+	}
+
+	// aptitude: one more upgrade on offer, once the pool has it (a life
+	// lost puts ECC in).
+	h = boot("coreutils", "aptitude")
+	h.open(0)
+	h.do(game.SubmitResult{Verdict: "WA", Passed: 3, Total: 10})
+	h.now = h.now.Add(10 * time.Minute)
+	h.do(game.SubmitResult{Verdict: "AC", Passed: 10, Total: 10})
+	if want := h.s.Rules.UpgradeOffers + 1; len(h.s.UpgradeOffers) != want {
+		t.Errorf("aptitude at %d/%d lives: offers %v, want %d", h.s.Lives, h.s.MaxLives, h.s.UpgradeOffers, want)
+	}
+
+	// at: sold only once installed; it adds its time to the next door
+	// opened, once.
+	h = boot()
+	h.toMerge()
+	h.s.Uncommitted = 1000
+	if h.s.Price(game.At) != 0 || h.try(game.Spend{Item: game.At}) == nil {
+		t.Errorf("at for sale without its package")
+	}
+	h = boot("at")
+	h.toMerge()
+	h.pick()
+	h.s.Uncommitted = 1000
+	h.do(game.Spend{Item: game.At})
+	if h.s.AtTime != h.s.Rules.AtTime.Duration {
+		t.Fatalf("at bought: %v held", h.s.AtTime)
+	}
+	h.do(game.LeaveMerge{})
+	for h.s.Phase == game.PhaseRoute {
+		h.do(game.ChooseRoute{})
+	}
+	offered := h.s.Doors[0].Timer
+	h.open(0)
+	if got := h.s.Current.Door.Timer; got != offered+h.s.Rules.AtTime.Duration || h.s.AtTime != 0 {
+		t.Errorf("at: door timer %v (offered %v), %v still held", got, offered, h.s.AtTime)
+	}
+	if got := h.s.Current.Deadline.Sub(h.s.Current.Opened); got != h.s.Current.Door.Timer {
+		t.Errorf("at: deadline %v after opening, timer %v", got, h.s.Current.Door.Timer)
+	}
+
+	// chrt: a fifth off every timer, every door pays 1.5x.
+	h = boot("util-linux")
+	h.s.Daemons = []game.Daemon{game.Chrt}
+	h.open(0)
+	h.do(game.Retreat{})
+	for _, d := range h.s.Doors {
+		pay := int64(math.Round(64 * min(max(0.5/d.SolveP, 0.25), 4) * 1.5))
+		if d.Timer != 12*time.Minute || d.Bytes != pay { // 15m × 0.8
+			t.Errorf("chrt door: %v, %d B; want 12m, %d B", d.Timer, d.Bytes, pay)
+		}
+	}
+}
+
+// cron pays CronMult on a regression door and leaves the others alone.
+func TestCronPaysRegressions(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	pay := func(d game.Door, mult float64) int64 {
+		return int64(math.Round(64 * min(max(0.5/d.SolveP, 0.25), 4) * mult))
+	}
+	for _, cron := range []bool{false, true} {
+		m := &game.Meta{
+			Installed:   []string{"cron"},
+			Regressions: []game.Regression{{Problem: ps[40].ID, Due: t0.Add(-time.Hour), Days: []int{3, 17}}},
+		}
+		h := newHarness(t, plain(), m, ps, 0, 1)
+		h.toMerge()
+		h.pick()
+		if cron {
+			h.s.Daemons = []game.Daemon{game.Cron}
+		}
+		h.do(game.LeaveMerge{})
+		h.do(game.ChooseRoute{Index: 0})
+		seen := false
+		for _, d := range h.s.Doors {
+			want := pay(d, 1)
+			if d.Regression {
+				seen = true
+				if cron {
+					want = pay(d, h.s.Rules.CronMult)
+				}
+			}
+			if d.Bytes != want {
+				t.Errorf("cron %v: door %+v pays %d, want %d", cron, d, d.Bytes, want)
+			}
+		}
+		if !seen {
+			t.Fatalf("cron %v: no regression door in %+v", cron, h.s.Doors)
 		}
 	}
 }

@@ -524,19 +524,23 @@ func Standard() Rules {
 
 		// What the bank buys at GRUB (D25, retention RT3): mostly options
 		// (a daemon, an item or an upgrade joins its pool; one more route,
-		// daemon or upgrade is on offer) and cosmetic themes, a duck, and
-		// one capstone. The 1000-rated sim player banks about 134 B a boot at
-		// prestige 0 (committed plus recovered dumps), so bought cheapest
-		// first the next package is never more than three boots away, and
-		// the catalog lasts about 58 boots (42 for the 1600 player). The
-		// ladder is checked in rules_test.go and against the sim in
-		// sim_test.go; prices are settings like any other (D2).
+		// daemon or upgrade is on offer, one more door per room), banner
+		// themes, a starting duck, and one capstone. Over its first 40
+		// boots at prestige 0 the 1000-rated sim player banks about 140 B a
+		// boot (commits and upsolved core dumps), so bought cheapest first
+		// the first package is one cleared door and every next one is at
+		// most three boots away until binutils, about 44 boots in; the
+		// catalog is about 72 boots of that player's bank and 45 of the
+		// 1600-rated one's (230 B a boot). rules_test.go checks the ladder
+		// at those rates and sim TestAptLadder against the players; prices
+		// are settings like any other (D2).
 		//
 		// binutils is the one package of raw power: a lib slot pastes more
-		// of the player's own code, which the door model does not see. It
-		// is the capstone, after the ladder, and the only one of its kind.
+		// of the player's own code, which the door model does not see
+		// (State.Linked is saved with every boot, so it can learn to). It is
+		// the capstone, after the ladder, and the only one of its kind.
 		Packages: []Package{
-			{Name: "cowsay", Price: 64, Theme: "cowsay"},
+			{Name: "cowsay", Price: 32, Theme: "cowsay"},
 			{Name: "tux", Price: 128, Theme: "tux"},
 			{Name: "sl", Price: 256, Theme: "sl"},
 			{Name: "rng-tools", Price: 256, Daemon: "dev-random"},
@@ -551,6 +555,8 @@ func Standard() Rules {
 			{Name: "util-linux", Price: 400, Daemon: "chrt"},
 			{Name: "figlet", Price: 400, Theme: "figlet"},
 			{Name: "tmux", Price: 400, Doors: 1},
+			{Name: "cmatrix", Price: 400, Theme: "cmatrix"},
+			{Name: "bastet", Price: 400, Theme: "bastet"},
 			// A fourth daemon on offer means nothing while the pool holds
 			// three, so procps waits on two of the locked ones.
 			{Name: "procps", Price: 400, DaemonOffers: 1, Requires: []string{"rng-tools", "strace"}},

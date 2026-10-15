@@ -176,7 +176,10 @@ type Report struct {
 
 	// Ratings is the engine's rating after each boot, warm-up included.
 	Ratings []float64
-	Blocks  []Block
+	// Banked is what each boot added to the bank, warm-up included: its
+	// commits and the core dump upsolved after it.
+	Banked []int64
+	Blocks []Block
 }
 
 // Simulate runs boots with DefaultPlayer(playerRating), climbing prestige.
@@ -204,6 +207,7 @@ func Run(c Config) Report {
 	warm, main := newSums(nb), newSums(nb)
 	main.rep.InstalledAt = make([]int, len(c.Player.Install))
 	var ratings []float64
+	var banked []int64
 	var blocks []Block
 	for i := range c.Warmup + c.Boots {
 		sm := main
@@ -231,6 +235,7 @@ func Run(c Config) Report {
 		sm.earned += s.Earned()
 		sm.committed += s.Committed
 		sm.spent += s.Spent
+		in := s.Committed
 		switch s.Phase {
 		case game.PhaseCleared:
 			rep.FullClears++
@@ -243,7 +248,9 @@ func Run(c Config) Report {
 			sm.lost += s.Crash.Lost
 			rep.DumpsLost += s.Crash.DumpLost
 			if d := m.CoreDump; d != nil && rng.Float64() < c.Player.UpsolveProb {
-				rep.Recovered += game.Upsolve(m, d.Problem, game.Editorial, 45*time.Minute, b.clock.Add(time.Hour))
+				got := game.Upsolve(m, d.Problem, game.Editorial, 45*time.Minute, b.clock.Add(time.Hour))
+				rep.Recovered += got
+				in += got
 			}
 		}
 		for j, name := range c.Player.Install {
@@ -263,6 +270,7 @@ func Run(c Config) Report {
 		}
 		clock = clock.Add(24 * time.Hour) // a boot a day, so regressions come due
 		ratings = append(ratings, m.Rating)
+		banked = append(banked, in)
 		if c.Block > 0 {
 			if i%c.Block == 0 {
 				blocks = append(blocks, Block{})
@@ -290,6 +298,7 @@ func Run(c Config) Report {
 	rep.FinalRating = m.Rating
 	rep.Meta = m
 	rep.Ratings = ratings
+	rep.Banked = banked
 	rep.Blocks = blocks
 	return rep
 }

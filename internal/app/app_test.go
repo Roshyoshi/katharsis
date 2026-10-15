@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -1084,11 +1085,13 @@ func TestShopInstall(t *testing.T) {
 	if game.Installed(&h.m.meta, "tux") || h.m.meta.Bank != 100 || !strings.Contains(h.m.flash, "costs") {
 		t.Fatalf("unaffordable install: installed %v, bank %d, flash %q", h.m.meta.Installed, h.m.meta.Bank, h.m.flash)
 	}
-	h.send(screens.Install{Package: "cowsay"}) // 64 B
-	if !game.Installed(&h.m.meta, "cowsay") || h.m.meta.Bank != 36 || h.m.meta.Theme != "cowsay" {
+	cowsay, _ := h.m.aptRules().Package("cowsay")
+	left := 100 - cowsay.Price
+	h.send(screens.Install{Package: "cowsay"})
+	if !game.Installed(&h.m.meta, "cowsay") || h.m.meta.Bank != left || h.m.meta.Theme != "cowsay" {
 		t.Fatalf("install: installed %v, bank %d, theme %q", h.m.meta.Installed, h.m.meta.Bank, h.m.meta.Theme)
 	}
-	if !strings.Contains(h.m.stack[0].View(100, 30), "36 B") {
+	if !strings.Contains(h.m.stack[0].View(100, 30), "bank "+strconv.FormatInt(left, 10)+" B") {
 		t.Errorf("GRUB under the shop still shows the old bank:\n%s", h.m.stack[0].View(100, 30))
 	}
 	h.send(screens.UseTheme{})
@@ -1096,7 +1099,7 @@ func TestShopInstall(t *testing.T) {
 		t.Errorf("theme %q after going back to the default", h.m.meta.Theme)
 	}
 	h.restart()
-	if !game.Installed(&h.m.meta, "cowsay") || h.m.meta.Bank != 36 {
+	if !game.Installed(&h.m.meta, "cowsay") || h.m.meta.Bank != left {
 		t.Errorf("after a restart: installed %v, bank %d", h.m.meta.Installed, h.m.meta.Bank)
 	}
 }

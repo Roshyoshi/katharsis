@@ -15,6 +15,7 @@ import (
 
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/meta/fixture"
@@ -312,7 +313,13 @@ func TestGrubBannerWhenItFits(t *testing.T) {
 // theme's, which carries its own version line: it must replace the
 // header, not repeat it, and its lines must share one left edge.
 func TestGrubFlavorBanner(t *testing.T) {
-	for _, theme := range []string{"", "cowsay", "tux", "sl", "neofetch", "figlet"} {
+	themes := []string{""}
+	for _, p := range rules.Standard().Packages {
+		if p.Theme != "" {
+			themes = append(themes, p.Theme)
+		}
+	}
+	for _, theme := range themes {
 		c := fixture.GrubConfig()
 		c.Banner, c.Meta.Theme = nil, theme
 		s := plain(meta.NewGrub(c).View(80, 30))
