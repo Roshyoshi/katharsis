@@ -158,7 +158,8 @@ func fileBytes(t *testing.T, path string) []byte {
 
 // The forecast against the boots (D36): finished boots with a forecast,
 // those that crashed in their first biome, and the mean forecast. An
-// abandoned boot and one without a forecast do not count.
+// abandoned boot and one without a forecast do not count, nor one the map
+// hub's n crashed as abandoned (the player's choice, not the forecast's).
 func TestEarlyCrashes(t *testing.T) {
 	t.Parallel()
 	s := openClocked(t, tempPath(t), t0)
@@ -169,6 +170,7 @@ func TestEarlyCrashes(t *testing.T) {
 		end      string
 	}{
 		{0.2, 0, "crashed"}, {0.3, 1, "crashed"}, {0.1, 1, "cleared"}, {0, 0, "crashed"}, {0.4, 0, "abandoned"},
+		{0.4, 0, "abandon-crashed"},
 	} {
 		st := midBoot(i+1, t0.Add(time.Duration(i)*time.Hour))
 		st.Forecast, st.Biome = c.forecast, c.biome
@@ -177,6 +179,9 @@ func TestEarlyCrashes(t *testing.T) {
 			crash(st, game.TimedOut)
 		case "cleared":
 			clearBoot(st)
+		case "abandon-crashed":
+			st.Current, st.Phase = nil, game.PhaseCrashed
+			st.Crash = &game.Crash{Cause: game.Abandoned, Lost: st.Uncommitted, At: t0.Add(time.Duration(i) * time.Hour)}
 		}
 		m.Boots = st.Boot
 		checkpoint(t, s, m, st)

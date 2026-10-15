@@ -188,13 +188,17 @@ type EarlyCrash struct {
 }
 
 // EarlyCrashes is EarlyCrash over the last n finished boots with a
-// forecast: trials have none, and boots saved before it existed read 0.
+// forecast: trials have none, and boots saved before it existed read 0. A
+// boot crashed as abandoned (a new boot over a suspended one) is the
+// player's call, not an outcome the forecast predicts, so it is left out
+// as an abandoned row is.
 func (s *Store) EarlyCrashes(n int) (EarlyCrash, error) {
 	var e EarlyCrash
 	err := eachRow(s.db, `
 		SELECT json_extract(state, '$.Forecast'),
 			outcome = 'crashed' AND json_extract(state, '$.Biome') = 0
 		FROM boots WHERE `+ended+` AND json_extract(state, '$.Forecast') > 0
+			AND cause IS NOT 'abandoned'
 		ORDER BY id DESC LIMIT ?`,
 		[]any{sqlLimit(n)}, func(rows *sql.Rows) error {
 			var (
