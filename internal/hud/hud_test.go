@@ -159,3 +159,76 @@ func TestLinesFitWidth(t *testing.T) {
 		}
 	}
 }
+
+// embedded is fixture with the HUD set up as a boot embeds it: under the
+// boot's HUD bar, which shows the title and the countdown, and over the
+// door's own key help.
+func embedded(t *testing.T, n, height int) *Model {
+	t.Helper()
+	m := fixture(t, n)
+	m.opt.Embedded = true
+	m.opt.Clock = func() string { return "12:34" }
+	m.Update(tea.WindowSizeMsg{Width: 60, Height: height})
+	return m
+}
+
+func TestEmbeddedDropsChrome(t *testing.T) {
+	m := embedded(t, 2, 10)
+	feed(m,
+		judge.BuildDone{Build: judge.Build{OK: true}},
+		judge.TestDone{Index: 0, Result: judge.Result{Verdict: judge.AC}},
+		judge.TestDone{Index: 1, Result: judge.Result{Verdict: judge.AC}},
+		judge.Finished{},
+	)
+	s := screen(m)
+	lines := strings.Split(s, "\n")
+	if len(lines) != 10 {
+		t.Errorf("view is %d lines, pane is 10:\n%s", len(lines), s)
+	}
+	if !strings.Contains(lines[0], "2/2") || !strings.Contains(lines[0], "ALL PASS") {
+		t.Errorf("first line should be the judge status, got %q", lines[0])
+	}
+	for _, gone := range []string{"milk2", "12:34", "⏱", "q quit", ":Submit"} {
+		if strings.Contains(s, gone) {
+			t.Errorf("embedded view repeats the host's %q:\n%s", gone, s)
+		}
+	}
+	// The border is on the editor pane, not the host's: it keeps the clock.
+	if st := m.statusText(); !strings.Contains(st, "12:34") {
+		t.Errorf("border text lost the clock: %q", st)
+	}
+
+	m.opt.Embedded = false
+	if s := screen(m); !strings.Contains(s, "milk2") || !strings.Contains(s, "q quit") {
+		t.Errorf("standalone view lost its header or key help:\n%s", s)
+	}
+}
+
+// A sanitizer report taller than the pane is cut, not allowed to push the
+// host's lines above it off screen.
+func TestEmbeddedFitsHeight(t *testing.T) {
+	m := embedded(t, 1, 8)
+	feed(m,
+		judge.BuildDone{Build: judge.Build{OK: true}},
+		judge.TestDone{Index: 0, Result: judge.Result{
+			Verdict: judge.RE, Reason: "AddressSanitizer: heap-buffer-overflow",
+			Stderr: strings.Repeat("    #0 0x0001 in main sol.cpp:3\n", 40),
+		}},
+	)
+	if n := strings.Count(screen(m), "\n") + 1; n != 8 {
+		t.Errorf("view is %d lines, pane is 8:\n%s", n, screen(m))
+	}
+	feed(m, judge.BuildDone{Build: judge.Build{OK: false, Log: strings.Repeat("sol.cpp:1:1: error: x\n", 40)}})
+	s := screen(m)
+	if n := strings.Count(s, "\n") + 1; n != 8 || !strings.Contains(s, "compile error") {
+		t.Errorf("CE view is %d lines (pane is 8) or lost the CE line:\n%s", n, s)
+	}
+}
+
+func TestEmbeddedNoSamplesHint(t *testing.T) {
+	m := embedded(t, 0, 10)
+	s := screen(m)
+	if strings.Contains(s, "add tests/1.in") || !strings.Contains(s, ":Submit judges the full tests") {
+		t.Errorf("a door without samples got the practice hint:\n%s", s)
+	}
+}

@@ -114,8 +114,8 @@ func TestGoldens(t *testing.T) {
 		keys []string
 	}{
 		{"grub", func() screens.Screen { return grub() }, nil},
-		{"grub_presets", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "enter"}},
-		{"grub_regressions", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "enter"}},
+		{"grub_presets", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "enter"}},
+		{"grub_regressions", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "down", "enter"}},
 		{"grub_edit", func() screens.Screen { return grub() }, []string{"e", "down", "tab", "down", "8", "f", "3", "a"}},
 		{"upsolve", func() screens.Screen { return meta.NewUpsolve(fixture.Upsolves(), fixture.Now) }, nil},
 		{"log", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, nil},
@@ -180,8 +180,8 @@ func TestFits(t *testing.T) {
 // ---- GRUB keys ---------------------------------------------------------------
 
 func TestGrubEntries(t *testing.T) {
-	// Entries top to bottom: prestige 2, 1, 0, RTFM, custom preset…, core
-	// dump, regressions due, git log, top, poweroff.
+	// Entries top to bottom: prestige 2, 1, 0, nightly build, RTFM, custom
+	// preset…, core dump, regressions due, git log, top, poweroff.
 	down := func(n int) []string {
 		ks := make([]string, n)
 		for i := range ks {
@@ -196,19 +196,20 @@ func TestGrubEntries(t *testing.T) {
 	}{
 		{"default boots highest prestige", []string{"enter"}, screens.StartBoot{Prestige: 2, Preset: "standard"}},
 		{"bronze", append(down(2), "enter"), screens.StartBoot{Prestige: 0, Preset: "standard"}},
-		{"rtfm", append(down(3), "enter"), screens.OpenLearn{}},
-		{"preset submenu", append(down(4), "enter", "down", "enter"), screens.StartBoot{Prestige: 2, Preset: "speedrun"}},
-		{"core dump", append(down(5), "enter"), screens.Upsolve{Problem: "usaco:1014"}},
-		{"regression oldest due", append(down(6), "enter", "down", "enter"), screens.Upsolve{Problem: "usaco:891"}},
-		{"git log", append(down(7), "enter"), screens.OpenLog{}},
-		{"top", append(down(8), "enter"), screens.OpenTop{}},
-		{"poweroff", append(down(9), "enter"), screens.Quit{}},
+		{"nightly", append(down(3), "enter"), screens.StartBoot{Prestige: 2, Preset: "standard", Seed: 0x20261014}},
+		{"rtfm", append(down(4), "enter"), screens.OpenLearn{}},
+		{"preset submenu", append(down(5), "enter", "down", "enter"), screens.StartBoot{Prestige: 2, Preset: "speedrun"}},
+		{"core dump", append(down(6), "enter"), screens.Upsolve{Problem: "usaco:1014"}},
+		{"regression oldest due", append(down(7), "enter", "down", "enter"), screens.Upsolve{Problem: "usaco:891"}},
+		{"git log", append(down(8), "enter"), screens.OpenLog{}},
+		{"top", append(down(9), "enter"), screens.OpenTop{}},
+		{"poweroff", append(down(10), "enter"), screens.Quit{}},
 		{"end is poweroff", []string{"G", "enter"}, screens.Quit{}},
 		{"down stops at the end", append(down(30), "enter"), screens.Quit{}},
 		{"ctrl+x boots like enter", []string{"ctrl+x"}, screens.StartBoot{Prestige: 2, Preset: "standard"}},
-		{"esc leaves submenu", append(down(4), "enter", "esc", "enter"), nil},
+		{"esc leaves submenu", append(down(5), "enter", "esc", "enter"), nil},
 		{"esc at root does nothing", []string{"esc"}, nil},
-		{"e on a non-boot entry does nothing", append(down(7), "e", "enter"), screens.OpenLog{}},
+		{"e on a non-boot entry does nothing", append(down(8), "e", "enter"), screens.OpenLog{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -219,7 +220,7 @@ func TestGrubEntries(t *testing.T) {
 
 func TestGrubEscLeavesSubmenuToRoot(t *testing.T) {
 	g := grub()
-	press(t, g, "down", "down", "down", "down", "enter", "esc")
+	press(t, g, "down", "down", "down", "down", "down", "enter", "esc")
 	// Back at the root with the submenu entry still highlighted.
 	wantMsg(t, press(t, g, "down", "enter"), screens.Upsolve{Problem: "usaco:1014"})
 }
@@ -241,8 +242,10 @@ func TestGrubEdit(t *testing.T) {
 			screens.StartBoot{Prestige: 1, Preset: "speedrun"}},
 		{"prestige wraps within unlocked", []string{"e", "right", "enter"},
 			screens.StartBoot{Prestige: 0, Preset: "standard"}},
-		{"from a preset entry", []string{"down", "down", "down", "down", "enter", "e", "ctrl+x"},
+		{"from a preset entry", []string{"down", "down", "down", "down", "down", "enter", "e", "ctrl+x"},
 			screens.StartBoot{Prestige: 2, Preset: "hardcore"}},
+		{"nightly keeps its seed", []string{"down", "down", "down", "e", "ctrl+x"},
+			screens.StartBoot{Prestige: 2, Preset: "standard", Seed: 0x20261014}},
 		{"esc discards", []string{"e", "down", "down", "7", "esc"}, nil},
 		{"esc returns to the menu", []string{"e", "down", "down", "7", "esc", "enter"},
 			screens.StartBoot{Prestige: 2, Preset: "standard"}},
@@ -264,9 +267,32 @@ func TestGrubHidesWhatIsNotThere(t *testing.T) {
 			t.Errorf("fresh player's menu shows %q:\n%s", absent, got)
 		}
 	}
-	for _, present := range []string{"*katharsis, prestige 0 (Bronze)", "git log", "top", "poweroff", "bank 0 B"} {
+	for _, present := range []string{"*katharsis, prestige 0 (Bronze)", "katharsis (nightly build 2026-10-14)", "git log", "top", "poweroff", "bank 0 B"} {
 		if !strings.Contains(got, present) {
 			t.Errorf("fresh player's menu lacks %q:\n%s", present, got)
+		}
+	}
+	// A fresh player's nightly boots the only prestige there is.
+	wantMsg(t, press(t, meta.NewGrub(c), "down", "enter"), screens.StartBoot{Prestige: 0, Preset: "standard", Seed: 0x20261014})
+}
+
+func TestNightlySeed(t *testing.T) {
+	pdt := time.FixedZone("PDT", -7*3600)
+	day := time.Date(2026, 10, 14, 0, 0, 0, 0, pdt)
+	for _, tc := range []struct {
+		t    time.Time
+		want uint64
+	}{
+		{day, 0x20261014},
+		{day.Add(23*time.Hour + 59*time.Minute), 0x20261014},
+		{day.Add(24 * time.Hour), 0x20261015},
+		// The date is the one in t's location: 23:30 PDT is already the
+		// 15th in UTC, but the player's nightly is still the 14th's.
+		{time.Date(2026, 10, 14, 23, 30, 0, 0, pdt), 0x20261014},
+		{time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC), 0x20270101},
+	} {
+		if got := meta.NightlySeed(tc.t); got != tc.want {
+			t.Errorf("NightlySeed(%v) = %#x, want %#x", tc.t, got, tc.want)
 		}
 	}
 }

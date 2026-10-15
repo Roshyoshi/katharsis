@@ -220,6 +220,9 @@ func (c *Crash) elements(width, height int) [][]string {
 	free := room - lines(body)
 	for i := len(st.Log) - 1; i >= 0 && len(pre) < 4; i-- {
 		l := st.Log[i]
+		if echoes(l, cr, verdict) {
+			continue
+		}
 		d := dline{at: l.At.Sub(st.Started), text: l.Text, style: sFaint}
 		if st.Started.IsZero() {
 			d.at = 0
@@ -242,6 +245,31 @@ func (c *Crash) elements(width, height int) [][]string {
 	return append(out, core)
 }
 
+// echoes reports whether engine log line l only repeats what the screen
+// prints itself: the engine's own panic line (the header says it with the
+// title), its "core dumped" line (the core dump line under the quote), and
+// on running out of lives the fatal submit (the precursor has the verdict
+// and the tests passed). Everything else in the tail stays, the coredump
+// overwrite and the regression schedule included.
+func echoes(l game.LogLine, cr game.Crash, verdict string) bool {
+	if strings.HasPrefix(l.Text, "Kernel panic - not syncing:") {
+		return true
+	}
+	// The crash's own lines are logged at its instant; older ones that
+	// happen to match are history, not echoes.
+	if !l.At.Equal(cr.At) {
+		return false
+	}
+	if strings.HasPrefix(l.Text, "core dumped: ") {
+		return cr.Lost > 0
+	}
+	if cr.Cause == game.OutOfLives && verdict != "" {
+		door, rest, ok := strings.Cut(l.Text, ": ")
+		return ok && strings.HasPrefix(door, "door_") && strings.HasPrefix(rest, verdict+" ")
+	}
+	return false
+}
+
 func dlines(at time.Duration, texts []string) []dline {
 	out := make([]dline, len(texts))
 	for i, t := range texts {
@@ -253,7 +281,9 @@ func dlines(at time.Duration, texts []string) []dline {
 // precursor is a log line printed just before the panic when the panic
 // line alone hides what happened: running out of lives gets the OOM
 // killer's report with the verdict and the HP bar, and :q! names itself
-// (the panic reads as init being killed).
+// (the panic reads as init being killed). A cursed door crashes on its
+// first failure with lives to spare, so its report says cursed, not out of
+// lives.
 func (c *Crash) precursor(cr game.Crash, verdict string) string {
 	switch cr.Cause {
 	case game.OutOfLives:
@@ -261,8 +291,12 @@ func (c *Crash) precursor(cr game.Crash, verdict string) string {
 		if verdict == "" {
 			verdict = "?"
 		}
-		return fmt.Sprintf("Out of lives: Killed process 1 (you) verdict:%s passed:%d/%d submits:%d",
-			verdict, a.BestPass, a.Total, a.Submits)
+		who := "Out of lives"
+		if cr.Door.Cursed && c.env.State.Lives > 0 {
+			who = "Cursed door"
+		}
+		return fmt.Sprintf("%s: Killed process 1 (you) verdict:%s passed:%d/%d submits:%d",
+			who, verdict, a.BestPass, a.Total, a.Submits)
 	case game.GaveUp:
 		return "you[1]: :q! sent SIGKILL to init"
 	}

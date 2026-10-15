@@ -16,6 +16,7 @@ import (
 
 	"katharsis/internal/app"
 	"katharsis/internal/catalog"
+	"katharsis/internal/content/codeforces"
 	"katharsis/internal/content/usaco"
 	"katharsis/internal/flavor"
 	"katharsis/internal/session"
@@ -33,10 +34,29 @@ func runGame(args []string) error {
 	quiet := fs.Bool("quiet", false, "no sounds")
 	stdioT := fs.String("template", filepath.Join(home, "cp", "atcoder", "template.cpp"), "C++ template for stdin/stdout problems")
 	fileT := fs.String("template-fileio", filepath.Join(home, "cp", "template.cpp"), "C++ template for file-I/O problems (\"problem\" becomes the file stem)")
-	fs.Usage = usage
+	var presetFiles []string
+	fs.Func("preset", "also load the rules preset in `file` (repeatable); unlike the presets dir, a bad one stops the game",
+		func(f string) error { presetFiles = append(presetFiles, f); return nil })
+	fs.Usage = func() { usage(fs) }
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
+	// Presets load before tmux, so a --preset that fails ends the game in
+	// the player's own terminal, where the error stays on screen. The
+	// flag's files go first: a dir preset with the same name is the one
+	// skipped.
+	ps := newPresets()
+	for _, f := range presetFiles {
+		if err := ps.add(f); err != nil {
+			return fmt.Errorf("preset %w", err)
+		}
+	}
+	dir, err := presetDir()
+	if err != nil {
+		return err
+	}
+	bad := ps.loadDir(dir)
 
 	// The game needs tmux to sit beside the editor. Outside it, restart in
 	// a session of its own; starting again attaches to the running game.
@@ -47,17 +67,31 @@ func runGame(args []string) error {
 		}
 		return session.ExecInTmux("katharsis", append([]string{self}, args...))
 	}
+	warnPresets(bad)
 
 	// Before the TUI: the first run downloads the USACO Guide snapshot
-	// (about 150 MB) and builds the index, which can take a minute.
-	fmt.Fprintln(os.Stderr, "katharsis: loading problems…")
+	// (about 150 MB) and the Codeforces index (about 17 MB) and builds the
+	// indexes, which can take a minute. Later runs read them from the cache.
+	fmt.Fprintln(os.Stderr, "katharsis: loading problems… (the first run downloads the USACO Guide and Codeforces indexes)")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	us, err := usaco.Open(ctx)
 	cancel()
 	if err != nil {
 		return fmt.Errorf("USACO catalog: %w", err)
 	}
-	cat := catalog.NewUnion(us)
+	cats := []catalog.Catalog{us}
+	// Codeforces is extra doors, not a requirement: a cold cache with no
+	// network still plays USACO. Its build took 20 s when measured; the
+	// timeout only bounds a stalled download.
+	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Minute)
+	cf, err := codeforces.Open(ctx)
+	cancel()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "katharsis: Codeforces catalog unavailable, playing USACO only: %v\n", err)
+	} else {
+		cats = append(cats, cf)
+	}
+	cat := catalog.NewUnion(cats...)
 
 	path, err := store.DefaultPath()
 	if err != nil {
@@ -86,6 +120,7 @@ func runGame(args []string) error {
 	m, err := app.New(app.Deps{
 		Store:   st,
 		Catalog: cat,
+		Presets: ps.byName,
 		Runner:  runner,
 		Now:     time.Now,
 		Sound:   sound,

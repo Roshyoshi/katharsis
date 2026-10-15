@@ -23,7 +23,8 @@ type GrubConfig struct {
 	// Title resolves problem titles for the core dump and regressions; nil
 	// shows catalog IDs.
 	Title func(catalog.ID) string
-	// Now decides which regressions are due; zero means time.Now().
+	// Now decides which regressions are due and, by its date in its own
+	// location, the nightly build; zero means time.Now().
 	Now time.Time
 
 	// PrestigeName and Banner default to the flavor package. Tests pin them
@@ -63,7 +64,9 @@ type entry struct {
 const standardPreset = "standard"
 
 // NewGrub builds the start screen. The highest unlocked prestige is listed
-// first and highlighted, as GRUB lists the newest kernel first.
+// first and highlighted, as GRUB lists the newest kernel first. Under the
+// prestiges is the nightly build, the daily run: the highest prestige,
+// standard rules and the day's NightlySeed.
 func NewGrub(c GrubConfig) *Menu {
 	if c.PrestigeName == nil {
 		c.PrestigeName = flavor.PrestigeName
@@ -93,6 +96,10 @@ func NewGrub(c GrubConfig) *Menu {
 	for p := m.maxP; p >= 0; p-- {
 		es = append(es, m.bootEntry(p, standardPreset))
 	}
+	es = append(es, entry{
+		label: "katharsis (nightly build " + now.Format(time.DateOnly) + ")",
+		boot:  &screens.StartBoot{Prestige: m.maxP, Preset: standardPreset, Seed: NightlySeed(now)},
+	})
 	es = append(es, entry{label: "katharsis (RTFM — learn mode)", msg: screens.OpenLearn{}})
 	if len(m.presets) > 1 {
 		sub := &page{}
@@ -126,6 +133,20 @@ func NewGrub(c GrubConfig) *Menu {
 	)
 	m.stack = []*page{{entries: es}}
 	return m
+}
+
+// NightlySeed is the nightly build's seed for the day t falls on in t's own
+// location (hand it local time): the date's decimal digits read as hex, so
+// 2026-10-14 is seed 0x20261014. Each day has one seed, git log shows it as
+// the date, and it is never 0 (which StartBoot takes as random). The engine
+// mixes its seed through splitmix64, so neighbouring days still roll
+// unrelated boots. The seed fixes the engine's draws, but doors are still
+// aimed at the player's rating and history, so a replay can meet other
+// doors.
+func NightlySeed(t time.Time) uint64 {
+	y, mo, d := t.Date()
+	seed, _ := strconv.ParseUint(fmt.Sprintf("%04d%02d%02d", y, int(mo), d), 16, 64)
+	return seed
 }
 
 // NewUpsolve builds the upsolve picker: the core dump and due regressions

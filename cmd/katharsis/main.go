@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -35,13 +36,17 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "practice" {
 		run = runPractice
 	}
-	if err := run(os.Args[1:]); err != nil {
+	if err := run(os.Args[1:]); errors.Is(err, flag.ErrHelp) {
+		os.Exit(0) // -h printed the usage; that is not a failure
+	} else if err != nil {
 		fmt.Fprintln(os.Stderr, "katharsis:", err)
 		os.Exit(1)
 	}
 }
 
-func usage() {
+// usage prints the commands and the flags of fs, the command's own flag
+// set (the global one is empty).
+func usage(fs *flag.FlagSet) {
 	fmt.Fprint(os.Stderr, `usage: katharsis [flags]                 play (GRUB menu, boots, learn mode)
        katharsis practice [flags] <dir>
        katharsis ctl <submit|debug [n]|quack|giveup|retreat|status>
@@ -50,9 +55,13 @@ func usage() {
 ctl talks to the game whose socket $KATHARSIS_SOCK names; the game's vim
 runs it for :Submit, :Debug and the rest.
 
-flags:
+Custom rules presets are $XDG_CONFIG_HOME/katharsis/presets/*.toml
+(default ~/.config/katharsis/presets): each lists only what it changes
+from the standard rules, and is named by its name key or file name.
+
+`+fs.Name()+` flags:
 `)
-	flag.PrintDefaults()
+	fs.PrintDefaults()
 }
 
 func runPractice(args []string) error {
@@ -62,12 +71,12 @@ func runPractice(args []string) error {
 	split := fs.Int("split", 65, "editor width in percent")
 	tl := fs.Duration("tl", problem.DefaultTimeLimit, "time limit per test")
 	scale := fs.Float64("scale", 1, "multiply CPU time limits (below 1 is stricter than the judge)")
-	fs.Usage = usage
+	fs.Usage = func() { usage(fs) }
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
-		usage()
+		usage(fs)
 		return fmt.Errorf("expected one problem directory")
 	}
 	dir, err := filepath.Abs(fs.Arg(0))
@@ -154,14 +163,17 @@ func runPractice(args []string) error {
 // it. cleanup undoes all of it.
 func openEditor(opt *hud.Options, dir, source string, editor []string, split int) (pane string, srv *session.Server, cleanup func(), err error) {
 	var undo []func()
-	cleanup = func() {
+	undoAll := func() {
 		for i := len(undo) - 1; i >= 0; i-- {
 			undo[i]()
 		}
 	}
+	// The error returns below zero the named results before this runs, so
+	// neither it nor the closures in undo may read them: a nil cleanup or
+	// srv here panicked and hid the error.
 	defer func() {
 		if err != nil {
-			cleanup()
+			undoAll()
 		}
 	}()
 
@@ -170,10 +182,11 @@ func openEditor(opt *hud.Options, dir, source string, editor []string, split int
 	if err != nil {
 		return "", nil, nil, err
 	}
-	if srv, err = session.Listen(sock); err != nil {
+	s, err := session.Listen(sock)
+	if err != nil {
 		return "", nil, nil, err
 	}
-	undo = append(undo, func() { srv.Close() })
+	undo = append(undo, func() { s.Close() })
 
 	self, err := os.Executable()
 	if err != nil {
@@ -214,5 +227,5 @@ func openEditor(opt *hud.Options, dir, source string, editor []string, split int
 		}
 		return func() { session.KillPane(dbg) }, nil
 	}
-	return pane, srv, cleanup, nil
+	return pane, s, undoAll, nil
 }

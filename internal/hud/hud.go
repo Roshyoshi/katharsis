@@ -59,6 +59,13 @@ type Options struct {
 	// Clock replaces the elapsed-time clock in the header and border, e.g.
 	// with a boot's countdown; nil counts up from when the HUD started.
 	Clock func() string
+	// Embedded is for a host that draws its own chrome around the HUD, as
+	// a boot does with its HUD bar and door keys. The view then drops what
+	// would repeat or contradict the host: the header (problem name and
+	// clock), the key help (the host owns the keys, q included) and the
+	// practice hint to add tests. It is exactly as tall as the last
+	// WindowSizeMsg, so the host's footer keeps its row.
+	Embedded bool
 }
 
 type row struct {
@@ -371,12 +378,18 @@ func (m *Model) View() tea.View {
 	line := func(s string) { b.WriteString(ansi.Truncate(s, w, "…") + "\n") }
 	rule := func() { line(faint.Render(strings.Repeat("─", w))) }
 
-	name := "?"
-	if m.prob != nil {
-		name = m.prob.Name
+	// header and help are the rows the header and the key help take; an
+	// embedded HUD has neither.
+	header, help := 0, 0
+	if !m.opt.Embedded {
+		name := "?"
+		if m.prob != nil {
+			name = m.prob.Name
+		}
+		clock := m.clockText()
+		line(bold.Render(name) + strings.Repeat(" ", max(w-len(name)-len(clock)-2, 1)) + "⏱ " + clock)
+		header, help = 1, 1
 	}
-	clock := m.clockText()
-	line(bold.Render(name) + strings.Repeat(" ", max(w-len(name)-len(clock)-2, 1)) + "⏱ " + clock)
 	line(m.statusLine())
 	if m.closing {
 		line(yellow.Render("closing vim: answer it there · q again leaves it open"))
@@ -390,15 +403,13 @@ func (m *Model) View() tea.View {
 		for _, l := range wrap(m.loadErr.Error(), w) {
 			line(red.Render(l))
 		}
-		v := tea.NewView(b.String())
-		v.AltScreen = true
-		return v
+		return m.view(b.String())
 	}
 
 	if m.build != nil && !m.build.OK {
 		line(red.Render("CE") + faint.Render("  compile error"))
 		rule()
-		for _, l := range firstLines(m.build.Log, max(m.height-6, 4)) {
+		for _, l := range firstLines(m.build.Log, max(m.height-4-header-help, 4)) {
 			line(l)
 		}
 	} else {
@@ -408,7 +419,7 @@ func (m *Model) View() tea.View {
 		detail := m.detail(w)
 		room := len(m.rows)
 		if m.height > 0 {
-			room = max(m.height-strings.Count(b.String(), "\n")-len(detail)-2, 2)
+			room = max(m.height-strings.Count(b.String(), "\n")-len(detail)-1-help, 2)
 		}
 		lo, hi := 0, len(m.rows)
 		if len(m.rows) > room {
@@ -420,13 +431,20 @@ func (m *Model) View() tea.View {
 		if lo > 0 || hi < len(m.rows) {
 			line(faint.Render(fmt.Sprintf("  rows %d–%d of %d · j/k", lo+1, hi, len(m.rows))))
 		}
-		if len(m.rows) == 0 {
+		switch {
+		case len(m.rows) > 0:
+		case m.opt.Embedded:
+			line(faint.Render("no samples · :Submit judges the full tests"))
+		default:
 			line(faint.Render("no tests: add tests/1.in and tests/1.out"))
 		}
 		rule()
 		for _, l := range detail {
 			line(l)
 		}
+	}
+	if m.opt.Embedded {
+		return m.view(b.String())
 	}
 
 	// Pin the key help to the bottom row.
@@ -437,6 +455,27 @@ func (m *Model) View() tea.View {
 	b.WriteString(ansi.Truncate(faint.Render(":w rejudges · :Submit · :Debug n · r rerun · j/k · q quit"), w, "…"))
 
 	v := tea.NewView(b.String())
+	v.AltScreen = true
+	return v
+}
+
+// view wraps body, newline-terminated lines, as the HUD's view. Standalone
+// it is shown as is; embedded it is cut or padded to exactly the pane's
+// height, since a host that stacks it under its own lines and over its own
+// footer cannot absorb a taller one (a long sanitizer report would push the
+// host's top lines off screen).
+func (m *Model) view(body string) tea.View {
+	if m.opt.Embedded {
+		ls := strings.Split(strings.TrimSuffix(body, "\n"), "\n")
+		if m.height > 0 {
+			ls = ls[:min(len(ls), m.height)]
+			for len(ls) < m.height {
+				ls = append(ls, "")
+			}
+		}
+		body = strings.Join(ls, "\n")
+	}
+	v := tea.NewView(body)
 	v.AltScreen = true
 	return v
 }

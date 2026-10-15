@@ -498,6 +498,123 @@ func TestCrashElidesTraceWhenShort(t *testing.T) {
 	}
 }
 
+// engineCrash plays a real boot into a crash: the first door is cleared, so
+// there are bytes to dump, and the second crashes by cause. With cursed
+// every door is cursed, so one WA crashes with lives left.
+func engineCrash(t *testing.T, cause game.Outcome, cursed bool) Env {
+	t.Helper()
+	r := rules.Standard()
+	r.BlindChance, r.MysteryChance, r.CursedChance, r.Ascensions = 0, 0, 0, nil
+	if cursed {
+		r.CursedChance = 1
+	}
+	var pool []catalog.Problem
+	for _, topic := range catalog.Topics {
+		for rating := 800; rating <= 3000; rating += 50 {
+			pool = append(pool, catalog.Problem{
+				ID:    catalog.ID(fmt.Sprintf("t:%s:%d", topic, rating)),
+				Title: fmt.Sprintf("%s %d", topic, rating), Topic: topic, Rating: rating, Judgeable: true,
+			})
+		}
+	}
+	lookup := func(id catalog.ID) (catalog.Problem, bool) {
+		for _, p := range pool {
+			if p.ID == id {
+				return p, true
+			}
+		}
+		return catalog.Problem{}, false
+	}
+	meta := &game.Meta{}
+	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+	st, _, err := game.NewBoot(r, meta, pool, 0, 42, now)
+	if err != nil {
+		t.Fatalf("NewBoot: %v", err)
+	}
+	step := func(a game.Action) {
+		t.Helper()
+		now = now.Add(time.Minute)
+		if _, err := game.Step(st, meta, pool, a, now); err != nil {
+			t.Fatalf("Step(%T) in %s: %v", a, st.Phase, err)
+		}
+	}
+	open := func() {
+		t.Helper()
+		for st.PendingUpgrade {
+			step(game.PickUpgrade{Upgrade: st.UpgradeOffers[0]})
+		}
+		if st.Phase == game.PhaseRoute {
+			step(game.ChooseRoute{})
+		}
+		step(game.ChooseDoor{})
+	}
+	open()
+	step(game.SubmitResult{Verdict: "AC", Passed: 10, Total: 10})
+	open()
+	switch cause {
+	case game.OutOfLives:
+		for st.Phase == game.PhaseProblem {
+			step(game.SubmitResult{Verdict: "WA", Passed: 3, Total: 10})
+		}
+	case game.TimedOut:
+		now = now.Add(st.Current.Door.Timer)
+		step(game.Tick{})
+	case game.GaveUp:
+		step(game.GiveUp{})
+	}
+	if st.Phase != game.PhaseCrashed || st.Crash.Cause != cause || st.Crash.Lost == 0 {
+		t.Fatalf("boot did not crash by %s with bytes dumped: phase %s, crash %+v", cause, st.Phase, st.Crash)
+	}
+	return Env{State: st, Meta: *meta, Lookup: lookup, Now: now}
+}
+
+// The engine logs its own panic line, the core dump and the fatal submit,
+// and the screen prints each of those itself; the dmesg tail must not say
+// them twice. A real engine drives it, so a change to the engine's log
+// wording that defeats the filter fails here.
+func TestCrashTailSkipsEngineEchoes(t *testing.T) {
+	for _, tc := range []struct {
+		cause  game.Outcome
+		cursed bool
+		fatal  string // the fatal submit's line, "" if none
+	}{
+		{game.OutOfLives, false, ": WA 3/10, -1 life, 0 left"},
+		{game.OutOfLives, true, ": WA 3/10, -1 life, 2 left"},
+		{game.TimedOut, false, ""},
+		{game.GaveUp, false, ""},
+	} {
+		e := engineCrash(t, tc.cause, tc.cursed)
+		log := ""
+		for _, l := range e.State.Log {
+			log += l.Text + "\n"
+		}
+		v := ansi.Strip(NewCrash(e).View(140, 40))
+		for _, s := range []string{"Kernel panic - not syncing:", "core dumped: "} {
+			if n := strings.Count(log, s); n != 1 {
+				t.Errorf("%s: engine logged %q %d times, want 1 (did its wording change?)\n%s", tc.cause, s, n, log)
+			}
+			if n := strings.Count(v, s); n != 1 {
+				t.Errorf("%s: crash screen shows %q %d times, want 1:\n%s", tc.cause, s, n, v)
+			}
+		}
+		if tc.fatal != "" {
+			if !strings.Contains(log, tc.fatal) {
+				t.Errorf("%s: engine log lacks the fatal submit %q:\n%s", tc.cause, tc.fatal, log)
+			}
+			if strings.Contains(v, tc.fatal) {
+				t.Errorf("%s: crash screen repeats the fatal submit:\n%s", tc.cause, v)
+			}
+		}
+		// The rest of the tail stays: the regression the crash scheduled.
+		if !strings.Contains(v, "regression: ") {
+			t.Errorf("%s: crash screen dropped the regression line:\n%s", tc.cause, v)
+		}
+		if want := map[bool]string{false: "Out of lives: Killed", true: "Cursed door: Killed"}[tc.cursed]; tc.cause == game.OutOfLives && !strings.Contains(v, want) {
+			t.Errorf("%s cursed=%v: want precursor %q:\n%s", tc.cause, tc.cursed, want, v)
+		}
+	}
+}
+
 func TestCrashReveal(t *testing.T) {
 	c := NewCrash(env(fixture.Crash(game.TimedOut)))
 	full := c.View(100, 40)

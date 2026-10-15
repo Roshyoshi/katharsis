@@ -16,8 +16,10 @@ nix develop -c go run ./cmd/katharsis        # the game
 
 The game runs inside tmux. Started outside tmux, it opens a tmux session of
 its own, and starting it again attaches to that session. The first start
-downloads the USACO Guide snapshot (about 150 MB) and builds the problem
-index. That takes a minute; later starts take seconds.
+downloads the USACO Guide snapshot (about 150 MB) and the Codeforces index
+(about 17 MB) and builds the problem indexes. That takes a minute; later
+starts take seconds. Without network on that first start, the game plays
+USACO only and tries Codeforces again next time.
 
 | Flag | Default | |
 |---|---|---|
@@ -84,3 +86,9 @@ struct DSU { ... };
 
 USACO problems, with test data and analyses from usaco.org. The problem
 index and learn mode use the USACO Guide (CC BY-NC-SA 4.0).
+
+Codeforces problems, with statements, editorials and tests, come from the
+[open-r1/codeforces](https://huggingface.co/datasets/open-r1/codeforces)
+dataset (CC BY 4.0); statements and editorials are by their Codeforces
+authors. Each statement and editorial carries that credit
+(`codeforces.Attribution`).

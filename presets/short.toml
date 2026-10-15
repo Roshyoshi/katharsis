@@ -1,0 +1,34 @@
+# short: a boot of about an hour. Four doors instead of five, on shorter
+# timers: the door timers add up to 65 minutes (standard's to 140) before
+# upgrades, daemons and fitting to your solve times stretch or shrink them.
+#
+# Try it:   katharsis --preset presets/short.toml
+# Keep it:  cp presets/short.toml ~/.config/katharsis/presets/
+#           (or $XDG_CONFIG_HOME/katharsis/presets/); GRUB then lists it
+#           under "katharsis (custom preset…)".
+#
+# A preset lists only what it changes; every other setting is the standard
+# preset's (internal/rules/rules.go, Standard). A [[biome]] list replaces
+# standard's biomes as a whole. An unknown key is an error, not ignored.
+
+name = "short"
+
+[[biome]]
+kind = "fixed"
+name = "Userland"
+rooms = 2
+target_clear = 0.9
+timer = "10m"
+
+[[biome]]
+kind = "choice"
+rooms = 1
+choices = 2
+target_clear = 0.7
+timer = "20m"
+
+[[biome]]
+kind = "boss"
+rooms = 1
+target_clear = 0.5
+timer = "25m"
