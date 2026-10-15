@@ -146,8 +146,10 @@ type Model struct {
 
 	sub      submission
 	dbg      debugger
-	closing  bool // asked the editor to quit; waiting for it
-	leftOpen bool // quit anyway, leaving the editor open on purpose
+	debugs   []*debugRun // :Debug runs not yet reported
+	closing  bool        // asked the editor to quit; waiting for it
+	leftOpen bool        // quit anyway, leaving the editor open on purpose
+	cleaned  bool        // Cleanup has run
 
 	border    string       // last text given to Options.Border
 	borderSeq uint64       // texts given so far
@@ -397,18 +399,20 @@ func (m *Model) Adopt(prev *Model) {
 // have it closed.
 func (m *Model) EditorLeftOpen() bool { return m.leftOpen }
 
-// Cleanup stops the judge passes, waits for them to end, and closes the
-// debugger, removing its files. Call it once the HUD is done with: its
-// program exited, or its door closed.
+// Cleanup stops the judge passes and :Debug runs, waits for them to end,
+// and closes the debugger, removing its files. Call it once the HUD is
+// done with: its program exited, or its door closed.
 //
 // The wait is what kills them. A pass's compiler or solution runs in a
 // process group of its own, out of reach of tmux's SIGHUP, and the kill a
 // cancel sends goes from a goroutine of this process: a game that exited
 // right after the cancel left a compile running to its end.
 func (m *Model) Cleanup() {
+	m.cleaned = true
 	m.stop()
 	wait, cancel := context.WithTimeout(context.Background(), cleanupWait)
 	defer cancel()
+	m.stopDebugs(wait)
 	for _, done := range append(m.passes, m.sub.done) {
 		if done != nil {
 			select {

@@ -46,6 +46,45 @@ type debugger struct {
 	dir   string
 }
 
+// shut closes the pane and removes its directory.
+func (d debugger) shut() {
+	if d.close != nil {
+		d.close()
+	}
+	if d.dir != "" {
+		os.RemoveAll(d.dir)
+	}
+}
+
+// debugRun is a :Debug build and launch in flight, on a goroutine of its
+// own. What it opens is taken once: by the HUD when the run reports
+// (debugReadyMsg), or by Cleanup when the door closes first, which shuts
+// it. A pane that opened as its door closed used to stay up for good: its
+// report reached no HUD.
+type debugRun struct {
+	req    session.Request
+	test   string
+	cancel context.CancelFunc
+	ready  chan struct{}    // closed once opened holds the outcome
+	opened chan debugOpened // buffered: the outcome, until taken
+}
+
+type debugOpened struct {
+	debugger
+	err error
+}
+
+// take returns what the run opened; ok is false while it runs, and once
+// someone has taken it.
+func (d *debugRun) take() (o debugOpened, ok bool) {
+	select {
+	case o = <-d.opened:
+		return o, true
+	default:
+		return o, false
+	}
+}
+
 // DebugTarget is what Options.Debug gets: a -O0 -g build and how to feed it
 // a test.
 type DebugTarget struct {
@@ -56,12 +95,8 @@ type DebugTarget struct {
 }
 
 type debugReadyMsg struct {
-	hud   *Model // the HUD that asked; a closed door's result must not attach
-	req   session.Request
-	test  string
-	dir   string
-	close func()
-	err   error
+	hud *Model // the HUD that asked; a closed door's result must not attach
+	run *debugRun
 }
 
 func (m *Model) updateCommand(msg tea.Msg) (tea.Cmd, bool) {
@@ -69,17 +104,6 @@ func (m *Model) updateCommand(msg tea.Msg) (tea.Cmd, bool) {
 	case session.Request:
 		return m.command(msg), true
 	case debugReadyMsg:
-		if msg.hud != m {
-			// Its door closed while lldb started: tear it down, not adopt it.
-			if msg.close != nil {
-				msg.close()
-			}
-			if msg.dir != "" {
-				os.RemoveAll(msg.dir)
-			}
-			msg.req.Answer(fail("debug: the door closed"))
-			return nil, true
-		}
 		m.debugReady(msg)
 		return nil, true
 	}
@@ -324,18 +348,27 @@ func (m *Model) startDebug(req session.Request) tea.Cmd {
 		req.Answer(fail(err.Error()))
 		return nil
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	d := &debugRun{req: req, test: t.Name, cancel: cancel,
+		ready: make(chan struct{}), opened: make(chan debugOpened, 1)}
+	m.debugs = append(m.debugs, d)
 	src, open, hud := m.prob.Source, m.opt.Debug, m
+	go func() {
+		defer close(d.ready)
+		dir, closePane, err := openDebugger(ctx, src, t, open)
+		d.opened <- debugOpened{debugger{close: closePane, dir: dir}, err}
+	}()
 	return func() tea.Msg {
-		dir, closePane, err := openDebugger(src, t, open)
-		return debugReadyMsg{hud: hud, req: req, test: t.Name, dir: dir, close: closePane, err: err}
+		<-d.ready
+		return debugReadyMsg{hud: hud, run: d}
 	}
 }
 
 // openDebugger builds src at -O0 -g with the compiler :Submit judges with,
 // gives it a working directory set up for test t, and opens the debugger
 // on it.
-func openDebugger(src string, t problem.Test, open func(DebugTarget) (func(), error)) (dir string, closePane func(), err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+func openDebugger(ctx context.Context, src string, t problem.Test, open func(DebugTarget) (func(), error)) (dir string, closePane func(), err error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	b, err := judge.Compile(ctx, src, judge.Profiles(ctx).Debug)
 	if err == nil && !b.OK {
@@ -405,23 +438,53 @@ func testNames(ts []problem.Test) string {
 	return ts[0].Name + ".." + ts[len(ts)-1].Name
 }
 
+// debugReady attaches what a :Debug run opened, unless its door closed:
+// the run is another HUD's, or this one's Cleanup has run.
 func (m *Model) debugReady(msg debugReadyMsg) {
-	if msg.err != nil {
-		msg.req.Answer(fail("debug #" + msg.test + ": " + msg.err.Error()))
-		return
+	d := msg.run
+	m.debugs = slices.DeleteFunc(m.debugs, func(e *debugRun) bool { return e == d })
+	o, ok := d.take()
+	switch {
+	case msg.hud != m || m.cleaned:
+		o.shut() // if Cleanup has not
+		d.req.Answer(fail("debug: the door closed"))
+	case !ok:
+		d.req.Answer(fail("debug: the door closed")) // Cleanup shut it
+	case o.err != nil:
+		d.req.Answer(fail("debug #" + d.test + ": " + o.err.Error()))
+	default:
+		m.closeDebugger() // one debugger at a time
+		m.dbg = o.debugger
+		d.req.Answer(session.Reply{OK: true, Text: "lldb on #" + d.test + ", stopped at main: type run"})
 	}
-	m.closeDebugger() // one debugger at a time
-	m.dbg = debugger{close: msg.close, dir: msg.dir}
-	msg.req.Answer(session.Reply{OK: true, Text: "lldb on #" + msg.test + ", stopped at main: type run"})
+}
+
+// stopDebugs cancels the :Debug runs in flight and shuts what they opened,
+// waiting for each until wait is done; one still running then is shut
+// once it ends.
+func (m *Model) stopDebugs(wait context.Context) {
+	for _, d := range m.debugs {
+		d.cancel()
+	}
+	for _, d := range m.debugs {
+		d.req.Answer(fail("debug: the door closed"))
+		select {
+		case <-d.ready:
+			o, _ := d.take()
+			o.shut()
+		case <-wait.Done():
+			go func() {
+				<-d.ready
+				o, _ := d.take()
+				o.shut()
+			}()
+		}
+	}
+	m.debugs = nil
 }
 
 func (m *Model) closeDebugger() {
-	if m.dbg.close != nil {
-		m.dbg.close()
-	}
-	if m.dbg.dir != "" {
-		os.RemoveAll(m.dbg.dir)
-	}
+	m.dbg.shut()
 	m.dbg = debugger{}
 }
 

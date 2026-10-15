@@ -364,8 +364,8 @@ func TestDebugOpensTarget(t *testing.T) {
 			}
 
 			// A second :Debug replaces the first debugger.
-			c, ch = ask(m, session.CmdDebug, "1")
 			first := got.Dir
+			c, ch = ask(m, session.CmdDebug, "1")
 			pump(t, m, c, answered(ch))
 			<-ch
 			if _, err := os.Stat(first); closed != 1 || !os.IsNotExist(err) {
@@ -376,6 +376,48 @@ func TestDebugOpensTarget(t *testing.T) {
 				t.Errorf("after Cleanup: closed=%d, dir stat %v", closed, err)
 			}
 		})
+	}
+}
+
+// A door that closes while :Debug is building or opening lldb takes the
+// pane with it. The pane used to open after Cleanup, and the message that
+// would have attached it reached no HUD (the host had none open), so lldb
+// stayed on screen for the rest of the game.
+func TestCleanupClosesALateDebugger(t *testing.T) {
+	needCompiler(t)
+	m := fixture(t, 1)
+	writeSol(t, m, "int main() {}\n")
+	opening, release := make(chan struct{}), make(chan struct{})
+	closed := 0
+	m.opt.Debug = func(d DebugTarget) (func(), error) {
+		close(opening)
+		<-release
+		return func() { closed++ }, nil
+	}
+	c, ch := ask(m, session.CmdDebug, "1")
+	msgs := make(chan tea.Msg, 1)
+	go func() { msgs <- c() }()
+	select {
+	case <-opening:
+	case <-time.After(30 * time.Second):
+		t.Fatal("the debugger never started to open")
+	}
+	close(release)
+	m.Cleanup()
+	if closed != 1 {
+		t.Errorf("the pane that opened as the door closed was closed %d times, want once", closed)
+	}
+	select {
+	case msg := <-msgs:
+		m.Update(msg) // a late report attaches nothing
+	case <-time.After(30 * time.Second):
+		t.Fatal(":Debug never reported")
+	}
+	if closed != 1 || m.dbg.close != nil {
+		t.Errorf("after the late report: closed %d times, attached %v", closed, m.dbg.close != nil)
+	}
+	if rep, ok := replied(ch); !ok || rep.OK {
+		t.Errorf(":Debug answered %v with %+v, want a refusal", ok, rep)
 	}
 }
 
