@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/game"
-	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/meta"
@@ -79,19 +78,17 @@ func TestEndReadsTheBeat(t *testing.T) {
 	}
 }
 
-// The end of a boot offers the presets the game has, with the player's own
-// ETAs, apt's goal at their pace, and past the budget one line (RT3, RT7,
-// RT12).
+// The end of a boot offers the built-in short and patch presets (RT7) with
+// the player's own ETAs, apt's goal at their pace, and past the budget one
+// line (RT3, RT12).
 func TestEndInfo(t *testing.T) {
 	h := newHarness(t)
-	short := rules.Standard()
-	short.Name = "short"
-	h.m.d.Presets["short"] = short
 	h.m.d.Budget = time.Minute
 	h.crashWithDump()
 	e := h.m.endInfo()
-	if len(e.Reboots) != 1 || e.Reboots[0] != (bootui.Reboot{Key: "s", Preset: "short"}) {
-		t.Errorf("reboots %+v, want short with no ETA yet", e.Reboots)
+	want := []bootui.Reboot{{Key: "s", Preset: "short"}, {Key: "p", Preset: "patch"}}
+	if !slices.Equal(e.Reboots, want) {
+		t.Errorf("reboots %+v, want short and patch with no ETA yet", e.Reboots)
 	}
 	if e.ETA <= 0 {
 		t.Errorf("ETA %v, want this boot's uptime as the median", e.ETA)

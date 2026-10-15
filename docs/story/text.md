@@ -250,7 +250,7 @@ the Mock Turtle's school · Reeling and Writhing, to begin with
 ```
 
 ### grub.subtitle.custom
-where: `katharsis (custom preset…)` (`grub.go:116`) · when: every · pick: fixed · uses: G25 (paraphrase)
+where: `katharsis (other presets…)`: short, patch and custom presets (`grub.go:198`) · when: every · pick: fixed · uses: G25 (paraphrase)
 ```text
 a preset means just what you choose it to mean
 ```

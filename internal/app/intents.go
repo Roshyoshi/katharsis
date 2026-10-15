@@ -12,6 +12,7 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/meta"
@@ -84,13 +85,19 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 }
 
 func (m *Model) grub() screens.Screen {
-	var presets []string
+	// The built-ins past standard first, in their order (short, patch),
+	// then the player's own by name.
+	var presets, custom []string
+	for _, r := range rules.BuiltIns()[1:] {
+		presets = append(presets, r.Name)
+	}
 	for name := range m.d.Presets {
-		if name != "standard" {
-			presets = append(presets, name)
+		if name != "standard" && !slices.Contains(presets, name) {
+			custom = append(custom, name)
 		}
 	}
-	slices.Sort(presets)
+	slices.Sort(custom)
+	presets = append(presets, custom...)
 	std, now := m.aptRules(), m.d.Now()
 	return meta.NewGrub(m.grubEnd(meta.GrubConfig{ // the nightly's best, the budget (debrief.go)
 		Meta:     m.meta,

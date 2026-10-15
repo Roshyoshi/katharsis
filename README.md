@@ -35,7 +35,7 @@ start.
 | `--music-volume`, `--sfx-volume` | `audio.toml` | 0..1, over the settings file |
 | `--motion` | `full` | `reduced` draws every story scene at once; any key skips a scene, esc leaves the story |
 | `--fps` | `30` | frame-rate cap for the story animations |
-| `--preset` | | also load a rules preset file (repeatable); presets in `~/.config/katharsis/presets` load automatically. `presets/short.toml` is a ~1 h boot |
+| `--preset` | | also load a rules preset file (repeatable); presets in `~/.config/katharsis/presets` load automatically. `short` (4 doors) and `patch` (3 doors) are built in beside `standard` |
 | `--session-budget` | `settings.toml`, else `3h` | past this much play in a day, the end of a boot says so in one line; `0` is off |
 
 `katharsis practice <dir>` is the training room: any folder with
@@ -105,7 +105,7 @@ In a tmux session the game starts, `g++` and `clang++` on PATH are these.
 | `~/cp/runs/boot-N/<problem>/` | your solutions; the samples are in `tests/` |
 | `~/.local/share/katharsis/katharsis.db` | saves: boots, attempts, rating, bank |
 | `~/Library/Caches/katharsis/` | problems, tests, editorials, builds |
-| `~/.config/katharsis/presets/*.toml` | custom rules (each overrides the standard rules) |
+| `~/.config/katharsis/presets/*.toml` | custom rules: each lists only what it changes from the standard rules ([rules.go](internal/rules/rules.go)), a `[[biome]]` list replaces them all, and an unknown key is an error; `standard`, `short` and `patch` are built-in names |
 | `~/.config/katharsis/audio.toml` | volumes, fades, ducking, the timer warning ([settings](internal/audio/settings.go)) |
 | `~/.config/katharsis/settings.toml` | `session_budget = "3h"` (see `--session-budget`) |
 | `~/.config/katharsis/music/<pool or topic>/` | your own mp3, ogg, wav or VGS mml files for that pool or biome |

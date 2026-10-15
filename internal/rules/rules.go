@@ -686,13 +686,40 @@ func Standard() Rules {
 	}
 }
 
-// Short is the built-in short preset (retention RT7): a boot of about an
-// hour, four doors on shorter timers. presets/short.toml is the same as a
-// file to copy and edit.
+// BuiltIns are the presets the game ships, in the order GRUB lists them:
+// standard, then the two shorter boots offered where "one more" is
+// decided (retention RT7). Their names are taken: a preset file cannot
+// reuse one, so a name in the boots table always means these rules.
+func BuiltIns() []Rules { return []Rules{Standard(), Short(), Patch()} }
+
+// Short is the built-in short preset (retention RT7): four doors on
+// shorter timers, and the shape boot #1 plays (FirstBiomes).
 func Short() Rules {
 	r := Standard()
 	r.Name = "short"
 	r.Biomes = shortBiomes()
+	return r
+}
+
+// Patch is the built-in patch preset (retention RT7), the cheapest "one
+// more": one Userland door, one mid door, and a mini-boss aimed at 0.6
+// (standard's boss at 0.5), on short's timers; every other number is
+// standard's. Its doors are 3 of standard's 5 and short's 4; in the
+// simulator (synthetic pool, prestige 0, the 1000- and 1600-rated model
+// players, 2026-10-15) the mean uptimes were
+//
+//	standard 2h31 / 2h15 · short 1h26 / 1h21 · patch 1h04 / 1h00
+//
+// The timers fit to the player's solve times, so the end screens' ETAs
+// are the player's own medians (GR3), not these.
+func Patch() Rules {
+	r := Standard()
+	r.Name = "patch"
+	r.Biomes = []Biome{
+		{Kind: Fixed, Name: "Userland", Rooms: 1, TargetClear: 0.9, Timer: Duration{10 * time.Minute}, EaseClear: 0.95, Plain: 1, TimeoutLife: true},
+		{Kind: Choice, Rooms: 1, Choices: 2, TargetClear: 0.7, MinClear: 0.6, Timer: Duration{20 * time.Minute}, EaseClear: 0.78},
+		{Kind: Boss, Rooms: 1, TargetClear: 0.6, Timer: Duration{20 * time.Minute}, EaseClear: 0.65},
+	}
 	return r
 }
 

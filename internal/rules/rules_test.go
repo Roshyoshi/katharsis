@@ -265,15 +265,49 @@ func TestPackageLadder(t *testing.T) {
 	}
 }
 
-// presets/short.toml is the built-in Short() as a file to copy: the same
-// biomes, and Standard plays them as boot #1 (FirstBiomes, RT11).
-func TestShortPreset(t *testing.T) {
+// The built-in presets (RT7) are standard, short and patch, in that order,
+// each valid and differing from standard only in name and biomes. Short
+// is boot #1's shape (FirstBiomes, RT11); patch is RT7's: one Userland
+// door whose timeout costs a life, one mid door, a mini-boss at 0.6.
+func TestBuiltIns(t *testing.T) {
 	t.Parallel()
-	r, err := rules.Load(filepath.Join("..", "..", "presets", "short.toml"))
-	if err != nil {
-		t.Fatal(err)
+	var names []string
+	for _, r := range rules.BuiltIns() {
+		names = append(names, r.Name)
+		if err := r.Validate(); err != nil {
+			t.Error(err)
+		}
+		std := rules.Standard()
+		std.Name, std.Biomes = r.Name, r.Biomes
+		if !reflect.DeepEqual(r, std) {
+			t.Errorf("%s changes more than its name and biomes", r.Name)
+		}
 	}
-	if !reflect.DeepEqual(r.Biomes, rules.Short().Biomes) || !reflect.DeepEqual(rules.Standard().FirstBiomes, rules.Short().Biomes) {
-		t.Errorf("short.toml biomes %+v, Short %+v, Standard's first %+v", r.Biomes, rules.Short().Biomes, rules.Standard().FirstBiomes)
+	if want := []string{"standard", "short", "patch"}; !slices.Equal(names, want) {
+		t.Errorf("built-ins %v, want %v", names, want)
+	}
+	if !reflect.DeepEqual(rules.Standard().FirstBiomes, rules.Short().Biomes) {
+		t.Errorf("Short %+v, Standard's first %+v", rules.Short().Biomes, rules.Standard().FirstBiomes)
+	}
+	timers := func(r rules.Rules) (sum time.Duration, doors int) {
+		for _, b := range r.Biomes {
+			sum += b.Timer.Duration * time.Duration(b.Rooms)
+			doors += b.Rooms
+		}
+		return sum, doors
+	}
+	if sum, doors := timers(rules.Short()); sum != 65*time.Minute || doors != 4 {
+		t.Errorf("short: %d doors, %v of timers", doors, sum)
+	}
+	p := rules.Patch()
+	if len(p.Biomes) != 3 {
+		t.Fatalf("patch biomes %+v", p.Biomes)
+	}
+	sum, doors := timers(p)
+	kinds := []rules.BiomeKind{p.Biomes[0].Kind, p.Biomes[1].Kind, p.Biomes[2].Kind}
+	if doors != 3 || sum != 50*time.Minute ||
+		!slices.Equal(kinds, []rules.BiomeKind{rules.Fixed, rules.Choice, rules.Boss}) ||
+		!p.Biomes[0].TimeoutLife || p.Biomes[2].TargetClear != 0.6 {
+		t.Errorf("patch: %d doors, %v of timers, biomes %+v", doors, sum, p.Biomes)
 	}
 }

@@ -1,7 +1,7 @@
 //go:build qa
 
-// Chaos fuzz of the engine under odd but loadable presets: every preset in
-// qa/chaos/presets (and the repo's presets/) plays random boots to the end,
+// Chaos fuzz of the engine under odd but loadable presets: every built-in
+// preset and every one in qa/chaos/presets plays random boots to the end,
 // checking that nothing panics and that bytes, lives and the bank stay
 // sane. Run from the repo root:
 //
@@ -40,11 +40,7 @@ func pool() []catalog.Problem {
 }
 
 func presetFiles(t *testing.T) []string {
-	var fs []string
-	for _, g := range []string{"presets/*.toml", "../../presets/*.toml"} {
-		m, _ := filepath.Glob(g)
-		fs = append(fs, m...)
-	}
+	fs, _ := filepath.Glob("presets/*.toml")
 	if len(fs) == 0 {
 		t.Fatal("no presets found")
 	}
@@ -53,16 +49,27 @@ func presetFiles(t *testing.T) []string {
 
 func TestPresetFuzz(t *testing.T) {
 	ps := pool()
+	type preset struct {
+		name  string
+		rules rules.Rules
+	}
+	var presets []preset
+	for _, r := range rules.BuiltIns() {
+		presets = append(presets, preset{r.Name, r})
+	}
 	for _, f := range presetFiles(t) {
 		r, err := rules.Load(f)
 		if err != nil {
 			t.Logf("%s: does not load (fine): %v", f, err)
 			continue
 		}
-		t.Run(filepath.Base(f), func(t *testing.T) {
+		presets = append(presets, preset{filepath.Base(f), r})
+	}
+	for _, p := range presets {
+		t.Run(p.name, func(t *testing.T) {
 			meta := game.Meta{} // one player across the boots, as the store keeps it
 			for seed := uint64(1); seed <= 200; seed++ {
-				play(t, r, ps, seed, &meta)
+				play(t, p.rules, ps, seed, &meta)
 			}
 			t.Logf("after 200 boots: bank %d, lifetime %d, boots %d", meta.Bank, meta.LifetimeBytes, meta.Boots)
 		})

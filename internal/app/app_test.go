@@ -536,6 +536,26 @@ func TestGrubComeback(t *testing.T) {
 	}
 }
 
+// The game ships short and patch beside standard (RT7): New adds them
+// where Deps has none, and GRUB lists them first among the other presets,
+// before the player's own.
+func TestBuiltInPresets(t *testing.T) {
+	h := newHarness(t)
+	if !reflect.DeepEqual(h.m.d.Presets["short"], rules.Short()) || !reflect.DeepEqual(h.m.d.Presets["patch"], rules.Patch()) {
+		t.Fatal("New did not add the built-in short and patch")
+	}
+	g := h.m.grub()
+	for range 3 { // past prestige 0, the nightly and RTFM
+		g, _ = g.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	}
+	g, _ = g.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	v := ansi.Strip(g.View(100, 30))
+	short, patch, own := strings.Index(v, "preset short"), strings.Index(v, "preset patch"), strings.Index(v, "preset eased")
+	if short < 0 || patch < short || own < patch {
+		t.Errorf("other presets, want short, patch, then eased:\n%s", v)
+	}
+}
+
 // A second app on the same store resumes the boot and reopens the door.
 func TestResumeMidDoor(t *testing.T) {
 	h := newHarness(t)

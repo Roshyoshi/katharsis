@@ -65,7 +65,8 @@ type Judge func(ctx context.Context, d Door) (verdict string, passed, total int,
 type Deps struct {
 	Store   *store.Store
 	Catalog catalog.Catalog
-	// Presets are rule presets by name; "standard" is added if missing.
+	// Presets are rule presets by name; the built-ins (rules.BuiltIns:
+	// standard, short, patch) are added where missing.
 	Presets map[string]rules.Rules
 	Runner  Runner
 	Judge   Judge
@@ -176,8 +177,10 @@ func New(d Deps) (*Model, error) {
 	if d.Presets == nil {
 		d.Presets = map[string]rules.Rules{}
 	}
-	if _, ok := d.Presets["standard"]; !ok {
-		d.Presets["standard"] = rules.Standard()
+	for _, r := range rules.BuiltIns() {
+		if _, ok := d.Presets[r.Name]; !ok {
+			d.Presets[r.Name] = r
+		}
 	}
 	meta, err := d.Store.LoadMeta()
 	if err != nil {

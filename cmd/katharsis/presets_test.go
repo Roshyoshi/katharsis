@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"katharsis/internal/rules"
 )
@@ -22,31 +21,9 @@ func writePreset(t *testing.T, dir, name, body string) string {
 	return path
 }
 
-// The repo's example preset loads as itself, changes only the biomes, and
-// is the hour-long boot its comment says.
-func TestShortPreset(t *testing.T) {
-	ps := newPresets()
-	if err := ps.add(filepath.Join("..", "..", "presets", "short.toml")); err != nil {
-		t.Fatal(err)
-	}
-	r, ok := ps.byName["short"]
-	if !ok {
-		t.Fatalf("presets %v, want short", slices.Sorted(maps.Keys(ps.byName)))
-	}
-	var sum time.Duration
-	for _, b := range r.Biomes {
-		sum += b.Timer.Duration * time.Duration(b.Rooms)
-	}
-	if sum != 65*time.Minute {
-		t.Errorf("short's timers add up to %v, its comment says 65m", sum)
-	}
-	std := rules.Standard()
-	std.Name, std.Biomes = r.Name, r.Biomes
-	if !reflect.DeepEqual(r, std) {
-		t.Errorf("short changes more than name and biomes:\n got %+v\nwant %+v", r, std)
-	}
-}
-
+// Every file loads on top of standard, named by its name key or file; the
+// built-ins' names (standard, short, patch) and a name already loaded are
+// refused, each error naming its file.
 func TestLoadDir(t *testing.T) {
 	dir := t.TempDir()
 	writePreset(t, dir, "fast.toml", "lives = 2\n")
@@ -55,6 +32,8 @@ func TestLoadDir(t *testing.T) {
 	writePreset(t, dir, "typo.toml", "lifes = 2\n")
 	writePreset(t, dir, "invalid.toml", "lives = 0\n")
 	writePreset(t, dir, "standard.toml", "lives = 9\n")
+	writePreset(t, dir, "short.toml", "lives = 9\n")
+	writePreset(t, dir, "mine.toml", "name = \"patch\"\nlives = 9\n")
 	writePreset(t, dir, "z.toml", "name = \"fast\"\n")
 	writePreset(t, dir, "notes.txt", "not a preset")
 
@@ -76,6 +55,8 @@ func TestLoadDir(t *testing.T) {
 		"typo.toml":     "unknown keys lifes",
 		"invalid.toml":  "need lives",
 		"standard.toml": "built-in",
+		"short.toml":    "built-in",
+		"mine.toml":     `"patch" is a built-in`,
 		"z.toml":        "already taken by " + filepath.Join(dir, "fast.toml"),
 	}
 	if len(errs) != len(want) {

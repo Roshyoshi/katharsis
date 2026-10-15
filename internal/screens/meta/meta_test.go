@@ -192,7 +192,7 @@ func TestFits(t *testing.T) {
 
 func TestGrubEntries(t *testing.T) {
 	// Entries top to bottom: prestige 2, the core dump under it (RT4),
-	// prestige 1, 0, nightly build, RTFM, custom preset…, regressions due,
+	// prestige 1, 0, nightly build, RTFM, other presets…, regressions due,
 	// apt, git log, top, poweroff.
 	down := func(n int) []string {
 		ks := make([]string, n)
@@ -275,7 +275,7 @@ func TestGrubHidesWhatIsNotThere(t *testing.T) {
 	c.Meta = game.Meta{Rating: 1000}
 	c.Presets = nil
 	got := plain(meta.NewGrub(c).View(80, 24))
-	for _, absent := range []string{"custom preset", "core dump", "regressions", "prestige 1"} {
+	for _, absent := range []string{"other presets", "core dump", "regressions", "prestige 1"} {
 		if strings.Contains(got, absent) {
 			t.Errorf("fresh player's menu shows %q:\n%s", absent, got)
 		}

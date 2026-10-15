@@ -23,7 +23,8 @@ import (
 // GrubConfig is what the start screen shows.
 type GrubConfig struct {
 	Meta game.Meta
-	// Presets are custom rules preset names; "standard" is always offered.
+	// Presets are the preset names past "standard", which is always
+	// offered, in the order listed: the built-ins short and patch first.
 	Presets []string
 	// Lookup resolves problem titles for the core dump and regressions; nil
 	// shows catalog IDs.
@@ -195,7 +196,7 @@ func NewGrub(c GrubConfig) *Menu {
 		for _, name := range m.presets[1:] {
 			sub.entries = append(sub.entries, m.bootEntry(m.maxP, name))
 		}
-		es = append(es, entry{label: "katharsis (custom preset…)", sub: sub, note: c.Story("grub.subtitle.custom", 0)})
+		es = append(es, entry{label: "katharsis (other presets…)", sub: sub, note: c.Story("grub.subtitle.custom", 0)})
 	}
 	if regs := dueRegressions(c.Meta.Regressions, now); len(regs) > 0 {
 		// At most three on screen, and no count past them (retention

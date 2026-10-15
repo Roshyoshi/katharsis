@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/x/term"
@@ -51,8 +52,8 @@ func (p *presets) loadDir(dir string) (errs []error) {
 
 // add loads one preset file on top of rules.Standard(). It is named by
 // its `name` key, else its file name without .toml; the name is what GRUB
-// lists and what the boot records, so "standard" stays the built-in's and
-// two files cannot share one. A key the rules do not have is an error, not
+// lists and what the boot records, so the built-ins' names (standard,
+// short, patch) stay theirs and two files cannot share one. A key the rules do not have is an error, not
 // a silent no-op: a misspelt override would play as standard while the
 // player believes it changed.
 func (p *presets) add(path string) error {
@@ -69,8 +70,8 @@ func (p *presets) add(path string) error {
 	switch prev, taken := p.from[name]; {
 	case strings.TrimSpace(name) == "":
 		return fmt.Errorf("%s: empty preset name", path)
-	case name == "standard":
-		return fmt.Errorf("%s: %q is the built-in preset; name this one something else", path, name)
+	case slices.ContainsFunc(rules.BuiltIns(), func(b rules.Rules) bool { return b.Name == name }):
+		return fmt.Errorf("%s: %q is a built-in preset; name this one something else", path, name)
 	case taken:
 		return fmt.Errorf("%s: preset name %q is already taken by %s", path, name, prev)
 	}

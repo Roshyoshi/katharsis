@@ -146,8 +146,6 @@
                 ./go.sum
                 ./cmd
                 ./internal
-                # The example preset, which the command's tests load.
-                (lib.fileset.maybeMissing ./presets)
               ];
             };
             # NOTE: changes whenever go.mod, go.sum or the module's imports do;
