@@ -1595,3 +1595,44 @@ func TestReaderZoomsANarrowPane(t *testing.T) {
 		}
 	})
 }
+
+// emitted runs cmd and the commands it batches or sequences, in order, and
+// returns their messages. tea.Sequence's message type is unexported; like
+// tea.BatchMsg, it is a slice of commands.
+func emitted(cmd tea.Cmd) []tea.Msg {
+	if cmd == nil {
+		return nil
+	}
+	msg := cmd()
+	v := reflect.ValueOf(msg)
+	if v.Kind() != reflect.Slice || v.Type().Elem() != reflect.TypeFor[tea.Cmd]() {
+		return []tea.Msg{msg}
+	}
+	var out []tea.Msg
+	for i := range v.Len() {
+		out = append(out, emitted(v.Index(i).Interface().(tea.Cmd))...)
+	}
+	return out
+}
+
+// A resize resets the terminal's scroll region, then repaints in full: a
+// frame drawn for the old height left tmux scrolling only its rows, and a
+// crash's reveal, as the editor closed and the game's pane grew, carried
+// the boot-end line up into the panic until the next resize.
+func TestResizeResetsScrollRegion(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		_, cmd := h.m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+		msgs := emitted(cmd)
+		reset := slices.IndexFunc(msgs, func(m tea.Msg) bool {
+			r, ok := m.(tea.RawMsg)
+			return ok && r.Msg == "\x1b[r"
+		})
+		clear := slices.IndexFunc(msgs, func(m tea.Msg) bool {
+			return reflect.TypeOf(m) == reflect.TypeOf(tea.ClearScreen())
+		})
+		if reset < 0 || clear < reset {
+			t.Fatalf("a resize sends %#v, want the scroll region reset, then a clear screen", msgs)
+		}
+	})
+}

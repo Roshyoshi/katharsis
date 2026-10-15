@@ -379,6 +379,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_, cmd := h.Update(msg)
 		cmds = append(cmds, guard(cmd))
 	}
+	if resize {
+		// The renderer ends each hardware scroll by setting the scroll
+		// region to the height it last knew (ESC[1;23r), not to the whole
+		// screen. A frame drawn just before tmux grew the pane left its
+		// last row outside the region, and the repaint after the resize
+		// moves down by line feeds, which then scroll: a crash's reveal,
+		// as the editor closed and the game's pane grew to the window,
+		// carried the boot-end line up into the panic. Reset the region
+		// (ESC[r is the whole screen), then repaint over it.
+		cmds = append(cmds, tea.Sequence(tea.Raw("\x1b[r"), tea.ClearScreen))
+	}
 	return m, tea.Batch(cmds...)
 }
 
