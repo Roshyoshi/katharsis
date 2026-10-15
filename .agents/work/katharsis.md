@@ -220,6 +220,13 @@ D54 settled 10-15  Each boss bends one rule (user: "we can also ..."): off-by-on
       "Prestige N"; GRUB prestige subtitles stay; boss twist lines may name
       numbers (the bible's one exception).
 
+10-15 D52 build: engine contract (opyuzoqr) duplicated onto main as lvxnuvrw (with
+      its fixtures yotvlzvs); engine behaviour continues in build-engine (MaxPrestige
+      stays 4 there). UI lanes from lvxnuvrw: ui-hub (map hub, exits, suspend/
+      resume/abandon, GRUB, RTFM tail removal with held xpyomooq, MaxPrestige 8, GRUB
+      fit) and ui-door (cycles display, retreat lock, ECC, overclock, fountain,
+      fsck, boss cards and twists wired into judge/HUD/border, debrief, rename).
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
