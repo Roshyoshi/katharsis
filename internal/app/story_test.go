@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -31,13 +32,7 @@ func (h *harness) storyRestart() {
 	h.t.Helper()
 	d := h.m.d
 	d.Story = true
-	m, err := New(d)
-	if err != nil {
-		h.t.Fatal(err)
-	}
-	h.m = m
-	h.send(tea.WindowSizeMsg{Width: 100, Height: 30})
-	h.run(m.Init())
+	h.start(d)
 }
 
 var esc = tea.KeyPressMsg{Code: tea.KeyEscape}
@@ -154,46 +149,48 @@ func seenIDs(m game.Meta) []string {
 func TestStoryWalksABoot(t *testing.T) {
 	for _, reduced := range []bool{false, true} {
 		t.Run(map[bool]string{false: "full motion", true: "reduced motion"}[reduced], func(t *testing.T) {
-			anim.SetMotion(anim.Motion{Reduced: reduced})
-			defer anim.SetMotion(anim.Motion{})
-			h := newStoryHarness(t)
-			h.m.meta.Rated = 100 // calibrated, so the clear unlocks prestige 1
-			h.send(screens.StartBoot{Preset: "standard"})
-			got, end := h.playStory()
-			want := []string{
-				"splash", "story.prologue", "door.first.inscription", // the prologue's fall is Userland's drop
-				"accepted",                      // room 1 of Userland
-				"accepted", "story.first-merge", // room 2, then the first merge window
-				"biome",            // the route's biome
-				"accepted",         // its room 1
-				"accepted",         // its room 2, into the merge window
-				"story.first-boss", // the King's rule, then the boss card
-			}
-			if end != game.PhaseCleared || !slices.Equal(got, want) {
-				t.Fatalf("boot ended %s with scenes\n%v\nwant\n%v", end, got, want)
-			}
-			seen := []string{"story.prologue", "door.first.inscription", "story.first-merge", "daemon.intro", "story.first-boss"}
-			if ids := seenIDs(h.m.meta); !slices.Equal(ids, seen) {
-				t.Errorf("seen %v, want %v", ids, seen)
-			}
-			if m, err := h.st.LoadMeta(); err != nil || !slices.Equal(seenIDs(m), seen) {
-				t.Errorf("stored seen %v, %v; want %v", seenIDs(m), err, seen)
-			}
-			var beats []string
-			for _, e := range h.events() {
-				if e.Kind == storyBeat {
-					beats = append(beats, payload(t, e)["id"].(string))
+			synctest.Test(t, func(t *testing.T) {
+				anim.SetMotion(anim.Motion{Reduced: reduced})
+				defer anim.SetMotion(anim.Motion{})
+				h := newStoryHarness(t)
+				h.m.meta.Rated = 100 // calibrated, so the clear unlocks prestige 1
+				h.send(screens.StartBoot{Preset: "standard"})
+				got, end := h.playStory()
+				want := []string{
+					"splash", "story.prologue", "door.first.inscription", // the prologue's fall is Userland's drop
+					"accepted",                      // room 1 of Userland
+					"accepted", "story.first-merge", // room 2, then the first merge window
+					"biome",            // the route's biome
+					"accepted",         // its room 1
+					"accepted",         // its room 2, into the merge window
+					"story.first-boss", // the King's rule, then the boss card
 				}
-			}
-			if !slices.Equal(beats, seen) {
-				t.Errorf("story_beat events %v, want %v", beats, seen)
-			}
+				if end != game.PhaseCleared || !slices.Equal(got, want) {
+					t.Fatalf("boot ended %s with scenes\n%v\nwant\n%v", end, got, want)
+				}
+				seen := []string{"story.prologue", "door.first.inscription", "story.first-merge", "daemon.intro", "story.first-boss"}
+				if ids := seenIDs(h.m.meta); !slices.Equal(ids, seen) {
+					t.Errorf("seen %v, want %v", ids, seen)
+				}
+				if m, err := h.st.LoadMeta(); err != nil || !slices.Equal(seenIDs(m), seen) {
+					t.Errorf("stored seen %v, %v; want %v", seenIDs(m), err, seen)
+				}
+				var beats []string
+				for _, e := range h.events() {
+					if e.Kind == storyBeat {
+						beats = append(beats, payload(t, e)["id"].(string))
+					}
+				}
+				if !slices.Equal(beats, seen) {
+					t.Errorf("story_beat events %v, want %v", beats, seen)
+				}
 
-			// Boot 2: the one-time scenes are done.
-			h.send(screens.StartBoot{Preset: "standard"})
-			if got, _ := h.watch(); !slices.Equal(got, []string{"splash", "biome"}) {
-				t.Errorf("boot 2 opens with %v, want the splash and Userland's drop", got)
-			}
+				// Boot 2: the one-time scenes are done.
+				h.send(screens.StartBoot{Preset: "standard"})
+				if got, _ := h.watch(); !slices.Equal(got, []string{"splash", "biome"}) {
+					t.Errorf("boot 2 opens with %v, want the splash and Userland's drop", got)
+				}
+			})
 		})
 	}
 }
@@ -202,137 +199,145 @@ func TestStoryWalksABoot(t *testing.T) {
 // leaves on one key; under reduced motion every page is drawn at once, so
 // one key turns it. esc leaves the scene and the ones queued behind it.
 func TestStoryKeys(t *testing.T) {
-	anim.SetMotion(anim.Motion{Reduced: true})
-	defer anim.SetMotion(anim.Motion{})
-	h := newStoryHarness(t)
-	h.send(screens.StartBoot{Preset: "standard"})
-	if h.sceneName() != "splash" {
-		t.Fatalf("boot opens with %q", h.sceneName())
-	}
-	h.send(key("1")) // one key past the splash, not into the doors
-	if h.sceneName() != "story.prologue" || h.m.state.Phase != game.PhaseDoors {
-		t.Fatalf("after one key: %q, phase %s", h.sceneName(), h.m.state.Phase)
-	}
-	// Drawn at once: the whole first page is up before any key.
-	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "Nobody checks your privileges") {
-		t.Errorf("reduced motion types the prologue:\n%s", v)
-	}
-	h.send(key("x")) // to the fall, drawn landed
-	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "Pick a door") {
-		t.Errorf("reduced motion plays the fall:\n%s", v)
-	}
-	h.send(esc)
-	if h.scene() != nil {
-		t.Fatalf("esc left %q up", h.sceneName())
-	}
-	if ids := seenIDs(h.m.meta); !slices.Equal(ids, []string{"story.prologue"}) {
-		t.Errorf("seen %v: the prologue was up, the first door never was", ids)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		anim.SetMotion(anim.Motion{Reduced: true})
+		defer anim.SetMotion(anim.Motion{})
+		h := newStoryHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		if h.sceneName() != "splash" {
+			t.Fatalf("boot opens with %q", h.sceneName())
+		}
+		h.send(key("1")) // one key past the splash, not into the doors
+		if h.sceneName() != "story.prologue" || h.m.state.Phase != game.PhaseDoors {
+			t.Fatalf("after one key: %q, phase %s", h.sceneName(), h.m.state.Phase)
+		}
+		// Drawn at once: the whole first page is up before any key.
+		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "Nobody checks your privileges") {
+			t.Errorf("reduced motion types the prologue:\n%s", v)
+		}
+		h.send(key("x")) // to the fall, drawn landed
+		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "Pick a door") {
+			t.Errorf("reduced motion plays the fall:\n%s", v)
+		}
+		h.send(esc)
+		if h.scene() != nil {
+			t.Fatalf("esc left %q up", h.sceneName())
+		}
+		if ids := seenIDs(h.m.meta); !slices.Equal(ids, []string{"story.prologue"}) {
+			t.Errorf("seen %v: the prologue was up, the first door never was", ids)
+		}
+	})
 }
 
 // TestStoryResume: a quit mid-scene loses nothing. The one-time scenes of
 // where the boot stands come back; a door resumed open gets none.
 func TestStoryResume(t *testing.T) {
-	h := newStoryHarness(t)
-	h.send(screens.StartBoot{Preset: "standard"})
-	h.send(key("x")) // past the splash: the prologue is up
-	if h.sceneName() != "story.prologue" {
-		t.Fatalf("prologue not up: %q", h.sceneName())
-	}
-	h.storyRestart() // quit mid-prologue
-	if got, _ := h.watch(); !slices.Equal(got, []string{"story.prologue", "door.first.inscription"}) {
-		t.Errorf("resume shows %v, want the prologue and the first door", got)
-	}
-	h.send(game.ChooseDoor{})
-	if h.m.state.Phase != game.PhaseProblem {
-		t.Fatalf("phase %s", h.m.state.Phase)
-	}
-	h.storyRestart()
-	h.noSceneOverDoor()
-	if h.scene() != nil {
-		t.Errorf("a resumed door is under %q", h.sceneName())
-	}
+	synctest.Test(t, func(t *testing.T) {
+		h := newStoryHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.send(key("x")) // past the splash: the prologue is up
+		if h.sceneName() != "story.prologue" {
+			t.Fatalf("prologue not up: %q", h.sceneName())
+		}
+		h.storyRestart() // quit mid-prologue
+		if got, _ := h.watch(); !slices.Equal(got, []string{"story.prologue", "door.first.inscription"}) {
+			t.Errorf("resume shows %v, want the prologue and the first door", got)
+		}
+		h.send(game.ChooseDoor{})
+		if h.m.state.Phase != game.PhaseProblem {
+			t.Fatalf("phase %s", h.m.state.Phase)
+		}
+		h.storyRestart()
+		h.noSceneOverDoor()
+		if h.scene() != nil {
+			t.Errorf("a resumed door is under %q", h.sceneName())
+		}
+	})
 }
 
 // TestStoryFirstCrash: the Cat plays by itself once the panic has printed,
 // on the first crash that left bytes, and not if the player moved on.
 func TestStoryFirstCrash(t *testing.T) {
-	h := newStoryHarness(t)
-	game.MarkSeen(&h.m.meta, "story.prologue")
-	game.MarkSeen(&h.m.meta, "door.first.inscription")
+	synctest.Test(t, func(t *testing.T) {
+		h := newStoryHarness(t)
+		game.MarkSeen(&h.m.meta, "story.prologue")
+		game.MarkSeen(&h.m.meta, "door.first.inscription")
 
-	// A crash with nothing uncommitted earns no Cat.
-	h.send(screens.StartBoot{Preset: "standard"})
-	h.watch()
-	h.verdict = "WA"
-	if _, end := h.playStory(); end != game.PhaseCrashed {
-		t.Fatalf("boot ended %s", end)
-	}
-	if h.m.storyCrash() != nil {
-		t.Error("the Cat waits on a crash that left no bytes")
-	}
+		// A crash with nothing uncommitted earns no Cat.
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.watch()
+		h.verdict = "WA"
+		if _, end := h.playStory(); end != game.PhaseCrashed {
+			t.Fatalf("boot ended %s", end)
+		}
+		if h.m.storyCrash() != nil {
+			t.Error("the Cat waits on a crash that left no bytes")
+		}
 
-	// One that left bytes: the Cat, after the panic.
-	h.send(screens.StartBoot{Preset: "standard"})
-	h.watch()
-	h.verdict, h.acFirst = "WA", 1
-	if _, end := h.playStory(); end != game.PhaseCrashed || h.m.state.Crash.Lost == 0 {
-		t.Fatalf("boot ended %s, lost %d", end, h.m.state.Crash.Lost)
-	}
-	if h.scene() != nil {
-		t.Fatal("the Cat covers the panic as it prints")
-	}
-	if h.m.storyCrash() == nil {
-		t.Fatal("no Cat scheduled")
-	}
-	// The player opened the upsolve first: the Cat stays away.
-	h.send(screens.Upsolve{Problem: h.m.state.Crash.Door.Problem})
-	h.send(crashSceneMsg{boot: h.m.state.Boot})
-	if h.scene() != nil {
-		t.Fatal("the Cat covers the upsolve")
-	}
-	h.send(key("Q"))                                // leave the upsolve
-	h.send(crashSceneMsg{boot: h.m.state.Boot - 1}) // a stale one, from boot 1
-	if h.scene() != nil {
-		t.Fatal("a stale tick showed the Cat")
-	}
-	h.send(crashSceneMsg{boot: h.m.state.Boot})
-	if got, _ := h.watch(); !slices.Equal(got, []string{"story.first-crash"}) {
-		t.Fatalf("crash shows %v, want the Cat", got)
-	}
-	if id, ok := flavor.NextBeat(h.m.state, &h.m.meta, flavor.DefaultBeatGap); ok {
-		t.Errorf("the boot end has %q still to show after the Cat", id)
-	}
-	if len(h.m.stack) != 1 || h.m.state.Phase != game.PhaseCrashed {
-		t.Errorf("after the Cat: %d screens, phase %s", len(h.m.stack), h.m.state.Phase)
-	}
+		// One that left bytes: the Cat, after the panic.
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.watch()
+		h.verdict, h.acFirst = "WA", 1
+		if _, end := h.playStory(); end != game.PhaseCrashed || h.m.state.Crash.Lost == 0 {
+			t.Fatalf("boot ended %s, lost %d", end, h.m.state.Crash.Lost)
+		}
+		if h.scene() != nil {
+			t.Fatal("the Cat covers the panic as it prints")
+		}
+		if h.m.storyCrash() == nil {
+			t.Fatal("no Cat scheduled")
+		}
+		// The player opened the upsolve first: the Cat stays away.
+		h.send(screens.Upsolve{Problem: h.m.state.Crash.Door.Problem})
+		h.send(crashSceneMsg{boot: h.m.state.Boot})
+		if h.scene() != nil {
+			t.Fatal("the Cat covers the upsolve")
+		}
+		h.send(key("Q"))                                // leave the upsolve
+		h.send(crashSceneMsg{boot: h.m.state.Boot - 1}) // a stale one, from boot 1
+		if h.scene() != nil {
+			t.Fatal("a stale tick showed the Cat")
+		}
+		h.send(crashSceneMsg{boot: h.m.state.Boot})
+		if got, _ := h.watch(); !slices.Equal(got, []string{"story.first-crash"}) {
+			t.Fatalf("crash shows %v, want the Cat", got)
+		}
+		if id, ok := flavor.NextBeat(h.m.state, &h.m.meta, flavor.DefaultBeatGap); ok {
+			t.Errorf("the boot end has %q still to show after the Cat", id)
+		}
+		if len(h.m.stack) != 1 || h.m.state.Phase != game.PhaseCrashed {
+			t.Errorf("after the Cat: %d screens, phase %s", len(h.m.stack), h.m.state.Phase)
+		}
+	})
 }
 
 // TestStoryOff: the headless game (Deps.Story unset) and a learn-mode
 // trial play no story scenes; a trial still gets ACCEPTED.
 func TestStoryOff(t *testing.T) {
-	h := newHarness(t)
-	h.send(screens.StartBoot{Preset: "standard"})
-	if h.scene() != nil {
-		t.Fatalf("the story is off, but %q is up", h.sceneName())
-	}
-	if got, _ := h.playStory(); got != nil {
-		t.Errorf("the story is off, but the boot showed %v", got)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		if h.scene() != nil {
+			t.Fatalf("the story is off, but %q is up", h.sceneName())
+		}
+		if got, _ := h.playStory(); got != nil {
+			t.Errorf("the story is off, but the boot showed %v", got)
+		}
 
-	h = newStoryHarness(t)
-	loadGuide(h)
-	h.send(screens.StartTrial{Module: "prefix-sums"})
-	if h.m.state == nil || h.m.state.Trial == nil {
-		t.Fatalf("no trial running: %+v", h.m.state)
-	}
-	got, end := h.playStory()
-	if end != game.PhaseCleared || slices.ContainsFunc(got, func(s string) bool { return s != "accepted" }) || len(got) == 0 {
-		t.Errorf("the trial ended %s with scenes %v, want only ACCEPTED", end, got)
-	}
-	if len(h.m.meta.Seen) != 0 {
-		t.Errorf("a trial marked %v seen", seenIDs(h.m.meta))
-	}
+		h = newStoryHarness(t)
+		loadGuide(h)
+		h.send(screens.StartTrial{Module: "prefix-sums"})
+		if h.m.state == nil || h.m.state.Trial == nil {
+			t.Fatalf("no trial running: %+v", h.m.state)
+		}
+		got, end := h.playStory()
+		if end != game.PhaseCleared || slices.ContainsFunc(got, func(s string) bool { return s != "accepted" }) || len(got) == 0 {
+			t.Errorf("the trial ended %s with scenes %v, want only ACCEPTED", end, got)
+		}
+		if len(h.m.meta.Seen) != 0 {
+			t.Errorf("a trial marked %v seen", seenIDs(h.m.meta))
+		}
+	})
 }
 
 // TestStoryRead: a screen asks for a beat's page (story.Read), as a boot
@@ -340,20 +345,22 @@ func TestStoryOff(t *testing.T) {
 // once read, and never shows over an open door or for an id that is no
 // beat. The headless game reads too: the player asked.
 func TestStoryRead(t *testing.T) {
-	h := newHarness(t)
-	h.send(story.Read{ID: "no.such.beat"})
-	if h.scene() != nil {
-		t.Fatal("an unknown beat has a page")
-	}
-	h.send(story.Read{ID: "reveal.prestige.1"})
-	if got, _ := h.watch(); !slices.Equal(got, []string{"reveal.prestige.1"}) {
-		t.Fatalf("read shows %v", got)
-	}
-	if _, ok := h.m.top().(*meta.Menu); !ok || !slices.Equal(seenIDs(h.m.meta), []string{"reveal.prestige.1"}) {
-		t.Errorf("after reading: on %T, seen %v", h.m.top(), seenIDs(h.m.meta))
-	}
-	h.send(screens.StartBoot{Preset: "standard"})
-	h.send(game.ChooseDoor{})
-	h.send(story.Read{ID: "reveal.prestige.2"})
-	h.noSceneOverDoor()
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(story.Read{ID: "no.such.beat"})
+		if h.scene() != nil {
+			t.Fatal("an unknown beat has a page")
+		}
+		h.send(story.Read{ID: "reveal.prestige.1"})
+		if got, _ := h.watch(); !slices.Equal(got, []string{"reveal.prestige.1"}) {
+			t.Fatalf("read shows %v", got)
+		}
+		if _, ok := h.m.top().(*meta.Menu); !ok || !slices.Equal(seenIDs(h.m.meta), []string{"reveal.prestige.1"}) {
+			t.Errorf("after reading: on %T, seen %v", h.m.top(), seenIDs(h.m.meta))
+		}
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.send(game.ChooseDoor{})
+		h.send(story.Read{ID: "reveal.prestige.2"})
+		h.noSceneOverDoor()
+	})
 }

@@ -4,6 +4,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -89,22 +90,24 @@ func TestPaneSubmitAsks(t *testing.T) {
 
 // R asks first and says what the swap costs; R R retreats (J4).
 func TestRetreatAsks(t *testing.T) {
-	h := newHarnessWith(t, func(f *fakeRunner) Runner {
-		return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: t.TempDir(), Embedded: true}}
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarnessWith(t, func(f *fakeRunner) Runner {
+			return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: t.TempDir(), Embedded: true}}
+		})
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.enterDoor()
+		h.send(tea.WindowSizeMsg{Width: 60, Height: 30})
+		lives, door := h.m.state.Lives, h.m.state.Current.Door.Problem
+		h.send(key("R"))
+		if last := lastLine(h); !strings.Contains(last, "retreat: -1 ♥") || !strings.Contains(last, "R again") {
+			t.Fatalf("keys row %q after R, want what the retreat costs", last)
+		}
+		if h.m.state.Current == nil || h.m.state.Current.Door.Problem != door {
+			t.Fatal("one R retreated")
+		}
+		h.send(key("R"))
+		if h.m.state.Lives != lives-1 || h.m.state.Current != nil && h.m.state.Current.Door.Problem == door {
+			t.Fatalf("R R: lives %d (want %d), current %+v", h.m.state.Lives, lives-1, h.m.state.Current)
+		}
 	})
-	h.send(screens.StartBoot{Preset: "standard"})
-	h.enterDoor()
-	h.send(tea.WindowSizeMsg{Width: 60, Height: 30})
-	lives, door := h.m.state.Lives, h.m.state.Current.Door.Problem
-	h.send(key("R"))
-	if last := lastLine(h); !strings.Contains(last, "retreat: -1 ♥") || !strings.Contains(last, "R again") {
-		t.Fatalf("keys row %q after R, want what the retreat costs", last)
-	}
-	if h.m.state.Current == nil || h.m.state.Current.Door.Problem != door {
-		t.Fatal("one R retreated")
-	}
-	h.send(key("R"))
-	if h.m.state.Lives != lives-1 || h.m.state.Current != nil && h.m.state.Current.Door.Problem == door {
-		t.Fatalf("R R: lives %d (want %d), current %+v", h.m.state.Lives, lives-1, h.m.state.Current)
-	}
 }

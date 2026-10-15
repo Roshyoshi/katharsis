@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -27,34 +29,36 @@ import (
 // next key cleared it, and a store the game could not write played a whole
 // boot and kept none of it.
 func TestSaveFailureStaysUntilASaveWorks(t *testing.T) {
-	h := newHarness(t)
-	h.send(screens.StartBoot{Preset: "standard"})
-	cur := h.enterDoor()
-	// Another writer records an attempt this game never saw, so the store
-	// refuses this game's snapshot as stale (store.ErrStaleBoot) until its
-	// own history catches up.
-	ahead := *h.m.state
-	ahead.History = append(append([]game.Attempt(nil), h.m.state.History...), *cur)
-	if err := h.st.Checkpoint(h.m.meta, &ahead); err != nil {
-		t.Fatal(err)
-	}
-	banner := func() bool { return strings.Contains(h.m.View().Content, "save failed") }
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		cur := h.enterDoor()
+		// Another writer records an attempt this game never saw, so the store
+		// refuses this game's snapshot as stale (store.ErrStaleBoot) until its
+		// own history catches up.
+		ahead := *h.m.state
+		ahead.History = append(append([]game.Attempt(nil), h.m.state.History...), *cur)
+		if err := h.st.Checkpoint(h.m.meta, &ahead); err != nil {
+			t.Fatal(err)
+		}
+		banner := func() bool { return strings.Contains(h.m.View().Content, "save failed") }
 
-	h.verdict = "WA" // costs a life: a step that saves
-	h.send(submitMsg{})
-	if !banner() {
-		t.Fatal("no save error after a refused checkpoint")
-	}
-	h.send(key("j"))
-	h.send(key("k"))
-	if !banner() {
-		t.Fatal("save error gone after a key; nothing was saved")
-	}
-	h.verdict = "AC" // the door closes: the history catches up, the save works
-	h.send(submitMsg{})
-	if banner() || h.m.saveErr != nil {
-		t.Fatalf("save error %v still shown after a save that worked", h.m.saveErr)
-	}
+		h.verdict = "WA" // costs a life: a step that saves
+		h.send(submitMsg{})
+		if !banner() {
+			t.Fatal("no save error after a refused checkpoint")
+		}
+		h.send(key("j"))
+		h.send(key("k"))
+		if !banner() {
+			t.Fatal("save error gone after a key; nothing was saved")
+		}
+		h.verdict = "AC" // the door closes: the history catches up, the save works
+		h.send(submitMsg{})
+		if banner() || h.m.saveErr != nil {
+			t.Fatalf("save error %v still shown after a save that worked", h.m.saveErr)
+		}
+	})
 }
 
 const holdLockEnv = "KATHARSIS_TEST_HOLD_LOCK"
@@ -121,7 +125,7 @@ func holdWriteLock(t *testing.T, path string) (release func()) {
 // timeout (5 s) on every tick (qa/chaos r08). A Tick that does change
 // something still saves.
 func TestIdleTickDoesNotWrite(t *testing.T) {
-	h := newHarness(t)
+	h := newRealHarness(t, nil)
 	h.send(screens.StartBoot{Preset: "standard"})
 	cur := h.enterDoor()
 	release := holdWriteLock(t, h.path)
@@ -153,20 +157,22 @@ func TestIdleTickDoesNotWrite(t *testing.T) {
 // nothing, so a store that comes back catches up without waiting for the
 // player's next move.
 func TestTickRetriesAFailedSave(t *testing.T) {
-	h := newHarness(t)
-	h.send(screens.StartBoot{Preset: "standard"})
-	h.enterDoor()
-	h.m.saved(store.ErrStaleBoot) // as if the last step's save failed
-	h.clock.t = h.clock.t.Add(time.Second)
-	h.send(tickMsg(h.clock.t))
-	if h.m.saveErr == nil {
-		t.Fatal("a tick 1 s after a failed save retried it; want it to wait saveRetry")
-	}
-	h.clock.t = h.clock.t.Add(saveRetry)
-	h.send(tickMsg(h.clock.t))
-	if h.m.saveErr != nil {
-		t.Fatalf("save error %v after a tick past saveRetry, want the retry to have saved", h.m.saveErr)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.enterDoor()
+		h.m.saved(store.ErrStaleBoot) // as if the last step's save failed
+		h.clock.t = h.clock.t.Add(time.Second)
+		h.send(tickMsg(h.clock.t))
+		if h.m.saveErr == nil {
+			t.Fatal("a tick 1 s after a failed save retried it; want it to wait saveRetry")
+		}
+		h.clock.t = h.clock.t.Add(saveRetry)
+		h.send(tickMsg(h.clock.t))
+		if h.m.saveErr != nil {
+			t.Fatalf("save error %v after a tick past saveRetry, want the retry to have saved", h.m.saveErr)
+		}
+	})
 }
 
 // An editor pane that dies as it opens is a command that could not start.
@@ -190,7 +196,7 @@ func TestEditorThatCannotStart(t *testing.T) {
 		t.Errorf("EditorFailed = %q for an editor that ran a minute, want none", got)
 	}
 
-	h := newHarnessWith(t, func(f *fakeRunner) Runner {
+	h := newRealHarness(t, func(f *fakeRunner) Runner {
 		return &failedEditorRunner{hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: t.TempDir()}}}
 	})
 	h.send(screens.StartBoot{Preset: "standard"})
@@ -213,83 +219,85 @@ func (r *failedEditorRunner) EditorFailed() string {
 // judges it again, as of when it was made: a door that ran out while the
 // game was closed is still saved by an AC sent in time.
 func TestQuitMidJudgeJudgesOnResume(t *testing.T) {
-	h := newHarness(t)
-	h.send(screens.StartBoot{Preset: "standard"})
-	cur := h.enterDoor()
-	h.stall = make(chan struct{})
-	h.clock.t = cur.Deadline.Add(-time.Minute)
-	submitted := h.clock.t
-	h.send(submitMsg{})
-	if at := h.m.state.Current.SubmitAt; !at.Equal(submitted) {
-		t.Fatalf("SubmitAt = %v, want %v", at, submitted)
-	}
-	saved, err := h.st.ActiveBoot()
-	if err != nil || !saved.Current.SubmitAt.Equal(submitted) {
-		t.Fatalf("saved SubmitAt = %v (%v), want it saved before the verdict", saved.Current.SubmitAt, err)
-	}
-	h.m.quit() // ctrl+c mid-judge
-	close(h.stall)
-	h.stall = nil
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		cur := h.enterDoor()
+		release := h.hold()
+		h.clock.t = cur.Deadline.Add(-time.Minute)
+		submitted := h.clock.t
+		h.send(submitMsg{})
+		if at := h.m.state.Current.SubmitAt; !at.Equal(submitted) {
+			t.Fatalf("SubmitAt = %v, want %v", at, submitted)
+		}
+		saved, err := h.st.ActiveBoot()
+		if err != nil || !saved.Current.SubmitAt.Equal(submitted) {
+			t.Fatalf("saved SubmitAt = %v (%v), want it saved before the verdict", saved.Current.SubmitAt, err)
+		}
+		h.m.quit() // ctrl+c mid-judge
+		release()
 
-	h.clock.t = cur.Deadline.Add(time.Hour)
-	h.restart()
-	if h.m.state.Phase == game.PhaseCrashed {
-		t.Fatalf("resumed into a crash %+v; the submit was in time", h.m.state.Crash)
-	}
-	last := h.m.state.History[len(h.m.state.History)-1]
-	if last.Outcome != game.Cleared || !last.Closed.Equal(submitted) || !last.SubmitAt.IsZero() {
-		t.Fatalf("door %q closed %v SubmitAt %v; want cleared as of %v", last.Outcome, last.Closed, last.SubmitAt, submitted)
-	}
+		h.clock.t = cur.Deadline.Add(time.Hour)
+		h.restart()
+		if h.m.state.Phase == game.PhaseCrashed {
+			t.Fatalf("resumed into a crash %+v; the submit was in time", h.m.state.Crash)
+		}
+		last := h.m.state.History[len(h.m.state.History)-1]
+		if last.Outcome != game.Cleared || !last.Closed.Equal(submitted) || !last.SubmitAt.IsZero() {
+			t.Fatalf("door %q closed %v SubmitAt %v; want cleared as of %v", last.Outcome, last.Closed, last.SubmitAt, submitted)
+		}
+	})
 }
 
 // A failing submit judged again on resume costs its life, and the door,
 // whose time ran out while the game was closed, then times out.
 func TestQuitMidJudgeChargesTheFailure(t *testing.T) {
-	h := newHarness(t)
-	h.send(screens.StartBoot{Preset: "standard"})
-	cur := h.enterDoor()
-	lives := h.m.state.Lives
-	h.stall = make(chan struct{})
-	h.send(submitMsg{})
-	h.m.quit()
-	close(h.stall)
-	h.stall, h.verdict = nil, "WA"
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		cur := h.enterDoor()
+		lives := h.m.state.Lives
+		release := h.hold()
+		h.send(submitMsg{})
+		h.m.quit()
+		release()
+		h.verdict = "WA"
 
-	h.clock.t = cur.Deadline.Add(time.Hour)
-	h.restart()
-	h.send(tickMsg(h.clock.t))
-	if h.m.state.Lives != lives-1 {
-		t.Errorf("lives %d, want %d: the failure went uncharged", h.m.state.Lives, lives-1)
-	}
-	last := h.m.state.History[len(h.m.state.History)-1]
-	if last.Submits != 1 || last.Failed != 1 || last.Outcome != game.TimedOut {
-		t.Errorf("door %q with %d submits, %d failed; want 1 WA, then timed out", last.Outcome, last.Submits, last.Failed)
-	}
+		h.clock.t = cur.Deadline.Add(time.Hour)
+		h.restart()
+		h.send(tickMsg(h.clock.t))
+		if h.m.state.Lives != lives-1 {
+			t.Errorf("lives %d, want %d: the failure went uncharged", h.m.state.Lives, lives-1)
+		}
+		last := h.m.state.History[len(h.m.state.History)-1]
+		if last.Submits != 1 || last.Failed != 1 || last.Outcome != game.TimedOut {
+			t.Errorf("door %q with %d submits, %d failed; want 1 WA, then timed out", last.Outcome, last.Submits, last.Failed)
+		}
+	})
 }
 
 // A judge error is no verdict: nothing is left to judge again on resume.
 func TestJudgeErrorClearsThePendingSubmit(t *testing.T) {
-	h := newHarness(t)
-	h.send(screens.StartBoot{Preset: "standard"})
-	h.enterDoor()
-	h.stall = make(chan struct{})
-	close(h.stall) // the judge returns an error at once
-	h.send(submitMsg{})
-	if c := h.m.state.Current; h.m.judging || !c.SubmitAt.IsZero() {
-		t.Fatalf("judging %v SubmitAt %v after a judge error", h.m.judging, c.SubmitAt)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.enterDoor()
+		h.m.d.Judge = func(context.Context, Door) (string, int, int, error) {
+			return "", 0, 0, errors.New("no compiler") // at once
+		}
+		h.send(submitMsg{})
+		if c := h.m.state.Current; h.m.judging || !c.SubmitAt.IsZero() {
+			t.Fatalf("judging %v SubmitAt %v after a judge error", h.m.judging, c.SubmitAt)
+		}
+	})
 }
 
 // Closing vim mid-judge quits the HUD but not its submit: the clock stays
 // held for it, and its verdict, arriving after, is charged.
 func TestClosedEditorKeepsTheSubmit(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.WriteFile(dir+"/sol.cpp", []byte("int main() {}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	h := newHarnessWith(t, func(f *fakeRunner) Runner {
-		return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: dir}}
-	})
+	// The compiler holds the submit until the door closes, however fast a
+	// build is.
+	h := hudHarness(t, submitDir(t, acSrc), stalled(t))
 	h.send(screens.StartBoot{Preset: "standard"})
 	cur := h.enterDoor()
 	lives := h.m.state.Lives
@@ -348,7 +356,7 @@ func stalled(t *testing.T) judge.Profile {
 // ends, so no pass outlives it.
 func hudHarness(t *testing.T, dir string, prof judge.Profile) *harness {
 	t.Helper()
-	h := newHarnessWith(t, func(f *fakeRunner) Runner {
+	h := newRealHarness(t, func(f *fakeRunner) Runner {
 		return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: dir, SubmitProfile: prof,
 			SubmitCopy: filepath.Join(dir, ".submit", "sol.cpp")}}
 	})
