@@ -1,7 +1,9 @@
 package rtfm
 
 import (
+	"cmp"
 	"fmt"
+	"hash/fnv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -9,6 +11,7 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/curriculum"
+	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/reader"
@@ -16,7 +19,7 @@ import (
 )
 
 // Module is one module's page, set as a man page: NAME (id, title, what it
-// is about), TRIAL (the unit doors in the order a trial boot plays them,
+// is about, a faint story line), TRIAL (the unit doors in the order a trial boot plays them,
 // any the catalog tops up, the blind integration doors, and what passing
 // grants), SEE ALSO (prerequisites, authors), then the module's CC BY-NC-SA
 // attribution. r reads the module, t starts its trial (when passing grants
@@ -118,6 +121,11 @@ func (p *Module) body(w int) []string {
 	if m.Description != "" {
 		out = append(out, wrap(m.Description, modIndent, text)...)
 	}
+	// The Mock Turtle's school has an opinion on every subject, faint
+	// under the module's own words (rtfm.module.intro).
+	for _, l := range wrap(introLine(m), modIndent, text) {
+		out = append(out, ui.Voice.Render(ui.Muted.Render(l)))
+	}
 
 	out = append(out, "", ui.Spread(ui.Strong.Render("TRIAL"),
 		ui.Muted.Render("unit: Easy → Hard, tags shown · integration: blind"), text))
@@ -145,6 +153,20 @@ func (p *Module) body(w int) []string {
 		out = append(out, ui.Muted.Render(l))
 	}
 	return out
+}
+
+// introLine is the module's line from the Mock Turtle's school, the same
+// for a module every time: the pool's pick is seeded by the module's id.
+// {module} is the title, cut to text.md's 24 cells; "" when the module has
+// no name to put there.
+func introLine(m curriculum.Module) string {
+	name := cmp.Or(m.Title, m.ID)
+	if name == "" {
+		return ""
+	}
+	h := fnv.New64a()
+	h.Write([]byte(m.ID))
+	return flavor.Fill(flavor.Story("rtfm.module.intro", h.Sum64()), "module", ui.Clip(name, 24))
 }
 
 // facts is one "label  value" line of SEE ALSO, the value wrapped under

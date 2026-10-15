@@ -3,6 +3,7 @@ RTFM › General › Language-Specific
 NAME
        fast-io - Fast Input & Output
        Demonstrates how I/O speed can be the difference between TLE and AC.
+       Fast Input & Output. "I only took the regular course."
 
 TRIAL                         unit: Easy → Hard, tags shown · integration: blind
        1  Robotic Cow Herd  Insane
@@ -36,5 +37,4 @@ Markdown.
 
 
 
-
- fast-io(7) line 1/18 (END)                                                                                 r read · o usaco.guide · q back
+ fast-io(7) line 1/19 (END)                                                                                 r read · o usaco.guide · q back

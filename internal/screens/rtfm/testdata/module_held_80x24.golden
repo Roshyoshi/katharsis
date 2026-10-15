@@ -4,6 +4,7 @@ NAME
        two-pointers - Two Pointers                             ★★☆☆ not frequent
        Iterating two monotonic pointers across an array to search for a pair of
        indices satisfying some condition in linear time.
+       Two Pointers. "I only took the regular course."
 
 TRIAL                         unit: Easy → Hard, tags shown · integration: blind
        1  Paired Up           Easy       ◆1350  2017 US Open, Silver P1
@@ -20,5 +21,4 @@ SEE ALSO
 “Two Pointers” by Darren Yao, Qi Wang, Ryan Chou, David Zhou, USACO Guide
 (https://usaco.guide/silver/two-pointers), CC BY-NC-SA 4.0
 (https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
-Markdown.
- line 1/21 (END)                r read · t start trial · o usaco.guide · q back
+ two-pointers(7) line 1/22      r read · t start trial · o usaco.guide · q back

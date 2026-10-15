@@ -3,6 +3,7 @@ RTFM › Advanced › Data Structures                                       □ 
 NAME
        count-min - Counting Minimums with Segment Tree     ☆☆☆☆ has not appeared
        Querying for the minimum and number of occurrences of minimum in a range
+       Counting Minimums with …: a branch of Arithmetic, the Gryphon insists.
 
 TRIAL                         unit: Easy → Hard, tags shown · integration: blind
        +  4 topped up from the catalog · The Heap · ◆2400–2800
@@ -20,5 +21,4 @@ Markdown.
 
 
 
-
- count-min(7) line 1/17 (END)   r read · t start trial · o usaco.guide · q back
+ count-min(7) line 1/18 (END)   r read · t start trial · o usaco.guide · q back

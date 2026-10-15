@@ -3,6 +3,7 @@ RTFM › Bronze › Additional
 NAME
        casework - Casework                                     ★★☆☆ not frequent
        Dividing into multiple cases and solving for each one separately.
+       "Casework," sighs the Mock Turtle. "We did it at sea."
 
 TRIAL                         unit: Easy → Hard, tags shown · integration: blind
        1  Sleepy Cow Herding  Medium
@@ -36,5 +37,4 @@ from MDX to Markdown.
 
 
 
-
- casework(7) line 1/19 (END)                                                                                r read · o usaco.guide · q back
+ casework(7) line 1/20 (END)                                                                                r read · o usaco.guide · q back

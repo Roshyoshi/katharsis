@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -13,11 +14,13 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/curriculum"
+	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/screens/rtfm"
 	"katharsis/internal/screens/rtfm/fixture"
+	"katharsis/internal/ui"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/*.golden from the current output")
@@ -537,5 +540,40 @@ func TestModuleScrolls(t *testing.T) {
 	m.Update(key("g"))
 	if v := plain(m.View(80, 12)); v != top {
 		t.Errorf("g should return to the top:\n%s", v)
+	}
+}
+
+// A module page has the Mock Turtle's line between its description and
+// TRIAL: one of rtfm.module.intro's, the title in it cut to 24 cells, and
+// the same pick on every opening.
+func TestModuleIntroLine(t *testing.T) {
+	c := loadCurriculum(t)
+	for _, id := range []string{"prefix-sums", "count-min", "fast-io"} {
+		m, ok := c.Module(id)
+		if !ok {
+			t.Fatalf("fixture has no module %q", id)
+		}
+		var lines []string
+		for seed := range uint64(8) {
+			l := flavor.Fill(flavor.Story("rtfm.module.intro", seed), "module", ui.Clip(m.Title, 24))
+			if !slices.Contains(lines, l) {
+				lines = append(lines, l)
+			}
+		}
+		v := plain(module(t, id).View(140, 40))
+		var found []string
+		for _, l := range lines {
+			if strings.Contains(v, "       "+l+"\n") {
+				found = append(found, l)
+			}
+		}
+		trial := strings.Index(v, "\nTRIAL")
+		if len(found) != 1 || strings.Index(v, found[0]) > trial || strings.Index(v, m.Description) > strings.Index(v, found[0]) {
+			t.Errorf("%s: want one intro line under the description, got %q:\n%s", id, found, v)
+			continue
+		}
+		if again := plain(module(t, id).View(140, 40)); again != v {
+			t.Errorf("%s: a second opening picks another line", id)
+		}
 	}
 }

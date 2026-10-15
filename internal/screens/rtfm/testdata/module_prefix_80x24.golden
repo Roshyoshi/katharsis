@@ -3,6 +3,7 @@ RTFM › Silver › Prefix Sums                                         □ CAP_
 NAME
        prefix-sums - Introduction to Prefix Sums              ★★★★ very frequent
        Computing range sum queries in constant time over a fixed 1D array.
+       "Introduction to Prefix …," sighs the Mock Turtle. "We did it at sea."
 
 TRIAL                         unit: Easy → Hard, tags shown · integration: blind
        1  Breed Counting                    Very Easy  ◆1250  2015 December, Si…
@@ -20,5 +21,4 @@ SEE ALSO
 (https://usaco.guide/silver/prefix-sums), CC BY-NC-SA 4.0
 (https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
 Markdown.
-
- line 1/20 (END)                r read · t start trial · o usaco.guide · q back
+ line 1/21 (END)                r read · t start trial · o usaco.guide · q back
