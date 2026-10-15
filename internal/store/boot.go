@@ -180,8 +180,7 @@ func (s *Store) putAttempts(tx *sql.Tx, st *game.State) error {
 			INSERT INTO attempts (boot, idx, problem, topic, rating, blind,
 				mystery, cursed, regression, boss, opened, closed, outcome,
 				submits, failed, quacks, best_pass, total, json)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT (boot, idx) DO NOTHING`,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			st.Boot, i, d.Problem, d.Topic, d.Rating, d.Blind, d.Mystery,
 			d.Cursed, d.Regression, d.Boss, unixNano(a.Opened),
 			unixNano(a.Closed), a.Outcome, a.Submits, a.Failed, a.Quacks,

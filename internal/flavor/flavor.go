@@ -5,11 +5,11 @@ package flavor
 
 import (
 	"hash/fnv"
+	"slices"
 	"strconv"
 	"strings"
 
 	"katharsis/internal/game"
-	"katharsis/internal/rules"
 )
 
 type Quote struct {
@@ -23,9 +23,7 @@ type Quote struct {
 // judge verdict on the door ("TLE", "RE", ...); seed makes the pick stable
 // for a given crash.
 //
-// The pool is the quotes that match cause and verdict, where a quote about
-// the crash itself (no verdict tags) matches every verdict. Without a known
-// verdict that leaves the quotes about the cause, and a pool smaller than
+// The pool is the quotes that match (see entry); a pool smaller than
 // minPool takes in the general quotes. General quotes outside the pool then
 // fill a quarter of it, so the classics show up on every kind of crash. The
 // pick walks the pool with a stride coprime to its size: consecutive seeds
@@ -79,25 +77,7 @@ func quotePool(c game.Outcome, v string, h uint64) []int {
 
 // matches reports whether e fits a crash by c whose last verdict was v.
 func matches(e entry, c game.Outcome, v string) bool {
-	return hasCause(e, c) && (len(e.verdicts) == 0 || hasVerdict(e, v))
-}
-
-func hasCause(e entry, c game.Outcome) bool {
-	for _, x := range e.causes {
-		if x == c {
-			return true
-		}
-	}
-	return false
-}
-
-func hasVerdict(e entry, v string) bool {
-	for _, x := range e.verdicts {
-		if x == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(e.causes, c) && (len(e.verdicts) == 0 || slices.Contains(e.verdicts, v))
 }
 
 // normVerdict folds judge verdicts onto the quote tags. OLE (output limit)
@@ -166,26 +146,11 @@ func BossBlurb(key string) string { return bosses[key].blurb }
 // past the table reads "Prestige N" rather than an empty label.
 func PrestigeName(p int) string {
 	if p >= 0 && p < len(prestiges) {
-		return prestiges[p].name
+		return prestiges[p]
 	}
 	return "Prestige " + strconv.Itoa(p)
-}
-
-// UpgradeText is an upgrade's name and effect under the standard rules;
-// UpgradeTextFor quotes a boot's own numbers.
-func UpgradeText(u game.Upgrade) (name, desc string) {
-	return UpgradeTextFor(u, rules.Standard())
-}
-
-// DaemonText is a daemon's name and effect under the standard rules;
-// DaemonTextFor quotes a boot's own numbers.
-func DaemonText(d game.Daemon) (name, desc string) {
-	return DaemonTextFor(d, rules.Standard())
 }
 
 // Banner is ASCII art for "ac", "boot", "cleared", "grub"; "" for any other
 // kind.
 func Banner(kind string) string { return banners[kind] }
-
-// SoundFile maps a game.Sound name to an audio file for afplay, "" for none.
-func SoundFile(name string) string { return soundFile(name) }

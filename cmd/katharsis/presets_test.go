@@ -1,9 +1,11 @@
 package main
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -29,7 +31,7 @@ func TestShortPreset(t *testing.T) {
 	}
 	r, ok := ps.byName["short"]
 	if !ok {
-		t.Fatalf("presets %v, want short", ps.names())
+		t.Fatalf("presets %v, want short", slices.Sorted(maps.Keys(ps.byName)))
 	}
 	var sum time.Duration
 	for _, b := range r.Biomes {
@@ -58,7 +60,7 @@ func TestLoadDir(t *testing.T) {
 
 	ps := newPresets()
 	errs := ps.loadDir(dir)
-	if got, want := ps.names(), []string{"fast", "hard"}; !reflect.DeepEqual(got, want) {
+	if got, want := slices.Sorted(maps.Keys(ps.byName)), []string{"fast", "hard"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("loaded %v, want %v", got, want)
 	}
 	if r := ps.byName["hard"]; r.Name != "hard" || r.Lives != 1 || r.Ducks != rules.Standard().Ducks {
@@ -91,7 +93,7 @@ func TestLoadDir(t *testing.T) {
 func TestLoadDirMissing(t *testing.T) {
 	ps := newPresets()
 	if errs := ps.loadDir(filepath.Join(t.TempDir(), "nope")); errs != nil || len(ps.byName) != 0 {
-		t.Errorf("missing dir: errs %v, presets %v; want neither", errs, ps.names())
+		t.Errorf("missing dir: errs %v, presets %v; want neither", errs, slices.Sorted(maps.Keys(ps.byName)))
 	}
 }
 

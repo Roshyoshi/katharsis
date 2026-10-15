@@ -41,41 +41,12 @@ var bosses = map[string]named{
 	game.FinalBoss:       {"The Halting Problem", "You cannot know whether this ends. Turing proved it; you get to live it."},
 }
 
-// prestiges are the USACO divisions, mapped onto x86 privilege rings: each
-// level sits one ring closer to the metal, and Advanced runs below ring 0
-// like a hypervisor.
-var prestiges = []struct {
-	name string
-	ring int
-}{
-	{"Bronze", 3},
-	{"Silver", 2},
-	{"Gold", 1},
-	{"Platinum", 0},
-	{"Advanced", -1},
-}
+// prestiges are the USACO divisions, one per prestige level.
+var prestiges = []string{"Bronze", "Silver", "Gold", "Platinum", "Advanced"}
 
-// PrestigeRing is the ring flavor for a prestige level, e.g. "ring 3"; ""
-// past the table.
-func PrestigeRing(p int) string {
-	if p >= 0 && p < len(prestiges) {
-		return "ring " + strconv.Itoa(prestiges[p].ring)
-	}
-	return ""
-}
-
-// PrestigeLabel is PrestigeName with its ring, e.g. "Bronze · ring 3", for
-// screens with room for both.
-func PrestigeLabel(p int) string {
-	if r := PrestigeRing(p); r != "" {
-		return PrestigeName(p) + " · " + r
-	}
-	return PrestigeName(p)
-}
-
-// UpgradeTextFor is UpgradeText with the numbers of r, so a preset that
-// changes OverclockFrac shows what it actually grants. The effects follow
-// the comments on the game.Upgrade constants.
+// UpgradeTextFor is an upgrade's name and effect in r's numbers, so a
+// preset that changes OverclockFrac shows what it actually grants. The
+// effects follow the comments on the game.Upgrade constants.
 func UpgradeTextFor(u game.Upgrade, r rules.Rules) (name, desc string) {
 	switch u {
 	case game.Overclock:
@@ -88,9 +59,9 @@ func UpgradeTextFor(u game.Upgrade, r rules.Rules) (name, desc string) {
 	return string(u), ""
 }
 
-// DaemonTextFor is DaemonText with the numbers of r. Names are the Unix
-// tools they parody; the effects follow the comments on the game.Daemon
-// constants.
+// DaemonTextFor is a daemon's name and effect in r's numbers. Names are the
+// Unix tools they parody; the effects follow the comments on the
+// game.Daemon constants.
 func DaemonTextFor(d game.Daemon, r rules.Rules) (name, desc string) {
 	switch d {
 	case game.Strace:

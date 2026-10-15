@@ -1,9 +1,9 @@
 // katharsis is a competitive-programming roguelike for the terminal.
 //
-// M0 ships the training room: `katharsis practice <dir>` opens the solution
-// in vim beside a HUD that rejudges the samples on every save. In vim,
-// :Submit judges every test at -O2 (the HP bar) and :Debug n opens lldb on
-// test n under the editor; both reach the HUD through `katharsis ctl`.
+// `katharsis` plays: the GRUB menu, boots, learn mode. `katharsis practice
+// <dir>` is the training room: the solution in vim beside a HUD that
+// rejudges the samples on every save. In both, vim's :Submit, :Debug and
+// the rest reach the game through `katharsis ctl`.
 package main
 
 import (
@@ -27,16 +27,19 @@ import (
 )
 
 func main() {
-	// vim runs `katharsis ctl` on every :Submit, so it goes first and
-	// touches nothing but the control socket's client.
-	if len(os.Args) > 1 && os.Args[1] == "ctl" {
-		os.Exit(session.CtlMain(os.Args[2:], os.Stdout, os.Stderr))
-	}
+	args := os.Args[1:]
 	run := runGame
-	if len(os.Args) > 1 && os.Args[1] == "practice" {
-		run = runPractice
+	if len(args) > 0 {
+		switch args[0] {
+		case "ctl":
+			// vim runs `katharsis ctl` on every :Submit, so it goes first and
+			// touches nothing but the control socket's client.
+			os.Exit(session.CtlMain(args[1:], os.Stdout, os.Stderr))
+		case "practice":
+			run, args = runPractice, args[1:]
+		}
 	}
-	if err := run(os.Args[1:]); errors.Is(err, flag.ErrHelp) {
+	if err := run(args); errors.Is(err, flag.ErrHelp) {
 		os.Exit(0) // -h printed the usage; that is not a failure
 	} else if err != nil {
 		fmt.Fprintln(os.Stderr, "katharsis:", err)
@@ -64,6 +67,7 @@ from the standard rules, and is named by its name key or file name.
 	fs.PrintDefaults()
 }
 
+// runPractice is `katharsis practice`; args follow the subcommand.
 func runPractice(args []string) error {
 	fs := flag.NewFlagSet("practice", flag.ContinueOnError)
 	noTmux := fs.Bool("no-tmux", false, "HUD only; edit the source yourself")
@@ -72,7 +76,7 @@ func runPractice(args []string) error {
 	tl := fs.Duration("tl", problem.DefaultTimeLimit, "time limit per test")
 	scale := fs.Float64("scale", 1, "multiply CPU time limits (below 1 is stricter than the judge)")
 	fs.Usage = func() { usage(fs) }
-	if err := fs.Parse(args[1:]); err != nil {
+	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
@@ -89,16 +93,24 @@ func runPractice(args []string) error {
 	}
 
 	// Outside tmux, restart inside a tmux session so the editor and HUD can
-	// sit side by side; a second start attaches to the first.
+	// sit side by side; a second start attaches to the first. Parsing
+	// stopped at the one argument left, so it is the last one.
 	if !*noTmux && !session.InTmux() {
 		self, err := os.Executable()
 		if err != nil {
 			return err
 		}
-		argv := append([]string{self, "practice"}, args[1:len(args)-1]...)
-		argv = append(argv, dir)
-		return session.ExecInTmux("katharsis-"+prob.Name, argv)
+		argv := append([]string{self, "practice"}, args[:len(args)-1]...)
+		return session.ExecInTmux("katharsis-"+prob.Name, append(argv, dir))
 	}
+
+	// tmux sends SIGHUP when the HUD's pane or window is killed. Bubble Tea
+	// handles SIGINT and SIGTERM itself; without this the process would die
+	// before the deferred cleanup (socket, border options) runs. It is
+	// caught from before the editor opens, so a hangup during the probe
+	// below still cleans up.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGHUP)
+	defer stop()
 
 	opt := hud.Options{
 		Dir:    dir,
@@ -119,31 +131,22 @@ func runPractice(args []string) error {
 	// After the editor is up: on a cold cache the probe can take seconds
 	// (a hanging ASan runtime times out at 3 s), and the player can start
 	// typing meanwhile.
-	opt.Profile = judge.SampleProfile(context.Background())
+	opt.Profile = judge.SampleProfile(ctx)
 
 	m := hud.New(opt)
 	p := tea.NewProgram(m)
+	go func() {
+		<-ctx.Done() // a hangup, or stop on the way out
+		p.Quit()
+	}()
 	if srv != nil {
-		go srv.Serve(func(r session.Request) { p.Send(r) })
+		go func() { _ = srv.Serve(func(r session.Request) { p.Send(r) }) }()
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	go func() {
 		err := session.Watch(ctx, prob.Source, 80*time.Millisecond, func() { p.Send(hud.SavedMsg{}) })
 		if err != nil && ctx.Err() == nil {
 			p.Send(hud.WatchErrMsg{Err: err})
 		}
-	}()
-	// tmux sends SIGHUP when the HUD's pane or window is killed. Bubble Tea
-	// handles SIGINT and SIGTERM itself; without this the process would die
-	// before the deferred cleanup (socket, border options) runs.
-	hup := make(chan os.Signal, 1)
-	signal.Notify(hup, syscall.SIGHUP)
-	defer signal.Stop(hup)
-	go func() {
-		<-hup
-		p.Quit()
 	}()
 
 	_, err = p.Run()
@@ -152,7 +155,7 @@ func runPractice(args []string) error {
 	// (a signal) leaves it open; ask it to quit as :confirm qa would, which
 	// never discards unsaved work.
 	if editorPane != "" && !m.EditorLeftOpen() && session.PaneAlive(editorPane) {
-		session.CloseEditor(editorPane)
+		_ = session.CloseEditor(editorPane) // best effort, like cleanup
 	}
 	return err
 }
@@ -160,12 +163,13 @@ func runPractice(args []string) error {
 // openEditor sets up what the editor pane needs: the control socket it
 // reaches the HUD through, the vim overlay defining :Submit and the rest,
 // the pane itself, the timer on its border, and :Debug's lldb pane under
-// it. cleanup undoes all of it.
+// it. cleanup undoes all of it, best effort: the process is on its way out
+// and has no one left to report to.
 func openEditor(opt *hud.Options, dir, source string, editor []string, split int) (pane string, srv *session.Server, cleanup func(), err error) {
-	var undo []func()
+	var undo []func() error
 	undoAll := func() {
 		for i := len(undo) - 1; i >= 0; i-- {
-			undo[i]()
+			_ = undo[i]()
 		}
 	}
 	// The error returns below zero the named results before this runs, so
@@ -177,7 +181,7 @@ func openEditor(opt *hud.Options, dir, source string, editor []string, split int
 		}
 	}()
 
-	session.SweepRunDir()
+	_ = session.SweepRunDir() // best effort: leftovers only take space
 	sock, err := session.SocketPath()
 	if err != nil {
 		return "", nil, nil, err
@@ -186,7 +190,7 @@ func openEditor(opt *hud.Options, dir, source string, editor []string, split int
 	if err != nil {
 		return "", nil, nil, err
 	}
-	undo = append(undo, func() { s.Close() })
+	undo = append(undo, s.Close)
 
 	self, err := os.Executable()
 	if err != nil {
@@ -200,7 +204,7 @@ func openEditor(opt *hud.Options, dir, source string, editor []string, split int
 	if err := (session.Overlay{Ctl: []string{self, "ctl"}}).Write(overlay); err != nil {
 		return "", nil, nil, err
 	}
-	undo = append(undo, func() { os.Remove(overlay) })
+	undo = append(undo, func() error { return os.Remove(overlay) })
 
 	pane, err = session.SplitEditor(dir, source, session.EditorArgv(editor, sock, overlay), split)
 	if err != nil {
@@ -213,8 +217,8 @@ func openEditor(opt *hud.Options, dir, source string, editor []string, split int
 	var border *session.Border
 	if win, err := session.WindowOf(os.Getenv("TMUX_PANE")); err == nil {
 		if border, err = session.ShowBorder(win); err == nil {
-			undo = append(undo, func() { border.Restore() })
-			opt.Border = func(text string) { border.Set(pane, text) }
+			undo = append(undo, border.Restore)
+			opt.Border = func(text string) { _ = border.Set(pane, text) }
 		}
 	}
 	opt.Debug = func(d hud.DebugTarget) (func(), error) {
@@ -223,9 +227,9 @@ func openEditor(opt *hud.Options, dir, source string, editor []string, split int
 			return nil, err
 		}
 		if border != nil {
-			border.Set(dbg, " lldb · #"+d.Test+" · stopped at main: run ")
+			_ = border.Set(dbg, " lldb · #"+d.Test+" · stopped at main: run ")
 		}
-		return func() { session.KillPane(dbg) }, nil
+		return func() { _ = session.KillPane(dbg) }, nil
 	}
 	return pane, s, undoAll, nil
 }

@@ -2,13 +2,6 @@ package flavor
 
 import "strings"
 
-// Banner limits: screens center banners in panes as narrow as a tmux
-// split, so art stays within these and carries no color codes.
-const (
-	BannerMaxWidth = 60
-	BannerMaxLines = 7
-)
-
 // The lettering is figlet's "Calvin S" face: box-drawing runes are one
 // column wide in every terminal font, unlike emoji or block shading, so the
 // art aligns the same everywhere. Leading newlines are trimmed below; the

@@ -41,6 +41,11 @@ func runGame(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	// A misspelt subcommand must fail here, not start the game.
+	if fs.NArg() > 0 {
+		usage(fs)
+		return fmt.Errorf("unknown command %q", fs.Arg(0))
+	}
 
 	// Presets load before tmux, so a --preset that fails ends the game in
 	// the player's own terminal, where the error stays on screen. The
@@ -56,7 +61,6 @@ func runGame(args []string) error {
 	if err != nil {
 		return err
 	}
-	bad := ps.loadDir(dir)
 
 	// The game needs tmux to sit beside the editor. Outside it, restart in
 	// a session of its own; starting again attaches to the running game.
@@ -67,14 +71,32 @@ func runGame(args []string) error {
 		}
 		return session.ExecInTmux("katharsis", append([]string{self}, args...))
 	}
-	warnPresets(bad)
+	warnPresets(ps.loadDir(dir))
+
+	// tmux sends SIGHUP when the game's pane or window is killed; quit
+	// through Bubble Tea so the deferred cleanup still runs. Before the
+	// TUI, a hangup cancels the catalog downloads instead.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGHUP)
+	defer stop()
+
+	// Before the catalogs, so a database this build cannot use fails
+	// without the wait.
+	path, err := store.DefaultPath()
+	if err != nil {
+		return err
+	}
+	st, err := store.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = st.Close() }() // every write already committed
 
 	// Before the TUI: the first run downloads the USACO Guide snapshot
 	// (about 150 MB) and the Codeforces index (about 17 MB) and builds the
 	// indexes, which can take a minute. Later runs read them from the cache.
 	fmt.Fprintln(os.Stderr, "katharsis: loading problems… (the first run downloads the USACO Guide and Codeforces indexes)")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	us, err := usaco.Open(ctx)
+	loadCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	us, err := usaco.Open(loadCtx)
 	cancel()
 	if err != nil {
 		return fmt.Errorf("USACO catalog: %w", err)
@@ -83,28 +105,14 @@ func runGame(args []string) error {
 	// Codeforces is extra doors, not a requirement: a cold cache with no
 	// network still plays USACO. Its build took 20 s when measured; the
 	// timeout only bounds a stalled download.
-	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Minute)
-	cf, err := codeforces.Open(ctx)
+	loadCtx, cancel = context.WithTimeout(ctx, 3*time.Minute)
+	cf, err := codeforces.Open(loadCtx)
 	cancel()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "katharsis: Codeforces catalog unavailable, playing USACO only: %v\n", err)
 	} else {
 		cats = append(cats, cf)
 	}
-	cat := catalog.NewUnion(cats...)
-
-	path, err := store.DefaultPath()
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	st, err := store.Open(path)
-	if err != nil {
-		return err
-	}
-	defer st.Close()
 
 	runner := &app.TmuxRunner{
 		Root:      *root,
@@ -119,7 +127,7 @@ func runGame(args []string) error {
 	}
 	m, err := app.New(app.Deps{
 		Store:   st,
-		Catalog: cat,
+		Catalog: catalog.NewUnion(cats...),
 		Presets: ps.byName,
 		Runner:  runner,
 		Now:     time.Now,
@@ -136,14 +144,8 @@ func runGame(args []string) error {
 		return err
 	}
 	defer runner.Shutdown()
-
-	// tmux sends SIGHUP when the game's pane or window is killed; quit
-	// through Bubble Tea so the deferred cleanup still runs.
-	hup := make(chan os.Signal, 1)
-	signal.Notify(hup, syscall.SIGHUP)
-	defer signal.Stop(hup)
 	go func() {
-		<-hup
+		<-ctx.Done() // a hangup, or stop on the way out
 		p.Quit()
 	}()
 
@@ -154,6 +156,15 @@ func runGame(args []string) error {
 // play runs afplay in the background; a missing sound is silence.
 func play(name string) {
 	if f := flavor.SoundFile(name); f != "" {
-		exec.Command("afplay", f).Start()
+		start(exec.Command("afplay", f))
+	}
+}
+
+// start runs cmd without waiting on it, but reaps it once it exits: a
+// child never waited on stays a zombie until the game exits, one per sound
+// played.
+func start(cmd *exec.Cmd) {
+	if cmd.Start() == nil {
+		go func() { _ = cmd.Wait() }()
 	}
 }

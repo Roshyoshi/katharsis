@@ -25,9 +25,10 @@ var sounds = map[string]string{
 	"cleared": "Hero.aiff",
 }
 
-// soundFile checks the file on every call: the check is one stat, and it
-// keeps a missing sound (a trimmed macOS install) from reaching afplay.
-func soundFile(name string) string {
+// SoundFile maps a game.Sound name to an audio file for afplay, "" for none.
+// It checks the file on every call: the check is one stat, and it keeps a
+// missing sound (a trimmed macOS install) from reaching afplay.
+func SoundFile(name string) string {
 	f, ok := sounds[name]
 	if !ok {
 		return ""

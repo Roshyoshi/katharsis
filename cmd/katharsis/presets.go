@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -94,16 +93,6 @@ func (p *presets) add(path string) error {
 	return nil
 }
 
-// names lists the presets in name order.
-func (p *presets) names() []string {
-	var ns []string
-	for n := range p.byName {
-		ns = append(ns, n)
-	}
-	slices.Sort(ns)
-	return ns
-}
-
 // warnPresets reports the preset files that did not load the way GRUB
 // reports a bad entry, and waits for a key: the TUI takes the screen next,
 // and anything on stderr would be gone before it was read.
@@ -123,8 +112,9 @@ func warnPresets(errs []error) {
 	if err != nil {
 		return
 	}
-	defer term.Restore(fd, old)
+	defer func() { _ = term.Restore(fd, old) }()
 	// One read takes a whole escape sequence (an arrow key), so none of it
-	// is left for the TUI to misread.
-	os.Stdin.Read(make([]byte, 64))
+	// is left for the TUI to misread. Any outcome, even an error, is the
+	// "key" that continues.
+	_, _ = os.Stdin.Read(make([]byte, 64))
 }

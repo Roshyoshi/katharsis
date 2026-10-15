@@ -81,6 +81,7 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	// 0700 is what the XDG spec asks of a data directory it has to create.
 	if err := os.MkdirAll(filepath.Dir(abs), 0o700); err != nil {
 		return nil, err
 	}
@@ -89,8 +90,7 @@ func Open(path string) (*Store, error) {
 		return nil, err
 	}
 	if err := migrate(db, migrations); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("%s: %w", abs, err)
+		return nil, errors.Join(fmt.Errorf("%s: %w", abs, err), db.Close())
 	}
 	return &Store{db: db, now: time.Now}, nil
 }
@@ -117,27 +117,23 @@ func dsn(path string) string {
 }
 
 // write runs fn in one immediate transaction.
-func (s *Store) write(fn func(tx *sql.Tx) error) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
-	}
-	if err := fn(tx); err != nil {
-		tx.Rollback()
-		return err
-	}
-	return tx.Commit()
-}
+func (s *Store) write(fn func(tx *sql.Tx) error) error { return inTx(s.db, nil, fn) }
 
 // read runs fn in one read transaction, so multi-query reads (Stats) see a
 // single snapshot even while another process commits.
 func (s *Store) read(fn func(tx *sql.Tx) error) error {
-	tx, err := s.db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})
+	return inTx(s.db, &sql.TxOptions{ReadOnly: true}, fn)
+}
+
+func inTx(db *sql.DB, opts *sql.TxOptions, fn func(tx *sql.Tx) error) error {
+	tx, err := db.BeginTx(context.Background(), opts)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
-	return fn(tx)
+	if err := fn(tx); err != nil {
+		return errors.Join(err, tx.Rollback())
+	}
+	return tx.Commit()
 }
 
 func (s *Store) step(stage string) error {

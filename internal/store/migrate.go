@@ -72,46 +72,30 @@ var migrations = []string{
 	`,
 }
 
-// migrate applies the missing steps, one transaction each, so a failed step
-// leaves the file at the last good version rather than half-migrated.
+// migrate applies the missing steps in one transaction, so a failed step
+// leaves the file as it was rather than half-migrated. It reads
+// user_version inside that transaction, which holds the write lock from
+// BEGIN: two processes opening a fresh file at once apply each step exactly
+// once, the second seeing the first's commit.
 func migrate(db *sql.DB, steps []string) error {
-	for {
-		done, err := migrateOne(db, steps)
-		if err != nil || done {
+	return inTx(db, nil, func(tx *sql.Tx) error {
+		var v int
+		if err := tx.QueryRow(`PRAGMA user_version`).Scan(&v); err != nil {
 			return err
 		}
-	}
-}
-
-// migrateOne reads user_version inside the write transaction: two processes
-// opening a fresh file at once then apply each step exactly once, the
-// second seeing the first's commit.
-func migrateOne(db *sql.DB, steps []string) (done bool, err error) {
-	tx, err := db.Begin()
-	if err != nil {
-		return false, err
-	}
-	defer func() {
-		if err != nil || done {
-			tx.Rollback()
+		switch {
+		case v > len(steps):
+			return fmt.Errorf("%w: schema %d, this build knows %d", ErrNewerSchema, v, len(steps))
+		case v == len(steps):
+			return nil
 		}
-	}()
-	var v int
-	if err := tx.QueryRow(`PRAGMA user_version`).Scan(&v); err != nil {
-		return false, err
-	}
-	switch {
-	case v > len(steps):
-		return true, fmt.Errorf("%w: schema %d, this build knows %d", ErrNewerSchema, v, len(steps))
-	case v == len(steps):
-		return true, nil
-	}
-	if _, err := tx.Exec(steps[v]); err != nil {
-		return false, fmt.Errorf("migration %d: %w", v+1, err)
-	}
-	// PRAGMA takes no bound parameters; v is an int we control.
-	if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, v+1)); err != nil {
-		return false, fmt.Errorf("migration %d: %w", v+1, err)
-	}
-	return false, tx.Commit()
+		for i := v; i < len(steps); i++ {
+			if _, err := tx.Exec(steps[i]); err != nil {
+				return fmt.Errorf("migration %d: %w", i+1, err)
+			}
+		}
+		// PRAGMA takes no bound parameters; the count is ours, not input.
+		_, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, len(steps)))
+		return err
+	})
 }

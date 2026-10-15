@@ -88,9 +88,7 @@ func TestMigrations(t *testing.T) {
 		path := tempPath(t)
 		s := open(t, path)
 		checkpoint(t, s, sampleMeta(), midBoot(3, t0))
-		if err := s.Close(); err != nil {
-			t.Fatal(err)
-		}
+		mustClose(t, s)
 		for range 2 {
 			s := open(t, path)
 			if v := userVersion(t, s.DB()); v != len(store.Migrations) {
@@ -101,7 +99,7 @@ func TestMigrations(t *testing.T) {
 				t.Fatal(err)
 			}
 			same(t, "meta after reopen", m, sampleMeta())
-			s.Close()
+			mustClose(t, s)
 		}
 	})
 
@@ -112,10 +110,10 @@ func TestMigrations(t *testing.T) {
 		if _, err := s.DB().Exec(`PRAGMA user_version = 99`); err != nil {
 			t.Fatal(err)
 		}
-		s.Close()
+		mustClose(t, s)
 		if s, err := store.Open(path); !errors.Is(err, store.ErrNewerSchema) {
 			if s != nil {
-				s.Close()
+				mustClose(t, s)
 			}
 			t.Fatalf("Open = %v, want ErrNewerSchema", err)
 		}
@@ -124,12 +122,12 @@ func TestMigrations(t *testing.T) {
 	t.Run("failed step rolls back whole", func(t *testing.T) {
 		t.Parallel()
 		path := tempPath(t)
-		open(t, path).Close()
+		mustClose(t, open(t, path))
 		db, err := sql.Open("sqlite", store.DSN(path))
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer db.Close()
+		defer mustClose(t, db)
 		// The second statement fails after the first has run: the step's
 		// transaction must take the CREATE back with it.
 		steps := append(slices.Clone(store.Migrations),
@@ -153,12 +151,29 @@ func TestOpenOddPath(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a b?c#d%20e", "dead cases.db")
 	s := open(t, path)
 	checkpoint(t, s, sampleMeta(), midBoot(1, t0))
-	s.Close()
+	mustClose(t, s)
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("database not at the requested path: %v", err)
 	}
 	if st, err := open(t, path).ActiveBoot(); err != nil || st == nil {
 		t.Fatalf("reopen: ActiveBoot = %v, %v", st, err)
+	}
+}
+
+// TestOpenPrivateDirs: XDG asks for 0700 on the data directories it has to
+// create, and the game leaves creating them to Open.
+func TestOpenPrivateDirs(t *testing.T) {
+	t.Parallel()
+	path := tempPath(t) // .../data/katharsis/katharsis.db, neither dir there
+	open(t, path)
+	for _, dir := range []string{filepath.Dir(path), filepath.Dir(filepath.Dir(path))} {
+		fi, err := os.Stat(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if perm := fi.Mode().Perm(); perm != 0o700 {
+			t.Errorf("%s is %o, want 700", dir, perm)
+		}
 	}
 }
 
@@ -182,7 +197,7 @@ func TestCheckpointRoundTrip(t *testing.T) {
 	s := openClocked(t, path, t0.Add(45*time.Minute))
 	meta, st := sampleMeta(), midBoot(3, t0)
 	checkpoint(t, s, meta, st)
-	s.Close()
+	mustClose(t, s)
 
 	// A fresh process resumes from the file alone.
 	s = open(t, path)
@@ -213,9 +228,9 @@ func TestCheckpointRoundTrip(t *testing.T) {
 	}
 	wantBoots := []store.BootSummary{{
 		Boot: 3, Seed: st.Seed, Prestige: 1, Rules: "standard", Started: t0,
-		Phase: game.PhaseProblem, Outcome: store.BootRunning,
+		Outcome:  store.BootRunning,
 		Uptime:   45*time.Minute + time.Second, // the clock's first reading
-		LastDoor: "usaco:1060", Doors: 2, Clears: 2,
+		LastDoor: "usaco:1060",
 	}}
 	same(t, "boots", boots, wantBoots)
 }
@@ -263,8 +278,6 @@ func TestAttemptFilter(t *testing.T) {
 		{"all, newest first", store.AttemptFilter{}, []key{{2, 1}, {2, 0}, {1, 2}, {1, 1}, {1, 0}}},
 		{"one boot", store.AttemptFilter{Boot: 1}, []key{{1, 2}, {1, 1}, {1, 0}}},
 		{"one problem", store.AttemptFilter{Problem: "usaco:987"}, []key{{2, 0}, {1, 0}}},
-		{"since", store.AttemptFilter{Since: t0.Add(2 * time.Hour)}, []key{{2, 1}, {2, 0}}},
-		{"since is inclusive", store.AttemptFilter{Since: b1.History[2].Closed}, []key{{2, 1}, {2, 0}, {1, 2}}},
 		{"limit", store.AttemptFilter{Limit: 2}, []key{{2, 1}, {2, 0}}},
 		{"combined", store.AttemptFilter{Boot: 1, Problem: catalog.ID("usaco:1060")}, []key{{1, 2}}},
 		{"no match", store.AttemptFilter{Problem: "cses:1"}, nil},
@@ -349,11 +362,12 @@ func TestActiveBoot(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			ends := endedAt(t, s)
 			var got []store.BootOutcome
 			for _, b := range boots {
 				got = append(got, b.Outcome)
-				if (b.Outcome == store.BootRunning) != b.Ended.IsZero() {
-					t.Errorf("boot %d: outcome %q but ended %v", b.Boot, b.Outcome, b.Ended)
+				if (b.Outcome == store.BootRunning) != (ends[b.Boot] == 0) {
+					t.Errorf("boot %d: outcome %q but ended %d", b.Boot, b.Outcome, ends[b.Boot])
 				}
 			}
 			if !slices.Equal(got, tc.outcomes) {
@@ -458,21 +472,48 @@ func TestBootSummaryEnds(t *testing.T) {
 	want := []store.BootSummary{
 		{
 			Boot: 2, Seed: cleared.Seed, Prestige: 1, Rules: "standard",
-			Started: cleared.Started, Ended: clearedEnd, Phase: game.PhaseCleared,
-			Outcome: store.BootCleared, Uptime: clearedEnd.Sub(cleared.Started),
-			Committed: 120, LastDoor: "usaco:1060", Doors: 3, Clears: 3,
+			Started: cleared.Started, Outcome: store.BootCleared,
+			Uptime:    clearedEnd.Sub(cleared.Started),
+			Committed: 120, LastDoor: "usaco:1060",
 		},
 		{
 			Boot: 1, Seed: crashed.Seed, Prestige: 1, Rules: "standard",
-			Started: t0, Ended: crashed.Crash.At, Phase: game.PhaseCrashed,
-			Outcome: store.BootCrashed, Cause: game.OutOfLives, Uptime: crashed.Crash.Uptime,
-			LastDoor: "usaco:1060", Doors: 3, Clears: 2,
+			Started: t0, Outcome: store.BootCrashed, Cause: game.OutOfLives,
+			Uptime: crashed.Crash.Uptime, LastDoor: "usaco:1060",
 		},
 	}
 	same(t, "boots", boots, want)
+	same(t, "ended", endedAt(t, s), map[int]int64{
+		1: crashed.Crash.At.UnixNano(),
+		2: clearedEnd.UnixNano(),
+	})
 	if one, _ := s.Boots(1); len(one) != 1 || one[0].Boot != 2 {
 		t.Errorf("Boots(1) = %+v, want only boot 2", one)
 	}
+}
+
+// endedAt reads each boot's ended column, 0 while it runs. No query
+// returns it, but the file keeps it as the boot's record.
+func endedAt(t *testing.T, s *store.Store) map[int]int64 {
+	t.Helper()
+	rows, err := s.DB().Query(`SELECT id, COALESCE(ended, 0) FROM boots`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	ends := map[int]int64{}
+	for rows.Next() {
+		var id int
+		var at int64
+		if err := rows.Scan(&id, &at); err != nil {
+			t.Fatal(err)
+		}
+		ends[id] = at
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return ends
 }
 
 func TestRatingHistory(t *testing.T) {
@@ -552,17 +593,13 @@ func TestStats(t *testing.T) {
 	want := store.Stats{
 		Boots:      6,
 		FullClears: 1,
-		Abandoned:  1,
 		Crashes:    map[game.Outcome]int{game.TimedOut: 2, game.OutOfLives: 1},
 		Solves:     map[game.SolveKind]int{game.Independent: 1, game.Hinted: 1, game.Editorial: 1},
 		Topics: map[string]store.TopicStats{
 			"simulation":  {Attempts: 12, Clears: 12},
 			"prefix-sums": {Attempts: 4, Clears: 1},
 		},
-		Attempts:      16,
-		Clears:        13,
-		Uptime:        uptime,
-		LifetimeBytes: 4096,
+		Uptime: uptime,
 	}
 	same(t, "stats", got, want)
 

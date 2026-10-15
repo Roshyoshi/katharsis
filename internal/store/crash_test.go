@@ -127,7 +127,7 @@ func TestKillMidCheckpoint(t *testing.T) {
 	s := open(t, path)
 	checkpoint(t, s, sampleMeta(), midBoot(1, t0))
 	before := see(t, s)
-	s.Close()
+	mustClose(t, s)
 
 	cmd := exec.Command(os.Args[0], "-test.run=^TestKillMidCheckpoint$", "-test.count=1")
 	cmd.Env = append(os.Environ(), killEnv+"="+path)
@@ -169,7 +169,7 @@ func killedChild(path string) {
 	}
 	s.SetFault(func(stage string) error {
 		if stage == "attempts" {
-			syscall.Kill(os.Getpid(), syscall.SIGKILL)
+			_ = syscall.Kill(os.Getpid(), syscall.SIGKILL)
 			select {}
 		}
 		return nil
@@ -203,7 +203,7 @@ func TestWALReaders(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer tx.Rollback()
+		defer func() { _ = tx.Rollback() }()
 		bank := func() int64 {
 			var raw []byte
 			if err := tx.QueryRow(`SELECT json FROM meta`).Scan(&raw); err != nil {
@@ -228,7 +228,9 @@ func TestWALReaders(t *testing.T) {
 		if b := bank(); b != m.Bank-100 {
 			t.Errorf("open read saw bank %d mid-transaction, want its snapshot %d", b, m.Bank-100)
 		}
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			t.Fatal(err)
+		}
 		if got, _ := r.LoadMeta(); got.Bank != m.Bank {
 			t.Errorf("new read saw bank %d, want %d", got.Bank, m.Bank)
 		}
@@ -396,7 +398,7 @@ func BenchmarkCheckpoint(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer s.Close()
+	defer mustClose(b, s)
 	m, st := sampleMeta(), midBoot(1, t0)
 	for len(st.History) < 10 {
 		st.History = append(st.History, st.History[0])

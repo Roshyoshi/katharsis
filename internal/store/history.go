@@ -19,59 +19,43 @@ type BootSummary struct {
 	Prestige int
 	Rules    string // preset name
 	Started  time.Time
-	Ended    time.Time // zero while running
-	Phase    game.Phase
 	Outcome  BootOutcome
 	Cause    game.Outcome  // crash cause when Outcome is BootCrashed
 	Uptime   time.Duration // as of the last checkpoint while running
 	// Committed is bytes banked during the boot.
 	Committed int64
 	LastDoor  catalog.ID
-	Doors     int // attempts closed
-	Clears    int // of those, cleared
 }
 
 // Boots lists boots newest first; limit <= 0 lists all.
 func (s *Store) Boots(limit int) ([]BootSummary, error) {
-	if limit <= 0 {
-		limit = -1 // SQLite: no limit
-	}
-	rows, err := s.db.Query(`
-		SELECT b.id, b.seed, b.prestige, b.rules, b.started, b.ended, b.phase,
-			b.outcome, b.cause, b.uptime, b.committed, b.last_door,
-			(SELECT COUNT(*) FROM attempts a WHERE a.boot = b.id),
-			(SELECT COUNT(*) FROM attempts a WHERE a.boot = b.id AND a.outcome = ?)
-		FROM boots b ORDER BY b.id DESC LIMIT ?`, game.Cleared, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
 	var out []BootSummary
-	for rows.Next() {
-		var (
-			b                     BootSummary
-			seed, started, uptime int64
-			ended                 sql.NullInt64
-		)
-		if err := rows.Scan(&b.Boot, &seed, &b.Prestige, &b.Rules, &started,
-			&ended, &b.Phase, &b.Outcome, &b.Cause, &uptime, &b.Committed,
-			&b.LastDoor, &b.Doors, &b.Clears); err != nil {
-			return nil, err
-		}
-		b.Seed = uint64(seed)
-		b.Started = fromUnixNano(started)
-		b.Ended = fromUnixNano(ended.Int64)
-		b.Uptime = time.Duration(uptime)
-		out = append(out, b)
-	}
-	return out, rows.Err()
+	err := eachRow(s.db, `
+		SELECT id, seed, prestige, rules, started, outcome, cause, uptime,
+			committed, last_door
+		FROM boots ORDER BY id DESC LIMIT ?`, []any{sqlLimit(limit)},
+		func(rows *sql.Rows) error {
+			var (
+				b                     BootSummary
+				seed, started, uptime int64
+			)
+			if err := rows.Scan(&b.Boot, &seed, &b.Prestige, &b.Rules, &started,
+				&b.Outcome, &b.Cause, &uptime, &b.Committed, &b.LastDoor); err != nil {
+				return err
+			}
+			b.Seed = uint64(seed)
+			b.Started = fromUnixNano(started)
+			b.Uptime = time.Duration(uptime)
+			out = append(out, b)
+			return nil
+		})
+	return out, err
 }
 
 // AttemptFilter narrows Attempts; zero fields match everything.
 type AttemptFilter struct {
 	Boot    int        // > 0: this boot only
 	Problem catalog.ID // this problem only
-	Since   time.Time  // closed at or after
 	Limit   int        // <= 0: no limit
 }
 
@@ -94,40 +78,29 @@ func (s *Store) Attempts(f AttemptFilter) ([]AttemptRecord, error) {
 	if f.Problem != "" {
 		where, args = append(where, "problem = ?"), append(args, f.Problem)
 	}
-	if !f.Since.IsZero() {
-		where, args = append(where, "closed >= ?"), append(args, unixNano(f.Since))
-	}
 	q := "SELECT boot, idx, json FROM attempts"
 	if len(where) > 0 {
 		q += " WHERE " + strings.Join(where, " AND ")
 	}
-	limit := f.Limit
-	if limit <= 0 {
-		limit = -1
-	}
 	q += " ORDER BY closed DESC, boot DESC, idx DESC LIMIT ?"
-	args = append(args, limit)
+	args = append(args, sqlLimit(f.Limit))
 
-	rows, err := s.db.Query(q, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
 	var out []AttemptRecord
-	for rows.Next() {
+	err := eachRow(s.db, q, args, func(rows *sql.Rows) error {
 		var (
 			r   AttemptRecord
 			raw []byte
 		)
 		if err := rows.Scan(&r.Boot, &r.Index, &raw); err != nil {
-			return nil, err
+			return err
 		}
 		if err := json.Unmarshal(raw, &r.Attempt); err != nil {
-			return nil, fmt.Errorf("store: boot %d attempt %d: %w", r.Boot, r.Index, err)
+			return fmt.Errorf("store: boot %d attempt %d: %w", r.Boot, r.Index, err)
 		}
 		out = append(out, r)
-	}
-	return out, rows.Err()
+		return nil
+	})
+	return out, err
 }
 
 type RatingPoint struct {
@@ -138,26 +111,23 @@ type RatingPoint struct {
 // RatingHistory lists rating changes at or after since, oldest first (the
 // sparkline's order). The zero time lists all of them.
 func (s *Store) RatingHistory(since time.Time) ([]RatingPoint, error) {
-	rows, err := s.db.Query(`
-		SELECT at, rating FROM rating_history WHERE at >= ? ORDER BY at, id`,
-		unixNano(since))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
 	var out []RatingPoint
-	for rows.Next() {
-		var (
-			p  RatingPoint
-			at int64
-		)
-		if err := rows.Scan(&at, &p.Rating); err != nil {
-			return nil, err
-		}
-		p.At = fromUnixNano(at)
-		out = append(out, p)
-	}
-	return out, rows.Err()
+	err := eachRow(s.db, `
+		SELECT at, rating FROM rating_history WHERE at >= ? ORDER BY at, id`,
+		[]any{unixNano(since)},
+		func(rows *sql.Rows) error {
+			var (
+				p  RatingPoint
+				at int64
+			)
+			if err := rows.Scan(&at, &p.Rating); err != nil {
+				return err
+			}
+			p.At = fromUnixNano(at)
+			out = append(out, p)
+			return nil
+		})
+	return out, err
 }
 
 // TopicStats counts doors of one catalog topic across all boots.
@@ -170,15 +140,10 @@ type TopicStats struct {
 type Stats struct {
 	Boots      int
 	FullClears int
-	Abandoned  int
 	Crashes    map[game.Outcome]int   // by cause
 	Solves     map[game.SolveKind]int // from Meta.Solves, upsolves included
 	Topics     map[string]TopicStats
-	Attempts   int
-	Clears     int
 	Uptime     time.Duration // summed over boots
-	// LifetimeBytes is Meta.LifetimeBytes, the engine's running total.
-	LifetimeBytes int64
 }
 
 // Stats reads every total from one snapshot, so the numbers agree with each
@@ -192,18 +157,16 @@ func (s *Store) Stats() (Stats, error) {
 	err := s.read(func(tx *sql.Tx) error {
 		var uptime int64
 		if err := tx.QueryRow(`
-			SELECT COUNT(*),
-				COALESCE(SUM(outcome = 'cleared'), 0),
-				COALESCE(SUM(outcome = 'abandoned'), 0),
+			SELECT COUNT(*), COALESCE(SUM(outcome = 'cleared'), 0),
 				COALESCE(SUM(uptime), 0)
-			FROM boots`).Scan(&st.Boots, &st.FullClears, &st.Abandoned, &uptime); err != nil {
+			FROM boots`).Scan(&st.Boots, &st.FullClears, &uptime); err != nil {
 			return err
 		}
 		st.Uptime = time.Duration(uptime)
 
 		if err := eachRow(tx, `
 			SELECT cause, COUNT(*) FROM boots
-			WHERE outcome = 'crashed' GROUP BY cause`,
+			WHERE outcome = 'crashed' GROUP BY cause`, nil,
 			func(rows *sql.Rows) error {
 				var (
 					cause game.Outcome
@@ -218,7 +181,7 @@ func (s *Store) Stats() (Stats, error) {
 
 		if err := eachRow(tx, `
 			SELECT topic, COUNT(*), SUM(outcome = 'cleared')
-			FROM attempts GROUP BY topic`,
+			FROM attempts GROUP BY topic`, nil,
 			func(rows *sql.Rows) error {
 				var (
 					topic string
@@ -226,8 +189,6 @@ func (s *Store) Stats() (Stats, error) {
 				)
 				err := rows.Scan(&topic, &t.Attempts, &t.Clears)
 				st.Topics[topic] = t
-				st.Attempts += t.Attempts
-				st.Clears += t.Clears
 				return err
 			}); err != nil {
 			return err
@@ -248,22 +209,34 @@ func (s *Store) Stats() (Stats, error) {
 		for _, sv := range m.Solves {
 			st.Solves[sv.Kind]++
 		}
-		st.LifetimeBytes = m.LifetimeBytes
 		return nil
 	})
 	return st, err
 }
 
-func eachRow(tx *sql.Tx, q string, scan func(*sql.Rows) error) error {
-	rows, err := tx.Query(q)
+// querier is a *sql.DB or a *sql.Tx.
+type querier interface {
+	Query(query string, args ...any) (*sql.Rows, error)
+}
+
+// eachRow runs q and calls scan on each row, stopping at its first error.
+func eachRow(db querier, q string, args []any, scan func(*sql.Rows) error) error {
+	rows, err := db.Query(q, args...)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 	for rows.Next() {
 		if err := scan(rows); err != nil {
-			return err
+			return errors.Join(err, rows.Close())
 		}
 	}
-	return rows.Err()
+	return errors.Join(rows.Err(), rows.Close())
+}
+
+// sqlLimit maps the API's "<= 0 is no limit" onto SQLite's LIMIT -1.
+func sqlLimit(n int) int {
+	if n <= 0 {
+		return -1
+	}
+	return n
 }

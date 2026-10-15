@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"encoding/json"
+	"io"
 	"path/filepath"
 	"reflect"
 	"sync"
@@ -44,8 +45,17 @@ func open(t *testing.T, path string) *store.Store {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { mustClose(t, s) })
 	return s
+}
+
+// mustClose closes a store or a raw *sql.DB. Closing twice is fine, so a
+// test may close a store early to reopen the file as a fresh process.
+func mustClose(tb testing.TB, c io.Closer) {
+	tb.Helper()
+	if err := c.Close(); err != nil {
+		tb.Fatal(err)
+	}
 }
 
 // openClocked opens with a fake clock starting at start.

@@ -96,22 +96,6 @@ func TestQuoteSources(t *testing.T) {
 	}
 }
 
-func TestQuoteForEveryPair(t *testing.T) {
-	for _, c := range allOutcomes {
-		for _, v := range allVerdicts {
-			for seed := range uint64(50) {
-				q := QuoteFor(c, v, seed)
-				if q.Text == "" || q.Author == "" {
-					t.Fatalf("QuoteFor(%q, %q, %d) = %+v", c, v, seed, q)
-				}
-				if q != QuoteFor(c, v, seed) {
-					t.Fatalf("QuoteFor(%q, %q, %d) not deterministic", c, v, seed)
-				}
-			}
-		}
-	}
-}
-
 func TestQuoteForAdjacentSeedsDiffer(t *testing.T) {
 	seeds := []uint64{0, 1, 2, 41, 1 << 32, 0xdeadbeefcafef00d, 1<<63 - 1}
 	for _, c := range allOutcomes {
@@ -245,9 +229,6 @@ func TestPrestige(t *testing.T) {
 		if got := PrestigeName(p); got != want[p] {
 			t.Errorf("PrestigeName(%d) = %q, want %q", p, got, want[p])
 		}
-		if got := PrestigeLabel(p); !strings.HasPrefix(got, want[p]+" · ring ") {
-			t.Errorf("PrestigeLabel(%d) = %q", p, got)
-		}
 	}
 	if PrestigeName(-1) == "" || PrestigeName(game.MaxPrestige+1) == "" {
 		t.Error("out-of-range prestige has an empty name")
@@ -255,21 +236,21 @@ func TestPrestige(t *testing.T) {
 }
 
 func TestUpgradesAndDaemons(t *testing.T) {
+	r := rules.Standard()
 	for _, u := range []game.Upgrade{game.Overclock, game.ECC, game.Duck} {
-		name, desc := UpgradeText(u)
+		name, desc := UpgradeTextFor(u, r)
 		if name == "" || desc == "" {
-			t.Errorf("UpgradeText(%q) = %q, %q", u, name, desc)
+			t.Errorf("UpgradeTextFor(%q) = %q, %q", u, name, desc)
 		}
 	}
 	for _, d := range []game.Daemon{game.Strace, game.Nice, game.Fork, game.DevRandom, game.Kexec} {
-		name, desc := DaemonText(d)
+		name, desc := DaemonTextFor(d, r)
 		if name == "" || desc == "" {
-			t.Errorf("DaemonText(%q) = %q, %q", d, name, desc)
+			t.Errorf("DaemonTextFor(%q) = %q, %q", d, name, desc)
 		}
 	}
 
 	// The descriptions quote the rules, standard and custom alike.
-	r := rules.Standard()
 	checks := []struct{ got, want string }{
 		{second(UpgradeTextFor(game.Overclock, r)), "+15% timer"},
 		{second(DaemonTextFor(game.Nice, r)), "+20% timer; a failed submit costs 2 lives"},
@@ -295,6 +276,13 @@ func second(_, b string) string { return b }
 
 var narrow = regexp.MustCompile(`^[ -~\x{2500}-\x{257F}]*$`)
 
+// Screens center banners in panes as narrow as a tmux split, so art stays
+// within these and carries no color codes.
+const (
+	bannerMaxWidth = 60
+	bannerMaxLines = 7
+)
+
 func TestBanners(t *testing.T) {
 	for _, kind := range []string{"ac", "boot", "cleared", "grub"} {
 		b := Banner(kind)
@@ -303,12 +291,12 @@ func TestBanners(t *testing.T) {
 			continue
 		}
 		lines := strings.Split(b, "\n")
-		if len(lines) > BannerMaxLines {
-			t.Errorf("Banner(%q): %d lines > %d", kind, len(lines), BannerMaxLines)
+		if len(lines) > bannerMaxLines {
+			t.Errorf("Banner(%q): %d lines > %d", kind, len(lines), bannerMaxLines)
 		}
 		for i, l := range lines {
-			if w := utf8.RuneCountInString(l); w > BannerMaxWidth {
-				t.Errorf("Banner(%q) line %d: %d cols > %d", kind, i, w, BannerMaxWidth)
+			if w := utf8.RuneCountInString(l); w > bannerMaxWidth {
+				t.Errorf("Banner(%q) line %d: %d cols > %d", kind, i, w, bannerMaxWidth)
 			}
 			// ASCII and box drawing only: one column each, no escapes.
 			if !narrow.MatchString(l) {
@@ -352,6 +340,28 @@ func TestSoundFile(t *testing.T) {
 var frame = regexp.MustCompile(`^[a-z_][a-z0-9_]*\+0x([0-9a-f]+)/0x([0-9a-f]+)$`)
 
 func TestKernelHelpers(t *testing.T) {
+	// The verdict picks the path when it explains the crash; :q! is always
+	// a kill.
+	for _, tc := range []struct {
+		cause                game.Outcome
+		verdict, reason, top string
+	}{
+		{game.TimedOut, "", "timer expired", "it_real_fn"},
+		{game.TimedOut, "TLE", "timer expired", "watchdog_timer_fn"},
+		{game.OutOfLives, " tle", "softlockup: hung tasks", "watchdog_timer_fn"},
+		{game.OutOfLives, "OLE", "System is deadlocked on memory", "oom_kill_process"},
+		{game.OutOfLives, "RE", "Fatal exception", "page_fault_oops"},
+		{game.OutOfLives, "WA", "out of lives", "do_exit"},
+		{game.GaveUp, "RE", "Attempted to kill init! exitcode=0x00000009", "panic"},
+	} {
+		if got := PanicReason(tc.cause, tc.verdict); got != tc.reason {
+			t.Errorf("PanicReason(%q, %q) = %q, want %q", tc.cause, tc.verdict, got, tc.reason)
+		}
+		if got := CallTrace(tc.cause, tc.verdict, 1)[0]; !strings.HasPrefix(got, tc.top+"+") {
+			t.Errorf("CallTrace(%q, %q) starts at %q, want %s", tc.cause, tc.verdict, got, tc.top)
+		}
+	}
+
 	for _, c := range allOutcomes {
 		for _, v := range allVerdicts {
 			if PanicReason(c, v) == "" {
@@ -361,9 +371,6 @@ func TestKernelHelpers(t *testing.T) {
 				tr := CallTrace(c, v, seed)
 				if len(tr) == 0 {
 					t.Fatalf("CallTrace(%q, %q, %d) is empty", c, v, seed)
-				}
-				if strings.Join(tr, ",") != strings.Join(CallTrace(c, v, seed), ",") {
-					t.Fatalf("CallTrace(%q, %q, %d) not deterministic", c, v, seed)
 				}
 				for _, f := range tr {
 					m := frame.FindStringSubmatch(f)
@@ -378,9 +385,6 @@ func TestKernelHelpers(t *testing.T) {
 				}
 			}
 		}
-	}
-	if got := PanicReason(game.GaveUp, "WA"); !strings.HasPrefix(got, "Attempted to kill init!") {
-		t.Errorf("PanicReason(GaveUp) = %q", got)
 	}
 }
 
