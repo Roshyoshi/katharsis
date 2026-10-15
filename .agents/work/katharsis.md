@@ -197,8 +197,12 @@ dropped; route aim from AimClear; ◆≤800 floor doors; Forecast after the door
 and in top; milestone.retired.1; no SPONGE left in the repo). g-store (stale vim border writes dropped by sequence; Cleanup waits up to 5 s
 for the passes it cancels, so no compile outlives the game; a late :Debug pane
 is closed; session tests hold at load 35-57; HUD can answer :Submit with the
-cost; migration 2 keeps every v1 column, tested).
-Cleanup wave 2 running: g-engine, g-flavor, g-ui, g-app; wave 1 still running: g-qa.
+cost; migration 2 keeps every v1 column, tested). g-qa (qa/content judges with the :Submit toolchain + FileIO; a usaco 1131 QA
+solution only passed on clang's vectorizer; qa/judge timing tests use the submit
+profile; the chaos harness reaches doors again (--no-prompts, past story scenes);
+REPO default no longer a hard-coded home path; audio: a lead never repeats, a
+deviceless engine stays silent, 0 Hz WAV rejected; qa lint 30 -> 0).
+Cleanup wave 2 running: g-engine, g-flavor, g-ui, g-app; wave 1 done.
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
 retired milestone); cleanup wave 1: g-store, g-qa
@@ -312,5 +316,7 @@ Run with the unslop pass (package by package), then core-loop QA, then alpha.
   14 days"; D36 predicted-vs-observed in top; a real-binary smoke run.
 - judge: the background PCH build (pch.go:184) runs under context.Background and
   can outlive the game by one header build.
+- HUD compile-error lines carry the full absolute source path (all profiles);
+  show it relative to the door dir.
 - When deps change: recompute vendorHash with a fake hash (nix reuses a
   cached vendor dir and hides a stale hash).
