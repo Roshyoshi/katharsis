@@ -1,6 +1,7 @@
 package sim_test
 
 import (
+	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -190,4 +191,35 @@ func windowMean(aim, floor float64) float64 {
 		}
 	}
 	return sum / float64(n)
+}
+
+// TestGuardrailG1 holds guardrail G1 (ml-pipeline §1.2, slice ML7): the
+// default model players from 900 to 1600 crash before the first merge
+// window in at most 20% of their boots at prestige 0, on a pool with the
+// Codeforces floor (synthetic, a tenth at 800). The union pool's numbers
+// are in TestBalanceReport/guardrails, with the floor running out for a
+// player who never improves.
+func TestGuardrailG1(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("slow")
+	}
+	pool := sim.SyntheticPool(20000, 1)
+	for _, rating := range []float64{900, 1000, 1100, 1300, 1600} {
+		t.Run(fmt.Sprint(rating), func(t *testing.T) {
+			t.Parallel()
+			crash, boots := 0, 0
+			for _, seed := range []uint64{7, 8} {
+				rep := sim.Run(sim.Config{Rules: rules.Standard(), Pool: pool, Player: sim.DefaultPlayer(rating),
+					Boots: 300, Warmup: 50, Seed: seed})
+				crash += rep.CrashBiome[0]
+				boots += rep.Boots
+			}
+			g1 := float64(crash) / float64(boots)
+			t.Logf("model %.0f: G1 %.1f%% over %d boots", rating, 100*g1, boots)
+			if g1 > 0.2 {
+				t.Errorf("model %.0f crashes in Userland in %.1f%% of boots, over G1's 20%%", rating, 100*g1)
+			}
+		})
+	}
 }
