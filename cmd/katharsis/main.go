@@ -116,6 +116,7 @@ func runPractice(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGHUP)
 	defer stop()
 
+	hud.SweepDebugDirs() // :Debug dirs a killed HUD left in $TMPDIR
 	opt := hud.Options{
 		Dir:    dir,
 		Limits: judge.Limits{Time: *tl, Mem: prob.MemLimit, Output: 64 << 20, Scale: *scale},

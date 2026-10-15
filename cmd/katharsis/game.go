@@ -20,6 +20,7 @@ import (
 	"katharsis/internal/content/guide"
 	"katharsis/internal/content/usaco"
 	"katharsis/internal/flavor"
+	"katharsis/internal/hud"
 	"katharsis/internal/screens"
 	"katharsis/internal/session"
 	"katharsis/internal/store"
@@ -158,6 +159,7 @@ func runGame(args []string) error {
 	runner.Send = p.Send
 	runner.Conceal = m.Conceal
 	runner.Clock = m.Clock
+	hud.SweepDebugDirs() // :Debug dirs a killed game left in $TMPDIR
 	if err := runner.Listen(); err != nil {
 		return err
 	}
