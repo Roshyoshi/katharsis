@@ -461,10 +461,9 @@ func (m *Model) chooseDoor(a game.ChooseDoor) tea.Cmd {
 	}
 	id := s.Doors[a.Index].Problem
 	m.stopPrefetch(id)
-	m.choosing = id
 	// The doors screen's last row says how far it has got (fetch.go); a
 	// door already on disk answers at once and never shows it.
-	wait := m.waitFor(a.Index)
+	wait := m.waitFor(a.Index, id)
 	cat, board := m.d.Catalog, &m.fetch.board
 	if board.state(id) != bootui.FetchReady {
 		board.set(id, bootui.FetchGoing)
@@ -483,10 +482,9 @@ func (m *Model) chooseDoor(a game.ChooseDoor) tea.Cmd {
 
 func (m *Model) onDoorReady(r doorReadyMsg) tea.Cmd {
 	m.recheck(r.id)
-	if m.choosing != r.id {
-		return nil // the player chose another door meanwhile, or let it go
+	if m.fetch.chosen != r.id {
+		return nil // the player chose another door meanwhile, let it go, or left the room
 	}
-	m.choosing = ""
 	m.endWait()
 	if r.err != nil {
 		return fail("door %d: %v", r.index+1, r.err)

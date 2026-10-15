@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -44,8 +45,8 @@ func TestDoorWaitCancelsAndSwitches(t *testing.T) {
 			t.Errorf("the wait does not count up: %q", last)
 		}
 		h.send(tea.KeyPressMsg{Code: tea.KeyEscape})
-		if h.m.fetch.wait != nil || h.m.choosing != "" || strings.Contains(lastLine(h), "fetching door") {
-			t.Fatalf("esc kept the wait: %+v, choosing %q, row %q", h.m.fetch.wait, h.m.choosing, lastLine(h))
+		if h.m.fetch.wait != nil || h.m.fetch.chosen != "" || strings.Contains(lastLine(h), "fetching door") {
+			t.Fatalf("esc kept the wait: %+v, chosen %q, row %q", h.m.fetch.wait, h.m.fetch.chosen, lastLine(h))
 		}
 		h.send(doorReadyMsg{index: 0, id: slow})
 		if h.m.state.Phase != game.PhaseDoors {
@@ -77,6 +78,34 @@ func TestDoorCardsShowTheirFetch(t *testing.T) {
 		h.send(tickMsg(h.clock.t))
 		if v := view(h); !strings.Contains(v, "fetching 3M") || !strings.Contains(v, "fetch failed") {
 			t.Fatalf("cards without their downloads:\n%s", v)
+		}
+	})
+}
+
+// A new room while a chosen door downloads (a shuf, or an easing declined)
+// lets the choice go with the wait: the cancelled download said nothing
+// before, and once the choice outlived the wait it flashed "door 1:
+// context canceled" over the new doors.
+func TestNewRoomDropsTheChoice(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.toDoors()
+		slow := h.m.state.Doors[0].Problem
+		c := newGateCatalog(h.m.d.Catalog.(*fakeCatalog))
+		c.gates[slow] = make(chan struct{})
+		t.Cleanup(func() { close(c.gates[slow]) })
+		h.m.d.Catalog = c
+
+		h.send(game.ChooseDoor{Index: 0})
+		h.m.state.Rerolls = 1
+		h.send(game.Reroll{})
+		if h.m.fetch.wait != nil {
+			t.Fatal("the wait outlived its room")
+		}
+		h.send(doorReadyMsg{index: 0, id: slow, err: context.Canceled}) // its fetch, let go
+		if h.m.state.Phase != game.PhaseDoors || h.m.flash != "" {
+			t.Fatalf("phase %q flash %q after the let-go fetch, want the new doors and nothing said", h.m.state.Phase, h.m.flash)
 		}
 	})
 }

@@ -20,9 +20,13 @@ import (
 // doorFetch is the readiness state on the Model.
 type doorFetch struct {
 	board fetchBoard
-	seen  uint64             // the board version the screens last got
-	wait  *bootui.Wait       // the door chosen while it downloads; nil for none
-	stop  context.CancelFunc // stops waiting on it
+	seen  uint64 // the board version the screens last got
+	// wait is the door chosen while it downloads, nil for none: chosen is
+	// its problem, which opens when the fetch lands (chooseDoor), and stop
+	// stops waiting on it.
+	wait   *bootui.Wait
+	chosen catalog.ID
+	stop   context.CancelFunc
 }
 
 // fetchBoard is each door's download, by problem. The fetch goroutines
@@ -112,22 +116,22 @@ func (m *Model) fetchEnv(e *bootui.Env) {
 	}
 }
 
-// waitFor notes the door chosen at index while it downloads, and returns
-// the context its fetch runs under: cancelWait cancels it.
-func (m *Model) waitFor(index int) context.Context {
+// waitFor notes the door chosen at index, problem id, while it downloads,
+// and returns the context its fetch runs under: cancelWait cancels it.
+func (m *Model) waitFor(index int, id catalog.ID) context.Context {
 	m.endWait()
 	ctx, stop := context.WithCancel(m.ctx)
 	m.fetch.wait = &bootui.Wait{Index: index, Since: m.d.Now()}
-	m.fetch.stop = stop
+	m.fetch.chosen, m.fetch.stop = id, stop
 	return ctx
 }
 
-// endWait forgets the chosen door's wait, if any.
+// endWait forgets the chosen door and its wait, if any.
 func (m *Model) endWait() {
 	if m.fetch.stop != nil {
 		m.fetch.stop()
 	}
-	m.fetch.wait, m.fetch.stop = nil, nil
+	m.fetch.wait, m.fetch.chosen, m.fetch.stop = nil, "", nil
 }
 
 // cancelWait is esc on the doors screen while a chosen door downloads: the
@@ -140,7 +144,6 @@ func (m *Model) cancelWait() tea.Cmd {
 		return nil
 	}
 	m.endWait()
-	m.choosing = ""
 	m.refresh()
 	s := m.state
 	if s == nil || w.Index >= len(s.Doors) {

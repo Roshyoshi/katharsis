@@ -127,9 +127,6 @@ type Model struct {
 	// editorials are the problems whose editorial was opened this session,
 	// such as from the crash screen before any upsolve exists.
 	editorials map[catalog.ID]bool
-	// choosing is the door chosen while its problem is still being
-	// fetched; it opens when the fetch lands (chooseDoor).
-	choosing catalog.ID
 	// prefetching cancels the prefetch of each door on offer.
 	prefetching map[catalog.ID]context.CancelFunc
 

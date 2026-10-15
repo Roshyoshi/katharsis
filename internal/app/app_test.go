@@ -1278,7 +1278,7 @@ func TestChosenDoorWaitsForItsProblem(t *testing.T) {
 		h.send(screens.StartBoot{Preset: "standard"})
 		h.toDoors()
 		id = h.m.state.Doors[0].Problem
-		h.m.choosing = id
+		h.m.fetch.chosen = id
 		h.send(doorReadyMsg{index: 0, id: id, err: errors.New("offline")})
 		if h.m.state.Phase != game.PhaseDoors || !strings.Contains(h.m.flash, "offline") {
 			t.Fatalf("phase %q flash %q after a failed fetch, want doors and the error", h.m.state.Phase, h.m.flash)
