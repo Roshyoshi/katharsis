@@ -97,7 +97,29 @@ func (m *Model) begin(st *game.State, effs []game.Effect) tea.Cmd {
 // stays on screen (View) until a later save succeeds.
 func (m *Model) saved(err error) bool {
 	m.saveErr = err
+	if err != nil {
+		m.saveFailed = m.d.Now()
+	}
 	return err == nil
+}
+
+// saveRetry is how often a Tick retries a save that failed (try).
+const saveRetry = 30 * time.Second
+
+// tickMark is what a Tick can change: the phase (a timeout crash), the
+// open attempt's overtime flag, and dmesg, where the engine logs both.
+type tickMark struct {
+	phase    game.Phase
+	overtime bool
+	log      int
+}
+
+func (m *Model) tickMark() tickMark {
+	k := tickMark{phase: m.state.Phase, log: len(m.state.Log)}
+	if c := m.state.Current; c != nil {
+		k.overtime = c.Overtime
+	}
+	return k
 }
 
 // abandon gives up a boot still running, so leaving one costs what quitting
@@ -137,8 +159,9 @@ func (m *Model) try(a game.Action) (tea.Cmd, error) {
 	if m.state == nil {
 		return nil, nil
 	}
-	before := m.baseKey()
-	effs, err := game.Step(m.state, &m.meta, m.pool, a, m.d.Now())
+	before, mark := m.baseKey(), m.tickMark()
+	now := m.d.Now()
+	effs, err := game.Step(m.state, &m.meta, m.pool, a, now)
 	if errors.Is(err, game.ErrInvalid) {
 		return nil, err
 	}
@@ -147,7 +170,17 @@ func (m *Model) try(a game.Action) (tea.Cmd, error) {
 	}
 	// The step happened whether or not it was saved, so its effects run
 	// either way: a door the engine opened must open on screen too.
-	m.saved(m.d.Store.Checkpoint(m.meta, m.state))
+	//
+	// A Tick that changed nothing has nothing to save. Saving it anyway
+	// wrote every second, and each write runs here in Update: while
+	// another process held the write lock (an sqlite3 shell, a backup),
+	// the whole UI froze for busy_timeout on every tick. A save that
+	// failed is still retried on a tick, every saveRetry.
+	_, tick := a.(game.Tick)
+	retry := m.saveErr != nil && !now.Before(m.saveFailed.Add(saveRetry))
+	if !tick || len(effs) > 0 || m.tickMark() != mark || retry {
+		m.saved(m.d.Store.Checkpoint(m.meta, m.state))
+	}
 	cmds := []tea.Cmd{m.effects(effs)}
 	if m.baseKey() != before {
 		m.reset()

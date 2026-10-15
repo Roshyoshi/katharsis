@@ -132,6 +132,8 @@ type harness struct {
 	// stall makes the judge hang until it is closed, like a slow full test
 	// set; the test delivers the result itself.
 	stall chan struct{}
+	// path is the store file, for a test that opens it from outside.
+	path string
 }
 
 func newHarness(t *testing.T) *harness { return newHarnessWith(t, nil) }
@@ -140,12 +142,13 @@ func newHarness(t *testing.T) *harness { return newHarnessWith(t, nil) }
 // harness's fakeRunner; nil wrap uses the fakeRunner itself.
 func newHarnessWith(t *testing.T, wrap func(*fakeRunner) Runner) *harness {
 	t.Helper()
-	st, err := store.Open(filepath.Join(t.TempDir(), "k.db"))
+	path := filepath.Join(t.TempDir(), "k.db")
+	st, err := store.Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { st.Close() }) // some tests close it early
-	h := &harness{t: t, st: st, runner: &fakeRunner{}, clock: &clock{time.Date(2026, 10, 14, 18, 0, 0, 0, time.UTC)}, verdict: "AC"}
+	h := &harness{t: t, st: st, path: path, runner: &fakeRunner{}, clock: &clock{time.Date(2026, 10, 14, 18, 0, 0, 0, time.UTC)}, verdict: "AC"}
 	var runner Runner = h.runner
 	if wrap != nil {
 		runner = wrap(h.runner)

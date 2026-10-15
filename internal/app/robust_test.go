@@ -1,11 +1,19 @@
 package app
 
 import (
+	"bufio"
+	"context"
+	"database/sql"
+	"os"
+	"os/exec"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/store"
 )
 
 // A save that fails stays on screen until one succeeds. As a flash, the
@@ -39,5 +47,117 @@ func TestSaveFailureStaysUntilASaveWorks(t *testing.T) {
 	h.send(submitMsg{})
 	if banner() || h.m.saveErr != nil {
 		t.Fatalf("save error %v still shown after a save that worked", h.m.saveErr)
+	}
+}
+
+const holdLockEnv = "KATHARSIS_TEST_HOLD_LOCK"
+
+// TestHoldLockChild is not a test: holdWriteLock runs the test binary
+// with holdLockEnv set to a store path, and this holds that store's write
+// lock until killed.
+func TestHoldLockChild(t *testing.T) {
+	path := os.Getenv(holdLockEnv)
+	if path == "" {
+		t.Skip("helper process for holdWriteLock")
+	}
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		os.Exit(2)
+	}
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		os.Exit(2)
+	}
+	if _, err := conn.ExecContext(ctx, "BEGIN IMMEDIATE"); err != nil {
+		os.Exit(2)
+	}
+	os.Stdout.WriteString("locked\n")
+	// Until killed. A bare select {} has the runtime call it a deadlock
+	// and exit, freeing the lock, as soon as it runs.
+	time.Sleep(time.Hour)
+}
+
+// holdWriteLock has another process take the store's write lock, as an
+// sqlite3 shell in BEGIN IMMEDIATE or a backup would, until the test ends
+// or release is called. A connection in this process would not do: a
+// write waiting on it ran past busy_timeout when tried.
+func holdWriteLock(t *testing.T, path string) (release func()) {
+	t.Helper()
+	cmd := exec.Command(os.Args[0], "-test.run=^TestHoldLockChild$", "-test.count=1")
+	cmd.Env = append(os.Environ(), holdLockEnv+"="+path)
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if line, err := bufio.NewReader(out).ReadString('\n'); err != nil || line != "locked\n" {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		t.Fatalf("lock holder said %q, %v", line, err)
+	}
+	var once sync.Once
+	release = func() {
+		once.Do(func() {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		})
+	}
+	t.Cleanup(release)
+	return release
+}
+
+// A Tick that changes nothing saves nothing. Each one saved, so while
+// another process held the store's write lock the UI froze for the busy
+// timeout (5 s) on every tick (qa/chaos r08). A Tick that does change
+// something still saves.
+func TestIdleTickDoesNotWrite(t *testing.T) {
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	cur := h.enterDoor()
+	release := holdWriteLock(t, h.path)
+	// onTick, not a tickMsg: Update re-arms the 1 s tick before it saves,
+	// so with 5 s saves the next tick is due before the last returns, and
+	// the harness would chase them forever.
+	start := time.Now()
+	for range 3 {
+		h.clock.t = h.clock.t.Add(time.Second)
+		h.run(h.m.onTick())
+	}
+	if d := time.Since(start); d > 2*time.Second || h.m.saveErr != nil {
+		t.Fatalf("3 idle ticks under a held lock took %v, save error %v; want no writes", d, h.m.saveErr)
+	}
+	release()
+
+	h.clock.t = cur.Deadline
+	h.send(tickMsg(h.clock.t))
+	boots, err := h.st.Boots(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.m.state.Phase != game.PhaseCrashed || boots[0].Outcome != store.BootCrashed {
+		t.Fatalf("phase %q, stored outcome %q after the deadline tick, want crashed in both", h.m.state.Phase, boots[0].Outcome)
+	}
+}
+
+// A save that failed is retried by a later Tick even when the Tick changed
+// nothing, so a store that comes back catches up without waiting for the
+// player's next move.
+func TestTickRetriesAFailedSave(t *testing.T) {
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.enterDoor()
+	h.m.saved(store.ErrStaleBoot) // as if the last step's save failed
+	h.clock.t = h.clock.t.Add(time.Second)
+	h.send(tickMsg(h.clock.t))
+	if h.m.saveErr == nil {
+		t.Fatal("a tick 1 s after a failed save retried it; want it to wait saveRetry")
+	}
+	h.clock.t = h.clock.t.Add(saveRetry)
+	h.send(tickMsg(h.clock.t))
+	if h.m.saveErr != nil {
+		t.Fatalf("save error %v after a tick past saveRetry, want the retry to have saved", h.m.saveErr)
 	}
 }

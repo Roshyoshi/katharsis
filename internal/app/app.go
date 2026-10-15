@@ -88,7 +88,8 @@ type Model struct {
 	// saveErr is the last save that failed. It shows on every screen
 	// until a save succeeds: as a flash the next key cleared, a store the
 	// game could not write played a whole boot and kept none of it.
-	saveErr error
+	saveErr    error
+	saveFailed time.Time // when saveErr happened
 
 	// editorials are the problems whose editorial was opened this session,
 	// such as from the crash screen before any upsolve exists.
