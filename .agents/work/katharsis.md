@@ -201,8 +201,10 @@ cost; migration 2 keeps every v1 column, tested). g-qa (qa/content judges with t
 solution only passed on clang's vectorizer; qa/judge timing tests use the submit
 profile; the chaos harness reaches doors again (--no-prompts, past story scenes);
 REPO default no longer a hard-coded home path; audio: a lead never repeats, a
-deviceless engine stays silent, 0 Hz WAV rejected; qa lint 30 -> 0).
-Cleanup wave 2 running: g-engine, g-flavor, g-ui, g-app; wave 1 done.
+deviceless engine stays silent, 0 Hz WAV rejected; qa lint 30 -> 0). g-flavor (a finished story page could freeze half-typed after a resize; the
+first-crash title cut to 24 cells; 92 quotes checked live; SPONGEs added on
+merge.full and regression.door for the storyteller).
+Cleanup wave 2 running: g-engine, g-ui, g-app; wave 1 done.
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
 retired milestone); cleanup wave 1: g-store, g-qa
@@ -318,5 +320,10 @@ Run with the unslop pass (package by package), then core-loop QA, then alpha.
   can outlive the game by one header build.
 - HUD compile-error lines carry the full absolute source path (all profiles);
   show it relative to the door dir.
+- Story text for the storyteller: hooks missing (daemon.cron, daemon.chrt,
+  upgrade.shuf, verdict.OLE); dead hooks (grub.subtitle.locked, regression.door,
+  rtfm.*, help.vocab, white-knight.song, merge.full, story.first-rtfm never
+  queued); regression.stage.1/.2 hardcode "Day three" / "Seventeen days on";
+  text.md "where:" pointers stale (screens/learn -> screens/rtfm, merge.go:160).
 - When deps change: recompute vendorHash with a fake hash (nix reuses a
   cached vendor dir and hides a stale hash).
