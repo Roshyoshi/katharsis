@@ -887,7 +887,11 @@ func (b *boot) attempt(biome int) {
 
 	// Stuck with a free swap: take it early.
 	if !capable && slices.Contains(s.Daemons, game.Kexec) && !s.KexecUsed {
-		b.clock = opened.Add(timer / 4)
+		at := timer / 4
+		if lock := s.Rules.RetreatLock.Duration; lock > 0 {
+			at = min(at, lock-30*time.Second) // before the swap locks
+		}
+		b.clock = opened.Add(at)
 		b.step(game.Retreat{})
 		return
 	}

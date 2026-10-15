@@ -105,7 +105,7 @@ func easeTerms(es Ease) string {
 		t += ", every door has an editorial"
 	}
 	if es.Cycles > 0 {
-		t += fmt.Sprintf(", +%d lives", es.Cycles)
+		t += fmt.Sprintf(", +%d cycles", es.Cycles)
 	}
 	if es.Ducks > 0 {
 		t += fmt.Sprintf(", +%d ducks", es.Ducks)
@@ -322,27 +322,6 @@ func (e *engine) buyTimers(doors []Door) {
 	}
 }
 
-// saveTimeout answers a door's timer running out where that costs a life
-// (TimeoutCostsLife): the door closes as timed out (rated, and back as a
-// regression, like a crash), the life goes, and the room is drawn again,
-// as after a retreat. It reports whether it did; otherwise the timeout
-// crashes the boot.
-func (e *engine) saveTimeout() bool {
-	s := e.s
-	if !s.TimeoutCostsLife() {
-		return false
-	}
-	name := e.door()
-	a := e.close(TimedOut)
-	s.Cycles--
-	e.logf("%s: timer expired, -1 life, %d left", name, s.Cycles)
-	e.regress(a.Door.Problem)
-	e.emit(CloseProblem{Door: a.Door}, Sound{Name: "wa"})
-	s.Phase = PhaseDoors
-	e.rollRoom(false, "timeout")
-	return true
-}
-
 // BeforeFirstDoor reports whether no door of the boot has opened yet and
 // one is still to be chosen (a route or a room on offer): the only time
 // its easing can be declined (DeclineEase), and so the time the screens
@@ -373,7 +352,7 @@ func (e *engine) declineEase() error {
 	s.Cycles = max(1, s.Cycles-lives)
 	s.Ducks = max(0, s.Ducks-ducks)
 	s.MaxCycles = max(s.Rules.MaxCycles, s.Cycles)
-	e.logf("ease: declined, %d lives, %d ducks", s.Cycles, s.Ducks)
+	e.logf("ease: declined, %d cycles, %d ducks", s.Cycles, s.Ducks)
 	if s.Phase == PhaseDoors {
 		e.rollRoom(true, "decline")
 	}

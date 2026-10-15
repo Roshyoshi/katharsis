@@ -38,7 +38,7 @@ func (s *State) Price(it Item) int64 {
 
 // CanSpend says why it cannot be bought now, or nil when Spend would take
 // it: the boot is in a merge window, it is for sale, the uncommitted bytes
-// cover it, and it would do something (fsck needs a life to restore).
+// cover it, and it would do something (fsck needs cycles to restore).
 func (s *State) CanSpend(it Item) error {
 	price := s.Price(it)
 	switch {
@@ -49,7 +49,7 @@ func (s *State) CanSpend(it Item) error {
 	case s.Uncommitted < price:
 		return invalid("%s costs %s, %s uncommitted", it, units.Bytes(price), units.Bytes(s.Uncommitted))
 	case it == Fsck && s.Cycles >= s.MaxCycles:
-		return invalid("lives are full")
+		return invalid("cycles are full")
 	}
 	return nil
 }
@@ -64,7 +64,7 @@ func (e *engine) spend(it Item) error {
 	s.Spent += price
 	switch it {
 	case Fsck:
-		s.Cycles++
+		s.Cycles = min(s.Cycles+s.FsckHeal(), s.MaxCycles)
 	case Dup:
 		s.Ducks++
 	case Shuf:
@@ -72,7 +72,7 @@ func (e *engine) spend(it Item) error {
 	case At:
 		s.AtTime += s.Rules.AtTime.Duration
 	}
-	e.logf("%s: -%s, %s uncommitted (lives %d/%d, ducks %d, shufs %d, at +%s)",
+	e.logf("%s: -%s, %s uncommitted (cycles %d/%d, ducks %d, shufs %d, at +%s)",
 		it, units.Bytes(price), units.Bytes(s.Uncommitted), s.Cycles, s.MaxCycles, s.Ducks, s.Rerolls,
 		units.Clock(s.AtTime))
 	return nil

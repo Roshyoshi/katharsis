@@ -233,3 +233,64 @@ func (e *engine) abandon() error {
 	e.logf("boot #%d abandoned for a new boot: %s lost", s.Boot, units.Bytes(lost))
 	return nil
 }
+
+// saveFail closes the open door with o (TimedOut or GaveUp) for its price
+// (State.FailCost) when the boot survives it, and reports whether it did;
+// otherwise the caller crashes the boot. The door is rated as failed and
+// comes back as a regression, as a crash's would. Then a boss draws a new
+// boss door; with rules.FailMoveOn any other room is lost (no pay, no
+// upgrade pick) and the boot moves to the next room or merge window;
+// otherwise the room is drawn again, as D44 did.
+func (e *engine) saveFail(o Outcome) bool {
+	s := e.s
+	cost, ok := s.FailCost(o)
+	if !ok {
+		return false
+	}
+	b := s.Biomes[s.Biome]
+	boss := b.Kind == rules.Boss
+	moveOn := !boss && s.Rules.FailMoveOn && (s.Room+1 < b.Rooms || s.Biome < len(s.Biomes)-1)
+	name := e.door()
+	a := e.close(o)
+	s.Cycles -= cost
+	what := map[Outcome]string{TimedOut: "timer expired", GaveUp: ":q!"}[o]
+	then := ""
+	switch {
+	case boss:
+		then = ", a new boss door"
+	case moveOn:
+		then = ", room lost"
+	}
+	e.logf("%s: %s, -%s, %d left%s", name, what, units.Plural(cost, "cycle"), s.Cycles, then)
+	e.regress(a.Door.Problem)
+	e.emit(CloseProblem{Door: a.Door}, Sound{Name: "wa"})
+	switch {
+	case boss:
+		s.Phase = PhaseDoors
+		e.rollRoom(false, "retry")
+	case moveOn:
+		if s.Room++; s.Room < b.Rooms {
+			s.Phase = PhaseDoors
+			e.rollRoom(true, "fresh")
+		} else {
+			e.enterMerge()
+		}
+	default:
+		s.Phase = PhaseDoors
+		e.rollRoom(false, map[Outcome]string{TimedOut: "timeout", GaveUp: "gave-up"}[o])
+	}
+	return true
+}
+
+// offerable reports whether upgrade u would do something now. ECC as the
+// conversion (rules.ECCPenalty) is offered until the boot holds it, ECC as
+// a heal while cycles are short of MaxCycles.
+func (s *State) offerable(u Upgrade) bool {
+	if u != ECC {
+		return true
+	}
+	if s.Rules.ECCPenalty.Duration > 0 {
+		return !slices.Contains(s.Upgrades, ECC)
+	}
+	return s.Cycles < s.MaxCycles
+}

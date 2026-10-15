@@ -164,3 +164,16 @@ func noFirst(r rules.Rules) rules.Rules {
 	r.FirstBiomes, r.FirstDoor, r.FirstEditorial = nil, false, false
 	return r
 }
+
+// cyclesLinear is the cycles meta (rules.Map's prices, ladder and twists)
+// on the short shape, off the map: Userland, one mid biome and the boss.
+func cyclesLinear() rules.Rules {
+	r := rules.Map()
+	r.Name = "cycles"
+	r.Biomes, r.Nodes = rules.ShortBiomes(), nil
+	return r
+}
+
+// presets are the rules the property tests play: a boot saved before
+// cycles, and the cycles meta.
+func presets() []rules.Rules { return []rules.Rules{rules.Legacy(), cyclesLinear()} }

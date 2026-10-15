@@ -968,8 +968,8 @@ func TestCrashTailSkipsEngineEchoes(t *testing.T) {
 		cursed bool
 		fatal  string // the fatal submit's line, "" if none
 	}{
-		{game.OutOfLives, false, ": WA 3/10, -1 life, 0 left"},
-		{game.OutOfLives, true, ": WA 3/10 on a cursed door, 3 lives left"},
+		{game.OutOfLives, false, ": WA 3/10, -1 cycle, 0 left"},
+		{game.OutOfLives, true, ": WA 3/10 on a cursed door, 3 cycles left"},
 		{game.TimedOut, false, ""},
 		{game.GaveUp, false, ""},
 	} {

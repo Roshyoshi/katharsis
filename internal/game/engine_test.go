@@ -563,7 +563,7 @@ func TestSubmit(t *testing.T) {
 		if _, ok := has[game.ShowCrash](fx); !ok || !slices.Contains(sounds(fx), "crash") {
 			t.Errorf("effects %v, want ShowCrash and the crash sound", fx)
 		}
-		if last := h.s.Log[len(h.s.Log)-1].Text; !strings.Contains(last, "out of lives") {
+		if last := h.s.Log[len(h.s.Log)-1].Text; !strings.Contains(last, "out of cycles") {
 			t.Errorf("last dmesg line %q", last)
 		}
 	})

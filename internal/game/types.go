@@ -607,11 +607,15 @@ type Retreat struct{}                // PhaseProblem: swap the door for cycles (
 type Quack struct{}                  // PhaseProblem: use a duck
 type GiveUp struct{}                 // PhaseProblem: :q!
 
-// SubmitResult reports a full-test judge of the open door.
+// SubmitResult reports a full-test judge of the open door. SampleFailed is
+// set when a test that failed is one of the samples :w runs: such a submit
+// costs nothing, as a CE does (meta.md §(b)), since the samples already
+// told the player.
 type SubmitResult struct {
-	Verdict Verdict
-	Passed  int
-	Total   int
+	Verdict      Verdict
+	Passed       int
+	Total        int
+	SampleFailed bool
 }
 
 // Judging reports that a submit of the open door started being judged
@@ -732,8 +736,9 @@ type Offer struct {
 	At     time.Time
 	Policy string // how it was drawn: "elo-window/1"
 	// Reason is why it was drawn: "fresh" (a room or route reached),
-	// "retreat", "reroll" (a shuf), "decline" (DeclineEase), "timeout"
-	// (a timeout that cost a life).
+	// "retreat", "reroll" (a shuf), "decline" (DeclineEase), "timeout" and
+	// "gave-up" (a door failed for cycles, its room drawn again), "retry"
+	// (a boss door failed for cycles: a new boss door).
 	Reason string
 	RNG    uint64  // State.RNG before the draw, for audits
 	Target float64 // the clear chance the biome aims at (AimClear)

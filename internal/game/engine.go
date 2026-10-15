@@ -251,21 +251,27 @@ func (e *engine) tick() error {
 	return nil
 }
 
-// expired crashes the open door if its deadline has passed, and reports
+// expired ends the open door if its deadline has passed, and reports
 // whether it did. Every in-problem action checks it first, so a late Tick
-// can't be outrun by a retreat or a quack. A soft timer never crashes; the
-// deadline only marks the attempt overtime, which Tick and the judge
+// can't be outrun by a retreat or a quack. A soft timer never ends a door;
+// the deadline only marks the attempt overtime, which Tick and the judge
 // result do (they cannot fail, so the mark never sticks to a refused
-// action). In a biome with rules.Biome.TimeoutLife (D44) a timeout may
-// cost a life instead (saveTimeout); the door is closed either way.
+// action). Where a timeout has a price (State.FailCost) it burns cycles and
+// the boot goes on (saveFail); otherwise it crashes the boot.
 func (e *engine) expired() bool {
 	if e.now.Before(e.s.Current.Deadline) || e.s.Rules.OnExpire == rules.ExpireOvertime {
 		return false
 	}
-	if !e.saveTimeout() {
-		e.crash(TimedOut, false)
-	}
+	e.fail(TimedOut)
 	return true
+}
+
+// fail closes the open door with o (TimedOut or GaveUp): for its price
+// where it has one, else by crashing the boot.
+func (e *engine) fail(o Outcome) {
+	if !e.saveFail(o) {
+		e.crash(o, false)
+	}
 }
 
 // overtime marks the open attempt overtime once now reaches after, under a
@@ -289,9 +295,7 @@ func (e *engine) submit(v SubmitResult) error {
 	a.SubmitAt = time.Time{}
 	late := a.Deadline.Add(s.Rules.SubmitGrace.Duration)
 	if !e.now.Before(late) && s.Rules.OnExpire != rules.ExpireOvertime {
-		if !e.saveTimeout() {
-			e.crash(TimedOut, false)
-		}
+		e.fail(TimedOut)
 		return nil
 	}
 	e.overtime(late)
@@ -307,23 +311,35 @@ func (e *engine) submit(v SubmitResult) error {
 		return nil
 	}
 	a.Failed++
-	if slices.Contains(s.Rules.FreeVerdicts, string(v.Verdict)) {
+	if slices.Contains(s.Rules.FreeVerdicts, string(v.Verdict)) || v.SampleFailed {
 		e.logf("%s: %s, no charge", e.door(), v.Verdict)
 		return nil
 	}
 	if a.Door.Cursed {
-		// The curse takes the boot, not a life: lives left stay on the
+		// The curse takes the boot, not cycles: what is left stays on the
 		// record for the crash screen.
-		e.logf("%s: %s %d/%d on a cursed door, %d lives left", e.door(), v.Verdict, v.Passed, v.Total, s.Cycles)
+		e.logf("%s: %s %d/%d on a cursed door, %s left", e.door(), v.Verdict, v.Passed, v.Total, units.Plural(s.Cycles, "cycle"))
 		e.crash(OutOfLives, true)
 		return nil
 	}
-	cost := 1
-	if slices.Contains(s.Daemons, Nice) {
-		cost = s.Rules.NiceLifeCost
+	failing := 0
+	if v.Total > 0 {
+		failing = v.Total - v.Passed
+	}
+	cost, clock := s.SubmitCost(failing)
+	if clock > 0 {
+		// ECC: the failed submit costs the door's clock, not cycles.
+		a.Deadline = a.Deadline.Add(-clock)
+		e.logf("%s: %s %d/%d, ecc: -%s on the clock", e.door(), v.Verdict, v.Passed, v.Total, units.Clock(clock))
+		if !e.now.Before(a.Deadline) {
+			e.fail(TimedOut)
+			return nil
+		}
+		e.emit(Sound{Name: "wa"})
+		return nil
 	}
 	s.Cycles = max(0, s.Cycles-cost)
-	e.logf("%s: %s %d/%d, -%d life, %d left", e.door(), v.Verdict, v.Passed, v.Total, cost, s.Cycles)
+	e.logf("%s: %s %d/%d, -%s, %d left", e.door(), v.Verdict, v.Passed, v.Total, units.Plural(cost, "cycle"), s.Cycles)
 	if s.Cycles == 0 {
 		e.crash(OutOfLives, false)
 		return nil
@@ -376,6 +392,9 @@ func (e *engine) quack() error {
 	return nil
 }
 
+// giveUp is :q!. Where a give-up has a price (State.FailCost) it burns
+// cycles and the room is lost, and the editorial waits for the upsolve;
+// otherwise it ends the boot and opens the editorial.
 func (e *engine) giveUp() error {
 	if err := e.need(PhaseProblem, ":q!"); err != nil {
 		return err
@@ -383,13 +402,15 @@ func (e *engine) giveUp() error {
 	if e.expired() {
 		return nil
 	}
-	e.crash(GaveUp, false)
+	e.fail(GaveUp)
 	return nil
 }
 
-// retreat closes the door for a life (kexec: the first per biome is free)
-// and re-rolls the room. It refuses rather than crash on the last life:
-// retreating is a way out, not a way to die.
+// retreat closes the door for its price (State.RetreatCost; kexec: the
+// first per biome or act is free) and re-rolls the room. It refuses rather
+// than crash on the last cycles, since retreating is a way out, not a way
+// to die, and it refuses once the door is past rules.RetreatLock: a swap is
+// for a statement read, not a door fought.
 func (e *engine) retreat() error {
 	s := e.s
 	if err := e.need(PhaseProblem, "retreat"); err != nil {
@@ -401,9 +422,12 @@ func (e *engine) retreat() error {
 	if s.Trial != nil {
 		return invalid("a trial door can't be swapped")
 	}
-	free := slices.Contains(s.Daemons, Kexec) && !s.KexecUsed
-	if !free && s.Cycles <= 1 {
-		return invalid("retreat needs a spare life")
+	if at := s.RetreatLockAt(); !at.IsZero() && !e.now.Before(at) {
+		return invalid("retreat locks %s into a door", units.Clock(s.Rules.RetreatLock.Duration))
+	}
+	cost, free := s.RetreatCost()
+	if !free && s.Cycles <= cost {
+		return invalid("retreat needs more than %s", units.Plural(cost, "cycle"))
 	}
 	name := e.door()
 	a := e.close(Retreated)
@@ -411,8 +435,8 @@ func (e *engine) retreat() error {
 		s.KexecUsed = true
 		e.logf("%s: kexec, free swap", name)
 	} else {
-		s.Cycles--
-		e.logf("%s: retreat, -1 life, %d left", name, s.Cycles)
+		s.Cycles -= cost
+		e.logf("%s: retreat, -%s, %d left", name, units.Plural(cost, "cycle"), s.Cycles)
 	}
 	e.emit(CloseProblem{Door: a.Door})
 	s.Phase = PhaseDoors
@@ -563,7 +587,7 @@ func (e *engine) crash(cause Outcome, cursed bool) {
 	s.Phase = PhaseCrashed
 	why := map[Outcome]string{
 		TimedOut:   "Kernel panic - not syncing: timer expired on " + name,
-		OutOfLives: "Kernel panic - not syncing: out of lives on " + name,
+		OutOfLives: "Kernel panic - not syncing: out of cycles on " + name,
 		GaveUp:     "Kernel panic - not syncing: Attempted to kill init! (:q! on " + name + ")",
 	}[cause]
 	if cursed {
@@ -597,14 +621,14 @@ func (e *engine) owe(n int) {
 	}
 }
 
-// offerUpgrades draws the pick. ECC is left out at full lives, where it
-// would do nothing, so the pick can be one short, and so is an upgrade a
-// package not installed locks. Packages can add offers.
+// offerUpgrades draws the pick. An upgrade that would do nothing is left
+// out (offerable), so the pick can be one short, and so is one a package not
+// installed locks. Packages can add offers.
 func (e *engine) offerUpgrades() {
 	s := e.s
 	var pool []Upgrade
 	for _, u := range AllUpgrades {
-		if (u != ECC || s.Cycles < s.MaxCycles) && !s.UpgradeLocked(u) {
+		if s.offerable(u) && !s.UpgradeLocked(u) {
 			pool = append(pool, u)
 		}
 	}
@@ -630,13 +654,15 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 			s.Doors[i].Timer = roundTimer(scale(s.Doors[i].Timer, 1+s.Rules.OverclockFrac))
 		}
 	case ECC:
-		s.Cycles = min(s.Cycles+1, s.MaxCycles)
+		if s.Rules.ECCPenalty.Duration <= 0 {
+			s.Cycles = min(s.Cycles+s.ECCHeal(), s.MaxCycles)
+		}
 	case Duck:
 		s.Ducks++
 	case ShufPick:
 		s.Rerolls++
 	}
-	e.logf("upgrade: %s (lives %d, ducks %d, shufs %d)", u, s.Cycles, s.Ducks, s.Rerolls)
+	e.logf("upgrade: %s (cycles %d, ducks %d, shufs %d)", u, s.Cycles, s.Ducks, s.Rerolls)
 	s.UpgradeOffers = nil
 	e.owe(-1)
 	return nil
@@ -751,8 +777,14 @@ func (e *engine) enterBiome(i int) {
 	if s.Trial != nil {
 		aim = "" // trial doors are not aimed
 	}
-	if s.Trial == nil && s.Rules.Biomes[i].TimeoutLife {
-		aim += ", a timeout costs a life, not the boot" // D44, announced
+	switch rb := s.Rules.Biomes[i]; {
+	case s.Trial != nil:
+	case rb.FailCycles > 0 && s.OneShot():
+		aim += ", one shot" // the price, announced
+	case rb.FailCycles > 0:
+		aim += ", a fail burns " + units.Plural(rb.FailCycles, "cycle")
+	case rb.TimeoutLife:
+		aim += ", a timeout costs a cycle, not the boot" // D44, announced
 	}
 	e.logf("biome_%d: %s, %d rooms%s", i, label, b.Rooms, aim)
 	if b.Kind == rules.Choice && b.Topic == "" {

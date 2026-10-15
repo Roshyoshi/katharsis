@@ -41,6 +41,7 @@ type checker struct {
 	dumpLost  int64  // what a crash must destroy: the dump's bytes, if any
 	phase     game.Phase
 	lives     int
+	fountain  int // State.Fountained at the last step
 	spent     int64
 	installed []string // meta.Installed when the boot began
 	theme     string
@@ -151,11 +152,23 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	if s.Cycles == 0 && s.Phase != game.PhaseCrashed {
 		fail("no lives but not crashed")
 	}
-	// Only an ECC pick or an fsck gives a life back, one at a time.
-	if gain := s.Cycles - c.lives; gain > 0 && (gain != 1 || a != game.PickUpgrade{Upgrade: game.ECC} && a != game.Spend{Item: game.Fsck}) {
-		fail("lives %d -> %d", c.lives, s.Cycles)
+	// Cycles come back only by an ECC pick that heals, an fsck, or a merge
+	// window's fountain, each by at most its heal (a cap can make it less);
+	// nothing else raises them (D47: no heal on AC).
+	gain := s.Cycles - c.lives
+	fountain := s.Fountained - c.fountain
+	switch {
+	case gain <= 0:
+	case a == game.PickUpgrade{Upgrade: game.ECC} && s.Rules.ECCPenalty.Duration <= 0 && gain <= s.ECCHeal():
+	case a == game.Spend{Item: game.Fsck} && gain <= s.FsckHeal():
+	case fountain > 0 && gain == fountain && s.Phase == game.PhaseMerge && s.Cycles <= s.StartCycles():
+	default:
+		fail("cycles %d -> %d (fountain %d)", c.lives, s.Cycles, fountain)
 	}
-	c.lives = s.Cycles
+	if fountain < 0 || fountain > 0 && s.Fountain != fountain {
+		fail("fountain %d this window, %d -> %d in all", s.Fountain, c.fountain, s.Fountained)
+	}
+	c.lives, c.fountain = s.Cycles, s.Fountained
 	if s.UpgradePicks < 0 || s.PendingUpgrade != (s.UpgradePicks > 0) || s.PendingUpgrade != (len(s.UpgradeOffers) > 0) {
 		fail("picks %d pending %v offers %v", s.UpgradePicks, s.PendingUpgrade, s.UpgradeOffers)
 	}
@@ -316,15 +329,20 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 		regDoors++
 	}
 	// Each attempt records the biome its door opened in, which is where
-	// walking the clears through the rooms puts it (only a clear moves on
-	// a room), and the open door is in the current biome.
+	// walking the attempts through the rooms puts it (a clear moves on a
+	// room, and so does a door failed for cycles where the room is lost,
+	// rules.FailMoveOn; a skipped tier has no room), and the open door is
+	// in the current biome.
 	biome, room := 0, 0
-	for _, h := range s.History {
+	last := len(s.Biomes) - 1
+	for i, h := range s.History {
 		if h.Biome != biome {
 			fail("attempt %+v in biome %d, the walk says %d", h.Door, h.Biome, biome)
 		}
-		if h.Outcome == game.Cleared {
-			if room++; room >= s.Biomes[biome].Rooms && biome < len(s.Biomes)-1 {
+		failed := (h.Outcome == game.TimedOut || h.Outcome == game.GaveUp) && (s.Crash == nil || i < len(s.History)-1)
+		lost := failed && s.Rules.FailMoveOn && s.Biomes[biome].Kind != rules.Boss && (room+1 < s.Biomes[biome].Rooms || biome < last)
+		if h.Outcome == game.Cleared || lost {
+			for room++; room >= s.Biomes[biome].Rooms && biome < last; {
 				biome, room = biome+1, 0
 			}
 		}
@@ -487,9 +505,15 @@ func (c *checker) checkEase(s *game.State, m *game.Meta, a game.Action, err erro
 		}
 	}
 	for i, h := range s.History {
-		last := i == len(s.History)-1 && s.Crash != nil
-		if h.Outcome == game.TimedOut && !last && !s.Rules.Biomes[h.Biome].TimeoutLife {
-			fail("door %+v timed out in biome %d, which has no timeout rule, and the boot went on", h.Door, h.Biome)
+		end := i == len(s.History)-1 && s.Crash != nil
+		failed := h.Outcome == game.TimedOut || h.Outcome == game.GaveUp
+		priced := s.Rules.Biomes[h.Biome].FailCycles > 0 || h.Outcome == game.TimedOut && s.Rules.Biomes[h.Biome].TimeoutLife
+		if failed && !end && !priced {
+			fail("door %+v %s in biome %d, which has no price for it, and the boot went on", h.Door, h.Outcome, h.Biome)
+		}
+		// A door failed for cycles comes back, as a crash's does.
+		if failed && s.Trial == nil && !slices.ContainsFunc(m.Regressions, func(g game.Regression) bool { return g.Problem == h.Door.Problem }) {
+			fail("door %+v %s with no regression scheduled", h.Door, h.Outcome)
 		}
 	}
 	if _, ok := a.(game.DeclineEase); ok && err == nil {
@@ -736,59 +760,82 @@ func TestFuzzBoots(t *testing.T) {
 		"synthetic": sim.SyntheticPool(600, 3),
 		"tiny":      dense([]string{"dp"}, 1000, 1100, 50), // exhausted at once
 	}
-	for name, ps := range pools {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			r := rules.Standard()
-			m := &game.Meta{Prestige: game.MaxPrestige}
-			f := &fuzzer{rng: rand.New(rand.NewPCG(11, 12)), now: t0}
-			ends := map[game.Phase]int{}
-			bought := map[string]int{} // accepted actions by type
-			installs := 0
-			eases := map[string]int{} // boots by easing, and saved timeouts
-			boots := 3000
-			if testing.Short() {
-				boots = 300
-			}
-			for i := range boots {
-				s, moves := fuzzBoot(t, r, m, ps, f, i%10 == 0)
-				ends[s.Phase]++
-				for _, es := range s.Ease {
-					eases[string(es.Kind)]++
+	for _, r := range presets() {
+		for name, ps := range pools {
+			t.Run(r.Name+"/"+name, func(t *testing.T) {
+				t.Parallel()
+				fuzzBoots(t, r, name, ps)
+			})
+		}
+	}
+}
+
+// fuzzBoots plays thousands of fuzzed boots of r on ps with meta carried
+// across, and checks the fuzzer met what the invariants guard.
+func fuzzBoots(t *testing.T, r rules.Rules, name string, ps []catalog.Problem) {
+	m := &game.Meta{Prestige: game.MaxPrestige}
+	f := &fuzzer{rng: rand.New(rand.NewPCG(11, 12)), now: t0}
+	ends := map[game.Phase]int{}
+	bought := map[string]int{} // accepted actions by type
+	installs := 0
+	eases := map[string]int{} // boots by easing; failures the boot survived
+	boots := 3000
+	if testing.Short() {
+		boots = 300
+	}
+	for i := range boots {
+		s, moves := fuzzBoot(t, r, m, ps, f, i%10 == 0)
+		ends[s.Phase]++
+		for _, es := range s.Ease {
+			eases[string(es.Kind)]++
+		}
+		for j, h := range s.History {
+			if (h.Outcome == game.TimedOut || h.Outcome == game.GaveUp) && (s.Crash == nil || j < len(s.History)-1) {
+				eases["saved "+string(h.Outcome)]++
+				if h.Door.Boss != "" {
+					eases["saved boss"]++
 				}
-				for j, h := range s.History {
-					if h.Outcome == game.TimedOut && (s.Crash == nil || j < len(s.History)-1) {
-						eases["saved"]++
-					}
-				}
-				for _, mv := range moves {
-					if !mv.Err {
-						bought[fmt.Sprintf("%T", mv.A)]++
-					}
-				}
-				if f.rng.IntN(3) == 0 && m.CoreDump != nil {
-					game.Upsolve(m, m.CoreDump.Problem, game.Editorial, time.Hour, f.now)
-				}
-				installs += fuzzInstall(t, r, m, f)
-				f.now = f.now.Add(time.Duration(f.rng.IntN(int(72 * time.Hour))))
 			}
-			t.Logf("%s: boot ends %v, meta rating %.0f, %d solves, %d regressions, %d spends, %d shufs, installed %v, easings %v, %d declined",
-				name, ends, m.Rating, len(m.Solves), len(m.Regressions), bought["game.Spend"], bought["game.Reroll"], m.Installed,
-				eases, bought["game.DeclineEase"])
-			if name == "synthetic" && (eases["floor"] == 0 || eases["governor"] == 0 || eases["saved"] == 0 || bought["game.DeclineEase"] == 0) {
-				t.Errorf("easings %v, %d declined: the fuzzer should meet the floor easing, the governor, a saved timeout and a decline",
-					eases, bought["game.DeclineEase"])
+		}
+		if s.Crash != nil {
+			eases["crash "+string(s.Crash.Cause)]++
+		}
+		for _, mv := range moves {
+			if !mv.Err {
+				bought[fmt.Sprintf("%T", mv.A)]++
 			}
-			if ends[game.PhaseCleared] == 0 || ends[game.PhaseCrashed] == 0 {
-				t.Errorf("ends %v: the fuzzer should reach both", ends)
-			}
-			if bought["game.Spend"] == 0 || bought["game.Reroll"] == 0 {
-				t.Errorf("accepted %v: the fuzzer should buy and use items", bought)
-			}
-			if installs == 0 {
-				t.Errorf("no package installed in %d boots", boots)
-			}
-		})
+		}
+		if f.rng.IntN(3) == 0 && m.CoreDump != nil {
+			game.Upsolve(m, m.CoreDump.Problem, game.Editorial, time.Hour, f.now)
+		}
+		installs += fuzzInstall(t, r, m, f)
+		f.now = f.now.Add(time.Duration(f.rng.IntN(int(72 * time.Hour))))
+	}
+	t.Logf("%s %s: boot ends %v, meta rating %.0f, %d solves, %d regressions, %d spends, %d shufs, installed %v, easings %v, %d declined, %d abandoned",
+		r.Name, name, ends, m.Rating, len(m.Solves), len(m.Regressions), bought["game.Spend"], bought["game.Reroll"], m.Installed,
+		eases, bought["game.DeclineEase"], bought["game.Abandon"])
+	if name == "synthetic" && (eases["governor"] == 0 || eases["saved timed-out"] == 0 || bought["game.DeclineEase"] == 0 ||
+		bought["game.Abandon"] == 0) {
+		t.Errorf("easings %v, %d declined, %d abandoned: the fuzzer should meet the governor, a saved timeout, a decline and an abandon",
+			eases, bought["game.DeclineEase"], bought["game.Abandon"])
+	}
+	bosses := 0
+	for _, b := range r.Biomes {
+		if b.Kind == rules.Boss {
+			bosses++
+		}
+	}
+	if name == "synthetic" && r.FailMoveOn && (eases["saved gave-up"] == 0 || bosses > max(r.OneShot, 1) && eases["saved boss"] == 0) {
+		t.Errorf("easings %v: under cycles the fuzzer should survive a give-up, and a boss failure where a boss retries", eases)
+	}
+	if ends[game.PhaseCleared] == 0 || ends[game.PhaseCrashed] == 0 {
+		t.Errorf("ends %v: the fuzzer should reach both", ends)
+	}
+	if bought["game.Spend"] == 0 || bought["game.Reroll"] == 0 {
+		t.Errorf("accepted %v: the fuzzer should buy and use items", bought)
+	}
+	if installs == 0 {
+		t.Errorf("no package installed in %d boots", boots)
 	}
 }
 
@@ -829,31 +876,39 @@ func fuzzInstall(t *testing.T, r rules.Rules, m *game.Meta, f *fuzzer) int {
 // boots under the same invariants.
 func TestModelInvariants(t *testing.T) {
 	t.Parallel()
-	for _, rating := range []float64{900, 1500, 2300} {
-		t.Run(fmt.Sprint(rating), func(t *testing.T) {
-			t.Parallel()
-			var c *checker
-			rep := sim.Run(sim.Config{
-				Rules:    rules.Standard(),
-				Pool:     sim.SyntheticPool(600, 4),
-				Player:   sim.DefaultPlayer(rating),
-				Boots:    1500,
-				Seed:     uint64(rating),
-				Prestige: -1,
-				Check: func(s *game.State, m *game.Meta, a game.Action, _ []game.Effect, err error) {
-					if a == nil { // NewBoot
-						if err != nil {
-							t.Fatalf("NewBoot: %v", err)
-						}
-						c = newChecker(t, s, m)
-					}
-					c.check(s, m, a, err)
-				},
+	for _, r := range presets() {
+		for _, rating := range []float64{900, 1500, 2300} {
+			t.Run(fmt.Sprint(r.Name, rating), func(t *testing.T) {
+				modelInvariants(t, r, rating)
 			})
-			if rep.Errors != 0 {
-				t.Errorf("%d model actions failed", rep.Errors)
+		}
+	}
+}
+
+// modelInvariants plays the model at rating through 1500 boots of r,
+// climbing, with every invariant checked after every call.
+func modelInvariants(t *testing.T, r rules.Rules, rating float64) {
+	t.Parallel()
+	var c *checker
+	rep := sim.Run(sim.Config{
+		Rules:    r,
+		Pool:     sim.SyntheticPool(600, 4),
+		Player:   sim.DefaultPlayer(rating),
+		Boots:    1500,
+		Seed:     uint64(rating),
+		Prestige: -1,
+		Check: func(s *game.State, m *game.Meta, a game.Action, _ []game.Effect, err error) {
+			if a == nil { // NewBoot
+				if err != nil {
+					t.Fatalf("NewBoot: %v", err)
+				}
+				c = newChecker(t, s, m)
 			}
-		})
+			c.check(s, m, a, err)
+		},
+	})
+	if rep.Errors != 0 {
+		t.Errorf("%d model actions failed", rep.Errors)
 	}
 }
 
@@ -862,18 +917,20 @@ func TestModelInvariants(t *testing.T) {
 func TestDeterminism(t *testing.T) {
 	t.Parallel()
 	ps := sim.SyntheticPool(600, 5)
-	run := func() string {
+	run := func(r rules.Rules) string {
 		m := &game.Meta{Prestige: 2}
 		f := &fuzzer{rng: rand.New(rand.NewPCG(1, 2)), now: t0}
 		var out []string
 		for range 50 {
-			s, moves := fuzzBoot(t, rules.Standard(), m, ps, f, false)
+			s, moves := fuzzBoot(t, r, m, ps, f, false)
 			out = append(out, mustJSON(t, s), fmt.Sprint(len(moves)))
 		}
 		return mustJSON(t, out) + mustJSON(t, m)
 	}
-	if a, b := run(), run(); a != b {
-		t.Fatal("two runs from the same seed diverged")
+	for _, r := range presets() {
+		if a, b := run(r), run(r); a != b {
+			t.Fatalf("%s: two runs from the same seed diverged", r.Name)
+		}
 	}
 
 	// Different seeds give different boots.
@@ -898,7 +955,8 @@ func TestJSONRoundTrip(t *testing.T) {
 		minResumed int
 		start      func(*game.Meta, *fuzzer) *game.State
 	}{
-		{"boot", 300, 1000, func(m *game.Meta, f *fuzzer) *game.State { return startBoot(t, rules.Standard(), m, ps, f) }},
+		{"boot", 300, 1000, func(m *game.Meta, f *fuzzer) *game.State { return startBoot(t, rules.Legacy(), m, ps, f) }},
+		{"cycles", 300, 1000, func(m *game.Meta, f *fuzzer) *game.State { return startBoot(t, cyclesLinear(), m, ps, f) }},
 		{"trial", 150, 300, func(m *game.Meta, f *fuzzer) *game.State { return startTrial(t, m, ps, f) }},
 	} {
 		resumed := 0
