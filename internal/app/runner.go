@@ -150,7 +150,9 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 		Best:        r.Best,
 		// The problem screen draws the boot bar and the keys around it.
 		Embedded: true,
-		Unjudged: r.pristine(d, src), // the template waits for a save (J13)
+		// The app charges the verdict, so it answers :Submit with the cost.
+		HostAnswers: true,
+		Unjudged:    r.pristine(d, src), // the template waits for a save (J13)
 	}
 	if !d.Upsolve {
 		opt.Conceal = r.Conceal

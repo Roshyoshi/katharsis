@@ -29,6 +29,7 @@ import (
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/session"
 	"katharsis/internal/store"
+	"katharsis/internal/ui"
 )
 
 // fakeCatalog serves the simulator's synthetic pool. Fetch returns no files
@@ -1485,7 +1486,8 @@ func TestShopInstallKeepsGrubCursor(t *testing.T) {
 }
 
 // The editor border's clock is a tmux format in the HUD's tones (E15):
-// reverse red in the last two minutes, the lost hearts drawn too.
+// reverse red in the last two minutes, the lost hearts drawn too, and the
+// strip's timer warnings.
 func TestBorderClock(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
@@ -1499,6 +1501,22 @@ func TestBorderClock(t *testing.T) {
 		for _, want := range []string{"#[fg=colour1,reverse]⏱ 01:30#[default]", "#[fg=colour1]♥", "🦆"} {
 			if !strings.Contains(got, want) {
 				t.Errorf("BorderClock = %q, want %q in it", got, want)
+			}
+		}
+		// The strip's warnings, for a moment after each mark.
+		for _, c := range []struct {
+			left time.Duration
+			warn string
+		}{
+			{5*time.Minute - 3*time.Second, ui.Warn.Tmux("05:00 left")},
+			{4*time.Minute + 30*time.Second, ""},
+			{time.Minute - 3*time.Second, ui.Danger.Tmux("01:00 left")},
+			{90 * time.Second, ""},
+		} {
+			h.clock.t = cur.Deadline.Add(-c.left)
+			got := h.m.BorderClock()
+			if warned := strings.Contains(got, " left"); warned != (c.warn != "") || !strings.Contains(got, c.warn) {
+				t.Errorf("%v left: BorderClock = %q, want the warning %q", c.left, got, c.warn)
 			}
 		}
 		if p, n := h.m.Best(); p != cur.BestPass || n != cur.Total {

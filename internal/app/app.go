@@ -22,6 +22,7 @@ import (
 	"katharsis/internal/hud"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/session"
 	"katharsis/internal/store"
 	"katharsis/internal/ui"
@@ -320,10 +321,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.onJudged(msg)
 	case hud.SubmittedMsg:
 		if msg.Err != nil {
-			return m, m.onJudged(judgedMsg{err: msg.Err})
+			return m, m.onJudged(judgedMsg{err: msg.Err}) // the HUD answered it
 		}
-		s := msg.Summary
-		return m, m.onJudged(judgedMsg{verdict: string(s.Verdict), passed: s.Passed, total: s.Total})
+		s, lives := msg.Summary, m.doorLives()
+		cmd := m.onJudged(judgedMsg{verdict: string(s.Verdict), passed: s.Passed, total: s.Total})
+		msg.Answer(m.charged(lives)) // hud.Options.HostAnswers
+		return m, cmd
 	case session.Request:
 		return m, m.onRequest(msg)
 	case hudQuitMsg:
@@ -475,8 +478,9 @@ func (m *Model) Clock() string {
 // BorderClock is Clock as a tmux format for the editor pane's border, the
 // timer the player watches while typing (E15, fix 3): the countdown in its
 // tone (ui.BorderTimer: bold in the last fifth, reverse under two minutes),
-// a soft timer's overrun in Danger, and the hearts drawn as the HUD draws
-// them, ♥♥♡, lost lives included.
+// a soft timer's overrun in Danger, the hearts drawn as the HUD draws
+// them, ♥♥♡, lost lives included, and for a moment the strip's timer
+// warning (borderWarn).
 func (m *Model) BorderClock() string {
 	s := m.state
 	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil || (m.open != nil && m.open.Upsolve) {
@@ -487,7 +491,29 @@ func (m *Model) BorderClock() string {
 	if left < 0 && s.SoftTimer() {
 		t = ui.Danger.Tmux(ui.G.Timer + "+" + units.Clock(-left) + " over")
 	}
-	return t + " · " + ui.BorderHearts(s.Lives, s.MaxLives) + " · " + ui.TmuxEscape(ducks(s))
+	return t + " · " + ui.BorderHearts(s.Lives, s.MaxLives) + " · " + ui.TmuxEscape(ducks(s)) + m.borderWarn(left)
+}
+
+// borderWarnFor is how long the border says the open door's timer passed
+// 5:00 or 1:00 left (timer.warn), as the dmesg strip does: the player
+// watching vim does not see the strip.
+const borderWarnFor = 10 * time.Second
+
+// warnAt is the time left at each bootui.TimerMark.
+var warnAt = [...]time.Duration{1: 5 * time.Minute, 2: time.Minute}
+
+// borderWarn is BorderClock's " · 05:00 left" for borderWarnFor after a
+// mark, in Warn, or Danger at 1:00.
+func (m *Model) borderWarn(left time.Duration) string {
+	mark := bootui.TimerMark(m.state, m.d.Now())
+	if mark == 0 || left <= warnAt[mark]-borderWarnFor {
+		return ""
+	}
+	tone := ui.Warn
+	if mark == 2 {
+		tone = ui.Danger
+	}
+	return " · " + tone.Tmux(units.Countdown(warnAt[mark])+" left")
 }
 
 // Best is the open door's best full-test submit, passed of total, for the

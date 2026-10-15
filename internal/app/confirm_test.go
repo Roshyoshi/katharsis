@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"os/exec"
 	"strings"
 	"testing"
@@ -9,10 +10,12 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/game"
 	"katharsis/internal/hud"
 	"katharsis/internal/judge"
 	"katharsis/internal/screens"
 	"katharsis/internal/session"
+	"katharsis/internal/ui"
 )
 
 // samplesFailed is a boot door whose samples were judged and fail: the
@@ -39,7 +42,8 @@ func lastLine(h *harness) string {
 }
 
 // :Submit while the samples fail asks for :Submit! and spends nothing;
-// :Submit! is judged and charged (J3).
+// :Submit! is judged and charged (J3), and its reply in vim names the
+// cost.
 func TestSubmitBangOverFailingSamples(t *testing.T) {
 	h := samplesFailed(t)
 	lives := h.m.state.Lives
@@ -56,8 +60,9 @@ func TestSubmitBangOverFailingSamples(t *testing.T) {
 	req, reply = session.NewRequest(session.Command{Cmd: session.CmdSubmit, Args: []string{session.ArgForce}})
 	_, cmd := h.m.Update(req)
 	h.pump(cmd, func() bool { return !h.m.judging })
-	if rep, _ := answer(reply); !strings.HasPrefix(rep.Text, "WA 0/1") {
-		t.Errorf(":Submit! answered %+v, want its verdict", rep)
+	cost := fmt.Sprintf(" · -1 %s, %d left", ui.G.Life, lives-1)
+	if rep, _ := answer(reply); !strings.HasPrefix(rep.Text, "WA 0/1") || !strings.HasSuffix(rep.Text, cost) {
+		t.Errorf(":Submit! answered %+v, want its verdict and %q", rep, cost)
 	}
 	if h.m.state.Lives != lives-1 {
 		t.Errorf("lives %d after :Submit!'s WA, want %d", h.m.state.Lives, lives-1)
@@ -108,6 +113,27 @@ func TestRetreatAsks(t *testing.T) {
 		h.send(key("R"))
 		if h.m.state.Lives != lives-1 || h.m.state.Current != nil && h.m.state.Current.Door.Problem == door {
 			t.Fatalf("R R: lives %d (want %d), current %+v", h.m.state.Lives, lives-1, h.m.state.Current)
+		}
+	})
+}
+
+// A failed submit that ends the boot says so in vim's reply rather than
+// counting lives left; an upsolve's costs nothing.
+func TestChargedNamesTheCrash(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.enterDoor()
+		h.m.state.Lives = 1
+		lives := h.m.doorLives()
+		h.verdict = "WA"
+		h.send(submitMsg{})
+		if got, want := h.m.charged(lives), "-1 "+ui.G.Life+", kernel panic"; h.m.state.Phase != game.PhaseCrashed || got != want {
+			t.Fatalf("phase %s, charged %q; want a crash and %q", h.m.state.Phase, got, want)
+		}
+		h.send(screens.Upsolve{Problem: h.m.state.Crash.Door.Problem})
+		if lives := h.m.doorLives(); lives != -1 || h.m.charged(lives) != "" {
+			t.Errorf("an upsolve: doorLives %d, charged %q; want -1 and nothing", lives, h.m.charged(lives))
 		}
 	})
 }

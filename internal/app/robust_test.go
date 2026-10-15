@@ -352,13 +352,13 @@ func stalled(t *testing.T) judge.Profile {
 }
 
 // hudHarness runs the app with a HUD judging dir with prof, its submits
-// copied aside as the tmux runner's are. The door closes when the test
-// ends, so no pass outlives it.
+// copied aside and answered by the app as the tmux runner's are. The door
+// closes when the test ends, so no pass outlives it.
 func hudHarness(t *testing.T, dir string, prof judge.Profile) *harness {
 	t.Helper()
 	h := newRealHarness(t, func(f *fakeRunner) Runner {
 		return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: dir, SubmitProfile: prof,
-			SubmitCopy: filepath.Join(dir, ".submit", "sol.cpp")}}
+			SubmitCopy: filepath.Join(dir, ".submit", "sol.cpp"), HostAnswers: true}}
 	})
 	t.Cleanup(func() { h.m.d.Runner.Close() })
 	return h

@@ -67,3 +67,33 @@ func (m *Model) retreatAsk() (string, bool) {
 	}
 	return fmt.Sprintf("retreat: -1 %s, %d left · new doors · R again", ui.G.Life, st.Lives-1), true
 }
+
+// doorLives is the boot's lives while one of its doors is open, -1
+// otherwise (an upsolve): what charged counts from.
+func (m *Model) doorLives() int {
+	if !m.inBootDoor() {
+		return -1
+	}
+	return m.state.Lives
+}
+
+// charged is what the verdict just stepped cost a boot that had lives
+// before it, for vim's :Submit reply: "-1 ♥, 2 left", "kernel panic" when
+// it ended the boot, "" for nothing (an AC, a CE, an upsolve).
+func (m *Model) charged(lives int) string {
+	s := m.state
+	if lives < 0 || s == nil {
+		return ""
+	}
+	lost := ""
+	if n := lives - s.Lives; n > 0 {
+		lost = fmt.Sprintf("-%d %s, ", n, ui.G.Life)
+	}
+	switch {
+	case s.Phase == game.PhaseCrashed:
+		return lost + "kernel panic"
+	case lost != "":
+		return fmt.Sprintf("%s%d left", lost, s.Lives)
+	}
+	return ""
+}

@@ -161,6 +161,9 @@ func timerMark(st *game.State, now time.Time) int {
 	return 0
 }
 
+// TimerMark is timerMark, for the editor border's warning (app).
+func TimerMark(st *game.State, now time.Time) int { return timerMark(st, now) }
+
 // Events is the strip as it stands, oldest first.
 func (t *Tracker) Events() []Event { return slices.Clone(t.events) }
 
