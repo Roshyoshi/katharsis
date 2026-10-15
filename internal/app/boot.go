@@ -75,7 +75,7 @@ func (m *Model) startBoot(b screens.StartBoot) tea.Cmd {
 		return fail("save: %v", err)
 	}
 	m.reset()
-	return tea.Batch(m.initTop(), m.effects(effs))
+	return tea.Batch(m.initTop(), m.effects(effs), m.offerLink())
 }
 
 // abandon gives up a running boot. In a door that is :q!; elsewhere there
@@ -193,7 +193,11 @@ func (m *Model) effects(effs []game.Effect) tea.Cmd {
 		case game.CloseProblem:
 			m.closeDoor()
 		case game.OpenEditorial:
-			cmds = append(cmds, m.openDoc(e.Problem, true))
+			// After :q! the boot has crashed: let the kernel panic land
+			// first; its screen offers the editorial on [e].
+			if m.state == nil || m.state.Phase != game.PhaseCrashed {
+				cmds = append(cmds, m.openDoc(e.Problem, true))
+			}
 		case game.Sound:
 			if m.d.Sound != nil {
 				m.d.Sound(e.Name)
@@ -238,6 +242,7 @@ func (m *Model) onFetched(f fetchedMsg) tea.Cmd {
 	}
 	if m.state != nil && !f.upsolve {
 		d.Boot = m.state.Boot
+		d.Libs = game.LinkedLibs(m.state, &m.meta)
 		if m.state.Current != nil {
 			d.Deadline = m.state.Current.Deadline
 		}
@@ -401,8 +406,14 @@ func (m *Model) onJudged(j judgedMsg) tea.Cmd {
 	if j.err != nil {
 		return fail("judge: %v", j.err)
 	}
-	if m.open != nil && m.open.Upsolve {
-		return m.onUpsolveJudged(j)
+	// Libs come from accepted code only; harvest before the step so the
+	// checkpoint it makes saves them.
+	var harvest tea.Cmd
+	if j.verdict == "AC" {
+		harvest = m.harvestLibs()
 	}
-	return m.step(game.SubmitResult{Verdict: j.verdict, Passed: j.passed, Total: j.total})
+	if m.open != nil && m.open.Upsolve {
+		return tea.Batch(harvest, m.onUpsolveJudged(j))
+	}
+	return tea.Batch(harvest, m.step(game.SubmitResult{Verdict: j.verdict, Passed: j.passed, Total: j.total}))
 }

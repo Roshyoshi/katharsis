@@ -33,6 +33,14 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 		return m.openTop(), true
 	case screens.OpenLearn:
 		return m.openLearn(), true
+	case screens.OpenModule:
+		return m.openModule(msg.Module), true
+	case screens.StartTrial:
+		return m.startTrial(msg.Module), true
+	case learnLoadedMsg:
+		return m.onLearnLoaded(msg), true
+	case linkMsg:
+		return m.onLink(msg), true
 	case screens.Upsolve:
 		return m.startUpsolve(catalog.ID(msg.Problem)), true
 	case screens.OpenStatement:
@@ -98,15 +106,6 @@ func (m *Model) openTop() tea.Cmd {
 		return fail("top: %v", err)
 	}
 	return m.push(meta.NewTop(m.stats(st, hist)))
-}
-
-// openLearn is the RTFM entry point.
-//
-// SPONGE: learn-mode screens and trial boots land in a later slice; until
-//
-//	then the entry explains itself instead of doing nothing.
-func (m *Model) openLearn() tea.Cmd {
-	return fail("RTFM (learn mode) is not wired up yet")
 }
 
 type docMsg struct{ doc reader.Doc }

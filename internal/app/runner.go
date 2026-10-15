@@ -16,6 +16,7 @@ import (
 	"katharsis/internal/catalog"
 	"katharsis/internal/hud"
 	"katharsis/internal/judge"
+	"katharsis/internal/libs"
 	"katharsis/internal/problem"
 	"katharsis/internal/session"
 )
@@ -47,6 +48,7 @@ type TmuxRunner struct {
 	hud    *hud.Model
 	door   Door
 	dir    string
+	src    string
 }
 
 // Templates are C++ starting points; "" uses a built-in one. In a file-I/O
@@ -150,7 +152,7 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 	}()
 
 	r.mu.Lock()
-	r.pane, r.stop, r.door, r.dir = pane, stop, d, dir
+	r.pane, r.stop, r.door, r.dir, r.src = pane, stop, d, dir, src
 	r.hud = hud.New(opt)
 	r.overlay = overlay
 	r.mu.Unlock()
@@ -223,7 +225,7 @@ func (r *TmuxRunner) materialize(d Door) (dir, src string, err error) {
 	if _, err := os.Stat(src); os.IsNotExist(err) {
 		body, ok := r.seed(d)
 		if !ok {
-			body = []byte(r.template(d.Problem))
+			body = []byte(libs.Inject(r.template(d.Problem), d.Libs))
 		}
 		if err := os.WriteFile(src, body, 0o644); err != nil {
 			return "", "", err
@@ -357,4 +359,14 @@ func copyTo(src, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, b, 0o644)
+}
+
+// Source is the open door's source file, "" between doors.
+func (r *TmuxRunner) Source() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.hud == nil {
+		return ""
+	}
+	return r.src
 }

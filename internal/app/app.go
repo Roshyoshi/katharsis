@@ -18,6 +18,7 @@ import (
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 	"katharsis/internal/hud"
+	"katharsis/internal/learn"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/session"
@@ -49,6 +50,9 @@ type Door struct {
 	// SeedBoot, for an upsolve, is the boot whose attempt at the problem
 	// a new upsolve source starts from; 0 starts from the template.
 	SeedBoot int
+	// Libs are the boot's linked libs, pasted above main when the door's
+	// source is first written.
+	Libs []game.Lib
 }
 
 // Judge runs the full tests of an open door. The app calls it on :Submit;
@@ -73,6 +77,7 @@ type Model struct {
 	meta  game.Meta
 	state *game.State // nil outside a boot
 	pool  []catalog.Problem
+	cur   *learn.Curriculum // RTFM, loaded on first use
 
 	stack   []screens.Screen // top is shown; the bottom is GRUB or a boot screen
 	open    *Door            // the door being played, nil otherwise
@@ -287,6 +292,12 @@ func (m *Model) Clock() string {
 	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil || (m.open != nil && m.open.Upsolve) {
 		return "untimed"
 	}
-	left := max(s.Current.Deadline.Sub(m.d.Now()), 0)
-	return fmt.Sprintf("%s · %s · %s", countdown(left), strings.Repeat("♥", s.Lives), ducks(s))
+	left := s.Current.Deadline.Sub(m.d.Now())
+	t := countdown(max(left, 0))
+	// A trial's timer is soft: past the deadline the door goes on at half
+	// pay, so show how far over it is instead of a frozen 00:00.
+	if left < 0 && s.SoftTimer() {
+		t = "+" + countdown(-left) + " over"
+	}
+	return fmt.Sprintf("%s · %s · %s", t, strings.Repeat("♥", s.Lives), ducks(s))
 }
