@@ -501,6 +501,22 @@ func TestMergeCursorLeavesATakenPick(t *testing.T) {
 	}
 }
 
+// A full window on a short terminal still shows its leave row, the one way
+// out: at 80x24 the strip and apt's goal line pushed it off the screen,
+// and the cursor on it showed nowhere.
+func TestMergeFitsItsLeaveRow(t *testing.T) {
+	e := stripEnv(fixture.Merge())
+	e.End.Goal = &Goal{Name: "cowsay", Price: 32}
+	m := NewMerge(e)
+	for range len(m.rows()) - 1 {
+		m.Update(press("down"))
+	}
+	v := ansi.Strip(m.View(80, 24))
+	if !strings.Contains(v, ui.G.Cursor+" leave") {
+		t.Errorf("no leave row under the cursor at 80x24:\n%s", v)
+	}
+}
+
 // The merge window prices every item on sale, says which the bytes don't
 // cover, and sells nothing in a trial.
 func TestMergeSpendRows(t *testing.T) {

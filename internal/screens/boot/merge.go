@@ -2,9 +2,11 @@ package boot
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
@@ -175,6 +177,14 @@ func (m *Merge) View(width, height int) string {
 		if len(head)+1+len(secs) <= height-1 {
 			m.drawn = c.intro
 			break
+		}
+	}
+	// Still too tall, the blank rows between the sections go, last first,
+	// before the leave row would: at 80x24 the strip and apt's goal line
+	// over a window that offers everything pushed it off the screen.
+	for i := len(secs) - 1; i >= 0 && len(head)+len(secs) > height-1; i-- {
+		if strings.TrimSpace(ansi.Strip(secs[i])) == "" {
+			secs = slices.Delete(secs, i, i+1)
 		}
 	}
 	// The Hatter's line over the table when there is room: the table's
