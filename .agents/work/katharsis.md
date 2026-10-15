@@ -143,7 +143,7 @@ D46 settled 10-15  Alpha feedback, boot #1: "the timer shouldnt run in between l
                    time); Userland 15 min in every preset; TimerFitLo 0.8, TimerHeadroom
                    1.5; nice -20 costs bytes (x0.8), not lives; audit the other perks.
 
-D47 open 10-15     Meta research before any change to lives: "3 lives seems a little harsh";
+D47 settled 10-15  Meta research before any change to lives: "3 lives seems a little harsh";
                    "a pool of 30 lives, and each time out costs like 10"; "pvz 1 has a
                    great meta"; "we need to consider the meta do some research first in
                    a thread". Thread: docs/research/meta.md (health economies in Dead
@@ -155,6 +155,14 @@ D47 open 10-15     Meta research before any change to lives: "3 lives seems a li
                    "it should save progress in map but like you cant quit inside a
                    level": suspend only between doors; no quit inside a door (solve,
                    retreat or give up); crash-safety resume stays.
+                   Decided 10-15 on docs/research/meta.md: cycles pool 30/50; WA -2
+                   ("-2 is good") with a perk or upgrade that converts it to 5:00 off the
+                   door's clock for the boot (ECC); give up flat -10; timeout -10, room
+                   lost, boot goes on; retreat locks 2:30 into a door; Userland 12 min,
+                   10 then 8 at later prestige; a new boot while one is suspended counts
+                   as a crash; THREE bosses on a Dead Cells-style map ("i really like
+                   dead cells map design"); the boss retry rule and P5-P8 come from the
+                   map design.
 
 D48 settled 10-15  Lives are renamed cycles (CPU cycles), still drawn as ♥: "can change
                    lives name to cycles lol / keep icon". Lands with the D47 meta change.
