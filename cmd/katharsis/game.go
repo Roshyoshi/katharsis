@@ -92,6 +92,7 @@ func runGame(args []string) error {
 	warnPresets(ps.loadDir(dir))
 	prefs := openSettings(*budget)
 	sink, audioSet, credits, audioErrs := openAudio(af)
+	defer closeAudio(sink, audioCloseWait) // every way out: quit, hangup, an error
 	warnAudio(audioErrs)
 
 	// tmux sends SIGHUP when the game's pane or window is killed; quit

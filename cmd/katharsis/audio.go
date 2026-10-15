@@ -68,6 +68,26 @@ func openAudio(f audioFlags) (audio.Sink, audio.Settings, func() string, []error
 	return audio.New(set, lib), set, credits, errs
 }
 
+// audioCloseWait bounds the music's fade at exit (audio.Engine.Close): an
+// output that hangs must not keep the game from exiting.
+const audioCloseWait = time.Second
+
+// closeAudio fades the music out and stops the engine, waiting at most
+// wait. Without it the music was cut off mid-note at exit. The null sink
+// has nothing to close.
+func closeAudio(s audio.Sink, wait time.Duration) {
+	c, ok := s.(interface{ Close() })
+	if !ok {
+		return
+	}
+	done := make(chan struct{})
+	go func() { c.Close(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(wait):
+	}
+}
+
 func warnAudio(errs []error) {
 	if len(errs) == 0 {
 		return
