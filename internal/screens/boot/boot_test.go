@@ -887,7 +887,7 @@ func TestCrashElidesTraceWhenShort(t *testing.T) {
 // every door is cursed, so one WA crashes with lives left.
 func engineCrash(t *testing.T, cause game.Outcome, cursed bool) Env {
 	t.Helper()
-	r := rules.Standard()
+	r := rules.Legacy()
 	r.BlindChance, r.MysteryChance, r.CursedChance, r.Ascensions = 0, 0, 0, nil
 	// A cold start is eased (more lives) and plays boot #1's shape, a
 	// Userland timeout costs a life (D44), and Userland's easiest door is

@@ -17,7 +17,7 @@ import (
 // noRisk is Standard() with its easing on but no door modifiers and no
 // boot #1 rules, so a test can follow a door's timer and the lives.
 func noRisk() rules.Rules {
-	r := noFirst(rules.Standard())
+	r := noFirst(rules.Legacy())
 	r.BlindChance, r.MysteryChance, r.CursedChance = 0, 0, 0
 	r.Ascensions = nil
 	return r
@@ -408,7 +408,7 @@ func TestFirstBoot(t *testing.T) {
 	for i := range ps {
 		ps[i].HasEditorial = i%3 != 0
 	}
-	r := rules.Standard()
+	r := rules.Legacy()
 	r.BlindChance, r.MysteryChance, r.CursedChance = 1, 0.5, 1 // every door would be risky
 	r.MasteryAttempts = 0
 	m := &game.Meta{}
@@ -418,7 +418,7 @@ func TestFirstBoot(t *testing.T) {
 	if !ok || !es.FirstDoor || !es.Editorial || es.Why != "boot #1" {
 		t.Fatalf("easings %+v", s.Ease)
 	}
-	if mustJSON(t, s.Rules.Biomes) != mustJSON(t, rules.Short().Biomes) {
+	if mustJSON(t, s.Rules.Biomes) != mustJSON(t, rules.Legacy().FirstBiomes) {
 		t.Errorf("boot #1 plays %+v, want the short shape", s.Rules.Biomes)
 	}
 	editorial := map[catalog.ID]bool{}
@@ -461,16 +461,16 @@ func TestFirstBootAfterTrial(t *testing.T) {
 		t.Fatal(err)
 	}
 	later := t0.Add(5 * 24 * time.Hour)
-	s, _, err := game.NewBoot(rules.Standard(), m, pool, 0, 2, later)
+	s, _, err := game.NewBoot(rules.Legacy(), m, pool, 0, 2, later)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, first := easeOf(s, game.EaseFirst)
 	_, back := easeOf(s, game.EaseComeback)
-	if !first || back || mustJSON(t, s.Rules.Biomes) != mustJSON(t, rules.Short().Biomes) {
+	if !first || back || mustJSON(t, s.Rules.Biomes) != mustJSON(t, rules.Legacy().FirstBiomes) {
 		t.Errorf("first boot after a trial: easings %+v, biomes %+v", s.Ease, s.Rules.Biomes)
 	}
-	s, _, err = game.NewBoot(rules.Standard(), m, pool, 0, 3, later)
+	s, _, err = game.NewBoot(rules.Legacy(), m, pool, 0, 3, later)
 	if _, again := easeOf(s, game.EaseFirst); err != nil || again {
 		t.Errorf("second boot: easings %+v, %v", s.Ease, err)
 	}

@@ -110,7 +110,7 @@ func TestNewTrialErrors(t *testing.T) {
 		meta *game.Meta
 	}{
 		{"nil meta", rules.Trial(), silverTrial(), trialPool(), nil},
-		{"boot rules", rules.Standard(), silverTrial(), trialPool(), &game.Meta{}},
+		{"boot rules", rules.Legacy(), silverTrial(), trialPool(), &game.Meta{}},
 		{"choice biome", choice, silverTrial(), trialPool(), &game.Meta{}},
 		{"empty band", rules.Trial(), empty, trialPool(), &game.Meta{}},
 		{"one problem", rules.Trial(), silverTrial(), tiny, &game.Meta{}},

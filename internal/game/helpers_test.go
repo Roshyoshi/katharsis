@@ -17,7 +17,7 @@ var t0 = time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
 // plain is Standard() without randomness in the doors or ascensions, and
 // without easing, so a test can predict every door's modifiers and timer.
 func plain() rules.Rules {
-	r := calm(rules.Standard())
+	r := calm(rules.Legacy())
 	r.BlindChance, r.MysteryChance, r.CursedChance = 0, 0, 0
 	r.Ascensions = nil
 	return r

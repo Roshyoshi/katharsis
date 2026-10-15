@@ -14,7 +14,7 @@ import (
 
 func pkg(t *testing.T, name string) rules.Package {
 	t.Helper()
-	p, ok := rules.Standard().Package(name)
+	p, ok := rules.Legacy().Package(name)
 	if !ok {
 		t.Fatalf("no package %q in the standard rules", name)
 	}
@@ -64,7 +64,7 @@ func TestInstall(t *testing.T) {
 // installed themes and back to the default, and refuses one not installed.
 func TestThemes(t *testing.T) {
 	t.Parallel()
-	r := rules.Standard()
+	r := rules.Legacy()
 	m := &game.Meta{Bank: 1 << 20}
 	if err := game.UseTheme(r, m, "tux"); !errors.Is(err, game.ErrInvalid) || m.Theme != "" {
 		t.Errorf("theme not installed: err %v, theme %q", err, m.Theme)
@@ -131,7 +131,7 @@ func TestPackagesInBoot(t *testing.T) {
 // one of the game's daemons, items or upgrades, and it does something.
 func TestStandardPackages(t *testing.T) {
 	t.Parallel()
-	for _, p := range rules.Standard().Packages {
+	for _, p := range rules.Legacy().Packages {
 		if p.Daemon != "" && !slices.Contains(game.AllDaemons, game.Daemon(p.Daemon)) {
 			t.Errorf("%s unlocks %q, not a daemon", p.Name, p.Daemon)
 		}

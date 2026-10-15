@@ -16,7 +16,7 @@ import (
 func TestNewBootLayout(t *testing.T) {
 	t.Parallel()
 	ps := dense(catalog.Topics, 800, 2600, 20)
-	h := newHarness(t, calm(rules.Standard()), nil, ps, 0, 1)
+	h := newHarness(t, calm(rules.Legacy()), nil, ps, 0, 1)
 	s, m := h.s, h.m
 
 	if m.Boots != 1 || s.Boot != 1 || m.Rating != 1000 {
@@ -67,7 +67,7 @@ func TestNewBootErrors(t *testing.T) {
 	for i := range unjudgeable {
 		unjudgeable[i].Judgeable = false
 	}
-	broken := rules.Standard()
+	broken := rules.Legacy()
 	broken.Cycles = 0
 	tests := []struct {
 		name     string
@@ -76,11 +76,11 @@ func TestNewBootErrors(t *testing.T) {
 		unlocked int
 		prestige int
 	}{
-		{"locked prestige", rules.Standard(), ps, 0, 1},
-		{"negative prestige", rules.Standard(), ps, 0, -1},
-		{"past max prestige", rules.Standard(), ps, 4, 5},
-		{"empty pool", rules.Standard(), nil, 0, 0},
-		{"nothing judgeable", rules.Standard(), unjudgeable, 0, 0},
+		{"locked prestige", rules.Legacy(), ps, 0, 1},
+		{"negative prestige", rules.Legacy(), ps, 0, -1},
+		{"past max prestige", rules.Legacy(), ps, 4, 5},
+		{"empty pool", rules.Legacy(), nil, 0, 0},
+		{"nothing judgeable", rules.Legacy(), unjudgeable, 0, 0},
 		{"invalid rules", broken, ps, 0, 0},
 	}
 	for _, tc := range tests {
@@ -1123,7 +1123,7 @@ func TestFullClear(t *testing.T) {
 func TestPrestigeAscension(t *testing.T) {
 	t.Parallel()
 	ps := dense(catalog.Topics, 800, 2600, 20)
-	r := calm(rules.Standard()) // the floor easing adds a life
+	r := calm(rules.Legacy()) // the floor easing adds a life
 	tests := []struct {
 		prestige, lives, ducks int
 	}{
@@ -1431,7 +1431,7 @@ func TestMasteredTopicHidesTags(t *testing.T) {
 // the next level, none past the highest.
 func TestNextPrestige(t *testing.T) {
 	t.Parallel()
-	r := rules.Standard()
+	r := rules.Legacy()
 	tests := []struct {
 		prestige, rated int
 		next, left      int

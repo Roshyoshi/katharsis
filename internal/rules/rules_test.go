@@ -72,7 +72,7 @@ func TestTrial(t *testing.T) {
 	}
 	// Trial() is a copy: changing it leaves Standard() alone.
 	r.Biomes[0].Rooms = 9
-	if rules.Trial().Biomes[0].Rooms != 4 || len(rules.Standard().Biomes) != 3 {
+	if rules.Trial().Biomes[0].Rooms != 4 || len(rules.Legacy().Biomes) != 3 {
 		t.Error("Trial() shares its biomes")
 	}
 }
@@ -130,7 +130,7 @@ func TestValidate(t *testing.T) {
 
 func TestAscend(t *testing.T) {
 	t.Parallel()
-	r := rules.Standard()
+	r := rules.Legacy() // the map's ladder is TestMapLadder's
 	tests := []struct {
 		prestige            int
 		blind, mystery, cur float64
@@ -162,7 +162,8 @@ func TestLoad(t *testing.T) {
 		err   string
 	}{
 		{"overrides a scalar", `lives = 4`, func(r rules.Rules) bool {
-			return r.Cycles == 4 && len(r.Biomes) == 3 && len(r.Ascensions) == 4
+			std := rules.Standard()
+			return r.Cycles == 4 && len(r.Biomes) == len(std.Biomes) && len(r.Ascensions) == len(std.Ascensions) && len(r.Nodes) == len(std.Nodes)
 		}, ""},
 		{"biome tables replace Standard's", `
 [[biome]]
@@ -172,8 +173,9 @@ target_clear = 0.5
 min_clear = 0.4
 timer = "40m"
 `, func(r rules.Rules) bool {
+			// Biomes without nodes are a linear shape: off the map.
 			return len(r.Biomes) == 1 && r.Biomes[0].Name == "" && r.Biomes[0].Timer.Duration == 40*time.Minute &&
-				r.Biomes[0].MinClear == 0.4
+				r.Biomes[0].MinClear == 0.4 && len(r.Nodes) == 0
 		}, ""},
 		{"ascension tables replace Standard's", `
 [[ascension]]
@@ -247,43 +249,50 @@ func TestLoadStrictKeysAndFileName(t *testing.T) {
 // boots may come only once the ladder under it has lasted 40 boots of the
 // weaker player. Boots are counted at what the sim's model players bank
 // per boot over their first 40 boots at prestige 0 (commits and upsolved
-// core dumps): sim TestAptLadder measures them (203 and 249 B when these
-// were set, with RT0's floor reading and D44) and holds the catalog to the
-// same rules at the real rates.
+// core dumps): sim TestAptLadder measures them and holds the catalog to
+// the same rules at the real rates. The legacy prices were set at 203 and
+// 249 B a boot (RT0's floor reading and D44); the map's at 474 and 562
+// (rules.MapPriceMult).
 func TestPackageLadder(t *testing.T) {
 	t.Parallel()
-	const (
-		weak   = 203 // B a boot, the 1000-rated model
-		strong = 249 // B a boot, the 1600-rated model
-	)
-	ps := rules.Standard().Packages
-	if len(ps) < 14 {
-		t.Errorf("%d packages, want at least 14", len(ps))
-	}
-	prices := make([]int64, len(ps))
-	for i, p := range ps {
-		prices[i] = p.Price
-	}
-	slices.Sort(prices)
-	if prices[0] > weak {
-		t.Errorf("the first package costs %d B, more than a boot (%d B)", prices[0], weak)
-	}
-	var sum int64
-	for _, p := range prices {
-		if p > 3*weak && sum < 40*weak {
-			t.Errorf("a %d B package after %d B of the ladder: more than three boots before boot 40", p, sum)
+	for _, tc := range []struct {
+		name         string
+		r            rules.Rules
+		weak, strong int64 // B a boot, the 1000- and 1600-rated models
+	}{
+		{"legacy", rules.Legacy(), 203, 249},
+		{"map", rules.Standard(), 474, 562},
+	} {
+		ps := tc.r.Packages
+		if len(ps) < 14 {
+			t.Errorf("%s: %d packages, want at least 14", tc.name, len(ps))
 		}
-		sum += p
-	}
-	if sum < 40*strong {
-		t.Errorf("the catalog costs %d B, under 40 boots of the stronger player (%d B)", sum, 40*strong)
+		prices := make([]int64, len(ps))
+		for i, p := range ps {
+			prices[i] = p.Price
+		}
+		slices.Sort(prices)
+		if prices[0] > tc.weak {
+			t.Errorf("%s: the first package costs %d B, more than a boot (%d B)", tc.name, prices[0], tc.weak)
+		}
+		var sum int64
+		for _, p := range prices {
+			if p > 3*tc.weak && sum < 40*tc.weak {
+				t.Errorf("%s: a %d B package after %d B of the ladder: more than three boots before boot 40", tc.name, p, sum)
+			}
+			sum += p
+		}
+		if sum < 40*tc.strong {
+			t.Errorf("%s: the catalog costs %d B, under 40 boots of the stronger player (%d B)", tc.name, sum, 40*tc.strong)
+		}
 	}
 }
 
 // The built-in presets (RT7) are standard, short and patch, in that order,
-// each valid and differing from standard only in name and biomes. Short
-// is boot #1's shape (FirstBiomes, RT11); patch is RT7's: one Userland
-// door whose timeout costs a life, one mid door, a mini-boss at 0.6.
+// each valid and differing from standard only in name and shape (biomes,
+// and short and patch play no map). Short is boot #1's shape
+// (FirstBiomes, RT11); patch is RT7's: one Userland door whose failure
+// costs cycles, one mid door, a mini-boss at 0.6.
 func TestBuiltIns(t *testing.T) {
 	t.Parallel()
 	var names []string
@@ -293,7 +302,7 @@ func TestBuiltIns(t *testing.T) {
 			t.Error(err)
 		}
 		std := rules.Standard()
-		std.Name, std.Biomes = r.Name, r.Biomes
+		std.Name, std.Biomes, std.Nodes = r.Name, r.Biomes, r.Nodes
 		if !reflect.DeepEqual(r, std) {
 			t.Errorf("%s changes more than its name and biomes", r.Name)
 		}
@@ -322,7 +331,7 @@ func TestBuiltIns(t *testing.T) {
 	kinds := []rules.BiomeKind{p.Biomes[0].Kind, p.Biomes[1].Kind, p.Biomes[2].Kind}
 	if doors != 3 || sum != 50*time.Minute ||
 		!slices.Equal(kinds, []rules.BiomeKind{rules.Fixed, rules.Choice, rules.Boss}) ||
-		!p.Biomes[0].TimeoutLife || p.Biomes[2].TargetClear != 0.6 {
+		p.Biomes[0].FailCycles != 10 || p.Biomes[2].TargetClear != 0.6 || len(p.Nodes) != 0 {
 		t.Errorf("patch: %d doors, %v of timers, biomes %+v", doors, sum, p.Biomes)
 	}
 }

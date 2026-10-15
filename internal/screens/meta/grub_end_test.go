@@ -129,7 +129,7 @@ func TestGrubRegressionDays(t *testing.T) {
 		{Problem: "usaco:1205", Due: due.Add(-time.Hour), Stage: 1, Days: []int{5, 40}},
 		{Problem: "usaco:740", Due: due, Stage: 1},
 	}
-	std := rules.Standard().RegressionDays
+	std := rules.Legacy().RegressionDays
 	want := []string{
 		flavor.Fill(flavor.Story("regression.stage.1", 0), "days", "5"),
 		flavor.Fill(flavor.Story("regression.stage.2", 0), "days", "40"),

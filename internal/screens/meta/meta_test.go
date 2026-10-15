@@ -411,7 +411,7 @@ func TestGrubFollowKeepsTheCursor(t *testing.T) {
 // header, not repeat it, and its lines must share one left edge.
 func TestGrubFlavorBanner(t *testing.T) {
 	themes := []string{""}
-	for _, p := range rules.Standard().Packages {
+	for _, p := range rules.Legacy().Packages {
 		if p.Theme != "" {
 			themes = append(themes, p.Theme)
 		}

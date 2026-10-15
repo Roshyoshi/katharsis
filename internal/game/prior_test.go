@@ -20,7 +20,7 @@ func TestCFPrior(t *testing.T) {
 }
 
 func TestSeedPrior(t *testing.T) {
-	r := rules.Standard()
+	r := rules.Legacy()
 	fresh := func() game.Meta { return game.Meta{Rating: r.ColdStartRating} }
 
 	m := fresh()

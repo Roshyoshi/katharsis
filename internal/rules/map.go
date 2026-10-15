@@ -1,6 +1,10 @@
 package rules
 
-import "time"
+import (
+	"math"
+	"slices"
+	"time"
+)
 
 // The run map (docs/design/map.md, D47-D50): three acts on a Dead
 // Cells-style graph, priced in cycles. Every number is a setting (D2); the
@@ -41,8 +45,29 @@ func Map() Rules {
 	r.Nodes = MapNodes()
 	r.Ascensions = MapAscensions()
 	r.FirstBiomes = ShortBiomes()
+	r.Packages = slices.Clone(r.Packages)
+	cheapest := r.Ladder()[0].Name
+	for i := range r.Packages {
+		if r.Packages[i].Name != cheapest {
+			r.Packages[i].Price = mapPrice(r.Packages[i].Price)
+		}
+	}
 	return r
 }
+
+// MapPriceMult scales the legacy package prices for the map (retention
+// RT3: the catalog lasts at least 40 boots of the bank). A map boot is nine
+// doors and three bosses, and banks about 2.7 times what a boot of the
+// legacy rules did (sim TestAptLadder: 530 and 593 B a boot for the 1000-
+// and 1600-rated models over their first 40 boots, against 203 and 249).
+// The prices follow, so the ladder stays 40 boots deep, every next package
+// within three boots and binutils, the capstone, after 40 boots of the
+// ladder; the first stays one cleared door (32 B), as boot #1 still plays
+// the short shape and banks what it did.
+const MapPriceMult = 2.5
+
+// mapPrice is a legacy price on the map, to the nearest 8 B.
+func mapPrice(p int64) int64 { return int64(math.Round(float64(p)*MapPriceMult/8)) * 8 }
 
 // MapTwists bends one rule per boss (user, 10-15): Off-by-One burns double
 // for a failed submit one test short, the OOM Killer halves the memory

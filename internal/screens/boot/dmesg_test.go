@@ -92,7 +92,7 @@ func plain(evs []Event) string {
 // cost and paid: the onboarding line at the doors, the door's line, a
 // failed submit with the life it took, the clear, and the pick.
 func TestTrackerTellsTheBoot(t *testing.T) {
-	b := newEngineBoot(t, rules.Standard())
+	b := newEngineBoot(t, rules.Legacy())
 	b.toDoors()
 	if got := plain(b.tr.Events()); !strings.Contains(got, "tip: doors:") {
 		t.Fatalf("first doors without the doors tip:\n%s", got)
@@ -132,7 +132,7 @@ func TestTrackerTellsTheBoot(t *testing.T) {
 	}
 	// A tip shows once a save: a second boot does not repeat it.
 	b2 := &engineBoot{t: t, pool: b.pool, now: b.now, meta: b.meta, tr: Tracker{Lookup: b.tr.Lookup}}
-	st, _, err := game.NewBoot(rules.Standard(), &b2.meta, b2.pool, 0, 9, b2.now)
+	st, _, err := game.NewBoot(rules.Legacy(), &b2.meta, b2.pool, 0, 9, b2.now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestTrackerTellsTheBoot(t *testing.T) {
 
 // A retreat says what it cost; kexec says it was free and used up.
 func TestTrackerRetreat(t *testing.T) {
-	b := newEngineBoot(t, rules.Standard())
+	b := newEngineBoot(t, rules.Legacy())
 	b.toDoors()
 	b.step(game.ChooseDoor{})
 	evs := b.step(game.Retreat{})
@@ -165,7 +165,7 @@ func TestTrackerRetreat(t *testing.T) {
 // A Userland timeout that costs a life (D44) says so, and that the room
 // was drawn again; the generic lives line does not repeat it.
 func TestTrackerTimeoutCostsLife(t *testing.T) {
-	b := newEngineBoot(t, rules.Standard())
+	b := newEngineBoot(t, rules.Legacy())
 	b.toDoors()
 	b.step(game.ChooseDoor{})
 	if !b.st.TimeoutCostsLife() {
@@ -191,7 +191,7 @@ func TestTrackerTimeoutCostsLife(t *testing.T) {
 // The strip opens a boot with its easing, one line each (RT8), and says
 // what a decline took back, without the generic lives line.
 func TestTrackerEasing(t *testing.T) {
-	b := newEngineBoot(t, rules.Standard())
+	b := newEngineBoot(t, rules.Legacy())
 	var said []string
 	for _, ev := range b.tr.Events() {
 		if ev.Kind == EvEase {
@@ -218,7 +218,7 @@ func TestTrackerEasing(t *testing.T) {
 func TestTrackerComeback(t *testing.T) {
 	pool := sim.SyntheticPool(400, 3)
 	meta := game.Meta{Boots: 6, Rating: 1400, LastPlayed: fixture.Now.Add(-4*24*time.Hour - time.Hour)}
-	st, _, err := game.NewBoot(rules.Standard(), &meta, pool, 0, 7, fixture.Now)
+	st, _, err := game.NewBoot(rules.Legacy(), &meta, pool, 0, 7, fixture.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +231,7 @@ func TestTrackerComeback(t *testing.T) {
 // The timer warns once at 5:00 and once at 1:00, and not on a resume that
 // is already past them.
 func TestTrackerTimerWarns(t *testing.T) {
-	b := newEngineBoot(t, rules.Standard())
+	b := newEngineBoot(t, rules.Legacy())
 	b.toDoors()
 	b.step(game.ChooseDoor{})
 	dl := b.st.Current.Deadline
@@ -255,12 +255,12 @@ func TestTrackerTimerWarns(t *testing.T) {
 // A new boot empties the strip of the last one's events; it opens on its
 // own easing, if it has any.
 func TestTrackerNewBootClears(t *testing.T) {
-	b := newEngineBoot(t, rules.Standard())
+	b := newEngineBoot(t, rules.Legacy())
 	b.toDoors()
 	if len(b.tr.Events()) == 0 {
 		t.Fatal("no events to clear")
 	}
-	st, _, err := game.NewBoot(rules.Standard(), &b.meta, b.pool, 0, 11, b.now)
+	st, _, err := game.NewBoot(rules.Legacy(), &b.meta, b.pool, 0, 11, b.now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -369,7 +369,7 @@ func TestStripPriority(t *testing.T) {
 // flavor does (flavor.NormVerdict), so it gets the MLE verdict line rather
 // than none, and its own word stays on the mechanic line.
 func TestTrackerFoldsOLE(t *testing.T) {
-	b := newEngineBoot(t, rules.Standard())
+	b := newEngineBoot(t, rules.Legacy())
 	b.toDoors()
 	b.step(game.ChooseDoor{})
 	b.now = b.now.Add(time.Minute)

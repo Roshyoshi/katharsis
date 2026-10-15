@@ -163,7 +163,7 @@ type harness struct {
 // cold-start player on the fake catalog is aimed under its floor. "eased"
 // plays the standard preset as shipped.
 func steady() rules.Rules {
-	r := rules.Standard()
+	r := rules.Legacy()
 	r.EaseAbove, r.BuybackTimers, r.GovernorAfter = 0, nil, 0
 	r.FirstBiomes, r.FirstDoor, r.FirstEditorial = nil, false, false
 	r.Biomes = slices.Clone(r.Biomes)
@@ -235,7 +235,7 @@ func startHarness(t *testing.T, wrap func(*fakeRunner) Runner, real bool) *harne
 		},
 		Now:     h.clock.now,
 		Seed:    func() uint64 { return 42 },
-		Presets: map[string]rules.Rules{"standard": steady(), "eased": rules.Standard()},
+		Presets: map[string]rules.Rules{"standard": steady(), "eased": rules.Legacy()},
 	})
 	return h
 }

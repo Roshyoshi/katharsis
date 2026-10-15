@@ -68,7 +68,7 @@ func TestQuantile(t *testing.T) {
 
 func TestFitTimer(t *testing.T) {
 	t.Parallel()
-	r := rules.Standard()
+	r := rules.Legacy()
 	solves := func(n int, gap float64, d time.Duration) []Solve {
 		var ss []Solve
 		for range n {
@@ -117,7 +117,7 @@ func TestFitTimer(t *testing.T) {
 // clear lifts the rating less and its failure drops it more.
 func TestRateBoughtBack(t *testing.T) {
 	t.Parallel()
-	r := rules.Standard()
+	r := rules.Legacy()
 	r.RatingColdAttempts = 0
 	d := Door{Problem: "t:800", Topic: Mixed, Rating: 800}
 	bought := d
@@ -139,7 +139,7 @@ func TestRateBoughtBack(t *testing.T) {
 // and is the plain chance when the rules read floors as they are.
 func TestClearChanceAtTheFloor(t *testing.T) {
 	t.Parallel()
-	r := rules.Standard()
+	r := rules.Legacy()
 	for _, R := range []float64{700, 900, 1000, 1300, 2000} {
 		at, mean := Expected(R, 800), Expected(R, 800-r.FloorDrop)
 		got := clearChance(&r, R, 800, 0, true)

@@ -763,9 +763,10 @@ func (r Rules) WithDefaults() Rules {
 	return r
 }
 
-// Standard is the default preset: the rules GRUB boots by name
-// "standard".
-func Standard() Rules { return Legacy() }
+// Standard is the default preset, the rules GRUB boots by name "standard":
+// the three-act map (Map). map.md §(h): the map is standard's replacement,
+// under its name.
+func Standard() Rules { return Map() }
 
 // Legacy is the standard preset as it was before the cycles meta (D47) and
 // the map: three lives, Userland, a choice biome and one boss. A boot saved
@@ -952,38 +953,31 @@ func Legacy() Rules {
 // reuse one, so a name in the boots table always means these rules.
 func BuiltIns() []Rules { return []Rules{Standard(), Short(), Patch()} }
 
-// Short is the built-in short preset (retention RT7): four doors on
-// shorter timers, and the shape boot #1 plays (FirstBiomes).
+// Short is the built-in short preset (retention RT7), the cycles meta on
+// the shape boot #1 plays (ShortBiomes): two Userland doors, one mid door
+// and the boss, on short timers, off the map. Its prices, ladder and twists
+// are the map's; its one boss is the final, so it is one shot.
 func Short() Rules {
-	r := Standard()
+	r := Map()
 	r.Name = "short"
-	r.Biomes = shortBiomes()
+	r.Biomes, r.Nodes = ShortBiomes(), nil
 	return r
 }
 
 // Patch is the built-in patch preset (retention RT7), the cheapest "one
 // more": one Userland door, one mid door, and a mini-boss aimed at 0.6
-// (standard's boss at 0.5), on short's timers; every other number is
-// standard's. Its doors are 3 of standard's 5 and short's 4; in the
-// simulator (synthetic pool, prestige 0, the 1000- and 1600-rated model
-// players, 2026-10-15) the mean uptimes were
-//
-//	standard 2h31 / 2h15 · short 1h26 / 1h21 · patch 1h04 / 1h00
-//
-// The timers fit to the player's solve times, so the end screens' ETAs
-// are the player's own medians (GR3), not these.
+// (PatchBiomes), off the map; every other number is the map's. Its doors
+// are 3 against short's 4 and the map's 9. The timers fit to the player's
+// solve times, so the end screens' ETAs are the player's own medians
+// (GR3).
 func Patch() Rules {
-	r := Standard()
+	r := Map()
 	r.Name = "patch"
-	r.Biomes = []Biome{
-		{Kind: Fixed, Name: "Userland", Rooms: 1, TargetClear: 0.9, Timer: Duration{10 * time.Minute}, EaseClear: 0.95, Plain: 1, TimeoutLife: true},
-		{Kind: Choice, Rooms: 1, Choices: 2, TargetClear: 0.7, MinClear: 0.6, Timer: Duration{20 * time.Minute}, EaseClear: 0.78},
-		{Kind: Boss, Rooms: 1, TargetClear: 0.6, Timer: Duration{20 * time.Minute}, EaseClear: 0.65},
-	}
+	r.Biomes, r.Nodes = PatchBiomes(), nil
 	return r
 }
 
-// shortBiomes is the short preset's shape.
+// shortBiomes is the legacy short shape: boot #1's before cycles.
 func shortBiomes() []Biome {
 	return []Biome{
 		{Kind: Fixed, Name: "Userland", Rooms: 2, TargetClear: 0.9, Timer: Duration{10 * time.Minute}, EaseClear: 0.95, Plain: 1, TimeoutLife: true},
@@ -1005,7 +999,9 @@ func shortBiomes() []Biome {
 // Failing input is shown, as if strace ran: a trial is the first time the
 // player meets the topic, and a hidden WA teaches nothing.
 func Trial() Rules {
-	r := Standard()
+	// A trial is learn mode, not a boot: it keeps the lives the rules had
+	// before cycles (three, a failed submit one), and no map.
+	r := Legacy()
 	r.Name = "trial"
 	r.DoorsPerRoom = 1
 	r.Biomes = []Biome{
@@ -1051,7 +1047,10 @@ func Load(path string) (Rules, error) {
 	if _, ok := keys["first_biome"]; ok {
 		r.FirstBiomes = nil
 	}
-	if _, ok := keys["node"]; ok {
+	// So does [[node]]; and a preset that lists biomes but no nodes is a
+	// linear shape, off the map.
+	_, biomes := keys["biome"]
+	if _, ok := keys["node"]; ok || biomes {
 		r.Nodes = nil
 	}
 	md, err := toml.Decode(string(b), &r)

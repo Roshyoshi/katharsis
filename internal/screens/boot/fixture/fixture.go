@@ -70,7 +70,7 @@ func Lookup(id catalog.ID) (catalog.Problem, bool) {
 // Rules is the standard preset with a second choice biome, so the map has
 // four biomes to lay out.
 func Rules() rules.Rules {
-	r := rules.Standard()
+	r := rules.Legacy()
 	r.Biomes = []rules.Biome{
 		{Kind: rules.Fixed, Name: "Userland", Rooms: 2, TargetClear: 0.9, Timer: rules.Duration{Duration: 15 * time.Minute}},
 		{Kind: rules.Choice, Rooms: 2, Choices: 2, TargetClear: 0.7, Timer: rules.Duration{Duration: 30 * time.Minute}},

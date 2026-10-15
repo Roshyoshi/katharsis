@@ -757,7 +757,7 @@ func TestFuzzTrials(t *testing.T) {
 	}
 	for i := range runs {
 		if i%3 == 2 { // two trials first: boot #1 comes after them
-			fuzzBoot(t, rules.Standard(), m, ps, f, false)
+			fuzzBoot(t, rules.Legacy(), m, ps, f, false)
 		} else {
 			s, _ := fuzzTrial(t, m, ps, f, i%10 == 1)
 			ends[s.Phase]++
@@ -953,8 +953,8 @@ func TestDeterminism(t *testing.T) {
 
 	// Different seeds give different boots.
 	m1, m2 := &game.Meta{}, &game.Meta{}
-	s1, _, _ := game.NewBoot(rules.Standard(), m1, ps, 0, 1, t0)
-	s2, _, _ := game.NewBoot(rules.Standard(), m2, ps, 0, 2, t0)
+	s1, _, _ := game.NewBoot(rules.Legacy(), m1, ps, 0, 1, t0)
+	s2, _, _ := game.NewBoot(rules.Legacy(), m2, ps, 0, 2, t0)
 	if mustJSON(t, s1.Doors) == mustJSON(t, s2.Doors) {
 		t.Error("seeds 1 and 2 offered the same doors")
 	}
