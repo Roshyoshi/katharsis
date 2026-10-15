@@ -20,10 +20,10 @@ int main() {
     int best = 0;
     for (int h = 1; h <= n; h++) {
         if (c[h - 1] < h - 1) break;
-        int need = 0;
-        for (int i = 0; i < h; i++) if (c[i] < h) need++;
-        // only c[i] == h-1 can be below h here; each needs one citation.
-        if (need <= l) best = h;
+        // c is sorted descending, so the papers below h among the first h
+        // are a suffix, each at h-1 and short one citation.
+        int at = partition_point(c.begin(), c.begin() + h, [&](int x) { return x >= h; }) - c.begin();
+        if (h - at <= l) best = h;
     }
     cout << best << '\n';
 }
