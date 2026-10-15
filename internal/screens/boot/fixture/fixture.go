@@ -399,7 +399,7 @@ func Crash(cause game.Outcome) *game.State {
 	crashAt := a.Closed
 	st.Crash = &game.Crash{
 		Cause: cause, Door: a.Door, Verdict: a.LastVerdict, Lost: st.Uncommitted,
-		At: crashAt, Uptime: crashAt.Sub(start),
+		At: crashAt,
 	}
 	// One shape keeps the crashing attempt open in Current, the other has
 	// already filed it in History; the screens must handle both.
@@ -408,6 +408,7 @@ func Crash(cause game.Outcome) *game.State {
 	} else {
 		st.History = append(st.History, a)
 	}
+	st.Crash.Uptime = st.Uptime(crashAt)
 	st.Uncommitted = 0
 	st.AtStart = atStart()
 	rebase(st, crashAt.Sub(start))

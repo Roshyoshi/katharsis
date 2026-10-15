@@ -11,7 +11,7 @@ import (
 
 // TestFirstBootLoop is retention RT11 against the model players: from an
 // empty Meta, boot #1 (the short shape, the floor's doors first) closes in
-// about an hour (mean uptime at most 70 minutes) and leaves the cheapest
+// about an hour (mean wall time at most 70 minutes) and leaves the cheapest
 // package affordable in 80% of runs. The engine's own estimate of the
 // first door is logged: a cold start reads a Codeforces 800 at 0.89, short
 // of RT11's 0.95 until the player gives a rating (D37) or the pool has
@@ -38,7 +38,7 @@ func TestFirstBootLoop(t *testing.T) {
 						first = &h
 					}
 				}})
-			up += rep.MeanUptime
+			up += rep.MeanWall
 			if rep.Banked[0] >= cheapest {
 				afford++
 			}
@@ -50,7 +50,7 @@ func TestFirstBootLoop(t *testing.T) {
 			}
 		}
 		mean := up / runs
-		t.Logf("model %.0f, boot #1: mean uptime %s, first door estimated %.2f and cleared %d%%, package after boot 1 in %d%%",
+		t.Logf("model %.0f, boot #1: mean wall time %s, first door estimated %.2f and cleared %d%%, package after boot 1 in %d%%",
 			rating, mean.Round(time.Minute), est/runs, 100*cleared/runs, 100*afford/runs)
 		if mean > 70*time.Minute {
 			t.Errorf("model %.0f: boot #1 lasts %s on average, want at most 70 min", rating, mean.Round(time.Minute))

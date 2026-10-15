@@ -147,7 +147,7 @@ func crash(st *game.State, cause game.Outcome) *game.State {
 	st.Phase = game.PhaseCrashed
 	st.Crash = &game.Crash{
 		Cause: cause, Door: a.Door, Verdict: a.LastVerdict, Lost: st.Uncommitted,
-		At: a.Closed, Uptime: a.Closed.Sub(st.Started),
+		At: a.Closed, Uptime: st.Uptime(a.Closed),
 	}
 	st.Uncommitted = 0
 	return st

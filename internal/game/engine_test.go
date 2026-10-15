@@ -798,8 +798,8 @@ func TestGiveUp(t *testing.T) {
 	if h.s.Phase != game.PhaseCrashed || c == nil || c.Cause != game.GaveUp || c.Door.Problem != d.Problem {
 		t.Fatalf("phase %s crash %+v", h.s.Phase, c)
 	}
-	if c.Uptime != 11*time.Minute { // open at +1m, wait 9m, :q! at +1m
-		t.Errorf("uptime %v", c.Uptime)
+	if c.Uptime != 10*time.Minute { // open at +1m, wait 9m, :q! at +1m
+		t.Errorf("uptime %v, want the 10m the door was open", c.Uptime)
 	}
 	if ed, ok := has[game.OpenEditorial](fx); !ok || ed.Problem != d.Problem {
 		t.Errorf("effects %v, want the editorial", fx)
@@ -810,6 +810,33 @@ func TestGiveUp(t *testing.T) {
 	}
 	if h.m.CoreDump != nil {
 		t.Errorf("core dump %+v from a boot with nothing uncommitted", h.m.CoreDump)
+	}
+}
+
+// Uptime counts time inside doors only: it stands still while the player
+// sits between doors, and a door that timed out counts its timer however
+// late the tick that closed it came (a game closed over the door).
+func TestUptimeCountsDoors(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	h := newHarness(t, plain(), nil, ps, 0, 1)
+	h.clearDoor(0, 10*time.Minute) // open at +1m, AC at +12m
+	if got := h.s.Uptime(t0.Add(6 * time.Minute)); got != 5*time.Minute {
+		t.Errorf("uptime 5m into the first door = %v", got)
+	}
+	h.now = h.now.Add(time.Hour) // an hour on the upgrade pick
+	if got := h.s.Uptime(h.now); got != 11*time.Minute {
+		t.Errorf("uptime between doors = %v, want the first door's 11m", got)
+	}
+	d := h.open(0)
+	if got := h.s.Uptime(h.now.Add(4 * time.Minute)); got != 15*time.Minute {
+		t.Errorf("uptime 4m into the second door = %v, want 15m", got)
+	}
+	if _, err := game.Step(h.s, h.m, ps, game.Tick{}, h.s.Current.Opened.Add(72*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if c := h.s.Crash; c == nil || c.Cause != game.TimedOut || c.Uptime != 11*time.Minute+d.Timer {
+		t.Errorf("crash %+v, want a timeout at uptime %v", c, 11*time.Minute+d.Timer)
 	}
 }
 

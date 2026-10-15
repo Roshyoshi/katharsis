@@ -17,8 +17,8 @@ import (
 // RetentionOptions are the thresholds the queries take; each is a setting
 // in the retention doc.
 type RetentionOptions struct {
-	// PracticeMin is how much play (boot uptime plus upsolving) makes a
-	// day a practice day.
+	// PracticeMin is how much play (boots in wall time, plus upsolving)
+	// makes a day a practice day.
 	PracticeMin time.Duration
 	// SessionGap: a boot starting longer than this after the last one
 	// ended starts a new session.
@@ -105,10 +105,12 @@ type Retention struct {
 	Alarms     []Alarm
 }
 
-// span is a boot as the retention queries see it.
+// span is a boot as the retention queries see it. Its play is wall time,
+// from the start to the end or the last checkpoint, not the boot's uptime
+// (time inside doors; PlayToday says why).
 type span struct {
 	started, ended time.Time // ended zero while running
-	uptime         time.Duration
+	play           time.Duration
 	crashed, trial bool
 	lastDoor       catalog.ID
 }
@@ -144,28 +146,32 @@ func (s *Store) retentionData(now time.Time) (retentionData, error) {
 	since := unixNano(now.AddDate(0, 0, -retentionDays))
 	err := s.read(func(tx *sql.Tx) error {
 		if err := eachRow(tx, `
-			SELECT started, COALESCE(ended, 0), uptime, outcome,
+			SELECT started, COALESCE(ended, 0), saved, outcome,
 				json_extract(state, '$.Trial') IS NOT NULL, last_door
 			FROM boots WHERE started >= ? ORDER BY started, id`, []any{since},
 			func(rows *sql.Rows) error {
 				var (
-					b              span
-					started, ended int64
-					uptime         int64
-					outcome        BootOutcome
-					isTrial        bool
+					b                     span
+					started, ended, saved int64
+					outcome               BootOutcome
+					isTrial               bool
 				)
-				if err := rows.Scan(&started, &ended, &uptime, &outcome, &isTrial, &b.lastDoor); err != nil {
+				if err := rows.Scan(&started, &ended, &saved, &outcome, &isTrial, &b.lastDoor); err != nil {
 					return err
 				}
-				b.started, b.ended, b.uptime = fromUnixNano(started), fromUnixNano(ended), time.Duration(uptime)
+				b.started, b.ended = fromUnixNano(started), fromUnixNano(ended)
 				b.crashed, b.trial = outcome == BootCrashed, isTrial
-				// An abandoned boot ended when the app marked it, maybe a day
-				// later; its uptime, as of its last checkpoint, says when play
-				// stopped.
-				if outcome == BootAbandoned {
-					b.ended = b.started.Add(b.uptime)
+				// A running boot has played to its last checkpoint. So has an
+				// abandoned one, which ended when the app marked it, maybe a
+				// day later.
+				last := b.ended
+				if outcome == BootRunning || outcome == BootAbandoned {
+					last = fromUnixNano(saved)
 				}
+				if outcome == BootAbandoned {
+					b.ended = last
+				}
+				b.play = max(last.Sub(b.started), 0)
 				d.boots = append(d.boots, b)
 				return nil
 			}); err != nil {
@@ -214,12 +220,12 @@ func midnight(t time.Time) time.Time {
 	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
 }
 
-// play sums play per local day: each boot's uptime on the day it started,
-// each upsolve's time on the day it closed.
+// play sums play per local day: each boot's play (wall time, span) on the
+// day it started, each upsolve's time on the day it closed.
 func (d *retentionData) play(loc *time.Location) map[string]time.Duration {
 	out := map[string]time.Duration{}
 	for _, b := range d.boots {
-		out[dayKey(b.started, loc)] += b.uptime
+		out[dayKey(b.started, loc)] += b.play
 	}
 	for _, e := range d.events {
 		if e.kind == EventUpsolveClose {
@@ -390,7 +396,7 @@ func (s *Store) Retention(now time.Time, o RetentionOptions) (Retention, error) 
 	}
 	for _, b := range d.boots {
 		if w := window(b.started); w >= 0 {
-			r.Fortnights[w].Play += b.uptime
+			r.Fortnights[w].Play += b.play
 		}
 	}
 	shown := map[string]bool{}

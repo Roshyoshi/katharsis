@@ -1,15 +1,15 @@
-[ 3968.000] Out of lives: Killed process 1 (you) verdict:WA passed:37/52
+[ 3521.000] Out of lives: Killed process 1 (you) verdict:WA passed:37/52
             submits:2
-[ 3968.000] Kernel panic - not syncing: out of lives in "The Bovine Shuffle"
-[ 3968.000] CPU: 0 PID: 1 Comm: you Not tainted
-[ 3968.000] Hardware name: katharsis Silver, preset standard, seed 8f3a
-[ 3968.000] Modules linked in: strace(O)
-[ 3968.000] Call Trace:
-[ 3968.000]  do_exit+0x3a/0xc0
-[ 3968.000]  door_5+0x12/0x1e [The Heap]
-[ 3968.000]  ... 4 older doors
-[ 3968.000]  boot_42+0x42/0x69
-[ 3968.000] ---[ end Kernel panic ]---
+[ 3521.000] Kernel panic - not syncing: out of lives in "The Bovine Shuffle"
+[ 3521.000] CPU: 0 PID: 1 Comm: you Not tainted
+[ 3521.000] Hardware name: katharsis Silver, preset standard, seed 8f3a
+[ 3521.000] Modules linked in: strace(O)
+[ 3521.000] Call Trace:
+[ 3521.000]  do_exit+0x3a/0xc0
+[ 3521.000]  door_5+0x12/0x1e [The Heap]
+[ 3521.000]  ... 4 older doors
+[ 3521.000]  boot_42+0x3a/0x69
+[ 3521.000] ---[ end Kernel panic ]---
 
   "Program testing can be used to show the presence of bugs, but
    never to show their absence!"

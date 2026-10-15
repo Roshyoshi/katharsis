@@ -328,7 +328,7 @@ func TestDoorsContent(t *testing.T) {
 	v := ansi.Strip(NewDoors(env(fixture.Doors())).View(140, 40))
 	for _, want := range []string{
 		"Boot #42", "Silver", "The Heap · room 2/2", "♥♥♡", "🦆1", "96 B uncommitted", "112 B committed",
-		"uptime 47:12", "daemons strace",
+		"uptime 40:03", "daemons strace",
 		"The Bovine Shuffle", "Functional Graphs · Cycle Detection", "◆1300", "⏱ 30:00", "+80 B",
 		"☠ cursed", "tags hidden", "☠ no ducks · 1 WA = crash · ×2", "◌ blind · ×1.5",
 		"???", "? mystery · ×2", "USACO · 2016 US Open, Silver P3",
@@ -815,19 +815,19 @@ func TestCrashCoreDump(t *testing.T) {
 func TestCrashContent(t *testing.T) {
 	v := ansi.Strip(NewCrash(crashEnv(game.TimedOut)).View(100, 40))
 	for _, want := range []string{
-		`[ 4650.337] Kernel panic - not syncing: timer expired in "Closing the Farm"`,
+		`[ 4203.000] Kernel panic - not syncing: timer expired in "Closing the Farm"`,
 		"Comm: you Tainted: B (blind) C (cursed)",
 		"Hardware name: katharsis Silver, preset standard, seed 8f3a",
 		"Modules linked in: strace(O)",
-		"[ 4650.337]  it_real_fn+0x1d/0x80\n[ 4650.337]  hrtimer_interrupt+0x10f/0x240\n[ 4650.337]  door_5+0x1e/0x1e [The Heap]",
-		"[ 4650.337]  ? door_2+0x4/0xf [Userland]",
-		"[ 4650.337]  boot_42+0x4d/0x69",
-		"[ 4650.337] ---[ end Kernel panic ]---",
+		"[ 4203.000]  it_real_fn+0x1d/0x80\n[ 4203.000]  hrtimer_interrupt+0x10f/0x240\n[ 4203.000]  door_5+0x1e/0x1e [The Heap]",
+		"[ 4203.000]  ? door_2+0x4/0xf [Userland]",
+		"[ 4203.000]  boot_42+0x46/0x69",
+		"[ 4203.000] ---[ end Kernel panic ]---",
 		`"It always takes longer than you expect`,
 		"— Douglas Hofstadter, GEB (1979)",
 		`core dumped: 96 B on "Closing the Farm"`,
 		"[e] editorial  [r] reboot",
-		`[ 2642.000] door_4: AC "Moocast" +96 B`,
+		`[ 2403.000] door_4: AC "Moocast" +96 B`,
 	} {
 		if !strings.Contains(v, want) {
 			t.Errorf("crash missing %q", want)
@@ -1047,7 +1047,7 @@ func TestClearedKeys(t *testing.T) {
 		t.Errorf("l: got %#v", got)
 	}
 	v := ansi.Strip(c.View(80, 24))
-	for _, want := range []string{"Boot #42 cleared", "★ prestige unlocked: Gold", "uptime      2:29:52", "1.2 KiB", "7 doors · 2 hinted · 1 retreat"} {
+	for _, want := range []string{"Boot #42 cleared", "★ prestige unlocked: Gold", "uptime      2:16:52", "1.2 KiB", "7 doors · 2 hinted · 1 retreat"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("cleared missing %q:\n%s", want, v)
 		}

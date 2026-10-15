@@ -228,8 +228,10 @@ func TestCheckpointRoundTrip(t *testing.T) {
 	}
 	wantBoots := []store.BootSummary{{
 		Boot: 3, Seed: st.Seed, Prestige: 1, Rules: "standard", Started: t0,
-		Outcome:  store.BootRunning,
-		Uptime:   45*time.Minute + time.Second, // the clock's first reading
+		Outcome: store.BootRunning,
+		// The clock's first reading: 9 + 14 min of closed doors, 5m1s into
+		// the open one.
+		Uptime:   28*time.Minute + time.Second,
 		LastDoor: "usaco:1060",
 	}}
 	same(t, "boots", boots, wantBoots)
@@ -473,7 +475,7 @@ func TestBootSummaryEnds(t *testing.T) {
 		{
 			Boot: 2, Seed: cleared.Seed, Prestige: 1, Rules: "standard",
 			Started: cleared.Started, Outcome: store.BootCleared,
-			Uptime:    clearedEnd.Sub(cleared.Started),
+			Uptime:    48 * time.Minute, // 9 + 14 + 25 min of doors
 			Committed: 120, LastDoor: "usaco:1060",
 		},
 		{

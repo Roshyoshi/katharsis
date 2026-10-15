@@ -109,13 +109,6 @@ func (e Env) hasEditorial(id catalog.ID) bool {
 	return true
 }
 
-func (e Env) uptime() time.Duration {
-	if e.State.Started.IsZero() || e.Now.IsZero() {
-		return 0
-	}
-	return e.Now.Sub(e.State.Started)
-}
-
 func prestigeLabel(p int) string {
 	if n := fl.PrestigeName(p); n != "" {
 		return n
@@ -327,7 +320,8 @@ func (e Env) header(where string, width, height int) []string {
 	if where != "" {
 		left += dot + where
 	}
-	right := ui.Muted.Render("uptime ") + units.Clock(e.uptime())
+	// Time inside doors: it stands still while the player picks.
+	right := ui.Muted.Render("uptime ") + units.Clock(st.Uptime(e.Now))
 
 	// The bytes at stake are plain, not OK: a crash loses them.
 	status := ui.Hearts(st.Lives, st.MaxLives) + "  " + fmt.Sprintf("%s%d", ui.G.Duck, st.Ducks) + "  " +

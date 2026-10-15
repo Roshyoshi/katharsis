@@ -146,6 +146,18 @@ var migrations = []string{
 		p     = json_extract(json, '$.Door.SolveP'),
 		slot  = 'legacy';
 	`,
+
+	// 3: boots.uptime is the boot's time inside doors (game.State.Uptime),
+	// which stands still between doors; it was wall time since the start.
+	// Rows from before take the sum of their attempts' door times (a door
+	// that timed out counts to its close, a tick past its deadline); a
+	// running boot's next checkpoint writes the engine's own number. Wall
+	// time is still started to ended, or to saved (retention.go).
+	`
+	UPDATE boots SET uptime = (
+		SELECT COALESCE(SUM(MAX(closed - opened, 0)), 0) FROM attempts
+		WHERE attempts.boot = boots.id AND opened > 0 AND closed > 0);
+	`,
 }
 
 // migrate applies the missing steps in one transaction, so a failed step

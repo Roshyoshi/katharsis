@@ -24,7 +24,7 @@ fixed rule. Settings are locked for the length of a boot.
 
 | Mechanic | Name | Behavior |
 |---|---|---|
-| run | boot | "Boot #42"; run length is `uptime` |
+| run | boot | "Boot #42"; run length is `uptime`, the time inside doors (it stands still between them) |
 | start screen | GRUB menu | pick prestige, preset, seed |
 | difficulty tier | prestige 0–4 | Bronze, Silver, Gold, Platinum, Advanced; beating the final boss unlocks the next |
 | currency | bytes | shown as B, KiB, MiB |

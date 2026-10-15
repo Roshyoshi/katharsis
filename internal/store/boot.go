@@ -73,9 +73,10 @@ type bootRow struct {
 	lastDoor catalog.ID
 }
 
-// summarize derives the boots columns. A running boot's uptime is wall time
-// since it started, as of this checkpoint; a finished one's is fixed by how
-// it ended.
+// summarize derives the boots columns. Uptime is the boot's time inside
+// doors (game.State.Uptime): a running boot's as of this checkpoint, a
+// finished one's fixed by how it ended. Wall time is the row's started to
+// its ended, or to saved while it runs (retention.go reads it that way).
 func summarize(st *game.State, now time.Time) bootRow {
 	var r bootRow
 	end := now
@@ -96,9 +97,7 @@ func summarize(st *game.State, now time.Time) bootRow {
 		}
 		r.ended = sql.NullInt64{Int64: unixNano(end), Valid: true}
 	}
-	if !st.Started.IsZero() {
-		r.uptime = max(end.Sub(st.Started), 0)
-	}
+	r.uptime = st.Uptime(end)
 	if c := st.Crash; c != nil && c.Uptime > 0 {
 		r.uptime = c.Uptime // the engine's number is what the panic screen showed
 	}

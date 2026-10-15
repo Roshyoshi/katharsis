@@ -1,15 +1,15 @@
-[ 3524.000] you[1]: :q! sent SIGKILL to init
-[ 3524.000] Kernel panic - not syncing: Attempted to kill init!
+[ 3077.000] you[1]: :q! sent SIGKILL to init
+[ 3077.000] Kernel panic - not syncing: Attempted to kill init!
             exitcode=0x00000009 in "Wormhole Sort"
-[ 3524.000] CPU: 0 PID: 1 Comm: you Tainted: M (mystery) B (blind)
-[ 3524.000] Hardware name: katharsis Silver, preset standard, seed 8f3a
-[ 3524.000] Modules linked in: strace(O)
-[ 3524.000] Call Trace:
-[ 3524.000]  do_exit+0x3a/0xc0
-[ 3524.000]  door_5+0xb/0x1e [The Heap]
-[ 3524.000]  ... 4 older doors
-[ 3524.000]  boot_42+0x3a/0x69
-[ 3524.000] ---[ end Kernel panic ]---
+[ 3077.000] CPU: 0 PID: 1 Comm: you Tainted: M (mystery) B (blind)
+[ 3077.000] Hardware name: katharsis Silver, preset standard, seed 8f3a
+[ 3077.000] Modules linked in: strace(O)
+[ 3077.000] Call Trace:
+[ 3077.000]  do_exit+0x3a/0xc0
+[ 3077.000]  door_5+0xb/0x1e [The Heap]
+[ 3077.000]  ... 4 older doors
+[ 3077.000]  boot_42+0x33/0x69
+[ 3077.000] ---[ end Kernel panic ]---
 
   "Talk is cheap. Show me the code."
                                        — Linus Torvalds, linux-kernel (2000)

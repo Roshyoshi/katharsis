@@ -8,25 +8,25 @@
 
 
 [    0.000] boot: prestige 1, preset standard, seed 8f3a
-[  590.000] door_1: AC "Cow Tipping" +48 B
-[  890.000] door_2: retreat from "Haybale Stacking", -1 life
-[ 1651.000] door_3: AC "Milk Measurement" +64 B
-[ 1750.000] merge: committed 112 B, loaded strace
-[ 2642.000] door_4: AC "Moocast" +96 B
-[ 3968.000] Out of lives: Killed process 1 (you) verdict:WA passed:37/52 submits:2
-[ 3968.000] Kernel panic - not syncing: out of lives in "The Bovine Shuffle"
-[ 3968.000] CPU: 0 PID: 1 Comm: you Not tainted
-[ 3968.000] Hardware name: katharsis Silver, preset standard, seed 8f3a
-[ 3968.000] Modules linked in: strace(O)
-[ 3968.000] Call Trace:
-[ 3968.000]  do_exit+0x3a/0xc0
-[ 3968.000]  door_5+0x12/0x1e [The Heap]
-[ 3968.000]  door_4+0xe/0x1e [The Heap]
-[ 3968.000]  door_3+0xc/0xf [Userland]
-[ 3968.000]  ? door_2+0x4/0xf [Userland]
-[ 3968.000]  door_1+0x9/0xf [Userland]
-[ 3968.000]  boot_42+0x42/0x69
-[ 3968.000] ---[ end Kernel panic ]---
+[  560.000] door_1: AC "Cow Tipping" +48 B
+[  810.000] door_2: retreat from "Haybale Stacking", -1 life
+[ 1561.000] door_3: AC "Milk Measurement" +64 B
+[ 1561.000] merge: committed 112 B, loaded strace
+[ 2403.000] door_4: AC "Moocast" +96 B
+[ 3521.000] Out of lives: Killed process 1 (you) verdict:WA passed:37/52 submits:2
+[ 3521.000] Kernel panic - not syncing: out of lives in "The Bovine Shuffle"
+[ 3521.000] CPU: 0 PID: 1 Comm: you Not tainted
+[ 3521.000] Hardware name: katharsis Silver, preset standard, seed 8f3a
+[ 3521.000] Modules linked in: strace(O)
+[ 3521.000] Call Trace:
+[ 3521.000]  do_exit+0x3a/0xc0
+[ 3521.000]  door_5+0x12/0x1e [The Heap]
+[ 3521.000]  door_4+0xe/0x1e [The Heap]
+[ 3521.000]  door_3+0xc/0xf [Userland]
+[ 3521.000]  ? door_2+0x4/0xf [Userland]
+[ 3521.000]  door_1+0x9/0xf [Userland]
+[ 3521.000]  boot_42+0x3a/0x69
+[ 3521.000] ---[ end Kernel panic ]---
 
   "Program testing can be used to show the presence of bugs, but
    never to show their absence!"

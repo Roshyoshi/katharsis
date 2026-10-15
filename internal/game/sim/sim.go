@@ -202,9 +202,14 @@ type Report struct {
 	Offered  []int
 	OfferedP []float64
 
+	// Uptime is the game's (game.State.Uptime): time inside doors.
 	MeanUptime, MeanClearUptime, MeanCrashUptime time.Duration
 	// MedianCrashUptime is the median boot length at a crash.
 	MedianCrashUptime time.Duration
+	// MeanWall and MeanClearWall are boot lengths in wall time: the
+	// doors and Player.Overhead for every choice between them, the
+	// length of a sitting (D13's 2 h clear).
+	MeanWall, MeanClearWall time.Duration
 
 	MeanEarned, MeanCommitted, MeanSpent, MeanLost float64 // bytes per boot
 	Rerolls                                        int     // shufs used
@@ -317,11 +322,14 @@ func Run(c Config) Report {
 		sm.committed += s.Committed
 		sm.spent += s.Spent
 		in := s.Committed
+		wall := b.clock.Sub(s.Started)
+		sm.wall += wall
 		switch s.Phase {
 		case game.PhaseCleared:
 			rep.FullClears++
 			rep.ByPrestige[p].FullClears++
-			sm.upClear += b.clock.Sub(s.Started)
+			sm.upClear += s.Uptime(b.clock)
+			sm.wallClear += wall
 		case game.PhaseCrashed:
 			rep.CrashBiome[s.Biome]++
 			switch s.Crash.Cause {
@@ -455,6 +463,7 @@ type sums struct {
 	rep                            Report
 	timerSum                       []time.Duration
 	upClear, upCrash               time.Duration
+	wall, wallClear                time.Duration
 	crashUps                       []time.Duration
 	earned, committed, spent, lost int64
 }
@@ -492,9 +501,11 @@ func (sm *sums) finish() Report {
 		rep.MeanLost = float64(sm.lost) / float64(n)
 		rep.MeanSpent = float64(sm.spent) / float64(n)
 		rep.MeanUptime = (sm.upClear + sm.upCrash) / time.Duration(n)
+		rep.MeanWall = sm.wall / time.Duration(n)
 	}
 	if rep.FullClears > 0 {
 		rep.MeanClearUptime = sm.upClear / time.Duration(rep.FullClears)
+		rep.MeanClearWall = sm.wallClear / time.Duration(rep.FullClears)
 	}
 	if n := rep.Boots - rep.FullClears; n > 0 {
 		rep.MeanCrashUptime = sm.upCrash / time.Duration(n)
@@ -1000,8 +1011,9 @@ func (r Report) String() string {
 			fmt.Fprintf(&w, " [%s] %+.0f (%d doors, %.0f%% vs %.0f%%)", k, c.Offset, c.Doors, 100*c.Observed, 100*c.Expected)
 		}
 	}
-	fmt.Fprintf(&w, "\nuptime: mean %s, clear %s, crash %s (median %s)\n", r.MeanUptime.Round(time.Minute),
-		r.MeanClearUptime.Round(time.Minute), r.MeanCrashUptime.Round(time.Minute), r.MedianCrashUptime.Round(time.Minute))
+	fmt.Fprintf(&w, "\nuptime: mean %s, clear %s, crash %s (median %s); wall: mean %s, clear %s\n", r.MeanUptime.Round(time.Minute),
+		r.MeanClearUptime.Round(time.Minute), r.MeanCrashUptime.Round(time.Minute), r.MedianCrashUptime.Round(time.Minute),
+		r.MeanWall.Round(time.Minute), r.MeanClearWall.Round(time.Minute))
 	fmt.Fprintf(&w, "bytes/boot: earned %.0f, committed %.0f, spent %.0f, lost %.0f; recovered %d, dumps lost %d; %d shufs used\n",
 		r.MeanEarned, r.MeanCommitted, r.MeanSpent, r.MeanLost, r.Recovered, r.DumpsLost, r.Rerolls)
 	if len(r.InstalledAt) > 0 {

@@ -96,10 +96,7 @@ func (c *Cleared) View(width, height int) string {
 			end = a.Closed
 		}
 	}
-	uptime := end.Sub(st.Started)
-	if st.Started.IsZero() {
-		uptime = 0
-	}
+	uptime := st.Uptime(end)
 
 	var banner []string
 	if art := fl.Banner("cleared"); art != "" {

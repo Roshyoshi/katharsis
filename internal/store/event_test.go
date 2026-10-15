@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -122,6 +123,17 @@ func TestMigrateFromV1(t *testing.T) {
 		}
 	}
 
+	// Migration 3: v1 wrote wall time, 45 min to the save; the uptime is
+	// now the closed doors' 9 + 14 min (the open door's time waits for the
+	// next checkpoint). The day's play is still wall time, to the save.
+	var up int64
+	if err := s.DB().QueryRow(`SELECT uptime FROM boots WHERE id = 3`).Scan(&up); err != nil || time.Duration(up) != 23*time.Minute {
+		t.Errorf("uptime %v, %v; want 23m", time.Duration(up), err)
+	}
+	if got, err := s.PlayToday(t0.Add(50 * time.Minute)); err != nil || got != 45*time.Minute {
+		t.Errorf("PlayToday = %v, %v; want the 45m to the save", got, err)
+	}
+
 	// And it goes on: the next checkpoint adds the open door's attempt
 	// with the new columns filled, and an event lands.
 	crash(st, game.OutOfLives)
@@ -143,7 +155,9 @@ func TestMigrateFromV1(t *testing.T) {
 
 // TestMigrateKeepsV1Rows: migration 2 only adds. Every column a v1 table
 // had reads back, row for row and value for value, from the migrated
-// file, so the first launch of a v2 build loses nothing a v1 build saved.
+// file, so the first launch of a later build loses nothing a v1 build
+// saved. The one exception is boots.uptime, which migration 3 rewrites
+// from the attempts (TestMigrateFromV1).
 func TestMigrateKeepsV1Rows(t *testing.T) {
 	t.Parallel()
 	path := tempPath(t)
@@ -161,7 +175,9 @@ func TestMigrateKeepsV1Rows(t *testing.T) {
 	defer mustClose(t, db)
 	v1 := map[string][]string{} // table -> its v1 columns
 	for _, table := range []string{"meta", "boots", "attempts", "rating_history"} {
-		v1[table] = columns(t, db, table)
+		v1[table] = slices.DeleteFunc(columns(t, db, table), func(c string) bool {
+			return table == "boots" && c == "uptime"
+		})
 	}
 	before := map[string][][]any{}
 	for table, cols := range v1 {

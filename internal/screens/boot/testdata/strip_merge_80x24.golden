@@ -1,6 +1,6 @@
-Boot #42 · Silver · merge window                                  uptime 1:12:30
+Boot #42 · Silver · merge window                                  uptime 1:03:37
 ♥♥♡  🦆1  176 B uncommitted · 112 B committed                     daemons strace
-[  170.0] commit: 41 B banked · bank 2.1 KiB
+[  140.0] commit: 41 B banked · bank 2.1 KiB
           Stub line for merge.commit.
 ────────────────────────────────────────────────────────────────────────────────
     commit   176 B uncommitted: a crash loses it, the bank keeps it

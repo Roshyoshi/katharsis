@@ -76,8 +76,9 @@ func (s *Store) MedianCommitted(n int) (int64, error) {
 	return median(xs), nil
 }
 
-// MedianUptime is the median uptime of the last n finished boots on
-// preset, the ETA "one more" on it offers (RT7); 0 when there are none.
+// MedianUptime is the median uptime (time inside doors) of the last n
+// finished boots on preset, the ETA "one more" on it offers (RT7); 0 when
+// there are none.
 func (s *Store) MedianUptime(preset string, n int) (time.Duration, error) {
 	var ds []time.Duration
 	err := eachRow(s.db, `SELECT uptime FROM boots WHERE `+ended+` AND rules = ? ORDER BY id DESC LIMIT ?`,
@@ -91,8 +92,11 @@ func (s *Store) MedianUptime(preset string, n int) (time.Duration, error) {
 }
 
 // PlayToday is how long the player has played on now's calendar day, in
-// now's location: boot uptime and upsolving, as the load average counts
-// it (RT9). The session budget's nudge reads it (RT12).
+// now's location: boots in wall time and upsolving, as the load average
+// counts it (RT9). The session budget's nudge reads it (RT12). It is wall
+// time, not the boots' uptime, which stands still between doors: the
+// budget is about the player's evening, and the time spent on picks, merge
+// windows and story scenes was spent at the game all the same.
 func (s *Store) PlayToday(now time.Time) (time.Duration, error) {
 	d, err := s.retentionData(now)
 	if err != nil {

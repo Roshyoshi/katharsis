@@ -178,7 +178,7 @@ func (m *Model) firsts(st *game.State) []string {
 			out = append(out, "first "+flavor.BossName(boss)+" kill")
 		}
 	}
-	up := end.Sub(st.Started)
+	up := st.Uptime(end)
 	best, ok, err := m.d.Store.BestClear(st.Rules.Name, st.Prestige, st.Boot)
 	switch {
 	case err != nil:

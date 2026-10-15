@@ -553,7 +553,7 @@ func (e *engine) crash(cause Outcome, cursed bool) {
 		Verdict:  a.LastVerdict,
 		Lost:     lost,
 		At:       e.now,
-		Uptime:   e.now.Sub(s.Started),
+		Uptime:   s.Uptime(e.now),
 		DumpLost: dumpLost,
 		Cursed:   cursed,
 	}
@@ -789,7 +789,7 @@ func (e *engine) finish() {
 		g := NextPrestige(s.Rules, m)
 		e.logf("prestige %d locked until %d rated doors (%d so far)", g.Next, g.Need, g.Rated)
 	}
-	e.logf("boot #%d: cleared in %s, %s committed", s.Boot, units.Clock(e.now.Sub(s.Started)), units.Bytes(s.Committed))
+	e.logf("boot #%d: cleared in %s, %s committed", s.Boot, units.Clock(s.Uptime(e.now)), units.Bytes(s.Committed))
 	e.emit(Sound{Name: "cleared"}, ShowCleared{})
 }
 
@@ -805,6 +805,41 @@ func (s *State) Earned() int64 {
 		}
 	}
 	return n
+}
+
+// Uptime is how long the boot has spent inside doors as of at: every
+// attempt's door clock up to at, the open door's included. It stands still
+// between doors (routes, upgrade picks, merge windows, story scenes), as
+// CLOCK_MONOTONIC stands still while a machine is suspended, so a boot is
+// as long as its doors took, not as long as the player sat on a pick. The
+// session budget is the player's day and keeps wall time (store.PlayToday).
+func (s *State) Uptime(at time.Time) time.Duration {
+	var up time.Duration
+	for i := range s.History {
+		up += s.History[i].ran(at)
+	}
+	if s.Current != nil {
+		up += s.Current.ran(at)
+	}
+	return up
+}
+
+// ran is how long a's door clock ran up to at: from Opened to the first of
+// at and its close, 0 for a clock that stepped back. A door that timed out
+// counts to its deadline: a game closed over an open door times it out on
+// resume, maybe days after its clock hit zero.
+func (a *Attempt) ran(at time.Time) time.Duration {
+	if a.Opened.IsZero() {
+		return 0
+	}
+	end := at
+	if !a.Closed.IsZero() && a.Closed.Before(end) {
+		end = a.Closed
+	}
+	if a.Outcome == TimedOut && !a.Deadline.IsZero() && a.Deadline.Before(end) {
+		end = a.Deadline
+	}
+	return max(end.Sub(a.Opened), 0)
 }
 
 // Paid is what clearing a's door pays (or paid): its Bytes, scaled by

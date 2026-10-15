@@ -519,10 +519,8 @@ func (e Env) strip(width, rows int) []string {
 	pad := strings.Repeat(" ", len(dstamp(0))+1)
 	// line is an event in at most n rows (0 for all of it).
 	line := func(ev Event, n int) []string {
-		at := ev.At.Sub(e.State.Started)
-		if e.State.Started.IsZero() {
-			at = 0
-		}
+		// The header's uptime, as of the event.
+		at := e.State.Uptime(ev.At)
 		ls := ui.WrapN(ev.Text, max(width-len(pad), 10), n) // marks a cut
 		for i := range ls {
 			pre := pad

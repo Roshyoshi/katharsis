@@ -233,8 +233,8 @@ func (c *Crash) elements(width, height int) [][]string {
 func (c *Crash) panic(cr game.Crash, verdict, title string, seed uint64, width, room int) [][]string {
 	st := c.env.State
 	up := cr.Uptime
-	if up == 0 && !cr.At.IsZero() && !st.Started.IsZero() {
-		up = cr.At.Sub(st.Started)
+	if up == 0 {
+		up = st.Uptime(cr.At)
 	}
 	reason := fl.PanicReason(cr.Cause, verdict)
 	switch {
@@ -315,10 +315,7 @@ func (c *Crash) panic(cr game.Crash, verdict, title string, seed uint64, width, 
 		if echoes(l, cr, verdict) {
 			continue
 		}
-		d := dline{at: l.At.Sub(st.Started), text: l.Text, style: ui.Muted}
-		if st.Started.IsZero() {
-			d.at = 0
-		}
+		d := dline{at: st.Uptime(l.At), text: l.Text, style: ui.Muted}
 		n := len(d.render(width))
 		if n > free {
 			break

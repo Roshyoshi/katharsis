@@ -46,7 +46,7 @@ func play(p sim.Player, seeds []uint64, boots, warm int) outcome {
 		for _, b := range rep.Banked[warm:] {
 			bank += float64(b)
 		}
-		hours += float64(rep.Boots) * rep.MeanUptime.Hours()
+		hours += float64(rep.Boots) * rep.MeanWall.Hours()
 	}
 	return outcome{full: float64(full) / float64(n), bankH: bank / hours, boots: n}
 }

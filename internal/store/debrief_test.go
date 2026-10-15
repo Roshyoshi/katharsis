@@ -50,16 +50,16 @@ func TestEndQueries(t *testing.T) {
 	if got, err := s.MedianCommitted(2); err != nil || got != 360 {
 		t.Errorf("MedianCommitted(2) = %d, %v; want (400+320)/2", got, err)
 	}
-	// Uptimes: crashes at 60 min (the open door closes 20 min after it
-	// opened at 40), the clear at 65 min.
-	if got, err := s.MedianUptime("standard", 10); err != nil || got != time.Hour {
-		t.Errorf("MedianUptime = %v, %v; want 1h", got, err)
+	// Uptimes, time inside doors: 9 and 14 min on the first two, then
+	// the crashes' 20 min on the third (43) and the clear's 25 (48).
+	if got, err := s.MedianUptime("standard", 10); err != nil || got != 43*time.Minute {
+		t.Errorf("MedianUptime = %v, %v; want 43m", got, err)
 	}
 	if got, err := s.MedianUptime("short", 10); err != nil || got != 0 {
 		t.Errorf("MedianUptime(short) = %v, %v; want 0, no boots", got, err)
 	}
-	if best, ok, err := s.BestClear("standard", 1, 9); err != nil || !ok || best != 65*time.Minute {
-		t.Errorf("BestClear = %v %v %v; want 1h05", best, ok, err)
+	if best, ok, err := s.BestClear("standard", 1, 9); err != nil || !ok || best != 48*time.Minute {
+		t.Errorf("BestClear = %v %v %v; want 48m", best, ok, err)
 	}
 	if _, ok, err := s.BestClear("standard", 1, 2); err != nil || ok {
 		t.Errorf("BestClear before the clear: ok %v, %v", ok, err)
