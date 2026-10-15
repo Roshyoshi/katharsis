@@ -44,6 +44,9 @@ type Samples struct {
 	// since the HUD opened. Compiled is false for a build that failed.
 	Done, Compiled bool
 	Passed, Total  int
+	// Failed counts the samples judged and not AC so far: a pass still
+	// running can already have disproved the source.
+	Failed int
 }
 
 // Samples reports the sample pass.
@@ -51,6 +54,11 @@ func (m *Model) Samples() Samples {
 	s := Samples{Total: len(m.rows), Passed: m.passed()}
 	s.Done = m.build != nil && !m.running && m.passErr == nil
 	s.Compiled = m.build != nil && m.build.OK
+	for _, r := range m.rows {
+		if r.done && r.res.Verdict != judge.AC {
+			s.Failed++
+		}
+	}
 	return s
 }
 

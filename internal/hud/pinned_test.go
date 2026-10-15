@@ -61,3 +61,16 @@ func TestPinned(t *testing.T) {
 		t.Errorf("samples line %q", got)
 	}
 }
+
+// Samples counts a failure as soon as it is judged, the pass still running,
+// so a host can ask before a submit that follows a :w closely.
+func TestSamplesFailedMidPass(t *testing.T) {
+	m := embedded(t, 2, 10)
+	feed(m,
+		judge.BuildDone{Build: judge.Build{OK: true}},
+		judge.TestDone{Index: 0, Result: judge.Result{Verdict: judge.WA}},
+	)
+	if s := m.Samples(); s.Done || !s.Compiled || s.Failed != 1 || s.Passed != 0 || s.Total != 2 {
+		t.Errorf("Samples mid-pass = %+v, want running, compiled, 1 failed of 2", s)
+	}
+}

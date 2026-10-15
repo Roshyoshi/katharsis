@@ -16,9 +16,9 @@ import (
 
 // samplesFail is the question for a full submit of the open boot door
 // while its samples fail, ending in again (how to go ahead); ok is false
-// when there is nothing to ask: the samples pass, have not run, are still
-// running or did not compile (a CE costs nothing), or the door is an
-// upsolve, where a failure costs nothing either.
+// when there is nothing to ask: no sample has failed yet (none has run, or
+// all that ran passed), the samples did not compile (a CE costs nothing),
+// or the door is an upsolve, where a failure costs nothing either.
 func (m *Model) samplesFail(again string) (string, bool) {
 	h := m.hud()
 	// A submit still judging answers any other as busy first.
@@ -26,7 +26,9 @@ func (m *Model) samplesFail(again string) (string, bool) {
 		return "", false
 	}
 	s := h.Samples()
-	if !s.Done || !s.Compiled || s.Total == 0 || s.Passed == s.Total {
+	// One sample that failed is enough, the pass still running or not: a
+	// :Submit sent on the heels of a :w would otherwise beat the guard.
+	if !s.Compiled || s.Failed == 0 {
 		return "", false
 	}
 	return fmt.Sprintf("samples %d/%d pass · %s · %s", s.Passed, s.Total, m.failCost(), again), true
