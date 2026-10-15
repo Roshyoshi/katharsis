@@ -35,6 +35,9 @@ type GrubConfig struct {
 	// Packages are apt's, in shelf order; GRUB lists apt with the next
 	// one to buy (Goal) when there are any.
 	Packages []Package
+	// Load is the load average on the status line (retention.md RT9), the
+	// share of practice days over 7, 30 and 90 days; nil shows none.
+	Load *[3]float64
 
 	// PrestigeName and Banner default to the flavor package. Tests pin them
 	// so goldens do not churn whenever flavor text changes.
@@ -112,6 +115,9 @@ func NewGrub(c GrubConfig) *Menu {
 	}
 	m.status = fmt.Sprintf("bank %s · rating %.0f · next boot #%d",
 		units.Bytes(c.Meta.Bank), c.Meta.Rating, c.Meta.Boots+1)
+	if c.Load != nil {
+		m.status += " · " + LoadText(*c.Load)
+	}
 	m.gate = screens.GateText(c.Gate, m.maxP, func(p int) string {
 		return cmp.Or(m.nameOf(p), fmt.Sprintf("prestige %d", p))
 	})

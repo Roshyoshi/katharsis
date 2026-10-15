@@ -272,6 +272,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case musicKey:
 			return m, m.toggleMusic()
 		}
+		if m.endKey(msg) {
+			return m, nil
+		}
 	case tickMsg:
 		return m, tea.Batch(tick(), m.onTick())
 	case game.ChooseDoor:
@@ -351,7 +354,7 @@ func (m *Model) View() tea.View {
 	if w <= 0 || h <= 0 {
 		w, h = 80, 24
 	}
-	body := m.top().View(w, h)
+	body := m.body(w, h) // retention.go
 	if m.saveErr != nil {
 		body = overlayBanner(body, "save failed, progress is not being kept: "+m.saveErr.Error(), w)
 	}

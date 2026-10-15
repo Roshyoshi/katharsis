@@ -26,6 +26,7 @@ type Top struct {
 	sel     int
 	top     int
 	h       int // table rows at the last View, for paging
+	tab     int // tabTopics or tabRetention (retention.go)
 }
 
 type topSort struct {
@@ -91,6 +92,8 @@ func (t *Top) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	case "s", "f6", ">":
 		t.sortBy = (t.sortBy + 1) % len(topSorts)
 		t.sort()
+	case "r":
+		t.toggleTab()
 	}
 	return t, nil
 }
@@ -121,16 +124,20 @@ func (t *Top) View(width, height int) string {
 		}
 		out = append(out, pad(l, lw)+"  "+r)
 	}
-	out = append(out, "")
+	out = append(out, t.alarmLine(w))
 
 	tableH := max(h-len(out)-2, 0)
 	t.h = tableH
-	out = append(out, t.tableHeader(w))
-	out = append(out, t.table(w, tableH)...)
+	if t.tab == tabRetention {
+		out = append(out, t.retention(w, tableH+1)...)
+	} else {
+		out = append(out, t.tableHeader(w))
+		out = append(out, t.table(w, tableH)...)
+	}
 	for len(out) < h-1 {
 		out = append(out, "")
 	}
-	out = append(out[:h-1], keyBar("j/k", "Move  ", "s", "Sort "+topSorts[t.sortBy].name+" ", "q", "Back  "))
+	out = append(out[:h-1], t.keys())
 	return frame(out, w, h)
 }
 

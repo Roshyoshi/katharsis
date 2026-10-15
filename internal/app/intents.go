@@ -84,6 +84,7 @@ func (m *Model) grub() screens.Screen {
 		Now:      m.d.Now(),
 		Gate:     game.NextPrestige(m.aptRules(), &m.meta),
 		Packages: m.packages(),
+		Load:     m.loadAverage(),
 	})
 }
 
@@ -125,7 +126,7 @@ func (m *Model) openTop() tea.Cmd {
 	if err != nil {
 		return fail("top: %v", err)
 	}
-	return m.push(meta.NewTop(m.stats(st, hist)))
+	return m.push(meta.NewTop(m.withRetention(m.stats(st, hist))))
 }
 
 // docMsg carries a doc to show; editorial is its problem when it is an

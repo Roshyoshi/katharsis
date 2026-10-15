@@ -34,6 +34,7 @@ func runGame(args []string) error {
 	split := fs.Int("split", 65, "editor width in percent")
 	scale := fs.Float64("scale", 1, "multiply CPU time limits (below 1 is stricter than the judge)")
 	af := addAudioFlags(fs)
+	noPrompts := fs.Bool("no-prompts", false, "never ask: no first-launch rating question, no line under a boot's end")
 	stdioT := fs.String("template", filepath.Join(home, "cp", "atcoder", "template.cpp"), "C++ template for stdin/stdout problems")
 	fileT := fs.String("template-fileio", filepath.Join(home, "cp", "template.cpp"), "C++ template for file-I/O problems (\"problem\" becomes the file stem)")
 	var presetFiles []string
@@ -158,7 +159,7 @@ func runGame(args []string) error {
 		AudioSettings: audioSet,
 		Credits:       credits,
 		Log:           logger,
-		Prompts:       true,
+		Prompts:       !*noPrompts,
 	})
 	if err != nil {
 		return err

@@ -104,6 +104,7 @@ func (s *Store) Event(e Event) (int64, error) {
 type EventFilter struct {
 	Kinds   []string
 	Session int64
+	Boot    int       // > 0: this boot only
 	Since   time.Time // at or after
 	Limit   int       // <= 0: no limit
 }
@@ -122,6 +123,9 @@ func (s *Store) Events(f EventFilter) ([]Event, error) {
 	}
 	if f.Session != 0 {
 		where, args = append(where, "session = ?"), append(args, f.Session)
+	}
+	if f.Boot > 0 {
+		where, args = append(where, "boot = ?"), append(args, f.Boot)
 	}
 	if !f.Since.IsZero() {
 		where, args = append(where, "at >= ?"), append(args, unixNano(f.Since))

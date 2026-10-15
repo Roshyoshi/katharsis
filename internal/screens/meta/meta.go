@@ -80,6 +80,9 @@ type Stats struct {
 	Uptime        time.Duration // summed over all boots
 	LifetimeBytes int64
 	Bank          int64
+
+	// Retention is the retention panel (retention.go); nil hides it.
+	Retention *Retention
 }
 
 // RatingPoint is the player's rating after one rated attempt.

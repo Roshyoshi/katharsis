@@ -41,6 +41,12 @@ type tele struct {
 	edAt      time.Time
 
 	upsolveLast string // the last verdict of the upsolve open, "" for none
+
+	// end is the line under a boot's end screen (retention.go); worthDay
+	// and feltBoot are the day and boot it last asked about.
+	end      endLine
+	worthDay string
+	feltBoot int
 }
 
 // eventQueue bounds the events waiting for the store.
@@ -157,6 +163,7 @@ func (m *Model) stopTelemetry() {
 		return
 	}
 	m.doorClosed()
+	m.endLineDone()
 	m.event(store.EventAppQuit, "", nil)
 	m.tele.rec.close(eventFlush)
 }
@@ -203,6 +210,7 @@ func (m *Model) screenShown() {
 	if name := m.screenName(); name != m.tele.screen && m.tele.rec != nil {
 		m.tele.screen = name
 		m.event(store.EventScreen, "", kv{"screen": name})
+		m.armEndLine(name)
 	}
 }
 
