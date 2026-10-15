@@ -129,6 +129,15 @@ anchors `#chap01` … `#chap12`.
 | A56 | the loveliest garden you ever saw | narration (through the little door) | [I](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap01) |
 | A57 | Take some more tea, | March Hare | [VII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap07) |
 | A58 | all would change to dull reality | narration (Alice's sister on the bank) | [XII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap12) |
+| A59 | Stuff and nonsense! | Alice | [XII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap12) |
+| A60 | Nearly two miles high, | Queen | [XII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap12) |
+| A61 | Who cares for you? | Alice | [XII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap12) |
+| A62 | At this the whole pack rose up into the air, and came flying down | narration | [XII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap12) |
+| A63 | Why, what a long sleep you've had! | her sister | [XII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap12) |
+| A64 | but now run in to your tea; it's getting late. | her sister | [XII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap12) |
+| A65 | the White Rabbit hurried by | narration (the sister's dream) | [XII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap12) |
+| A66 | Who Stole the Tarts? | chapter title | [XI](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap11) |
+| A67 | EAT ME | narration (the cake, marked in currants) | [I](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap01) |
 
 **Through the Looking-Glass** (Lewis Carroll, 1871). Public domain.
 Base: <https://www.gutenberg.org/cache/epub/12/pg12-images.html>, anchors
@@ -177,6 +186,12 @@ A56–A58 and G34–G37 were found verbatim in the Gutenberg plain text
 (`pg11.txt`, `pg12.txt`) on 2026-10-15. G34 is the mirrored title and
 first line as the eBook types them, its closing ’ typed as `'`. G35 and G36
 drop italics ("_rather_", "_very_").
+
+A59–A67 are the setuid bits' and the Trial's (docs/design/achievements.md
+(f)), found verbatim in `pg11.txt` on 2026-10-15. A62 continues "upon
+her", which the game elides. A59 is the name of the `.stuff-and-nonsense`
+bit (`internal/setuid`), not a story line. A66 and A67 are the hints of
+`.dull-reality` and `.two-miles-high`.
 
 **SICP** (Abelson and Sussman with Julie Sussman, 2nd ed., MIT Press,
 1996). CC BY-SA 4.0, per the copyright page `book-Z-H-2.html`. Base:
@@ -303,6 +318,12 @@ where: `top` (`grub.go:240`) · when: every · pick: fixed · uses: A10
 where: `poweroff` (`grub.go:241`) · when: every · pick: fixed · uses: A54
 ```text
 "Wake up, Alice dear!" The Rabbit will wait. Late, but he'll wait.
+```
+
+### grub.subtitle.setuid
+where: `find / -perm -4000`, the setuid bits' screen (`meta.NewSetuid`), GRUB's entry after `top` (docs/design/achievements.md (g)) · when: every · pick: fixed · uses: the prologue's "Nobody checks your privileges"
+```text
+Nobody checks your privileges. Somebody keeps a list.
 ```
 
 ---
@@ -837,6 +858,14 @@ He left it dead, and with its head
 He went galumphing back.
 
 You didn't decide halting. You decided this one. The proof survives.
+```
+
+### boss.enter.trial
+where: the Trial's boss card and door (docs/design/achievements.md (f)): a hidden exit of act II into Boss II's tier, open to a full cycle pool, its one cursed door one shot. Its name and blurb are in `./internal/flavor/names.go`; the card's rule lines (cursed, one shot, no prestige unlock) are the mechanic · when: every · pick: pool · uses: A52; ch. XI's trumpet and slates (allusion). The White Rabbit is the herald. The Cat is absent: the door is cursed
+```text
+The White Rabbit blows three blasts on the trumpet. The court sits.
+"Sentence first—verdict afterwards." One WA, one head.
+The jury writes your name on their slates. The King puts on his crown.
 ```
 
 ### boss.retry
@@ -1395,4 +1424,73 @@ where: new: the route screen, when the player picks a locked exit, under the car
 ```text
 The Gryphon guards this lock. {module} opens it.
 The glass won't let you by yet. This exit opens from ring {ring} down.
+```
+
+### route.locked.full
+where: the route screen's locked Trial card, `⚔ ???`, under its gate text ("locked: a mile high", `game.LockedFull`): the hidden exit shows locked once a pool has reached its cap (`Meta.Capped`), hint step 4 of docs/design/achievements.md (f) · when: every · pick: fixed · uses: A50 (allusion). A50 is in two hooks already (`verdict.MLE`, the MLE crash epitaph), so the card names the rule without quoting it (tone rule 11)
+```text
+The King turns the pages of his book. There is a rule for this.
+```
+
+---
+
+## Setuid bits
+
+The achievements (docs/design/achievements.md): 61 setuid bits on GRUB's
+`find / -perm -4000`. A bit's name and barrier are mechanic text in
+`./internal/setuid/table.go`; the lines here are the story's. Each shows
+faint under the strip's `chmod u+s /bin/<id>` at the next safe point after
+the bit sets, never inside a door or on a crash (GR3, GR6); a secret's hook
+drops its dot. A bit without a line shows the mechanic alone.
+
+### setuid.\<id>
+where: the dmesg strip, under `chmod u+s <path>` (`setuid_notices` off hides both) · when: once, as the bit sets · pick: fixed per bit, in this order: `hello-world`, `two-twins`, `snicker-snack`, `speedrun-2`, `regular-course`, `two-miles-high`, `stuff-and-nonsense`, `dull-reality` · uses: K&R's `hello, world` (homage), G14 (fragment), A60. `setuid.two-miles-high` is also hint step 3 of the Trial: the strip's line the first time a pool reaches its cap, notices on or off
+```text
+Carved over the door, and now in your inode: hello, world
+Ditto, ditto: two bits where the gap was.
+The Jabberwock, slain once. The Wizards note it in pencil.
+Faster than the Rabbit. He checks his watch twice. Late.
+Every certificate on the Gryphon's wall is yours now.
+"Nearly two miles high." Somewhere a King looks up a rule.
+The White Rabbit blows a trumpet. The court is sitting.
+The bank, the book, your sister. Her eyes stay shut.
+```
+
+### setuid.hint.\<id>
+where: a secret's `-?????????` row on the setuid screen, under `?` (one row, this visit) or every row with `setuid_spoilers = "hints"`; equal to the bit's `Hint` in `./internal/setuid/table.go` (the screen's test holds them so) · when: on demand · pick: fixed per secret, in this order: `dull-reality`, `two-miles-high`, `stuff-and-nonsense`, `then-it-ends`, `galumphing-back`, `consider-your-verdict`, `every-seat`, `counted-again`, `size-of-a-door`, `which-dreamed-it` · uses: A66, A67; the rest point at what the game already says: the garden (`story.first-act2`), the Rabbit's two warnings (`boss.rule.halting-problem`), the Rose (`door.retreat`), the slates (`verdict.OLE`), the seats (`story.first-merge`), the twins (`boss.enter.off-by-one`), the note (`milestone.doors.500`)
+```text
+Who Stole the Tarts?
+EAT ME
+The court sits in the garden.
+The Rabbit cries twice.
+The Rose knew a shortcut.
+The jury runs out of slate.
+Three seats taken.
+Count them. Count again.
+Under the doormat in the hall.
+Two endings. One dreamer.
+```
+
+## Dull Reality
+
+The Trial's ending (docs/design/achievements.md (f)): *Wonderland*'s, where
+the final clear is *Looking-Glass*'s. Win the Trial's cursed door and the
+boot ends awake, with no prestige unlock. The scene plays once in full;
+later wakes play beats 4 to 6. You never speak: your AC does. A53 and A54
+sit in two hooks each already (tone rule 11), and so does A52 with
+`boss.enter.trial`, so the scene leaves all three out.
+
+### ending.wake.1 … ending.wake.6
+where: `story.NewWake` over the cleared screen, one hook a beat: 1 the court (the boss pane as it was, the cycle bar at its cap), 2 the verdict (the judge's AC line), 3 the cards (every box on screen lifts off and falls; reduced motion: one cut to black), 4 the bank (Mono: no theme), 5 the man page (the prologue's, now with EXAMPLES: this boot's cleared doors), 6 the loop (GRUB's colors come back) · when: once in full (`ending.wake`), then 4 to 6 every wake · pick: block (1, 2, 4, 6), fixed (3, 5) · uses: A60 (1), A61 (2), A62 (3), A63 (4), A64, A65 (6)
+```text
+The King reads from his book. Everybody looks at you.
+"Nearly two miles high," adds the Queen.
+The judge says AC. The Queen wants the sentence first.
+Your AC says it for you: "Who cares for you?"
+At this the whole pack rose up into the air, and came flying down…
+You are lying on the bank, head in your sister's lap.
+"Why, what a long sleep you've had!" says your sister.
+The man page is still open. It has an EXAMPLES section now.
+"…but now run in to your tea; it's getting late."
+Your sister closes her eyes: "the White Rabbit hurried by".
 ```

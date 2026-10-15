@@ -16,6 +16,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/judge"
 	"katharsis/internal/rules"
+	"katharsis/internal/setuid"
 )
 
 // placeholderWidths is text.md's placeholder table: the widest value each
@@ -316,6 +317,15 @@ var register = map[string]string{
 	"A56": "the loveliest garden you ever saw",
 	"A57": "Take some more tea,",
 	"A58": "all would change to dull reality",
+	"A59": "Stuff and nonsense!",
+	"A60": "Nearly two miles high,",
+	"A61": "Who cares for you?",
+	"A62": "At this the whole pack rose up into the air, and came flying down",
+	"A63": "Why, what a long sleep you've had!",
+	"A64": "but now run in to your tea; it's getting late.",
+	"A65": "the White Rabbit hurried by",
+	"A66": "Who Stole the Tarts?",
+	"A67": "EAT ME",
 
 	"G1":  "'Twas brillig, and the slithy toves",
 	"G2":  "Beware the Jabberwock, my son! / The jaws that bite, the claws that catch!",
@@ -454,13 +464,24 @@ var quoted = map[string][]use{
 	"timer.warn.1m":                  {{"A2", ""}},
 	"door.mystery":                   {{"G24", ""}},
 	"lib.saved":                      {{"G25", ""}, {"G26", ""}},
+	"boss.enter.trial":               {{"A52", ""}},
+	"setuid.two-twins":               {{"G14", "Ditto, ditto"}},
+	"setuid.two-miles-high":          {{"A60", ""}},
+	"setuid.hint.dull-reality":       {{"A66", ""}},
+	"setuid.hint.two-miles-high":     {{"A67", ""}},
+	"ending.wake.1":                  {{"A60", ""}},
+	"ending.wake.2":                  {{"A61", ""}},
+	"ending.wake.3":                  {{"A62", ""}},
+	"ending.wake.4":                  {{"A63", ""}},
+	"ending.wake.6":                  {{"A64", ""}, {"A65", ""}},
 }
 
 // alludedOnly are register quotes no line carries verbatim: text.md marks
 // every use of them as an allusion or a parody (A44's Gryphon line with a
 // module in it), or names the quote only as a source (A37, the Duchess's
-// morals).
-var alludedOnly = []string{"A4", "A36", "A37", "A44", "G16", "G21", "G22"}
+// morals), or a setuid bit's name carries it, which is mechanic text (A59,
+// .stuff-and-nonsense).
+var alludedOnly = []string{"A4", "A36", "A37", "A44", "A59", "G16", "G21", "G22"}
 
 // TestStoryQuotesVerbatim is the bible's tone rule 6: a line that quotes
 // Carroll or SICP carries the words exactly. Only the first letter's case
@@ -659,9 +680,27 @@ func TestStoryFamilies(t *testing.T) {
 		"fountain.dry", "item.fsck", "door.timeout", "door.gave-up", "door.retreat",
 		"door.retreat.locked", "verdict.WA.ecc", "map.suspend", "map.resume", "map.abandon",
 		"route.locked", "route.locked.prestige", "quit.warn")
+	// The setuid bits and the Trial (docs/design/achievements.md (f)-(h)): the
+	// GRUB entry, the Trial's card and its locked exit, the ending's beats.
+	add("", "grub.subtitle.setuid", "boss.enter."+game.TrialBoss, "route.locked.full")
+	for i := 1; i <= 6; i++ {
+		add("", fmt.Sprintf("ending.wake.%d", i))
+	}
 	for _, h := range hooks {
 		if _, ok := story[h]; !ok {
 			t.Errorf("%s has no text", h)
+		}
+	}
+}
+
+// TestSetuidHints: every secret bit has its hint hook, which says what the
+// bit's own Hint does (setuid.Def is the mechanic's copy, text.md the
+// storyteller's), and no other bit has one.
+func TestSetuidHints(t *testing.T) {
+	for _, d := range setuid.Table {
+		got := SetuidHint(d.ID)
+		if got != d.Hint {
+			t.Errorf("%s: hint hook %q, Def.Hint %q", d.ID, got, d.Hint)
 		}
 	}
 }

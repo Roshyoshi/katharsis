@@ -126,6 +126,7 @@ The Wizards are still passing the ball. Eval. Apply. Eval.
 	"grub.subtitle.gitlog":          fixedOf(`"There ought to be a book written about me, that there ought!"`),
 	"grub.subtitle.top":             fixedOf(`"Who are you?" said the Caterpillar.`),
 	"grub.subtitle.poweroff":        fixedOf(`"Wake up, Alice dear!" The Rabbit will wait. Late, but he'll wait.`),
+	"grub.subtitle.setuid":          fixedOf("Nobody checks your privileges. Somebody keeps a list."),
 
 	// ---- Story beats ----
 	"story.prologue": blockOf(`
@@ -425,6 +426,13 @@ He went galumphing back.
 
 You didn't decide halting. You decided this one. The proof survives.
 `),
+	// The Trial, the Court of Hearts (docs/design/achievements.md (f)): the
+	// White Rabbit is its herald.
+	"boss.enter.trial": poolOf(`
+The White Rabbit blows three blasts on the trumpet. The court sits.
+"Sentence first—verdict afterwards." One WA, one head.
+The jury writes your name on their slates. The King puts on his crown.
+`),
 	// A boss fail that leaves cycles deals a new boss door; a one-shot
 	// boss (the final, and more of them deeper down) ends the boot.
 	"boss.retry": poolOf(`
@@ -660,12 +668,58 @@ You walk out. The Queen keeps the door, and her cut of your cycles.
 	"map.abandon":           fixedOf(`"Let's all move one place on." Boot #{boot} stays behind, as a crash.`),
 	"route.locked":          fixedOf("The Gryphon guards this lock. {module} opens it."),
 	"route.locked.prestige": fixedOf("The glass won't let you by yet. This exit opens from ring {ring} down."),
+	"route.locked.full":     fixedOf("The King turns the pages of his book. There is a rule for this."),
 	"lib.saved": pool2Of(`
 "When I use a word, it means just what I choose it to mean—
 neither more nor less." lib {name}, saved.
 
 "When I make a word do a lot of work like that, I always pay it
 extra." lib {name}, linked.
+`),
+
+	// ---- setuid bits (docs/design/achievements.md (h)) ----
+	// A bit's line in the story's voice, faint under the strip's "chmod
+	// u+s"; a secret's hook drops its dot. setuid.two-miles-high is also
+	// the strip's line the first time a pool reaches its cap.
+	"setuid.hello-world":        fixedOf("Carved over the door, and now in your inode: hello, world"),
+	"setuid.two-twins":          fixedOf("Ditto, ditto: two bits where the gap was."),
+	"setuid.snicker-snack":      fixedOf("The Jabberwock, slain once. The Wizards note it in pencil."),
+	"setuid.speedrun-2":         fixedOf("Faster than the Rabbit. He checks his watch twice. Late."),
+	"setuid.regular-course":     fixedOf("Every certificate on the Gryphon's wall is yours now."),
+	"setuid.two-miles-high":     fixedOf(`"Nearly two miles high." Somewhere a King looks up a rule.`),
+	"setuid.stuff-and-nonsense": fixedOf("The White Rabbit blows a trumpet. The court is sitting."),
+	"setuid.dull-reality":       fixedOf("The bank, the book, your sister. Her eyes stay shut."),
+	// A secret's hint under ?, as setuid.Def.Hint has it (the screen's
+	// test holds the two equal).
+	"setuid.hint.dull-reality":          fixedOf("Who Stole the Tarts?"),
+	"setuid.hint.two-miles-high":        fixedOf("EAT ME"),
+	"setuid.hint.stuff-and-nonsense":    fixedOf("The court sits in the garden."),
+	"setuid.hint.then-it-ends":          fixedOf("The Rabbit cries twice."),
+	"setuid.hint.galumphing-back":       fixedOf("The Rose knew a shortcut."),
+	"setuid.hint.consider-your-verdict": fixedOf("The jury runs out of slate."),
+	"setuid.hint.every-seat":            fixedOf("Three seats taken."),
+	"setuid.hint.counted-again":         fixedOf("Count them. Count again."),
+	"setuid.hint.size-of-a-door":        fixedOf("Under the doormat in the hall."),
+	"setuid.hint.which-dreamed-it":      fixedOf("Two endings. One dreamer."),
+
+	// ---- The Trial's ending, Dull Reality: one hook a beat ----
+	"ending.wake.1": blockOf(`
+The King reads from his book. Everybody looks at you.
+"Nearly two miles high," adds the Queen.
+`),
+	"ending.wake.2": blockOf(`
+The judge says AC. The Queen wants the sentence first.
+Your AC says it for you: "Who cares for you?"
+`),
+	"ending.wake.3": fixedOf("At this the whole pack rose up into the air, and came flying down…"),
+	"ending.wake.4": blockOf(`
+You are lying on the bank, head in your sister's lap.
+"Why, what a long sleep you've had!" says your sister.
+`),
+	"ending.wake.5": fixedOf("The man page is still open. It has an EXAMPLES section now."),
+	"ending.wake.6": blockOf(`
+"…but now run in to your tea; it's getting late."
+Your sister closes her eyes: "the White Rabbit hurried by".
 `),
 }
 
@@ -695,4 +749,15 @@ func Ring(p int) (ring int, place string) {
 		return rings[len(rings)-1].ring, ""
 	}
 	return rings[p].ring, rings[p].place
+}
+
+// SetuidHook is setuid bit id's story hook, its line under the strip's
+// chmod u+s: "setuid." and the id, a secret's dot dropped
+// (".dull-reality" is setuid.dull-reality). A bit without a line has a
+// hook with no text.
+func SetuidHook(id string) string { return "setuid." + strings.TrimPrefix(id, ".") }
+
+// SetuidHint is secret id's hint, "" for a bit that is no secret.
+func SetuidHint(id string) string {
+	return Story("setuid.hint."+strings.TrimPrefix(id, "."), 0)
 }
