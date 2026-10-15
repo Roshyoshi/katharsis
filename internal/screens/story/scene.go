@@ -51,8 +51,10 @@ type Scene struct {
 	auto  time.Duration
 	// motion is the setting the scene was built under (anim.CurrentMotion).
 	motion anim.Motion
-	// bare draws the page over the whole screen, with no footer: the
-	// title, whose art says its own "press any key".
+	// bare draws the page over the whole screen, with no footer and as
+	// its clip draws it, which must be exactly the screen's size: the
+	// title, whose art says its own "press any key", and whose fire
+	// fills the screen at every frame.
 	bare bool
 
 	i    int // the page showing
@@ -155,9 +157,8 @@ func (s *Scene) View(width, height int) string {
 		s.size = [2]int{bw, bh}
 		s.p.Swap(s.pages[s.i](bw, bh))
 	}
-	body := strings.Join(place(s.p.Frame(), bw, bh), "\n")
 	if s.bare {
-		return body
+		return strings.Join(s.p.Frame(), "\n")
 	}
 	var f string
 	switch {
@@ -170,7 +171,7 @@ func (s *Scene) View(width, height int) string {
 	default:
 		f = ui.Footer(width, "any key", "continue")
 	}
-	return body + "\n" + f
+	return strings.Join(place(s.p.Frame(), bw, bh), "\n") + "\n" + f
 }
 
 // place centers a block in w×h: the block keeps its own left edge, so

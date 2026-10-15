@@ -273,3 +273,16 @@ func pump(t *testing.T, s *Scene, cmd tea.Cmd, onTick func()) (ticks int, done D
 	}
 	return ticks, done
 }
+
+// BenchmarkTitleView is the title's View at 200x60 per frame tick, the
+// fire at its height.
+func BenchmarkTitleView(b *testing.B) {
+	s := NewTitle()
+	s.View(200, 60)
+	at := 2 * time.Second
+	for b.Loop() {
+		at = min(at+anim.FireStep, titleBurn)
+		s.p.Seek(at)
+		s.View(200, 60)
+	}
+}

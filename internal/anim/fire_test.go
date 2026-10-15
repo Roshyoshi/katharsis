@@ -188,3 +188,15 @@ func TestFireHues(t *testing.T) {
 		check("ascii mono", func(l string) bool { return strings.Contains(l, "\x1b[") })
 	})
 }
+
+// BenchmarkFire is one frame of a 200x60 fire at its height: a step and
+// the draw, what each tick costs at the largest size the title fits.
+func BenchmarkFire(b *testing.B) {
+	c := Fire{W: 200, H: 60, Seed: 1, Reach: 80, Burn: time.Hour}.Clip()
+	at := 3 * time.Second
+	c.Frame(at)
+	for b.Loop() {
+		at += FireStep
+		c.Frame(at)
+	}
+}
