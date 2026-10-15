@@ -91,15 +91,19 @@ func (m *Model) grub() screens.Screen {
 		}
 	}
 	slices.Sort(presets)
+	std, now := m.aptRules(), m.d.Now()
 	return meta.NewGrub(m.grubEnd(meta.GrubConfig{ // the nightly's best, the budget (debrief.go)
 		Meta:     m.meta,
 		Presets:  presets,
 		Lookup:   m.d.Catalog.Get,
-		Now:      m.d.Now(),
-		Gate:     game.NextPrestige(m.aptRules(), &m.meta),
+		Now:      now,
+		Gate:     game.NextPrestige(std, &m.meta),
 		Packages: m.packages(),
 		Load:     m.loadAverage(),
 		Sources:  m.d.Sources,
+		// GRUB's default boot is the standard preset's, so its comeback
+		// rule says whether the next boot is one.
+		Away: game.Comeback(&std, &m.meta, now),
 	}))
 }
 

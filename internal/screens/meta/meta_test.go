@@ -116,6 +116,12 @@ func TestGoldens(t *testing.T) {
 		keys []string
 	}{
 		{"grub", func() screens.Screen { return grub() }, nil},
+		// Five days away: the status line says so, as the boot will (RT8).
+		{"grub_comeback", func() screens.Screen {
+			c := fixture.GrubConfig()
+			c.Away = 5
+			return meta.NewGrub(c)
+		}, nil},
 		{"grub_presets", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "enter"}},
 		{"grub_regressions", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "down", "enter"}},
 		{"grub_edit", func() screens.Screen { return grub() }, []string{"e", "down", "tab", "down", "8", "f", "3", "a"}},

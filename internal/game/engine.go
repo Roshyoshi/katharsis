@@ -38,10 +38,10 @@ type engine struct {
 	rng  *rand.Rand
 	fx   []Effect
 
-	// first is set in NewBoot for a new player's first boot, and away is
-	// the time since Meta.LastPlayed then (0 when never).
-	first bool
-	away  time.Duration
+	// first is set in NewBoot for a new player's first boot, and comeback
+	// is the days away when the boot is a comeback (Comeback), else 0.
+	first    bool
+	comeback int
 
 	// draws are the doors drawDoors drew last, by problem, and setProp the
 	// chance of that set: what the next offer logs (logOffer).
@@ -89,9 +89,7 @@ func NewBoot(r rules.Rules, meta *Meta, pool []catalog.Problem, prestige int, se
 	s := &State{Seed: seed, RNG: seed, Rules: r, Prestige: prestige, Started: now}
 	e := newEngine(s, meta, pool, now)
 	e.first = first
-	if last := lastPlayed(meta); !last.IsZero() {
-		e.away = now.Sub(last)
-	}
+	e.comeback = Comeback(&r, meta, now) // before begin marks now as played
 	e.begin()
 	e.logf("boot #%d: prestige %d, rules %s, seed %#x, rating %.0f", s.Boot, prestige, r.Name, seed, meta.Rating)
 	e.planAim()

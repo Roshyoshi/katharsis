@@ -204,6 +204,21 @@ func TestTrackerEasing(t *testing.T) {
 	}
 }
 
+// A boot after days away opens the strip on the comeback's line, its
+// reason in days (RT8).
+func TestTrackerComeback(t *testing.T) {
+	pool := sim.SyntheticPool(400, 3)
+	meta := game.Meta{Boots: 6, Rating: 1400, LastPlayed: fixture.Now.Add(-4*24*time.Hour - time.Hour)}
+	st, _, err := game.NewBoot(rules.Standard(), &meta, pool, 0, 7, fixture.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tr Tracker
+	if got := plain(tr.Observe(st, &meta, fixture.Now)); !strings.Contains(got, "ease: Userland aim retuned (first boot in 4 days)") {
+		t.Errorf("the strip after 4 days away:\n%s", got)
+	}
+}
+
 // The timer warns once at 5:00 and once at 1:00, and not on a resume that
 // is already past them.
 func TestTrackerTimerWarns(t *testing.T) {

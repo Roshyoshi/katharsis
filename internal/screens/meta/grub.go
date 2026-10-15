@@ -49,6 +49,10 @@ type GrubConfig struct {
 	// Today is the play so far today and Budget the session budget
 	// (RT12, 0 for none): past it the status line says so.
 	Today, Budget time.Duration
+	// Away is the days since the player last played when that makes the
+	// next boot a comeback (game.Comeback, retention RT8), 0 otherwise:
+	// the status line says "first boot in N days", as the boot will.
+	Away int
 
 	// PrestigeName and Banner default to the flavor package. Tests pin them
 	// so goldens do not churn whenever flavor text changes.
@@ -144,6 +148,11 @@ func NewGrub(c GrubConfig) *Menu {
 	}
 	m.status = fmt.Sprintf("bank %s · rating %.0f · next boot #%d",
 		units.Bytes(c.Meta.Bank), c.Meta.Rating, c.Meta.Boots+1)
+	// The days away go next to the boot they make a comeback, before what
+	// a narrow line clips. A fact, never a guilt line (GR8).
+	if c.Away > 0 {
+		m.status += " · first boot in " + units.Plural(c.Away, "day")
+	}
 	if c.Load != nil {
 		m.status += " · " + LoadText(*c.Load)
 	}

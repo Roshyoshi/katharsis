@@ -356,6 +356,10 @@ func TestComeback(t *testing.T) {
 		{"old save", game.Meta{Boots: 5, Rating: 1600, Solves: []game.Solve{{Problem: "x", At: t0.Add(-6 * day)}}}, 6},
 	} {
 		m := tc.meta
+		// What GRUB says before the boot is what the boot then does.
+		if got := game.Comeback(&r, &m, t0); got != tc.days {
+			t.Errorf("%s: Comeback %d, want %d", tc.name, got, tc.days)
+		}
 		h := newHarness(t, r, &m, ps, 0, 1)
 		es, ok := easeOf(h.s, game.EaseComeback)
 		if ok != (tc.days > 0) {

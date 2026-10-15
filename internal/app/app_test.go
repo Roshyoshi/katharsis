@@ -514,6 +514,28 @@ func TestDeclineEaseKey(t *testing.T) {
 	}
 }
 
+// GRUB's status line says how long the player was away when the next
+// boot is a comeback (RT8), and that boot's strip opens on the same days.
+func TestGrubComeback(t *testing.T) {
+	h := newHarness(t)
+	h.m.meta.Boots = 4
+	for _, c := range []struct {
+		away time.Duration
+		want string
+	}{{2 * 24 * time.Hour, ""}, {5*24*time.Hour + time.Hour, "first boot in 5 days"}} {
+		h.m.meta.LastPlayed = h.clock.t.Add(-c.away)
+		v := ansi.Strip(h.m.grub().View(100, 30))
+		if got := strings.Contains(v, "first boot in"); got != (c.want != "") || c.want != "" && !strings.Contains(v, c.want) {
+			t.Errorf("%v away, want %q on GRUB:\n%s", c.away, c.want, v)
+		}
+	}
+	h.send(screens.StartBoot{Preset: "eased"})
+	h.toDoors()
+	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "(first boot in 5 days)") {
+		t.Errorf("the comeback boot does not say why it is eased:\n%s", v)
+	}
+}
+
 // A second app on the same store resumes the boot and reopens the door.
 func TestResumeMidDoor(t *testing.T) {
 	h := newHarness(t)

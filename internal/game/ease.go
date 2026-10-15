@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/rules"
 )
 
 // Easing (retention RT0 and RT8, ml-pipeline M4 and slice ML7). The first
@@ -40,7 +41,7 @@ func (e *engine) planAim() {
 	if e.first && (len(r.FirstBiomes) > 0 || r.FirstDoor || r.FirstEditorial) {
 		s.Ease = append(s.Ease, Ease{Kind: EaseFirst, Why: "boot #1", FirstDoor: r.FirstDoor, Editorial: r.FirstEditorial})
 	}
-	if days := int(e.away / (24 * time.Hour)); !e.first && r.ComebackDays > 0 && days >= r.ComebackDays {
+	if days := e.comeback; days > 0 {
 		if c := r.Biomes[0].EaseClear; c > 0 {
 			clear := make([]float64, len(r.Biomes))
 			clear[0] = c
@@ -142,6 +143,21 @@ func (s *State) active(k EaseKind) *Ease {
 		}
 	}
 	return nil
+}
+
+// Comeback is how many whole days m has been away at now when that makes
+// its next boot under r a comeback (rules.ComebackDays, retention RT8),
+// else 0: before boot #1, back sooner, or with comebacks off. NewBoot
+// eases such a boot; GRUB says the days before it.
+func Comeback(r *rules.Rules, m *Meta, now time.Time) int {
+	last := lastPlayed(m)
+	if m.Boots == 0 || r.ComebackDays <= 0 || last.IsZero() {
+		return 0
+	}
+	if days := int(now.Sub(last) / (24 * time.Hour)); days >= r.ComebackDays {
+		return days
+	}
+	return 0
 }
 
 // lastPlayed is when m last played: Meta.LastPlayed, or for a save from
