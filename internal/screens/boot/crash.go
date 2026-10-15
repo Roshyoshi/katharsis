@@ -435,11 +435,15 @@ func (c *Crash) keys(b game.Brief, width int) []string {
 	return []string{ui.Clip(line(pairs[2*(n-1):]), width)}
 }
 
-// epitaph is the story's line under the quote (text.md, Crash): by cause,
-// the curse first, and out of lives by its verdict where it has one.
+// epitaph is the story's line under the quote (text.md, Crash): a trial's
+// is the Gryphon's (rtfm.trial.fail), whatever ended it; a boot's is by
+// cause, the curse first, and out of lives by its verdict where it has
+// one.
 func (c *Crash) epitaph(cr game.Crash, verdict string, seed uint64) []string {
 	hook := "crash.epitaph." + string(cr.Cause)
 	switch {
+	case c.env.State.Trial != nil:
+		hook = "rtfm.trial.fail"
 	case cr.Cursed:
 		hook = "crash.epitaph.cursed"
 	case cr.Cause == game.OutOfLives && verdict != "":

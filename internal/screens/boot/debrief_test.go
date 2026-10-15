@@ -68,6 +68,14 @@ func trialClearedEnv(granted string) Env {
 	return e
 }
 
+// trialCrashEnv is the crash fixture played as a trial: no core dump.
+func trialCrashEnv(cause game.Outcome) Env {
+	e := crashEnv(cause)
+	e.Meta.CoreDump = nil
+	e.State.Trial = &game.TrialState{TrialSpec: game.TrialSpec{Module: "dp-intro", IntegTopic: "dp", Capability: "CAP_DP"}}
+	return e
+}
+
 func endCases() []screenCase {
 	return []screenCase{
 		{"crash_end", func() screens.Screen {
@@ -119,6 +127,9 @@ func endCases() []screenCase {
 			e.End = end()
 			return NewCleared(e)
 		}},
+		// A trial that ran out of lives: the Gryphon's line for the epitaph
+		// (rtfm.trial.fail).
+		{"crash_trial", func() screens.Screen { return NewCrash(trialCrashEnv(game.OutOfLives)) }},
 		// A trial that granted its capability: the Gryphon's line in place of
 		// the prestige's (rtfm.trial.pass).
 		{"cleared_trial", func() screens.Screen { return NewCleared(trialClearedEnv("CAP_DP")) }},
@@ -382,5 +393,19 @@ func TestClearedTrialLine(t *testing.T) {
 	v := ansi.Strip(NewCleared(trialClearedEnv("")).View(140, 40))
 	if strings.Contains(v, "rtfm.trial.pass") || strings.Contains(v, "Stub cleared.") {
 		t.Errorf("a trial that granted nothing has a story line:\n%s", v)
+	}
+}
+
+// A trial's crash has the Gryphon's line for its epitaph, whatever ended
+// it; a boot's keeps its own.
+func TestCrashTrialEpitaph(t *testing.T) {
+	for _, cause := range []game.Outcome{game.TimedOut, game.OutOfLives, game.GaveUp} {
+		v := ansi.Strip(NewCrash(trialCrashEnv(cause)).View(120, 40))
+		if !strings.Contains(v, "Stub rtfm.trial.fail,") || strings.Contains(v, "crash.epitaph") {
+			t.Errorf("trial %s:\n%s", cause, v)
+		}
+		if v := ansi.Strip(NewCrash(crashEnv(cause)).View(120, 40)); strings.Contains(v, "rtfm.trial.fail") {
+			t.Errorf("boot %s has the trial's line:\n%s", cause, v)
+		}
 	}
 }
