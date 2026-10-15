@@ -23,6 +23,11 @@ type Merge struct {
 	buy int // cursor within the items on sale
 	dmn int // cursor within the daemon offers
 	cur int // index into rows()
+
+	// intro is the White Knight's block (daemon.intro) over the daemon
+	// offers, for the first window that offers any; drawn records that the
+	// last View had room to draw it, so the app marks it seen (Shown).
+	intro, drawn bool
 }
 
 type rowKind int
@@ -41,6 +46,7 @@ type mergeRow struct {
 
 func NewMerge(env Env) *Merge {
 	m := &Merge{env: env}
+	m.intro = len(env.State.DaemonOffers) > 0 && !game.HasSeen(&env.Meta, introHook)
 	m.up.set(env.State)
 	return m
 }
@@ -146,6 +152,40 @@ func (m *Merge) View(width, height int) string {
 		need = max(need, listWidth(upgradeOptions(st.UpgradeOffers, st.Rules)))
 	}
 	cw := min(width, max(76, 4+need))
+	// The intro goes when the window is too short for it, and waits for a
+	// window with room.
+	secs := m.sections(width, cw, cur, m.intro)
+	m.drawn = m.intro && len(head)+1+len(secs) <= height-1
+	if m.intro && !m.drawn {
+		secs = m.sections(width, cw, cur, false)
+	}
+
+	block := secs
+	if mp := centerBlock(renderMap(st, width), width); len(head)+2+len(mp)+1+len(secs) <= height-1 {
+		block = append(append(mp, ""), secs...)
+	}
+	footer := ui.Footer(width, "↑/↓", "move", "enter", "pick, buy or leave", "c", "commit")
+	return ui.Layout(width, height, centered(head, block, height), footer)
+}
+
+// introHook is the merge window's one-time block, a story scene.
+const introHook = "daemon.intro"
+
+// Shown is the one-time scene this screen has drawn, for the app to mark
+// seen.
+func (m *Merge) Shown() []string {
+	if m.drawn {
+		return []string{introHook}
+	}
+	return nil
+}
+
+// sections are the window's rows in a column cw wide, centered in width:
+// commit, upgrade, spend, daemon (under the intro block when intro is
+// set), leave.
+func (m *Merge) sections(width, cw int, cur mergeRow, intro bool) []string {
+	st := m.env.State
+	opts := daemonOptions(st.DaemonOffers, st)
 	var secs []string
 
 	label := func(s string) string { return "  " + ui.Strong.Render(fmt.Sprintf("%-9s", s)) }
@@ -200,7 +240,13 @@ func (m *Merge) View(width, height int) string {
 		if cur.kind == rowDaemon {
 			c = m.dmn
 		}
-		secs = append(secs, "", label("daemon")+ui.Muted.Render(note))
+		secs = append(secs, "")
+		if intro {
+			for _, l := range fl.StoryBlock(introHook) {
+				secs = append(secs, "  "+ui.Voice.Render(ui.Muted.Render(ui.Clip(l, cw-2))))
+			}
+		}
+		secs = append(secs, label("daemon")+ui.Muted.Render(note))
 		secs = append(secs, indent(4, optionList(opts, c, cw-4))...)
 	}
 
@@ -209,14 +255,7 @@ func (m *Merge) View(width, height int) string {
 		mark = ui.Focus.Render(ui.G.Cursor) + " "
 	}
 	leave := mark + ui.Strong.Render("leave") + ui.Muted.Render(" "+ui.G.Arrow+" "+m.next())
-	secs = indent((width-cw)/2, append(secs, "", leave))
-
-	block := secs
-	if mp := centerBlock(renderMap(st, width), width); len(head)+2+len(mp)+1+len(secs) <= height-1 {
-		block = append(append(mp, ""), secs...)
-	}
-	footer := ui.Footer(width, "↑/↓", "move", "enter", "pick, buy or leave", "c", "commit")
-	return ui.Layout(width, height, centered(head, block, height), footer)
+	return indent((width-cw)/2, append(secs, "", leave))
 }
 
 // onSale lists the items this boot's merge windows sell.

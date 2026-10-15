@@ -32,6 +32,15 @@ func (m *Model) syncDmesg() {
 	if marked && m.state != nil {
 		m.saved(m.d.Store.Checkpoint(m.meta, m.state))
 	}
+	// A one-time scene a screen drew (the merge window's daemon.intro) is
+	// seen once drawn; the screen keeps it up while it stays.
+	for _, s := range m.stack {
+		if sh, ok := s.(interface{ Shown() []string }); ok {
+			for _, id := range sh.Shown() {
+				m.markSeen(id) // a story scene: saved, and noted (RT6)
+			}
+		}
+	}
 	if len(evs) > 0 {
 		m.refresh() // the screens hold the Env they were last given
 	}

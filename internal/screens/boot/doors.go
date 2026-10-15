@@ -387,6 +387,16 @@ func (d *Doors) bossBody(door game.Door, cw int) []string {
 		name = big
 	}
 	out := []string{"", ui.Center(ui.Special.Render(ui.Clip(name, cw)), cw)}
+	// The entrance line goes under the name (story text, boss.enter.*): a
+	// pool, one entry per boot, a 2-line entry for the Jabberwock.
+	if enter := fl.Story("boss.enter."+door.Boss, d.env.State.Seed); enter != "" {
+		for _, e := range strings.Split(enter, "\n") {
+			for _, l := range ui.WrapN(e, cw-4, 2) {
+				out = append(out, ui.Center(ui.Voice.Render(ui.Muted.Render(l)), cw))
+			}
+		}
+		out = append(out, "")
+	}
 	for _, l := range ui.WrapN(fl.BossBlurb(door.Boss), cw-4, 2) {
 		out = append(out, ui.Center(ui.Voice.Render(l), cw))
 	}

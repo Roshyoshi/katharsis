@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/game"
@@ -63,5 +64,31 @@ func TestDmesgDuckRefused(t *testing.T) {
 	evs := h.m.dmesg.Events()
 	if len(evs) == 0 || evs[len(evs)-1].Hook != "duck.empty" {
 		t.Fatalf("no duck line after a refused quack: %+v", evs)
+	}
+}
+
+// The merge window's daemon.intro is marked seen once it is drawn, and a
+// second window does not draw it.
+func TestDaemonIntroSeen(t *testing.T) {
+	h := newHarness(t)
+	h.send(tea.WindowSizeMsg{Width: 140, Height: 40})
+	h.send(screens.StartBoot{Preset: "standard"})
+	for i := 0; h.m.state.Phase != game.PhaseMerge; i++ {
+		if i > 40 {
+			t.Fatalf("no merge window, phase %q", h.m.state.Phase)
+		}
+		h.enterDoor()
+		h.clock.t = h.clock.t.Add(5 * time.Minute)
+		h.send(submitMsg{})
+	}
+	if len(h.m.state.DaemonOffers) == 0 {
+		t.Skip("this seed offers no daemons")
+	}
+	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "A knight falls off his horse") {
+		t.Fatalf("no intro over the first daemon offers:\n%s", v)
+	}
+	h.send(tickMsg(h.clock.t))
+	if !game.HasSeen(&h.m.meta, "daemon.intro") {
+		t.Fatal("daemon.intro drawn but not marked seen")
 	}
 }

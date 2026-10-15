@@ -172,7 +172,7 @@ func TestStoryWalksABoot(t *testing.T) {
 			if end != game.PhaseCleared || !slices.Equal(got, want) {
 				t.Fatalf("boot ended %s with scenes\n%v\nwant\n%v", end, got, want)
 			}
-			seen := []string{"story.prologue", "door.first.inscription", "story.first-merge", "story.first-boss"}
+			seen := []string{"story.prologue", "door.first.inscription", "story.first-merge", "daemon.intro", "story.first-boss"}
 			if ids := seenIDs(h.m.meta); !slices.Equal(ids, seen) {
 				t.Errorf("seen %v, want %v", ids, seen)
 			}

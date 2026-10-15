@@ -7,7 +7,6 @@ Boot #42 · Silver · merge window                                              
 
 
 
-
                                         ╭─ Userland ─╮   ╭─ The Heap ─╮   ╭─ ? ─╮   ╭─ Heisenbug ─╮
                                         │    ✓ ✓     │───│    ✓ ✓     │─●─│ ○ ○ │───│      ⚔      │
                                         ╰────────────╯   ╰────────────╯   ╰─────╯   ╰─────────────╯
@@ -24,13 +23,14 @@ Boot #42 · Silver · merge window                                              
                                       dup   +1 rubber duck · 48 B
                                       shuf  re-roll one room's doors (s at the doors) · 32 B
 
+                                  Stub block for daemon.intro, line one.
+                                  Stub block, line two.
                                   daemon   pick one, it runs for the rest of the boot · held 1/3: strace
                                       nice -20     +20% timer, but a WA costs 2 lives
                                       fork         4 doors per room after an AC
                                       /dev/random  mystery doors pay 2x
 
                                   leave → biome 3: route choice
-
 
 
 
