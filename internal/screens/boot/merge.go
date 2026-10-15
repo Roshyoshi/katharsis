@@ -153,10 +153,12 @@ func (m *Merge) View(width, height int) string {
 	}
 	cw := min(width, max(76, 4+need))
 	// The intro goes when the window is too short for it, and waits for a
-	// window with room.
-	secs := m.sections(width, cw, cur, m.intro)
-	m.drawn = m.intro && len(head)+1+len(secs) <= height-1
-	if m.intro && !m.drawn {
+	// window with room. It sits over the offers, so a pick that took them
+	// takes it too.
+	intro := m.intro && len(st.DaemonOffers) > 0
+	secs := m.sections(width, cw, cur, intro)
+	m.drawn = intro && len(head)+1+len(secs) <= height-1
+	if intro && !m.drawn {
 		secs = m.sections(width, cw, cur, false)
 	}
 	// The Hatter's line over the table when there is room: the table's
@@ -180,6 +182,18 @@ func (m *Merge) View(width, height int) string {
 // introHook is the merge window's one-time block, a story scene.
 const introHook = "daemon.intro"
 
+// fullHook is the line where the daemon offers would be when every daemon
+// seat is taken.
+const fullHook = "merge.full"
+
+// daemonsFull reports whether a window offers no daemons because the boot
+// holds MaxDaemons (game enterMerge). There is no swap, so nothing on
+// screen may promise one. A trial offers none at any count, so it is never
+// full.
+func daemonsFull(st *game.State) bool {
+	return st.Trial == nil && len(st.DaemonOffers) == 0 && len(st.Daemons) > 0 && len(st.Daemons) >= st.Rules.MaxDaemons
+}
+
 // Shown is the one-time scene this screen has drawn, for the app to mark
 // seen.
 func (m *Merge) Shown() []string {
@@ -190,8 +204,8 @@ func (m *Merge) Shown() []string {
 }
 
 // sections are the window's rows in a column cw wide, centered in width:
-// commit, upgrade, spend, daemon (under the intro block when intro is
-// set), leave.
+// commit, upgrade, spend, daemon (under the intro block when intro is set;
+// what is held and merge.full when every seat is taken), leave.
 func (m *Merge) sections(width, cw int, cur mergeRow, intro bool) []string {
 	st := m.env.State
 	opts := daemonOptions(st.DaemonOffers, st)
@@ -234,14 +248,18 @@ func (m *Merge) sections(width, cw int, cur mergeRow, intro bool) []string {
 		secs = append(secs, indent(4, optionList(items, c, cw-4))...)
 	}
 
-	if len(st.DaemonOffers) > 0 {
+	if full := daemonsFull(st); len(st.DaemonOffers) > 0 || full {
 		held := make([]string, len(st.Daemons))
 		for i, d := range st.Daemons {
 			held[i], _ = daemonText(d, st)
 		}
 		// What a daemon is, every time: the first one is picked before
-		// anyone has said.
+		// anyone has said. A full window has nothing to pick, so it only
+		// says what runs.
 		note := fmt.Sprintf("pick one, it runs for the rest of the boot%sheld %d/%d", ui.G.Sep, len(st.Daemons), st.Rules.MaxDaemons)
+		if full {
+			note = fmt.Sprintf("held %d/%d", len(st.Daemons), st.Rules.MaxDaemons)
+		}
 		if len(held) > 0 {
 			note += ": " + strings.Join(held, ", ")
 		}
@@ -256,7 +274,13 @@ func (m *Merge) sections(width, cw int, cur mergeRow, intro bool) []string {
 			}
 		}
 		secs = append(secs, label("daemon")+ui.Muted.Render(note))
-		secs = append(secs, indent(4, optionList(opts, c, cw-4))...)
+		if !full {
+			secs = append(secs, indent(4, optionList(opts, c, cw-4))...)
+		} else if s := fl.Story(fullHook, st.Seed); s != "" {
+			// The Hatter's "No room!", true this once (merge.full), where the
+			// offers would be.
+			secs = append(secs, "    "+ui.Voice.Render(ui.Muted.Render(ui.Clip(s, cw-4))))
+		}
 	}
 
 	mark := "  "

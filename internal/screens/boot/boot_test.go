@@ -173,6 +173,9 @@ func cases() []screenCase {
 		// A timeout that cost a life, and the boot went on (D44).
 		{"map_timeout", func() screens.Screen { return NewMap(env(fixture.UserlandTimeout())) }},
 		{"merge", func() screens.Screen { return NewMerge(env(fixture.Merge())) }},
+		// Every daemon seat taken: what runs, and the Hatter's "No room!"
+		// where the offers would be (merge.full).
+		{"merge_full", func() screens.Screen { return NewMerge(env(fullMerge())) }},
 		{"upgrade", func() screens.Screen { return NewUpgradeScreen(env(fixture.Upgrade())) }},
 		{"crash_timer", func() screens.Screen { return NewCrash(crashEnv(game.TimedOut)) }},
 		{"crash_lives", func() screens.Screen { return NewCrash(crashEnv(game.OutOfLives)) }},
@@ -491,6 +494,49 @@ func TestMergeSpendRows(t *testing.T) {
 	st.Trial = &game.TrialState{}
 	if v := ansi.Strip(NewMerge(env(st)).View(140, 40)); strings.Contains(v, "fsck") {
 		t.Errorf("a trial's merge window sells items:\n%s", v)
+	}
+}
+
+// fullMerge is the merge window of a boot that holds MaxDaemons: the
+// engine offers none.
+func fullMerge() *game.State {
+	st := fixture.Merge()
+	st.Daemons = []game.Daemon{game.Strace, game.Nice, game.Fork}
+	st.DaemonOffers = nil
+	return st
+}
+
+// A window that offers no daemons because every seat is taken says what
+// runs and gives merge.full in place of the offers. One that offers none
+// for another reason (the pool ran dry below MaxDaemons, or a trial) has
+// no daemon section, and the line is never there.
+func TestMergeFull(t *testing.T) {
+	const line = "Stub line for merge.full."
+	v := ansi.Strip(NewMerge(env(fullMerge())).View(140, 40))
+	if !strings.Contains(v, "daemon   held 3/3: strace, nice -20, fork") || !strings.Contains(v, line) || strings.Contains(v, "pick one") {
+		t.Errorf("full window:\n%s", v)
+	}
+	dry := fullMerge()
+	dry.Daemons = dry.Daemons[:2]
+	trial := fullMerge()
+	trial.Trial = &game.TrialState{}
+	for name, st := range map[string]*game.State{"dry pool": dry, "trial": trial} {
+		if v := ansi.Strip(NewMerge(env(st)).View(140, 40)); strings.Contains(v, line) || strings.Contains(v, "daemon ") {
+			t.Errorf("%s: a daemon section or merge.full:\n%s", name, v)
+		}
+	}
+	// The pick that fills the last seat leaves the line, not the intro.
+	st := fixture.Merge()
+	st.Daemons = []game.Daemon{game.Strace, game.Nice}
+	e := env(st)
+	m := NewMerge(e)
+	if v := ansi.Strip(m.View(140, 40)); !strings.Contains(v, "Stub block for daemon.intro") {
+		t.Fatalf("no intro over the offers:\n%s", v)
+	}
+	st.Daemons, st.DaemonOffers = append(st.Daemons, game.Fork), nil
+	m.Refresh(e)
+	if v := ansi.Strip(m.View(140, 40)); !strings.Contains(v, line) || strings.Contains(v, "daemon.intro") {
+		t.Errorf("after the last pick:\n%s", v)
 	}
 }
 
