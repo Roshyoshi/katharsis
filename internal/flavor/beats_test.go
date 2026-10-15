@@ -502,3 +502,22 @@ func TestMilestoneLines(t *testing.T) {
 		}
 	}
 }
+
+// TestRevealTeasers: a triggered beat's first line is the end screens'
+// teaser too, so it fits whole at 80 columns. The Cat's first crash is the
+// one exception: the app plays it by itself (screens/boot beat).
+func TestRevealTeasers(t *testing.T) {
+	for _, b := range triggered {
+		if b.id == "story.first-crash" {
+			continue
+		}
+		ls := BeatLines(b.id)
+		if len(ls) == 0 {
+			t.Errorf("%s has no text", b.id)
+			continue
+		}
+		if w := ansi.StringWidth(widest(t, b.id, ls[0])); w > teaserWidth {
+			t.Errorf("%s: teaser %q is %d columns, want <= %d", b.id, ls[0], w, teaserWidth)
+		}
+	}
+}

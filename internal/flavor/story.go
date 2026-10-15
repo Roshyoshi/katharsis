@@ -176,27 +176,27 @@ She remembers best the things that happen the week after next.
 This door crashed you. It's back, with a blank file. Then again.
 `),
 	"reveal.prestige.1": blockOf(`
-The mirror over the mantel goes soft, like gauze. You step through.
+The mantel mirror goes soft, like gauze. You step through.
 Same rooms. Only the things go the other way.
 The Red Queen, already running: "Now, here, you see, it takes all
 the running you can do, to keep in the same place."
 The doors will learn you. That isn't a bug. That's ring 2.
 `),
 	"reveal.prestige.2": blockOf(`
-Ring 1 is a wood where things have no names. Symbols: stripped.
+Ring 1 is the nameless wood. Symbols: stripped.
 A Fawn walks beside you, nuzzling, until the symbols load.
 "I'm a Fawn!" it cries. It reads /proc/1/comm: you. It bolts.
 On a wall at the edge of the wood sits an egg, defining words.
 `),
 	"reveal.prestige.3": blockOf(`
-Ring 0. The eighth square. You are root, which here means Queen.
+Ring 0, eighth square. You're root, which here means Queen.
 The Court of Hearts is nothing but a pack of cards. Test data.
 Behind the throne two robed Wizards toss a glowing ball: eval, apply.
 "The evaluator," says one, "... is just another program."
 Somewhere below ring 0, somebody is snoring.
 `),
 	"reveal.prestige.4": blockOf(`
-Below ring 0 is ring -1. The Red King sleeps there, in a heap.
+Ring -1, below ring 0. The Red King sleeps here, in a heap.
 "He's dreaming now," says Tweedledee. "... Why, about you!"
 The Wizards keep his dream running: eval, apply, eval, apply.
 Long ago they set Exercise 4.15: write halts?, then show you can't.
