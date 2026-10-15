@@ -329,9 +329,9 @@ func (m *Model) statusLine() string {
 // ducks is the duck count, or ✗ on a cursed door, which takes none.
 func ducks(s *game.State) string {
 	if s.Current != nil && s.Current.Door.Cursed {
-		return "🦆✗"
+		return ui.G.Duck + ui.G.Fail
 	}
-	return fmt.Sprintf("🦆%d", s.Ducks)
+	return fmt.Sprintf("%s%d", ui.G.Duck, s.Ducks)
 }
 
 func readFile(path string) (string, error) {
