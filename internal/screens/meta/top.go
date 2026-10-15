@@ -314,10 +314,14 @@ func (t *Top) table(w, h int) []string {
 		if r.Attempts > 0 {
 			rate = ui.AlignRight(fmt.Sprintf("%.0f%%", 100*clearRate(r)), colNum)
 		}
+		// 0 is a topic the engine keeps no rating for (mixed).
+		rating := ui.Muted.Render(ui.AlignRight("-", colRating))
+		if r.Rating > 0 {
+			rating = ui.Rank(r.Rating).Render(ui.AlignRight(fmt.Sprintf("%.0f", r.Rating), colRating))
+		}
 		line := ui.Fit("  "+r.Topic, colTopic) +
 			ui.AlignRight(fmt.Sprint(r.Attempts), colNum) +
-			ui.AlignRight(fmt.Sprint(r.Clears), colNum) + rate +
-			ui.Rank(r.Rating).Render(ui.AlignRight(fmt.Sprintf("%.0f", r.Rating), colRating)) +
+			ui.AlignRight(fmt.Sprint(r.Clears), colNum) + rate + rating +
 			"  " + topicBar(r, maxAtt, barW)
 		if i == t.sel {
 			line = ui.Field.Render(ui.Fit(ansi.Strip(line), w))

@@ -644,6 +644,23 @@ func TestTopSolvesWithoutColor(t *testing.T) {
 	}
 }
 
+// A topic the engine keeps no rating for (mixed, a boss door's topic)
+// shows "-" under RATING, like a CLR% with no attempts, not a rating of 0.
+func TestTopUnratedTopic(t *testing.T) {
+	st := fixture.Stats()
+	st.Topics = []meta.TopicStat{{Topic: "math", Attempts: 2, Clears: 1, Rating: 1300}, {Topic: "mixed", Attempts: 1}}
+	for _, sz := range sizes {
+		lines := strings.Split(plain(meta.NewTop(st).View(sz[0], sz[1])), "\n")
+		i := slices.IndexFunc(lines, func(l string) bool { return strings.HasPrefix(strings.TrimSpace(l), "mixed ") })
+		if i < 0 {
+			t.Fatalf("no mixed row at %dx%d", sz[0], sz[1])
+		}
+		if f := strings.Fields(lines[i]); len(f) < 5 || f[4] != "-" {
+			t.Errorf("at %dx%d the unrated topic reads %q", sz[0], sz[1], lines[i])
+		}
+	}
+}
+
 // Under the ASCII glyph set no screen falls back on a literal "·": every
 // separator is ui.G.Sep (§2.4).
 func TestASCIISeparators(t *testing.T) {
