@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -68,8 +67,7 @@ func TestAudit(t *testing.T) {
 		if !only(id) {
 			continue
 		}
-		p, ok := u.Get(id)
-		if !ok {
+		if _, ok := u.Get(id); !ok {
 			t.Errorf("%s: not in the catalog", id)
 			continue
 		}
@@ -80,7 +78,7 @@ func TestAudit(t *testing.T) {
 			rows = append(rows, fmt.Sprintf("%-12s FETCH ERROR %v", id, err))
 			continue
 		}
-		p, _ = u.Get(id) // a fetch can refine the entry
+		p, _ := u.Get(id) // a fetch can refine the entry
 		iss := audit(t, p, a)
 		bad := 0
 		for _, is := range iss {
@@ -102,6 +100,8 @@ var (
 	leftoverCmdRE = regexp.MustCompile(`\\[A-Za-z]{2,}`)
 	limitLineRE   = regexp.MustCompile(`(?i)[^.\n]*(?:time limit|memory limit)[^.\n]*`)
 	cfLimitRE     = regexp.MustCompile(`\*Time limit: ([0-9.]+) s · Memory limit: (\d+) MB\*`)
+	cyrillicRE    = regexp.MustCompile(`[А-Яа-яЁё]{4,}`)
+	codeSpanRE    = regexp.MustCompile("`[^`\n]*`")
 )
 
 func audit(t *testing.T, p catalog.Problem, a catalog.Assets) []issue {
@@ -124,19 +124,19 @@ func audit(t *testing.T, p catalog.Problem, a catalog.Assets) []issue {
 	if strings.Contains(md, "\r") {
 		add("LOW", "statement-cr", "CR in statement.md")
 	}
-	if n := openFences(md); n != 0 {
+	proseRaw, open := prose(md)
+	if open {
 		add("HIGH", "fences", "unbalanced code fences in statement.md")
 	}
-	proseRaw, proseConv := prose(md), prose(conv)
+	proseConv, _ := prose(conv)
 	if strings.Contains(proseConv, `\(`) || strings.Contains(proseConv, `\)`) {
 		add("MED", "tex-delim", "\\( or \\) left after TeXToUnicode: %s", context80(proseConv, `\(`))
 	}
 	if i := bareDollar(proseConv); i >= 0 {
 		add("MED", "tex-dollar", "bare $ left after TeXToUnicode: %q", around(proseConv, i))
 	}
-	for _, m := range leftoverCmdRE.FindAllStringIndex(proseConv, -1) {
+	if m := leftoverCmdRE.FindStringIndex(proseConv); m != nil {
 		add("MED", "tex-cmd", "TeX command left after TeXToUnicode: %q", around(proseConv, m[0]))
-		break
 	}
 	// Brackets the converter swallowed: markdown-escaped "\[" ... "\]"
 	// read as display math drops the brackets from the text.
@@ -266,8 +266,14 @@ func audit(t *testing.T, p catalog.Problem, a catalog.Assets) []issue {
 		if n := strings.Count(md, "#### Sample input "); n != len(a.Samples) {
 			add("MED", "samples", "%d sample headings, %d sample files", n, len(a.Samples))
 		}
-		if cyr := regexp.MustCompile(`[А-Яа-яЁё]{4,}`).FindAllString(md, -1); len(cyr) > 20 {
-			add("MED", "language", "statement is in Russian (%d Cyrillic words), e.g. %q", len(cyr), cyr[0])
+		// The index keeps Russian-only statements out of play (Judgeable
+		// false), so one is a finding only while it is still offered.
+		if cyr := cyrillicRE.FindAllString(md, -1); len(cyr) > 20 {
+			sev, what := "MED", "and offered as a door"
+			if !p.Judgeable {
+				sev, what = "INFO", "and kept out of play"
+			}
+			add(sev, "language", "statement is in Russian (%d Cyrillic words, e.g. %q) %s", len(cyr), cyr[0], what)
 		}
 	}
 	// What the judge settings imply, for the report.
@@ -280,38 +286,9 @@ func audit(t *testing.T, p catalog.Problem, a catalog.Assets) []issue {
 	return out
 }
 
-// openFences is nonzero when a ``` or ~~~ fence is left open.
-func openFences(md string) int {
-	in := false
-	var ch byte
-	n := 0
-	for _, line := range strings.Split(md, "\n") {
-		t := strings.TrimLeft(line, " ")
-		if len(line)-len(t) > 3 || len(t) < 3 || (t[0] != '`' && t[0] != '~') {
-			continue
-		}
-		k := 0
-		for k < len(t) && t[k] == t[0] {
-			k++
-		}
-		if k < 3 {
-			continue
-		}
-		switch {
-		case !in:
-			in, ch, n = true, t[0], k
-		case t[0] == ch && k >= n && strings.TrimSpace(t[k:]) == "":
-			in = false
-		}
-	}
-	if in {
-		return 1
-	}
-	return 0
-}
-
-// prose is md without fenced blocks and inline code spans.
-func prose(md string) string {
+// prose is md without fenced blocks and inline code spans; open reports a
+// ``` or ~~~ fence left open.
+func prose(md string) (text string, open bool) {
 	var b strings.Builder
 	in := false
 	var ch byte
@@ -337,7 +314,7 @@ func prose(md string) string {
 			b.WriteByte('\n')
 		}
 	}
-	return regexp.MustCompile("`[^`\n]*`").ReplaceAllString(b.String(), "")
+	return codeSpanRE.ReplaceAllString(b.String(), ""), in
 }
 
 // bareDollar is the index of the first $ not escaped as \$, or -1.
@@ -364,12 +341,8 @@ func context80(s, sub string) string {
 	if i < 0 {
 		return "(no " + sub + ")"
 	}
-	return strconvQuote(around(s, i))
+	return strconv.Quote(strings.ReplaceAll(around(s, i), "\n", " "))
 }
-
-func strconvQuote(s string) string { return strconv.Quote(strings.ReplaceAll(s, "\n", " ")) }
-
-var _ = filepath.Join
 
 // TestShow prints statement.md after TeXToUnicode, as the reader gets it:
 // QA_ONLY=usaco:97 go test -tags qa ./qa/content -run TestShow -v

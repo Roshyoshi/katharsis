@@ -17,8 +17,8 @@ import (
 )
 
 // solution is a C++ file in sol/ judged on a problem's full tests the way
-// a door's :Submit is (judge.Full, the problem's limits). want is the
-// verdict a fair judge gives: AC for a correct program, WA for a
+// a door's :Submit is (this machine's toolchain, the door's limits). want is
+// the verdict a fair judge gives: AC for a correct program, WA for a
 // deliberately wrong one.
 type solution struct {
 	id   catalog.ID
@@ -98,6 +98,7 @@ var solutions = []solution{
 	{"cf:1110A", "cf_1110A.cpp", judge.AC, ""},
 	{"cf:1110A", "cf_1110A_upper.cpp", judge.AC, "AnyCase, answer word is even/odd"},
 	{"usaco:567", "usaco_567_fstream.cpp", judge.AC, "ifstream/ofstream file I/O, as USACO analyses do"},
+	{"cf:4A", "cf_4A_pbds.cpp", judge.AC, "pb_ds ordered_set, which g++ (D28) has and libc++ lacks"},
 
 	// ---- deliberately wrong: the data must discriminate ----
 	{"usaco:567", "usaco_567_wrong.cpp", judge.WA, "sums lengths, ignores overlap"},
@@ -111,14 +112,11 @@ var solutions = []solution{
 }
 
 type outcome struct {
-	s       solution
-	p       catalog.Problem
-	sum     judge.Summary
-	first   *judge.Result
-	tests   int
-	err     error
-	elapsed time.Duration
-	ce      string
+	p     catalog.Problem
+	sum   judge.Summary
+	first *judge.Result
+	err   error
+	ce    string
 	// excluded: the catalog no longer offers the problem (it needs a
 	// checker, say), so no door judges it and neither does this.
 	excluded bool
@@ -162,10 +160,22 @@ func TestSolve(t *testing.T) {
 	t.Log("\n" + strings.Join(rows, "\n"))
 }
 
+// doorLimits are the limits a door's :Submit judges p with
+// (internal/app/runner.go).
+func doorLimits(p catalog.Problem) judge.Limits {
+	return judge.Limits{
+		Time:           p.TimeLimit,
+		Mem:            p.MemLimit,
+		Output:         judge.DefaultOutputLimit,
+		Scale:          1,
+		FloatTolerance: p.FloatTolerance,
+		FileIO:         p.FileIO,
+		AnyCase:        p.AnyCase,
+	}
+}
+
 func solve(ctx context.Context, u catalog.Catalog, src string, s solution) outcome {
-	o := outcome{s: s}
-	start := time.Now()
-	defer func() { o.elapsed = time.Since(start) }()
+	var o outcome
 	p, ok := u.Get(s.id)
 	if !ok {
 		o.err = fmt.Errorf("not in catalog")
@@ -186,17 +196,8 @@ func solve(ctx context.Context, u catalog.Catalog, src string, s solution) outco
 		o.err = err
 		return o
 	}
-	// The limits a door's HUD submits with (internal/app/runner.go).
-	lim := judge.Limits{
-		Time:           p.TimeLimit,
-		Mem:            p.MemLimit,
-		Output:         judge.DefaultOutputLimit,
-		Scale:          1,
-		FloatTolerance: p.FloatTolerance,
-		AnyCase:        p.AnyCase,
-	}
 	results := map[int]judge.Result{}
-	judge.Submit(ctx, src, a.Tests, judge.Full, lim, func(e judge.Event) {
+	judge.Submit(ctx, src, a.Tests, judge.Profiles(ctx).Full, doorLimits(p), func(e judge.Event) {
 		switch e := e.(type) {
 		case judge.BuildDone:
 			if !e.Build.OK {
@@ -216,7 +217,6 @@ func solve(ctx context.Context, u catalog.Catalog, src string, s solution) outco
 	if r, ok := results[o.sum.First]; ok && o.sum.First >= 0 {
 		o.first = &r
 	}
-	o.tests = len(a.Tests)
 	return o
 }
 
@@ -233,16 +233,14 @@ func TestFailures(t *testing.T) {
 		if !only(s.id) || s.file != file {
 			continue
 		}
-		p, _ := u.Get(s.id)
 		a, err := u.Fetch(ctx, s.id)
 		if err != nil {
 			t.Fatal(err)
 		}
+		p, _ := u.Get(s.id) // a fetch can refine the entry
 		src, _ := filepath.Abs(filepath.Join("sol", s.file))
-		lim := judge.Limits{Time: p.TimeLimit, Mem: p.MemLimit, Output: judge.DefaultOutputLimit,
-			Scale: 1, FloatTolerance: p.FloatTolerance, AnyCase: p.AnyCase}
 		var bad []string
-		judge.Submit(ctx, src, a.Tests, judge.Full, lim, func(e judge.Event) {
+		judge.Submit(ctx, src, a.Tests, judge.Profiles(ctx).Full, doorLimits(p), func(e judge.Event) {
 			if d, ok := e.(judge.TestDone); ok && d.Result.Verdict != judge.AC {
 				line := fmt.Sprintf("test %3d (%s): %s %s cpu=%v", d.Index+1, a.Tests[d.Index].In, d.Result.Verdict, d.Result.Reason, d.Result.CPU)
 				if df := d.Result.Diff; df != nil {

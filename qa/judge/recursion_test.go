@@ -5,6 +5,7 @@ package judgeqa
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -59,8 +60,8 @@ int main() {
 
 func TestQARecursion(t *testing.T) {
 	needCompiler(t)
-	ps := append([]judge.Profile{}, profiles...)
-	ps = append(ps, judge.Debug)
+	// And what :Debug runs under lldb here.
+	ps := append(slices.Clone(profiles), judge.Profiles(context.Background()).Debug)
 	for _, prog := range []struct{ name, body string }{{"dfs_vecvec", progDFSVec}, {"dfs_forward_star", progDFSStar}} {
 		for _, n := range []int{1000000, 5000000} {
 			for _, p := range ps {

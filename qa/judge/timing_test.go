@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"katharsis/internal/judge"
-	"katharsis/internal/problem"
 )
 
 func loadAvg() string {
@@ -53,7 +52,7 @@ func TestQAInfiniteLoopLatency(t *testing.T) {
 // Codeforces-class judge needs for the same work.
 var benches = []struct {
 	name, body string
-	input      func(dir string) string // writes the input, returns its path
+	input      func() string // the input; nil is none
 }{
 	{"ops_1e8_simple", `#include <cstdio>
 int a[1024];
@@ -190,16 +189,14 @@ int main() {
 `, nil},
 }
 
-func ints1e6(dir string) string {
-	p := filepath.Join(dir, "ints.in")
+func ints1e6() string {
 	var b strings.Builder
 	b.WriteString("1000000\n")
 	for i := range 1000000 {
 		fmt.Fprintf(&b, "%d ", (i*7919)%1000000000)
 	}
 	b.WriteString("\n")
-	os.WriteFile(p, []byte(b.String()), 0o644)
-	return p
+	return b.String()
 }
 
 func TestQABenchmarks(t *testing.T) {
@@ -209,25 +206,22 @@ func TestQABenchmarks(t *testing.T) {
 	}
 	t.Logf("load before: %s", loadAvg())
 	for _, bc := range benches {
+		in := ""
+		if bc.input != nil {
+			in = bc.input()
+		}
+		c := writeCase(t, in, "")
 		var fullCPU time.Duration
 		for _, p := range profiles {
 			b := build(t, "bench_"+bc.name, bc.body, p)
 			if !b.OK {
 				t.Fatalf("%s [%s] CE: %s", bc.name, p.Name, b.Log)
 			}
-			dir := t.TempDir()
-			in := filepath.Join(dir, "empty.in")
-			os.WriteFile(in, nil, 0o644)
-			if bc.input != nil {
-				in = bc.input(dir)
-			}
-			out := filepath.Join(dir, "x.out")
-			os.WriteFile(out, nil, 0o644)
 			lim := judge.Limits{Time: 30 * time.Second, Output: 1 << 30}
 			// best of 3: the minimum is the least disturbed by other load
 			best := judge.Result{CPU: time.Hour}
 			for range 3 {
-				r, err := judge.Run(context.Background(), b.Binary, judge.Case{In: in, Out: out}, lim, p)
+				r, err := judge.Run(context.Background(), b.Binary, c, lim, p)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -260,26 +254,9 @@ func TestQADrift(t *testing.T) {
 	if os.Getenv("JUDGEQA_BENCH") == "" {
 		t.Skip("set JUDGEQA_BENCH=1")
 	}
-	b := build(t, "drift_work", progWork, judge.Full)
-	dir := t.TempDir()
-	mkTests := func(n int, in string) []problem.Test {
-		cmd := exec.Command(b.Binary)
-		cmd.Stdin = strings.NewReader(in)
-		want, err := cmd.Output()
-		if err != nil {
-			t.Fatal(err)
-		}
-		sub := t.TempDir()
-		var ts []problem.Test
-		for i := range n {
-			ip, op := filepath.Join(sub, fmt.Sprintf("%d.in", i)), filepath.Join(sub, fmt.Sprintf("%d.out", i))
-			os.WriteFile(ip, []byte(in), 0o644)
-			os.WriteFile(op, want, 0o644)
-			ts = append(ts, problem.Test{Name: fmt.Sprint(i), In: ip, Out: op})
-		}
-		return ts
-	}
-	_ = dir
+	b := build(t, "drift_work", progWork, submit)
+	in := "150\n" // about 0.3 s on a P-core
+	want := output(t, b.Binary, in)
 	ctx := context.Background()
 	big := judge.Limits{Time: 30 * time.Second}
 	stats := func(ds []time.Duration) string {
@@ -287,17 +264,17 @@ func TestQADrift(t *testing.T) {
 		return fmt.Sprintf("min %dms med %dms p90 %dms max %dms", s[0].Milliseconds(), s[len(s)/2].Milliseconds(),
 			s[len(s)*9/10].Milliseconds(), s[len(s)-1].Milliseconds())
 	}
-	ts := mkTests(3*judge.Workers, "150\n") // about 0.3 s on a P-core
+	ts := writeTests(t, 3*judge.Workers, in, want)
 	var seq []time.Duration
 	for _, tc := range ts[:judge.Workers] {
-		r, err := judge.Run(ctx, b.Binary, judge.Case{In: tc.In, Out: tc.Out}, big, judge.Full)
+		r, err := judge.Run(ctx, b.Binary, judge.Case{In: tc.In, Out: tc.Out}, big, submit)
 		if err != nil {
 			t.Fatal(err)
 		}
 		seq = append(seq, r.CPU)
 	}
 	var par []time.Duration
-	if _, err := judge.JudgeFull(ctx, ts, "", b, big, judge.Full, func(e judge.Event) {
+	if _, err := judge.JudgeFull(ctx, ts, "", b, big, submit, func(e judge.Event) {
 		par = append(par, e.(judge.TestDone).Result.CPU)
 	}); err != nil {
 		t.Fatal(err)
@@ -316,7 +293,7 @@ func TestQADrift(t *testing.T) {
 		}
 		var falseTLE, reruns int
 		var cpus []time.Duration
-		s, err := judge.JudgeFull(ctx, mkTests(4*judge.Workers, "150\n"), "", b, lim, judge.Full, func(e judge.Event) {
+		s, err := judge.JudgeFull(ctx, writeTests(t, 4*judge.Workers, in, want), "", b, lim, submit, func(e judge.Event) {
 			r := e.(judge.TestDone).Result
 			cpus = append(cpus, r.CPU)
 			if r.Rerun {
@@ -344,41 +321,31 @@ func TestQADrift(t *testing.T) {
 // save during :Submit does in practice mode.
 func backgroundSamplePass(t *testing.T) func() {
 	b := build(t, "bg_spin", progSpin, sample)
+	c := writeCase(t, "", "")
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 	wg.Go(func() {
 		for ctx.Err() == nil {
-			c := writeCase(t, "", "")
-			judge.Run(ctx, b.Binary, c, judge.Limits{Time: 2 * time.Second}, sample)
+			_, _ = judge.Run(ctx, b.Binary, c, judge.Limits{Time: 2 * time.Second}, sample)
 		}
 	})
 	return func() { cancel(); wg.Wait() }
 }
 
-// TLE near the limit under Full, alone and inside JudgeFull.
+// TLE near the limit as :Submit judges it, inside JudgeFull.
 func TestQATLERatios(t *testing.T) {
 	needCompiler(t)
-	b := build(t, "burn_ratio", progBurn, judge.Full)
+	b := build(t, "burn_ratio", progBurn, submit)
 	tl := 500 * time.Millisecond
 	for _, ratio := range []float64{0.9, 1.1, 1.5, 3} {
 		in := fmt.Sprintf("%.0f\n", ratio*float64(tl.Milliseconds()))
-		dir := t.TempDir()
-		var ts []problem.Test
-		for i := range 2 * judge.Workers {
-			ip, op := filepath.Join(dir, fmt.Sprintf("%d.in", i)), filepath.Join(dir, fmt.Sprintf("%d.out", i))
-			os.WriteFile(ip, []byte(in), 0o644)
-			os.WriteFile(op, []byte("ok\n"), 0o644)
-			ts = append(ts, problem.Test{Name: fmt.Sprint(i), In: ip, Out: op})
-		}
+		ts := writeTests(t, 2*judge.Workers, in, []byte("ok\n"))
 		start := time.Now()
 		var reruns int
-		var walls []time.Duration
-		s, err := judge.JudgeFull(context.Background(), ts, "", b, judge.Limits{Time: tl}, judge.Full, func(e judge.Event) {
-			r := e.(judge.TestDone).Result
-			if r.Rerun {
+		s, err := judge.JudgeFull(context.Background(), ts, "", b, judge.Limits{Time: tl}, submit, func(e judge.Event) {
+			if e.(judge.TestDone).Result.Rerun {
 				reruns++
 			}
-			walls = append(walls, r.Wall)
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -404,31 +371,19 @@ func TestQAWorkerSweep(t *testing.T) {
 	if os.Getenv("JUDGEQA_BENCH") == "" {
 		t.Skip("set JUDGEQA_BENCH=1")
 	}
-	b := build(t, "drift_work", progWork, judge.Full)
+	b := build(t, "drift_work", progWork, submit)
 	in := "450\n"
-	cmd := exec.Command(b.Binary)
-	cmd.Stdin = strings.NewReader(in)
-	want, err := cmd.Output()
-	if err != nil {
-		t.Fatal(err)
-	}
+	want := output(t, b.Binary, in)
 	old := judge.Workers
 	defer func() { judge.Workers = old }()
 	big := judge.Limits{Time: 30 * time.Second}
 	var seqMed time.Duration
 	for _, w := range []int{1, 4, 5, 8, 10} {
 		judge.Workers = w
-		dir := t.TempDir()
-		var ts []problem.Test
-		for i := range max(2*w, 5) {
-			ip, op := filepath.Join(dir, fmt.Sprintf("%d.in", i)), filepath.Join(dir, fmt.Sprintf("%d.out", i))
-			os.WriteFile(ip, []byte(in), 0o644)
-			os.WriteFile(op, want, 0o644)
-			ts = append(ts, problem.Test{Name: fmt.Sprint(i), In: ip, Out: op})
-		}
+		ts := writeTests(t, max(2*w, 5), in, want)
 		var cpus []time.Duration
 		start := time.Now()
-		if _, err := judge.JudgeFull(context.Background(), ts, "", b, big, judge.Full, func(e judge.Event) {
+		if _, err := judge.JudgeFull(context.Background(), ts, "", b, big, submit, func(e judge.Event) {
 			cpus = append(cpus, e.(judge.TestDone).Result.CPU)
 		}); err != nil {
 			t.Fatal(err)
@@ -449,20 +404,26 @@ func TestQAWorkerSweep(t *testing.T) {
 // that keep stderr do.
 func TestQAStderrCost(t *testing.T) {
 	needCompiler(t)
-	b := build(t, "stderr_cost", progStderr, judge.Full)
+	b := build(t, "stderr_cost", progStderr, submit)
 	for _, mib := range []int{4, 16} {
 		in := fmt.Sprintf("%d 1 2\n", mib)
 		c := writeCase(t, in, "3\n")
-		r, err := judge.Run(context.Background(), b.Binary, c, judge.Limits{Time: 30 * time.Second}, judge.Full)
+		r, err := judge.Run(context.Background(), b.Binary, c, judge.Limits{Time: 30 * time.Second}, submit)
 		record(fmt.Sprintf("stderr_cost/%dMiB", mib), "Run (pipe to Go)", r, err)
-		f, _ := os.Create(filepath.Join(t.TempDir(), "err.txt"))
+		f, err := os.Create(filepath.Join(t.TempDir(), "err.txt"))
+		if err != nil {
+			t.Fatal(err)
+		}
 		cmd := exec.Command(b.Binary)
 		cmd.Stdin = strings.NewReader(in)
 		cmd.Stderr = f
 		start := time.Now()
-		cmd.Run()
+		err = cmd.Run()
 		wall := time.Since(start)
 		f.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
 		ru := cmd.ProcessState.SysUsage().(*syscall.Rusage)
 		cpu := time.Duration(ru.Utime.Nano() + ru.Stime.Nano())
 		note(fmt.Sprintf("stderr_cost/%dMiB", mib), "stderr to a file", fmt.Sprintf("cpu=%dms wall=%dms", cpu.Milliseconds(), wall.Milliseconds()))
@@ -477,32 +438,20 @@ func TestQAIOSweep(t *testing.T) {
 	if os.Getenv("JUDGEQA_BENCH") == "" {
 		t.Skip("set JUDGEQA_BENCH=1")
 	}
-	endl := `#include <iostream>
-int main() { int n; std::cin >> n; for (int i = 0; i < n; i++) std::cout << i % 10 << std::endl; }
-`
 	old := judge.Workers
 	defer func() { judge.Workers = old }()
 	for _, pc := range []struct{ name, body, in string }{
 		{"stderr_16MiB", progStderr, "16 1 2\n"},
-		{"endl_3e5", endl, "300000\n"},
+		{"endl_3e5", progEndl, "300000\n"},
 	} {
-		b := build(t, "iosweep_"+pc.name, pc.body, judge.Full)
-		cmd := exec.Command(b.Binary)
-		cmd.Stdin = strings.NewReader(pc.in)
-		want, _ := cmd.Output()
+		b := build(t, "iosweep_"+pc.name, pc.body, submit)
+		want := output(t, b.Binary, pc.in)
 		var seqMed time.Duration
 		for _, w := range []int{1, 5, 8} {
 			judge.Workers = w
-			dir := t.TempDir()
-			var ts []problem.Test
-			for i := range max(2*w, 5) {
-				ip, op := filepath.Join(dir, fmt.Sprintf("%d.in", i)), filepath.Join(dir, fmt.Sprintf("%d.out", i))
-				os.WriteFile(ip, []byte(pc.in), 0o644)
-				os.WriteFile(op, want, 0o644)
-				ts = append(ts, problem.Test{Name: fmt.Sprint(i), In: ip, Out: op})
-			}
+			ts := writeTests(t, max(2*w, 5), pc.in, want)
 			var cpus []time.Duration
-			if _, err := judge.JudgeFull(context.Background(), ts, "", b, judge.Limits{Time: 30 * time.Second, Output: 1 << 30}, judge.Full, func(e judge.Event) {
+			if _, err := judge.JudgeFull(context.Background(), ts, "", b, judge.Limits{Time: 30 * time.Second, Output: 1 << 30}, submit, func(e judge.Event) {
 				cpus = append(cpus, e.(judge.TestDone).Result.CPU)
 			}); err != nil {
 				t.Fatal(err)
@@ -524,30 +473,17 @@ int main() { int n; std::cin >> n; for (int i = 0; i < n; i++) std::cout << i % 
 // Workers, as :Submit does.
 func TestQAFalseTLEIOHeavy(t *testing.T) {
 	needCompiler(t)
-	endl := `#include <iostream>
-int main() { int n; std::cin >> n; for (int i = 0; i < n; i++) std::cout << i % 10 << std::endl; }
-`
-	b := build(t, "false_tle_endl", endl, judge.Full)
+	b := build(t, "false_tle_endl", progEndl, submit)
 	in := "1000000\n"
-	cmd := exec.Command(b.Binary)
-	cmd.Stdin = strings.NewReader(in)
-	want, _ := cmd.Output()
-	dir := t.TempDir()
-	var ts []problem.Test
-	for i := range 2 * judge.Workers {
-		ip, op := filepath.Join(dir, fmt.Sprintf("%d.in", i)), filepath.Join(dir, fmt.Sprintf("%d.out", i))
-		os.WriteFile(ip, []byte(in), 0o644)
-		os.WriteFile(op, want, 0o644)
-		ts = append(ts, problem.Test{Name: fmt.Sprint(i), In: ip, Out: op})
-	}
+	ts := writeTests(t, 2*judge.Workers, in, output(t, b.Binary, in))
 	lim := judge.Limits{Time: time.Second, Mem: 256 << 20}
-	alone, err := judge.Run(context.Background(), b.Binary, judge.Case{In: ts[0].In, Out: ts[0].Out}, lim, judge.Full)
+	alone, err := judge.Run(context.Background(), b.Binary, judge.Case{In: ts[0].In, Out: ts[0].Out}, lim, submit)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var reruns int
 	var cpus []time.Duration
-	s, err := judge.JudgeFull(context.Background(), ts, "", b, lim, judge.Full, func(e judge.Event) {
+	s, err := judge.JudgeFull(context.Background(), ts, "", b, lim, submit, func(e judge.Event) {
 		r := e.(judge.TestDone).Result
 		cpus = append(cpus, r.CPU)
 		if r.Rerun {
@@ -557,7 +493,7 @@ int main() { int n; std::cin >> n; for (int i = 0; i < n; i++) std::cout << i % 
 	if err != nil {
 		t.Fatal(err)
 	}
-	note("false_tle_endl_1e6/TL=1s", fmt.Sprintf("W=%d", judge.Workers),
+	note("false_tle_endl_1e6/TL=1s", fmt.Sprintf("%s W=%d", submit.Name, judge.Workers),
 		fmt.Sprintf("alone %s cpu=%dms; JudgeFull verdict %s %q passed %d/%d reruns %d cpus %v load %s",
 			alone.Verdict, alone.CPU.Milliseconds(), s.Verdict, s.Reason, s.Passed, s.Total, reruns, cpus, loadAvg()))
 	if alone.Verdict == judge.AC && s.Verdict != judge.AC {

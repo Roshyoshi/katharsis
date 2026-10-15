@@ -3,6 +3,7 @@
 package content
 
 import (
+	"bytes"
 	"compress/flate"
 	"encoding/json"
 	"fmt"
@@ -28,7 +29,6 @@ type cfEntry struct {
 	Judgeable      bool     `json:"Judgeable"`
 	AnyCase        bool     `json:"AnyCase"`
 	FloatTolerance float64  `json:"FloatTolerance"`
-	Multi          bool     `json:"multi"`
 	HasChecker     bool     `json:"has_checker"`
 	Complete       bool     `json:"complete"`
 	GenTests       int      `json:"gen_tests"`
@@ -68,7 +68,7 @@ func cfIndex(t *testing.T) ([]cfEntry, func(cfEntry) cfText) {
 	}
 	text := func(e cfEntry) cfText {
 		var x cfText
-		zr := flate.NewReader(strings.NewReader(string(blob[e.Text[0] : e.Text[0]+e.Text[1]])))
+		zr := flate.NewReader(bytes.NewReader(blob[e.Text[0] : e.Text[0]+e.Text[1]]))
 		raw, _ := io.ReadAll(zr)
 		_ = json.Unmarshal(raw, &x)
 		return x
@@ -82,35 +82,6 @@ func cfIndex(t *testing.T) ([]cfEntry, func(cfEntry) cfText) {
 	return out, text
 }
 
-// The phrases internal/content/codeforces/facts.go matches (copied).
-var multiRE = regexp.MustCompile(`(?i)\b(?:any\s+of\s+them|print\s+any|output\s+any|(?:multiple|several|many)\s+(?:possible\s+|valid\s+|correct\s+|optimal\s+)?(?:answers|solutions)|any\s+(?:such|valid|correct|possible|suitable|optimal)\b)`)
-
-// TestSurveyMulti lists judgeable problems whose statement says several
-// answers are accepted but which the dataset gave no checker, so the
-// judge compares against one reference answer.
-func TestSurveyMulti(t *testing.T) {
-	es, text := cfIndex(t)
-	n := 0
-	var lines []string
-	for _, e := range es {
-		if !e.Multi || e.HasChecker {
-			continue
-		}
-		n++
-		x := text(e)
-		s := strings.ReplaceAll(x.Output+"\n"+x.Description, "$", "")
-		loc := multiRE.FindStringIndex(s)
-		ctx := ""
-		if loc != nil {
-			ctx = strings.ReplaceAll(s[max(0, loc[0]-50):min(len(s), loc[1]+40)], "\n", " ")
-		}
-		lines = append(lines, fmt.Sprintf("%-9s r=%-4d %q", e.ID, e.Rating, ctx))
-	}
-	t.Logf("%d judgeable problems with a multi-answer phrase and no checker:\n%s", n, strings.Join(lines, "\n"))
-}
-
-var leftover = regexp.MustCompile(`\\[A-Za-z]{2,}`)
-
 // TestSurveyTeX runs the reader's TeX conversion over every judgeable
 // statement and counts TeX commands it leaves behind as raw text.
 func TestSurveyTeX(t *testing.T) {
@@ -123,7 +94,7 @@ func TestSurveyTeX(t *testing.T) {
 		all := x.Description + "\n\n" + x.Input + "\n\n" + x.Output + "\n\n" + x.Note
 		conv := reader.TeXToUnicode(all)
 		seen := map[string]bool{}
-		for _, m := range leftover.FindAllString(conv, -1) {
+		for _, m := range leftoverCmdRE.FindAllString(conv, -1) {
 			if !seen[m] {
 				seen[m] = true
 				cmds[m]++
@@ -261,8 +232,6 @@ func TestSurveyCaseMisses(t *testing.T) {
 	}
 	t.Logf("%d judgeable problems say the case is free but are not AnyCase:\n%s", len(lines), strings.Join(lines, "\n"))
 }
-
-var cyrillicRE = regexp.MustCompile(`[А-Яа-яЁё]{4,}`)
 
 // TestSurveyLanguage counts judgeable statements written in Russian.
 func TestSurveyLanguage(t *testing.T) {

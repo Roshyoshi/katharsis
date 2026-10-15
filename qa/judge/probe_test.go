@@ -4,6 +4,7 @@ package judgeqa
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -39,13 +40,20 @@ func runHelper(mode string) int {
 			fmt.Printf("cache %s = %q\n", filepath.Base(f), strings.TrimSpace(string(b)))
 		}
 		// Does the chosen profile actually run hello world?
-		dir, _ := os.MkdirTemp("", "judgeqa-helper-")
+		dir, err := os.MkdirTemp("", "judgeqa-helper-")
+		if err != nil {
+			fmt.Println("setup:", err)
+			return 1
+		}
 		defer os.RemoveAll(dir)
 		src := filepath.Join(dir, "h.cpp")
-		os.WriteFile(src, []byte("#include <cstdio>\nint main(){puts(\"ok\");}\n"), 0o644)
-		os.MkdirAll(filepath.Join(dir, "tests"), 0o755)
-		os.WriteFile(filepath.Join(dir, "tests", "1.in"), nil, 0o644)
-		os.WriteFile(filepath.Join(dir, "tests", "1.out"), []byte("ok\n"), 0o644)
+		tests := filepath.Join(dir, "tests")
+		if err := errors.Join(os.WriteFile(src, []byte(hello), 0o644), os.MkdirAll(tests, 0o755),
+			os.WriteFile(filepath.Join(tests, "1.in"), nil, 0o644),
+			os.WriteFile(filepath.Join(tests, "1.out"), []byte("ok\n"), 0o644)); err != nil {
+			fmt.Println("setup:", err)
+			return 1
+		}
 		prob, err := problem.Load(dir)
 		if err != nil {
 			fmt.Println("load:", err)
@@ -62,13 +70,20 @@ func runHelper(mode string) int {
 				fmt.Printf("finished err=%v after %v\n", e.Err, time.Since(jstart).Round(time.Millisecond))
 			}
 		})
-		// And the Full profile (what :Submit uses).
-		b, err := judge.Compile(context.Background(), src, judge.Full)
-		fmt.Printf("full compile ok=%v err=%v\n", b.OK, err)
+		// And what :Submit compiles with.
+		full := judge.Profiles(context.Background()).Full
+		b, err := judge.Compile(context.Background(), src, full)
+		fmt.Printf("full compile [%s] ok=%v err=%v\n", full.Name, b.OK, err)
 		return 0
 	}
 	fmt.Fprintln(os.Stderr, "unknown helper", mode)
 	return 2
+}
+
+// nixVar is a dev shell's compiler variable: set inside nix, absent from a
+// player's shell.
+func nixVar(k string) bool {
+	return strings.HasPrefix(k, "NIX_") || k == "SDKROOT" || k == "DEVELOPER_DIR" || k == "MACOSX_DEPLOYMENT_TARGET"
 }
 
 // plainEnv is the environment of a shell outside nix: no stdenv compiler
@@ -77,14 +92,23 @@ func plainEnv(home, path string) []string {
 	var env []string
 	for _, kv := range os.Environ() {
 		k, _, _ := strings.Cut(kv, "=")
-		if strings.HasPrefix(k, "NIX_") || k == "SDKROOT" || k == "DEVELOPER_DIR" ||
-			k == "MACOSX_DEPLOYMENT_TARGET" || k == "CC" || k == "CXX" || k == "HOME" ||
-			k == "XDG_CACHE_HOME" || k == "PATH" || k == helperEnv {
+		if nixVar(k) || k == "CC" || k == "CXX" || k == "HOME" || k == "XDG_CACHE_HOME" || k == "PATH" || k == helperEnv {
 			continue
 		}
 		env = append(env, kv)
 	}
 	return append(env, "HOME="+home, "PATH="+path, helperEnv+"=probe")
+}
+
+// inheritNix adds the caller's nix variables back, when the suite runs in
+// the dev shell: the probe then sees what the game would see.
+func inheritNix(env []string) []string {
+	for _, kv := range os.Environ() {
+		if k, _, _ := strings.Cut(kv, "="); nixVar(k) {
+			env = append(env, kv)
+		}
+	}
+	return env
 }
 
 func helper(t *testing.T, env []string, extra ...string) string {
@@ -98,9 +122,9 @@ func helper(t *testing.T, env []string, extra ...string) string {
 	return string(out)
 }
 
-// The probe cache is keyed on the PATH compiler's path as found (not
-// resolved) and its mtime. A nix profile symlink keeps its path when the
-// profile switches compilers, and every nix store file has mtime 1.
+// The probe cache must follow the PATH compiler: a nix profile symlink
+// keeps its path when the profile switches compilers, and every nix store
+// file has mtime 1.
 func TestQAProbeKeyFollowsCompiler(t *testing.T) {
 	good, bad := os.Getenv("JUDGEQA_CLANG_GOOD"), os.Getenv("JUDGEQA_CLANG_BAD")
 	if good == "" || bad == "" {
@@ -108,67 +132,47 @@ func TestQAProbeKeyFollowsCompiler(t *testing.T) {
 	}
 	h := t.TempDir()
 	bin := filepath.Join(h, "profile-bin")
-	os.MkdirAll(bin, 0o755)
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	link := filepath.Join(bin, "clang++")
 	if err := os.Symlink(good, link); err != nil {
 		t.Fatal(err)
 	}
 	// The rest of the caller's PATH supplies dsymutil, as a nix profile does.
 	env := plainEnv(h, bin+":"+os.Getenv("PATH"))
-	out1 := helper(t, env)
-	note("probe_key/profile switch", "1 clang++ -> clang 22", strings.ReplaceAll(strings.TrimSpace(out1), "\n", " | "))
+	note("probe_key/profile switch", "1 clang++ -> clang 22", oneLine(helper(t, env)))
 	os.Remove(link)
 	if err := os.Symlink(bad, link); err != nil {
 		t.Fatal(err)
 	}
-	out2 := helper(t, env)
-	note("probe_key/profile switch", "2 clang++ -> clang 21", strings.ReplaceAll(strings.TrimSpace(out2), "\n", " | "))
-	if strings.Contains(out2, `second="asan+ubsan"`) {
-		t.Errorf("after the PATH compiler changed to one whose ASan hangs, the cached nix ASan profile was reused:\n%s", out2)
+	out := helper(t, env)
+	note("probe_key/profile switch", "2 clang++ -> clang 21", oneLine(out))
+	if strings.Contains(out, `second="asan+ubsan"`) {
+		t.Errorf("after the PATH compiler changed to one whose ASan hangs, the cached nix ASan profile was reused:\n%s", out)
 	}
 }
 
 func TestQAProbeLifecycle(t *testing.T) {
 	needCompiler(t)
 	h := t.TempDir()
-	env := plainEnv(h, os.Getenv("PATH"))
-	env = append(env, "JUDGEQA_INHERIT_NIX=1")
-	// Keep the caller's nix variables when the suite runs in the dev shell:
-	// the probe there sees what the game would see.
-	env = inheritNix(env)
-	out := helper(t, env)
-	note("probe_lifecycle", "1 cold", oneLine(out))
-	out = helper(t, env)
-	note("probe_lifecycle", "2 cached", oneLine(out))
+	env := inheritNix(plainEnv(h, os.Getenv("PATH")))
+	note("probe_lifecycle", "1 cold", oneLine(helper(t, env)))
+	note("probe_lifecycle", "2 cached", oneLine(helper(t, env)))
 	files, _ := filepath.Glob(filepath.Join(h, "Library", "Caches", "katharsis", "sample-profile-*"))
 	for _, f := range files {
 		os.Remove(f)
 	}
-	out = helper(t, env)
-	note("probe_lifecycle", "3 cache deleted", oneLine(out))
+	note("probe_lifecycle", "3 cache deleted", oneLine(helper(t, env)))
 
-	h2 := t.TempDir()
-	env2 := inheritNix(plainEnv(h2, os.Getenv("PATH")))
-	out = helper(t, env2, "JUDGEQA_PROBE_CANCEL=1")
+	out := helper(t, inheritNix(plainEnv(t.TempDir(), os.Getenv("PATH"))), "JUDGEQA_PROBE_CANCEL=1")
 	note("probe_lifecycle", "4 cancelled ctx, cold", oneLine(out))
 	if !strings.Contains(out, `second="`+sample.Name+`"`) {
 		t.Errorf("a probe cancelled once leaves the process on a different profile than %q for good:\n%s", sample.Name, out)
 	}
 
-	h3 := t.TempDir()
-	env3 := inheritNix(plainEnv(h3, "/bin:/usr/sbin:/sbin"))
-	out = helper(t, env3)
+	out = helper(t, inheritNix(plainEnv(t.TempDir(), "/bin:/usr/sbin:/sbin")))
 	note("probe_lifecycle", "5 no clang++ on PATH", oneLine(out))
-}
-
-func inheritNix(env []string) []string {
-	for _, kv := range os.Environ() {
-		k, _, _ := strings.Cut(kv, "=")
-		if strings.HasPrefix(k, "NIX_") || k == "SDKROOT" || k == "DEVELOPER_DIR" || k == "MACOSX_DEPLOYMENT_TARGET" {
-			env = append(env, kv)
-		}
-	}
-	return env
 }
 
 func oneLine(s string) string { return strings.ReplaceAll(strings.TrimSpace(s), "\n", " | ") }

@@ -18,6 +18,7 @@ package judgeqa
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -30,19 +31,22 @@ import (
 	"time"
 
 	"katharsis/internal/judge"
+	"katharsis/internal/problem"
 )
 
 var (
 	haveCompiler bool
 	sample       judge.Profile
-	probeTook    time.Duration
+	// submit is what :Submit judges with here (judge.Profiles): GCCFull
+	// where g++ builds run, Full otherwise. The tests that measure a
+	// submit's timing judge with it.
+	submit judge.Profile
 	// profiles is every sample-ish profile that runs here, plus Full and
 	// GCCFull.
 	profiles []judge.Profile
-	home     string
 )
 
-// helperMode is set when the binary was started as a subprocess by one of
+// helperEnv is set when the binary was started as a subprocess by one of
 // the probe tests; TestMain then runs that helper instead of the suite.
 const helperEnv = "JUDGEQA_HELPER"
 
@@ -50,8 +54,7 @@ func TestMain(m *testing.M) {
 	if h := os.Getenv(helperEnv); h != "" {
 		os.Exit(runHelper(h))
 	}
-	var err error
-	home, err = os.MkdirTemp("", "judgeqa-home-")
+	home, err := os.MkdirTemp("", "judgeqa-home-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -60,11 +63,13 @@ func TestMain(m *testing.M) {
 	os.Setenv("XDG_CACHE_HOME", filepath.Join(home, ".cache"))
 	_, err = exec.LookPath(judge.Compiler)
 	haveCompiler = err == nil
+	var probeTook time.Duration
 	if haveCompiler {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		start := time.Now()
 		sample = judge.SampleProfile(ctx)
 		probeTook = time.Since(start)
+		submit = judge.Profiles(ctx).Full
 		cancel()
 		profiles = discoverProfiles()
 	}
@@ -126,7 +131,9 @@ func helloRuns(p judge.Profile) bool {
 	}
 	defer os.RemoveAll(dir)
 	src := filepath.Join(dir, "hello.cpp")
-	os.WriteFile(src, []byte("#include <cstdio>\nint main(){puts(\"ok\");}\n"), 0o644)
+	if os.WriteFile(src, []byte(hello), 0o644) != nil {
+		return false
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	b, err := judge.Compile(ctx, src, p)
@@ -139,20 +146,14 @@ func helloRuns(p judge.Profile) bool {
 	return err == nil && strings.TrimSpace(string(out)) == "ok"
 }
 
-func needCompiler(t *testing.T) {
+// hello is the program a profile must run to count as working here.
+const hello = "#include <cstdio>\nint main(){puts(\"ok\");}\n"
+
+func needCompiler(t testing.TB) {
 	t.Helper()
 	if !haveCompiler {
 		t.Skipf("%s not on PATH", judge.Compiler)
 	}
-}
-
-func profileNamed(name string) (judge.Profile, bool) {
-	for _, p := range profiles {
-		if p.Name == name {
-			return p, true
-		}
-	}
-	return judge.Profile{}, false
 }
 
 func sanitizes(p judge.Profile, what string) bool {
@@ -203,7 +204,7 @@ func source(t testing.TB, name, body string) string {
 // build compiles body once per (name, profile) per process.
 func build(t testing.TB, name, body string, p judge.Profile) judge.Build {
 	t.Helper()
-	needCompilerTB(t)
+	needCompiler(t)
 	key := name + "\x00" + p.Name
 	buildMu.Lock()
 	m, ok := builds[key]
@@ -220,24 +221,39 @@ func build(t testing.TB, name, body string, p judge.Profile) judge.Build {
 	return m.b
 }
 
-func needCompilerTB(t testing.TB) {
-	t.Helper()
-	if !haveCompiler {
-		t.Skipf("%s not on PATH", judge.Compiler)
-	}
-}
-
 func writeCase(t testing.TB, in, out string) judge.Case {
 	t.Helper()
+	ts := writeTests(t, 1, in, []byte(out))
+	return judge.Case{In: ts[0].In, Out: ts[0].Out}
+}
+
+// writeTests writes n copies of one test into a temp dir: a workload for
+// JudgeFull whose every test costs the same.
+func writeTests(t testing.TB, n int, in string, out []byte) []problem.Test {
+	t.Helper()
 	dir := t.TempDir()
-	c := judge.Case{In: filepath.Join(dir, "1.in"), Out: filepath.Join(dir, "1.out")}
-	if err := os.WriteFile(c.In, []byte(in), 0o644); err != nil {
-		t.Fatal(err)
+	ts := make([]problem.Test, n)
+	for i := range ts {
+		ts[i] = problem.Test{Name: fmt.Sprint(i + 1), In: filepath.Join(dir, fmt.Sprintf("%d.in", i+1)),
+			Out: filepath.Join(dir, fmt.Sprintf("%d.out", i+1))}
+		if err := errors.Join(os.WriteFile(ts[i].In, []byte(in), 0o644), os.WriteFile(ts[i].Out, out, 0o644)); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err := os.WriteFile(c.Out, []byte(out), 0o644); err != nil {
-		t.Fatal(err)
+	return ts
+}
+
+// output runs bin on in and returns what it prints: the expected answer
+// of a test that only measures time.
+func output(t testing.TB, bin, in string) []byte {
+	t.Helper()
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(in)
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("%s: %v", bin, err)
 	}
-	return c
+	return out
 }
 
 // ---- the result matrix ----------------------------------------------------
@@ -253,16 +269,14 @@ var (
 )
 
 func record(row, col string, r judge.Result, err error) {
-	text := ""
-	switch {
-	case err != nil:
-		text = "ERR " + err.Error()
-	default:
-		text = fmt.Sprintf("%s %q cpu=%dms wall=%dms rss=%s", r.Verdict, r.Reason,
-			r.CPU.Milliseconds(), r.Wall.Milliseconds(), judge.Bytes(r.MaxRSS))
-		if r.Diff != nil {
-			text += fmt.Sprintf(" diff{line %d want %q got %q}", r.Diff.Line, r.Diff.Want, r.Diff.Got)
-		}
+	if err != nil {
+		note(row, col, "ERR "+err.Error())
+		return
+	}
+	text := fmt.Sprintf("%s %q cpu=%dms wall=%dms rss=%s", r.Verdict, r.Reason,
+		r.CPU.Milliseconds(), r.Wall.Milliseconds(), judge.Bytes(r.MaxRSS))
+	if r.Diff != nil {
+		text += fmt.Sprintf(" diff{line %d want %q got %q}", r.Diff.Line, r.Diff.Want, r.Diff.Got)
 	}
 	note(row, col, text)
 }

@@ -63,8 +63,6 @@ func (c vcase) expectFor(p judge.Profile) *expect {
 
 func all(e *expect) (f, a, h *expect) { return e, e, e }
 
-func sanOnly(a, h *expect) (f, aa, hh *expect) { return nil, a, h }
-
 func mk(name, body, in, out string, f, a, h *expect) vcase {
 	return vcase{name: name, body: body, in: in, out: out, full: f, asan: a, hard: h}
 }
@@ -154,12 +152,16 @@ func verdictCases() []vcase {
 		nil, ex(judge.RE, "signed integer overflow", "sol.cpp:5"), ex(judge.RE, "signed integer overflow", "sol.cpp:5")))
 	// The library's bounds check (libstdc++'s _GLIBCXX_ASSERTIONS, libc++'s
 	// debug hardening) stops v[i] before ASan sees the access, and is the
-	// report.
+	// report. The line comes from ASan's stack (handle_abort): without
+	// ASan, libc++'s message names only its own header, and even a UBSan
+	// handle_abort stack has none to give at -O1 (seen: "in main sol.cpp",
+	// where -O0 says sol.cpp:7).
 	bounds := "|libstdc++: __n < this->size()|libc++: vector[] index out of bounds"
+	noStack := "no ASan stack: the abort names libc++'s header, not the caller"
 	add(mk("re_heap_oob", progHeapOOB, "10\n", "1\n",
-		nil, ex(judge.RE, "heap-buffer-overflow"+bounds, "sol.cpp:7"), ex(judge.RE, "out of bounds", "sol.cpp:7")))
+		nil, ex(judge.RE, "heap-buffer-overflow"+bounds, "sol.cpp:7"), ex(judge.RE, "out of bounds").because(noStack)))
 	add(mk("re_container_oob", progContainerOOB, "6\n", "1 8\n",
-		nil, ex(judge.RE, "overflow"+bounds, "sol.cpp:8"), ex(judge.RE, "out of bounds", "sol.cpp:8")))
+		nil, ex(judge.RE, "overflow"+bounds, "sol.cpp:8"), ex(judge.RE, "out of bounds").because(noStack)))
 	add(mk("re_global_oob", progGlobalOOB, "10\n", "1\n",
 		nil, ex(judge.RE, "sol.cpp:6"), ex(judge.RE, "sol.cpp:6")))
 	add(mk("re_use_after_free", progUAF, "0\n", "3\n",
@@ -309,15 +311,15 @@ func TestQAForkLeak(t *testing.T) {
 		{"fork_detached_child", progForkDetached, "sleep 7.4242"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			defer exec.Command("pkill", "-f", tc.marker).Run()
-			b := build(t, tc.name+"_leak", tc.body, judge.Full)
+			defer func() { _ = exec.Command("pkill", "-f", tc.marker).Run() }()
+			b := build(t, tc.name+"_leak", tc.body, submit)
 			c := writeCase(t, "1 2\n", "3\n")
 			start := time.Now()
-			r, err := judge.Run(context.Background(), b.Binary, c, judge.Limits{Time: time.Second, Mem: 256 << 20}, judge.Full)
+			r, err := judge.Run(context.Background(), b.Binary, c, judge.Limits{Time: time.Second, Mem: 256 << 20}, submit)
 			el := time.Since(start)
 			out, _ := exec.Command("pgrep", "-f", tc.marker).Output()
 			left := strings.Fields(string(out))
-			note("fork_leak/"+tc.name, "O2", fmt.Sprintf("verdict=%s reason=%q err=%v elapsed=%v leftover pids=%v",
+			note("fork_leak/"+tc.name, submit.Name, fmt.Sprintf("verdict=%s reason=%q err=%v elapsed=%v leftover pids=%v",
 				r.Verdict, r.Reason, err, el.Round(time.Millisecond), left))
 			if err != nil {
 				t.Errorf("Run returned an error instead of a verdict: %v", err)

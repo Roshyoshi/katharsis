@@ -2,8 +2,10 @@
 
 // Package content is a QA harness for the problem data the game serves:
 // statements, samples, tests, limits and the judge settings derived from
-// them. It never builds into the game (build tag qa) and only reads the
-// shared cache through each source's own Fetch.
+// them. It never builds into the game (build tag qa) and goes through
+// each source's own Fetch, which downloads into the cache what it lacks.
+// To keep the player's cache as it is, run with HOME at a scratch dir
+// whose Library/Caches/katharsis is a copy (cp -cR) of the real one.
 //
 //	go test -tags qa ./qa/content/ -run TestAudit -v
 //	go test -tags qa ./qa/content/ -run TestSolve -v

@@ -492,3 +492,8 @@ int main() {
     printf("%ld\n", a * b);
 }
 `
+
+// progEndl prints n digits, one per line, flushing each with endl.
+const progEndl = `#include <iostream>
+int main() { int n; std::cin >> n; for (int i = 0; i < n; i++) std::cout << i % 10 << std::endl; }
+`
