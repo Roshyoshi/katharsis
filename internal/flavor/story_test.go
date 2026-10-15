@@ -131,14 +131,16 @@ func TestStoryPlaceholdersFill(t *testing.T) {
 }
 
 // TestStoryTone checks the tone rules a test can see: plain glyphs (rule
-// 10), no Disney lyric (rule 9), and the retention guardrail against guilt
-// copy (docs/research/retention.md GR8).
+// 10), no Disney lyric (rule 9), and the retention guardrails against guilt
+// copy and date pressure (docs/research/retention.md GR8, GR2; RT15: "no
+// copy says 'today only'").
 func TestStoryTone(t *testing.T) {
 	plain := func(r rune) bool {
 		return r < unicode.MaxASCII || strings.ContainsRune("—·…‘’“”", r)
 	}
-	guilt := []string{"miss you", "missed you", "misses you", "where were you",
-		"been a while", "come back soon", "streak", "don't leave"}
+	pressure := []string{"miss you", "missed you", "misses you", "where were you",
+		"been a while", "come back soon", "streak", "don't leave",
+		"today only", "only today", "last chance", "before it's gone", "expires"}
 	for hook, h := range story {
 		for _, l := range allLines(h) {
 			for _, r := range l {
@@ -150,9 +152,9 @@ func TestStoryTone(t *testing.T) {
 			if strings.Contains(low, "i'm late, i'm late") || strings.Contains(low, "very important date") {
 				t.Errorf("%s: the Disney song: %q", hook, l)
 			}
-			for _, g := range guilt {
+			for _, g := range pressure {
 				if strings.Contains(low, g) {
-					t.Errorf("%s: guilt copy %q in %q", hook, g, l)
+					t.Errorf("%s: pressure copy %q in %q", hook, g, l)
 				}
 			}
 		}

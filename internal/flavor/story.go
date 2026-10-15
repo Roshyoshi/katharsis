@@ -114,7 +114,7 @@ The Wizards are still passing the ball. Eval. Apply. Eval.
 	"grub.subtitle.prestige.4":      fixedOf("ring -1 · the Red King's dream · beware the Jabberwock"),
 	"grub.subtitle.prestige.beyond": fixedOf("ring {ring} · nobody who went there wrote it down"),
 	"grub.subtitle.locked":          fixedOf("ring {ring} · locked · {n} rated doors to go · the Red Queen runs"),
-	"grub.subtitle.nightly":         fixedOf("an un-birthday present: one seed for everyone, today only"),
+	"grub.subtitle.nightly":         fixedOf("an un-birthday present: one seed for everyone, today"),
 	"grub.subtitle.rtfm":            fixedOf("the Mock Turtle's school · Reeling and Writhing, to begin with"),
 	"grub.subtitle.custom":          fixedOf("a preset means just what you choose it to mean"),
 	"grub.subtitle.coredump":        fixedOf("a grin without a cat · {bytes} still on {title}"),

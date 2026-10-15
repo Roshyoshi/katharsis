@@ -240,7 +240,7 @@ ring {ring} · locked · {n} rated doors to go · the Red Queen runs
 ### grub.subtitle.nightly
 where: `katharsis (nightly build …)` (`grub.go:107`) · when: every · pick: fixed · uses: Humpty's un-birthday (ch. VI, allusion)
 ```text
-an un-birthday present: one seed for everyone, today only
+an un-birthday present: one seed for everyone, today
 ```
 
 ### grub.subtitle.rtfm
