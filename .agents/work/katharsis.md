@@ -248,6 +248,11 @@ D55 settled 10-15  TIME+ (top's cumulative CPU-time column): lifetime in-door ti
                    count as another motivator". A count, never a streak (GR1).
                    Cycles display out of MaxCycles (50) by the user's call.
 
+D56 open 10-15     Achievements: "w spoiler ones as well"; like Star of Providence, Hollow
+                   Knight, Silksong: clear barriers, skill ones (speedrun, 112% speedrun),
+                   secret ones (an alternate ending like Silksong's act 2 one),
+                   completion. Design thread first: docs/design/achievements.md.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
