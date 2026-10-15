@@ -1,6 +1,8 @@
 package story
 
 import (
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +14,7 @@ import (
 	"katharsis/internal/catalog"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
+	"katharsis/internal/ui"
 )
 
 type built struct {
@@ -219,5 +222,51 @@ func TestCrashHasNoWinCue(t *testing.T) {
 				t.Errorf("the crash beat shows %q", cue)
 			}
 		}
+	}
+}
+
+// hued reports whether s paints with a color: an SGR foreground or
+// background parameter (30-49, 90-107).
+func hued(s string) bool {
+	for _, m := range sgr.FindAllStringSubmatch(s, -1) {
+		for _, p := range strings.Split(m[1], ";") {
+			if n, err := strconv.Atoi(p); err == nil && (n >= 30 && n <= 49 || n >= 90 && n <= 107) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+var sgr = regexp.MustCompile("\x1b\\[([0-9;]*)m")
+
+// TestPaletteAndGlyphs: the scenes paint with the internal/ui tokens and
+// glyphs the app picked. Under Mono (NO_COLOR) no frame carries a hue,
+// and under the ASCII glyph set the boss card is drawn in ASCII. The
+// default palette does paint the boss card and the ACCEPTED frame.
+func TestPaletteAndGlyphs(t *testing.T) {
+	if !hued(strings.Join(frames(NewBossIntro("heisenbug", 0, false), 80, 24), "\n")) ||
+		!hued(strings.Join(frames(NewAccepted("AC"), 80, 24), "\n")) {
+		t.Error("the default palette paints no hue on the boss card or ACCEPTED")
+	}
+	ui.SetPalette(ui.Mono)
+	ui.SetGlyphs(ui.ASCII)
+	defer func() { ui.SetPalette(ui.ANSI); ui.SetGlyphs(ui.Unicode) }()
+	for _, b := range all() {
+		for _, f := range frames(b.make(), 80, 24) {
+			if hued(f) {
+				t.Errorf("%s paints a hue under Mono: %q", b.name, f)
+				break
+			}
+		}
+	}
+	card := ansi.Strip(strings.Join(frames(NewBossIntro("oom-killer", 0, false), 80, 24), "\n"))
+	for _, g := range []string{"║", "═", "╔", "⚔", "·"} {
+		if strings.Contains(card, g) {
+			t.Errorf("the ASCII boss card draws %q", g)
+		}
+	}
+	if !strings.Contains(card, "+== X BOSS ") {
+		t.Errorf("the ASCII boss card's top edge:\n%s", card)
 	}
 }

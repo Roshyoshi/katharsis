@@ -7,6 +7,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"katharsis/internal/ui"
 )
 
 // Para is a paragraph of plain text and the style it is drawn in. A "\n"
@@ -19,7 +21,9 @@ type Para struct {
 // Card is the boss card reveal. A double-bordered card W cells wide opens
 // from its middle row outward, its name is stamped in a letter at a time,
 // and its paragraphs fade in one after another. The name is letter-spaced
-// and upper-cased when that fits, as on the boss door card.
+// and upper-cased when that fits, as on the boss door card. The border is
+// ui.G.Double, the boss frame, read as each frame is drawn, so the ASCII
+// glyph set draws it in ASCII.
 type Card struct {
 	Label     string // in the top edge, e.g. "⚔ BOSS"
 	Name      string
@@ -45,7 +49,7 @@ func (c Card) name() []rune {
 	if sp := strings.Join(strings.Split(up, ""), " "); ansi.StringWidth(sp) <= c.inner() {
 		return []rune(sp)
 	}
-	return []rune(ansi.Truncate(up, c.inner(), "…"))
+	return []rune(ansi.Truncate(up, c.inner(), ui.G.Ellipsis))
 }
 
 // body is the card's rows inside the border: a blank, the name, then each
@@ -121,6 +125,7 @@ func (c Card) Frame(t time.Duration) []string {
 		top, bot = 0, h-1
 	}
 	blank := strings.Repeat(" ", c.W)
+	b := ui.G.Double
 	w := c.inner() + 2 // between the side walls
 	out := make([]string, h)
 	for r := range out {
@@ -128,27 +133,28 @@ func (c Card) Frame(t time.Duration) []string {
 		case r < top || r > bot:
 			out[r] = blank
 		case r == top:
-			out[r] = c.edge("╔", "╗", top == 0)
+			out[r] = c.edge(b.TopLeft, b.Top, b.TopRight, top == 0)
 		case r == bot:
-			out[r] = c.edge("╚", "╝", false)
+			out[r] = c.edge(b.BottomLeft, b.Bottom, b.BottomRight, false)
 		case t < c.at(cardOpen):
-			out[r] = cardEdge.Render("║") + strings.Repeat(" ", w) + cardEdge.Render("║")
+			out[r] = cardEdge.Render(b.Left) + strings.Repeat(" ", w) + cardEdge.Render(b.Right)
 		default:
-			out[r] = cardEdge.Render("║") + " " + c.row(body[r-1], t) + " " + cardEdge.Render("║")
+			out[r] = cardEdge.Render(b.Left) + " " + c.row(body[r-1], t) + " " + cardEdge.Render(b.Right)
 		}
 	}
 	return out
 }
 
-// edge is a top or bottom border row; the top one carries the label.
-func (c Card) edge(l, r string, label bool) string {
+// edge is a top or bottom border row: corners l and r around runs of h.
+// The top one carries the label.
+func (c Card) edge(l, h, r string, label bool) string {
 	run := c.W - 2
 	if !label || c.Label == "" {
-		return cardEdge.Render(l + strings.Repeat("═", run) + r)
+		return cardEdge.Render(l + strings.Repeat(h, run) + r)
 	}
-	lab := " " + ansi.Truncate(c.Label, max(run-4, 0), "…") + " "
+	lab := " " + ansi.Truncate(c.Label, max(run-4, 0), ui.G.Ellipsis) + " "
 	rest := max(run-2-ansi.StringWidth(lab), 0)
-	return cardEdge.Render(l+"══") + cardLabel.Render(lab) + cardEdge.Render(strings.Repeat("═", rest)+r)
+	return cardEdge.Render(l + strings.Repeat(h, 2) + lab + strings.Repeat(h, rest) + r)
 }
 
 // row is one body row at t, exactly inner() wide.

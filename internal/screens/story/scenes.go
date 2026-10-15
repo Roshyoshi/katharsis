@@ -11,6 +11,7 @@ import (
 	"katharsis/internal/anim"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
+	"katharsis/internal/ui"
 )
 
 // Timings. Every one is short enough that nobody waits for it, and any key
@@ -50,7 +51,7 @@ var blank = anim.Hold{Lines: []string{""}}
 // cells when a line would not (story lines are 70 at most, so 80 columns
 // never rewrap).
 func typed(ls []string, w int) anim.Typewriter {
-	return anim.Typewriter{Lines: fit(ls, w), Style: voice}
+	return anim.Typewriter{Lines: fit(ls, w), Style: voice()}
 }
 
 // fit is ls with each line wider than w-2 word-wrapped, keeping a gutter.
@@ -90,7 +91,7 @@ func NewPrologue() *Scene {
 	above, below := all[:k], all[k:]
 	first := func(w, _ int) anim.Clip {
 		said := fit(above, w)
-		return anim.Then(over(fadeIn(art("boot"), plain), widest(said)), blank, typed(said, w))
+		return anim.Then(over(fadeIn(art("boot"), plain()), widest(said)), blank, typed(said, w))
 	}
 	pages := []page{first}
 	if len(below) > 0 && len(above) > 0 {
@@ -111,9 +112,9 @@ func NewPrologue() *Scene {
 // (story.first-boss: the King's rule first) or first final boss
 // (reveal.final-boss, which takes the place of the entrance line).
 func NewBossIntro(key string, seed uint64, first bool) *Scene {
-	label := "⚔ BOSS"
+	label := ui.G.Boss + " BOSS"
 	if key == game.FinalBoss {
-		label = "⚔ FINAL BOSS"
+		label = ui.G.Boss + " FINAL BOSS"
 	}
 	enter := flavor.Story("boss.enter."+key, seed)
 	var pages []page
@@ -126,12 +127,12 @@ func NewBossIntro(key string, seed uint64, first bool) *Scene {
 		said := flavor.StoryBlock(id)
 		pages = append(pages, func(w, _ int) anim.Clip { return typed(said, w) })
 	}
-	paras := []anim.Para{{Text: flavor.BossBlurb(key), Style: muted}}
+	paras := []anim.Para{{Text: flavor.BossBlurb(key), Style: muted()}}
 	if enter != "" {
-		paras = append(paras, anim.Para{Text: enter, Style: voice})
+		paras = append(paras, anim.Para{Text: enter, Style: voice()})
 	}
 	pages = append(pages, func(w, _ int) anim.Clip {
-		return anim.Card{Label: label, Name: flavor.BossName(key), NameStyle: strong,
+		return anim.Card{Label: label, Name: flavor.BossName(key), NameStyle: strong(),
 			Paras: paras, W: min(w, cardWidth), D: cardTime}
 	})
 	return newScene(id, 0, pages...)
@@ -151,12 +152,12 @@ func NewFirstCrash(bytes, title string) *Scene {
 	}
 	return newScene("story.first-crash", 0, func(w, _ int) anim.Clip {
 		speech := typed(said, w)
-		cat := anim.Cheshire{Appear: true, D: catIn, Style: plain}
+		cat := anim.Cheshire{Appear: true, D: catIn, Style: plain()}
 		track := anim.Seq(cat, anim.Hold{Lines: last(cat), D: speech.Len()},
-			anim.Cheshire{D: catOut, KeepGrin: true, Style: plain})
+			anim.Cheshire{D: catOut, KeepGrin: true, Style: plain()})
 		after := []anim.Clip{speech}
 		if dump != nil {
-			after = append(after, blank, anim.Delay(catOut, fadeIn(fit(dump, w), muted)))
+			after = append(after, blank, anim.Delay(catOut, fadeIn(fit(dump, w), muted())))
 		}
 		return anim.Stack(over(track, widest(speech.Lines)), blank, anim.Delay(catIn, anim.Then(after...)))
 	})
@@ -189,7 +190,7 @@ func NewBiome(topic string, from []string) *Scene {
 	intro := lines(flavor.Story("biome.intro."+topic, 0))
 	return newScene("", biomeDwell, func(w, h int) anim.Clip {
 		said := typed(intro, w)
-		parts := []anim.Clip{over(fadeIn(fit([]string{title}, w), strong), widest(said.Lines))}
+		parts := []anim.Clip{over(fadeIn(fit([]string{title}, w), strong()), widest(said.Lines))}
 		if len(intro) > 0 {
 			parts = append(parts, blank, said)
 		}
@@ -223,11 +224,11 @@ func NewFirstDoor() *Scene {
 	return newScene("door.first.inscription", 0, func(w, _ int) anim.Clip {
 		said := fit(line, w)
 		wide := max(widest(said), widest(door))
-		shut := over(fadeIn(door, plain), wide)
-		carve := over(anim.Typewriter{Lines: []string{inscription}, CPS: carveCPS, Style: strong}, wide)
+		shut := over(fadeIn(door, plain()), wide)
+		carve := over(anim.Typewriter{Lines: []string{inscription}, CPS: carveCPS, Style: strong()}, wide)
 		return anim.Stack(
 			anim.Delay(shut.Len(), carve), blank, shut, blank,
-			anim.Delay(shut.Len()+carve.Len(), over(fadeIn(said, voice), wide)),
+			anim.Delay(shut.Len()+carve.Len(), over(fadeIn(said, voice()), wide)),
 		)
 	})
 }
@@ -250,7 +251,7 @@ func NewFirstMerge() *Scene {
 	said := flavor.StoryBlock("story.first-merge")
 	return newScene("story.first-merge", 0, func(w, _ int) anim.Clip {
 		speech := typed(said, w)
-		return anim.Then(over(fadeIn(teaParty, plain), widest(speech.Lines)), blank, speech)
+		return anim.Then(over(fadeIn(teaParty, plain()), widest(speech.Lines)), blank, speech)
 	})
 }
 
@@ -264,7 +265,7 @@ func NewAccepted(line string) *Scene {
 	parts := []anim.Clip{over(anim.Wipe{Lines: banner, D: acWipe}, wide)}
 	if line != "" {
 		parts = append(parts, blank, over(anim.Fade{Lines: []string{line}, From: anim.Gone, To: anim.Normal,
-			D: acFade, Style: muted}, wide))
+			D: acFade, Style: muted()}, wide))
 	}
 	clip := anim.Then(parts...)
 	return newScene("", acDwell, func(int, int) anim.Clip { return clip })
@@ -277,7 +278,7 @@ func NewAccepted(line string) *Scene {
 func NewBeat(id string) *Scene {
 	title, said := []string{flavor.BeatTitle(id)}, flavor.BeatLines(id)
 	return newScene(id, 0, func(w, _ int) anim.Clip {
-		return anim.Then(fadeIn(fit(title, w), strong), blank, typed(said, w))
+		return anim.Then(fadeIn(fit(title, w), strong()), blank, typed(said, w))
 	})
 }
 
@@ -298,7 +299,7 @@ func NewBootSplash(boot, p int) *Scene {
 	motd := lines(flavor.Story("boot.motd", uint64(max(boot, 0))))
 	return newScene("", splashDwell, func(w, _ int) anim.Clip {
 		log := fit(dmesg, w)
-		return anim.Then(over(fadeIn(art("boot"), plain), widest(log)), blank,
-			anim.Reveal{Lines: log, Total: revealTime, Style: muted}, blank, typed(motd, w))
+		return anim.Then(over(fadeIn(art("boot"), plain()), widest(log)), blank,
+			anim.Reveal{Lines: log, Total: revealTime, Style: muted()}, blank, typed(motd, w))
 	})
 }

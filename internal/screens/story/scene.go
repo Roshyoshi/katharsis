@@ -19,6 +19,7 @@ import (
 
 	"katharsis/internal/anim"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 )
 
 // Done is the intent a story screen leaves with. Scene is the seen id to
@@ -124,13 +125,13 @@ func (s *Scene) View(width, height int) string {
 	var f string
 	switch {
 	case !s.p.Done():
-		f = footer("any key", "show all", "esc", "skip")
+		f = ui.Footer(width, "any key", "show all", "esc", "skip")
 	case s.i+1 < len(s.pages):
-		f = footer("any key", "next", "esc", "skip")
+		f = ui.Footer(width, "any key", "next", "esc", "skip")
 	default:
-		f = footer("any key", "continue")
+		f = ui.Footer(width, "any key", "continue")
 	}
-	return strings.Join(place(s.p.Frame(), bw, bh), "\n") + "\n" + ansi.Truncate(f, width, "…")
+	return strings.Join(place(s.p.Frame(), bw, bh), "\n") + "\n" + f
 }
 
 // place centers a block in w×h: the block keeps its own left edge, so
