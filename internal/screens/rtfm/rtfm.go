@@ -26,6 +26,7 @@ import (
 	"katharsis/internal/curriculum"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 )
 
 // Judgeable reports whether the catalog can serve and judge a problem; it
@@ -33,13 +34,11 @@ import (
 // every USACO and CSES reference, as curriculum.TrialFor does.
 type Judgeable = func(catalog.ID) bool
 
-// SPONGE: read this from the trial rules once the engine has them, so the
-//         plan cannot drift from what a trial boot plays.
-
-// integrationDoors is how many blind doors follow a trial's unit (DESIGN.md
-// "Learn mode": 2 blind doors at the same difficulty). The engine owns the
-// real number; this is only what the plan says.
-const integrationDoors = 2
+// integrationDoors is how many blind doors follow a trial's unit: the rooms
+// of rules.Trial's integration biome, its second, which is what a trial
+// boot plays (DESIGN.md "Learn mode": 2 blind doors at the same
+// difficulty).
+var integrationDoors = rules.Trial().Biomes[1].Rooms
 
 // entry is one module as both screens show it. The trial is built once, up
 // front: its unit size and capability appear on every browser row.

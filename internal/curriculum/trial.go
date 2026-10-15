@@ -6,11 +6,14 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 )
 
-// DefaultUnitSize is the number of unit doors in a module trial (DESIGN.md
-// "Learn mode": 4 doors from the module list, Easy -> Hard).
-const DefaultUnitSize = 4
+// DefaultUnitSize is the number of unit doors in a module trial: the rooms
+// of rules.Trial's unit biome, its first (DESIGN.md "Learn mode": 4 doors
+// from the module list, Easy -> Hard). A shorter unit is the engine's to
+// top up, so this is also the size the RTFM screens promise.
+var DefaultUnitSize = rules.Trial().Biomes[0].Rooms
 
 // Trial is the learn-mode challenge for one module: a unit of problems from
 // the module's own lists, then two blind integration doors the engine draws
