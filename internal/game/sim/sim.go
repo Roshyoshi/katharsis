@@ -58,6 +58,21 @@ type Player struct {
 	// the boot.
 	Stake float64
 
+	// Learn, when set, makes the player learn, space its boots and churn
+	// (ml-pipeline §5.2; see Learning). ItemSD is each problem's true
+	// difficulty noise around its rating (sd, fixed per problem by a hash of
+	// its ID). Lambda > 0 (with Learn) picks doors by a softmax of
+	// ln(bytes) + Lambda·ln(p), p its own clear chance misjudged by BeliefSD
+	// in log-odds, instead of the stake pick.
+	Learn            *Learning
+	ItemSD           float64
+	Lambda, BeliefSD float64
+	// DeclineDaemons has the model turn down daemons that cost what it is
+	// short of: chrt cuts the timer (most of its crashes are timeouts) and
+	// nice charges two lives a wrong submit. Without it, it takes whatever
+	// a merge window offers.
+	DeclineDaemons bool
+
 	// Spend has the model buy in merge windows before it commits, by what
 	// the boot needs: an fsck for each life lost below the boot's start, a
 	// dup when out of ducks, a shuf to hold while rooms are left before the
@@ -81,18 +96,19 @@ type Player struct {
 // DefaultPlayer is the model the reports in this package's tests use.
 func DefaultPlayer(rating float64) Player {
 	return Player{
-		Rating:      rating,
-		Median:      30 * time.Minute,
-		Sigma:       0.5,
-		GapScale:    200,
-		WAProb:      0.2,
-		StuckWAs:    1,
-		DuckBoost:   0.35,
-		BlindCost:   25,
-		UpsolveProb: 0.6,
-		Overhead:    time.Minute,
-		Stake:       1,
-		FloorDrop:   250,
+		Rating:         rating,
+		Median:         30 * time.Minute,
+		Sigma:          0.5,
+		GapScale:       200,
+		WAProb:         0.2,
+		StuckWAs:       1,
+		DuckBoost:      0.35,
+		BlindCost:      25,
+		UpsolveProb:    0.6,
+		Overhead:       time.Minute,
+		Stake:          1,
+		FloorDrop:      250,
+		DeclineDaemons: true,
 
 		Spend:        true,
 		RerollMargin: 0.2,
@@ -131,6 +147,9 @@ type Config struct {
 	Meta *game.Meta
 	// Check, when set, sees every engine call; tests hook invariants here.
 	Check func(s *game.State, m *game.Meta, a game.Action, fx []game.Effect, err error)
+	// Days, when above 0, also ends the run that many days in, as a
+	// learning player's year (Player.Learn).
+	Days int
 	// Block is how many boots each entry of Report.Blocks sums, warm-up
 	// included; 0 leaves Blocks empty.
 	Block int
@@ -217,6 +236,9 @@ type Report struct {
 	// commits and the core dump upsolved after it.
 	Banked []int64
 	Blocks []Block
+
+	// Learn sums a learning player's run (Player.Learn), nil otherwise.
+	Learn *LearnStats
 }
 
 // Simulate runs boots with DefaultPlayer(playerRating), climbing prestige.
@@ -240,6 +262,14 @@ func Run(c Config) Report {
 	}
 	rng := rand.New(rand.NewPCG(c.Seed, c.Seed^0x5deece66d))
 	clock := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
+	start := clock
+	var lr *learner
+	var lt tally
+	var ls *LearnStats
+	if c.Player.Learn != nil {
+		lr = newLearner(c.Player.Learn, c.Player.Rating, c.Seed)
+		ls = &LearnStats{}
+	}
 
 	warm, main := newSums(nb), newSums(nb)
 	main.rep.InstalledAt = make([]int, len(c.Player.Install))
@@ -264,7 +294,7 @@ func Run(c Config) Report {
 			main.rep.Errors++
 			break
 		}
-		b := &boot{c: &c, p: c.Player, s: s, m: m, rng: rng, clock: clock, sums: sm, lives0: s.Lives, window: -1}
+		b := &boot{c: &c, p: c.Player, s: s, m: m, rng: rng, clock: clock, sums: sm, lives0: s.Lives, window: -1, learn: lr}
 		b.play()
 
 		rep.Boots++
@@ -300,10 +330,15 @@ func Run(c Config) Report {
 			sm.upCrash += s.Crash.Uptime
 			sm.lost += s.Crash.Lost
 			rep.DumpsLost += s.Crash.DumpLost
+			upsolved := ""
 			if d := m.CoreDump; d != nil && rng.Float64() < c.Player.UpsolveProb {
 				got := game.Upsolve(m, d.Problem, game.Editorial, 45*time.Minute, b.clock.Add(time.Hour))
 				rep.Recovered += got
 				in += got
+				upsolved = "editorial"
+			}
+			if pc := b.crashed; lr != nil && pc != nil {
+				lr.learn(pc.a.Door.Topic, pc.p, lr.outcomeF(pc.a, upsolved), pc.a.Closed)
 			}
 		}
 		for j, name := range c.Player.Install {
@@ -321,7 +356,45 @@ func Run(c Config) Report {
 				main.rep.PrestigeAt[lvl-1] = i + 1
 			}
 		}
-		clock = clock.Add(24 * time.Hour) // a boot a day, so regressions come due
+		cleared := s.Phase == game.PhaseCleared
+		quit := false
+		if lr == nil || !lr.l.Sessions {
+			clock = clock.Add(24 * time.Hour) // a boot a day, so regressions come due
+		} else {
+			clock = b.clock.Add(lr.gap(cleared))
+		}
+		if lr != nil {
+			if i >= c.Warmup {
+				lt.observe(s, m, lr, b.clock)
+				ls.Hours += b.clock.Sub(s.Started).Hours()
+			}
+			earlyRun, crashRun, clearRun := lt.ended(cleared, !cleared && s.Biome == 0)
+			if ch := lr.l.Churn; ch != nil {
+				pat := lt.pattern()
+				churned := lr.rng.Float64() < ch.hazard(!cleared && s.Biome == 0, earlyRun, crashRun, clearRun, b.clock.Sub(s.Started))
+				switch pat {
+				case "LLL":
+					ls.LLL++
+					if churned {
+						ls.LLLChurned++
+					}
+				case "LLW":
+					ls.LLW++
+					if churned {
+						ls.LLWChurned++
+					}
+				}
+				if churned {
+					if lr.rng.Float64() < ch.QuitShare {
+						quit = true
+					} else {
+						ls.Breaks++
+						clock = clock.Add(time.Duration(lr.rng.ExpFloat64() * float64(ch.Break)))
+					}
+				}
+			}
+			ls.Days = b.clock.Sub(start).Hours() / 24
+		}
 		ratings = append(ratings, m.Rating)
 		banked = append(banked, in)
 		if c.Block > 0 {
@@ -342,6 +415,12 @@ func Run(c Config) Report {
 				bl.Offsets[k] = v.Offset
 			}
 		}
+		if quit || c.Days > 0 && clock.Sub(start) > time.Duration(c.Days)*24*time.Hour {
+			if ls != nil {
+				ls.Quit = quit
+			}
+			break
+		}
 	}
 	main.rep.Errors += warm.rep.Errors
 
@@ -353,6 +432,16 @@ func Run(c Config) Report {
 	rep.Ratings = ratings
 	rep.Banked = banked
 	rep.Blocks = blocks
+	if ls != nil {
+		end := start.Add(time.Duration(ls.Days * 24 * float64(time.Hour)))
+		ls.Gain = lr.durable(end)
+		ls.Durable = lr.durable(end.Add(30 * 24 * time.Hour))
+		if lt.n > 0 {
+			ls.RMSE = math.Sqrt(lt.sq / float64(lt.n))
+		}
+		ls.ECE = lt.ece()
+		rep.Learn = ls
+	}
 	return rep
 }
 
@@ -437,6 +526,18 @@ type boot struct {
 	window int
 	budget int64
 	shelf  int
+
+	// learn is the learning player's skill (nil: a fixed rating), and
+	// crashed the door the boot crashed on with its true chance, which
+	// learns only once the upsolve after the boot is known.
+	learn   *learner
+	crashed *pending
+}
+
+// pending is a closed door whose lesson waits on the upsolve.
+type pending struct {
+	a game.Attempt
+	p float64
 }
 
 func (b *boot) step(a game.Action) {
@@ -500,8 +601,9 @@ func (b *boot) play() {
 				b.step(game.Spend{Item: it})
 			case s.Uncommitted > 0:
 				b.step(game.Commit{})
-			case len(s.DaemonOffers) > 0:
-				b.step(game.PickDaemon{Daemon: b.daemon()})
+			case len(s.DaemonOffers) > 0 && b.wantDaemon():
+				d, _ := b.daemon()
+				b.step(game.PickDaemon{Daemon: d})
 			default:
 				b.step(game.LeaveMerge{})
 			}
@@ -512,35 +614,58 @@ func (b *boot) play() {
 	}
 }
 
-// difficulty is d's true difficulty to the model: its rating, or under
-// the floor by a draw fixed per problem (Player.FloorDrop).
+// difficulty is d's true difficulty to the model: its rating (with the
+// item noise, Player.ItemSD), or under the floor by a draw fixed per
+// problem (Player.FloorDrop).
 func (b *boot) difficulty(d game.Door) float64 {
+	r := float64(d.Rating)
+	if b.p.ItemSD > 0 {
+		r += b.p.ItemSD * hashNormal("item:"+string(d.Problem))
+	}
 	if !d.Floor || b.p.FloorDrop <= 0 {
-		return float64(d.Rating)
+		return r
 	}
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(d.Problem))
 	u := (float64(h.Sum64()>>11) + 0.5) / (1 << 53)
-	return float64(d.Rating) + b.p.FloorDrop*math.Log(1-u)
+	return r + b.p.FloorDrop*math.Log(1-u)
+}
+
+// skill is the model's true rating on topic now: its fixed Rating, or what
+// learning has made of it.
+func (b *boot) skill(topic string) float64 {
+	if b.learn == nil {
+		return b.p.Rating
+	}
+	return b.learn.skill(topic, b.clock)
 }
 
 // solveP is the model's own chance on d, which the engine only estimates.
+// A learning model recalls a regression door's problem with its recall,
+// and solves it fresh otherwise.
 func (b *boot) solveP(d game.Door) float64 {
-	eff := b.p.Rating
+	eff := b.skill(d.Topic)
 	if d.TagsHidden() {
 		eff -= b.p.BlindCost
 	}
 	if d.Mystery {
 		eff -= b.p.BlindCost
 	}
-	return game.Expected(eff, b.difficulty(d))
+	p := game.Expected(eff, b.difficulty(d))
+	if b.learn != nil && d.Regression {
+		if seen, ok := b.learn.seen[string(d.Problem)]; ok {
+			r, _ := b.learn.recall(string(d.Problem), b.clock.Sub(seen))
+			p = r + (1-r)*p
+		}
+	}
+	return p
 }
 
 // clearP is the model's own chance of clearing d: solving it at all (with
 // the duck it holds, which a cursed door refuses), within the timer, and
 // (cursed) without a single wrong submit.
 func (b *boot) clearP(d game.Door) float64 {
-	median := float64(b.p.Median) * math.Exp2((b.difficulty(d)-b.p.Rating)/b.p.GapScale)
+	median := float64(b.p.Median) * math.Exp2((b.difficulty(d)-b.skill(d.Topic))/b.p.GapScale)
 	inTime := 0.5 * (1 + math.Erf(math.Log(float64(d.Timer)/median)/(b.p.Sigma*math.Sqrt2)))
 	solve := b.solveP(d)
 	if d.Cursed {
@@ -554,6 +679,9 @@ func (b *boot) clearP(d game.Door) float64 {
 // door is the best P × (bytes + Stake × at stake) on offer (Player.Stake);
 // the first wins ties.
 func (b *boot) door() int {
+	if b.p.Lambda > 0 && b.learn != nil {
+		return b.softDoor()
+	}
 	stake := b.p.Stake * b.atStake()
 	best, bi := -1.0, 0
 	for i, d := range b.s.Doors {
@@ -562,6 +690,31 @@ func (b *boot) door() int {
 		}
 	}
 	return bi
+}
+
+// softDoor is ml-pipeline §5.2's choice: a softmax over the doors of
+// ln(bytes) + Lambda·ln(p), p the model's clear chance misjudged by
+// BeliefSD in log-odds. Lambda 1 without noise is bytes × P.
+func (b *boot) softDoor() int {
+	w := make([]float64, len(b.s.Doors))
+	top, sum := math.Inf(-1), 0.0
+	for i, d := range b.s.Doors {
+		p := min(max(b.clearP(d), 1e-6), 1-1e-6)
+		p = 1 / (1 + math.Exp(-(math.Log(p/(1-p)) + b.p.BeliefSD*b.learn.rng.NormFloat64())))
+		w[i] = math.Log(float64(d.Bytes)) + b.p.Lambda*math.Log(p)
+		top = max(top, w[i])
+	}
+	for i := range w {
+		w[i] = math.Exp(w[i] - top)
+		sum += w[i]
+	}
+	u := b.learn.rng.Float64() * sum
+	for i, x := range w {
+		if u -= x; u < 0 {
+			return i
+		}
+	}
+	return len(w) - 1
 }
 
 // atStake is what crashing on the door about to open forfeits, as the
@@ -664,14 +817,28 @@ func (b *boot) upgrade() game.Upgrade {
 	return offers[0]
 }
 
-func (b *boot) daemon() game.Daemon {
+// wantDaemon reports whether the model takes one of the window's daemons.
+func (b *boot) wantDaemon() bool {
+	_, ok := b.daemon()
+	return ok
+}
+
+// daemon is the model's pick of the window's daemons, false to take none
+// (Player.DeclineDaemons).
+func (b *boot) daemon() (game.Daemon, bool) {
 	// chrt last: most of the model's crashes are timeouts.
 	for _, d := range []game.Daemon{game.Fork, game.Kexec, game.DevRandom, game.Cron, game.Strace, game.Nice, game.Chrt} {
+		if b.p.DeclineDaemons && (d == game.Nice || d == game.Chrt) {
+			continue
+		}
 		if slices.Contains(b.s.DaemonOffers, d) {
-			return d
+			return d, true
 		}
 	}
-	return b.s.DaemonOffers[0]
+	if b.p.DeclineDaemons {
+		return "", false
+	}
+	return b.s.DaemonOffers[0], true
 }
 
 type event struct {
@@ -689,8 +856,10 @@ func (b *boot) attempt(biome int) {
 	}
 	a := s.Current
 	d, opened, timer := a.Door, a.Opened, a.Door.Timer
-	capable := b.rng.Float64() < b.solveP(d)
-	median := float64(b.p.Median) * math.Exp2((b.difficulty(d)-b.p.Rating)/b.p.GapScale)
+	pStar := b.solveP(d)
+	defer b.taught(d, pStar)
+	capable := b.rng.Float64() < pStar
+	median := float64(b.p.Median) * math.Exp2((b.difficulty(d)-b.skill(d.Topic))/b.p.GapScale)
 	t := b.lognormal(median)
 
 	// Stuck with a free swap: take it early.
