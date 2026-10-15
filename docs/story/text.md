@@ -255,7 +255,7 @@ a grin without a cat · {bytes} still on {title}
 ```
 
 ### grub.subtitle.regressions
-where: `regressions due: N` (`grub.go:217`); also the note of a due regression past the stages `regression.stage.N` covers (`regressionNote`, `grub.go:704`) · when: every · pick: fixed
+where: `regressions due: N` (`grub.go:218`); also the note of a due regression past the stages `regression.stage.N` covers (`regressionNote`, `grub.go:729`) · when: every · pick: fixed
 ```text
 the White Queen remembers the week after next
 ```
@@ -636,9 +636,10 @@ The entrance line goes on the boss door card under the spaced name
 (`./internal/screens/boot/doors.go:473`) and on the boss card scene
 (`story.NewBossIntro`, `./internal/screens/story/scenes.go:119`). The
 defeat line goes on the cleared screen for the boot's last boss
-(`./internal/screens/boot/cleared.go:115`); a mid-boot boss's defeat has no
-slot yet, and the upgrade pick after it is the place. The pick is a pool
-for both.
+(`./internal/screens/boot/cleared.go:116`), and over the upgrade pick a
+mid-boot boss earns, which is always a merge window's: a boss biome has one
+room (`bossDefeat`, `./internal/screens/boot/merge.go:219`). No built-in
+preset has a mid-boot boss. The pick is a pool for both.
 
 ### boss.enter.off-by-one
 uses: G12, G13 (fragment)
@@ -758,7 +759,7 @@ rc1 is at six o'clock. So is rc2. Time stopped at tea.
 ```
 
 ### merge.full
-where: new: the merge window's daemon section when the boot holds `MaxDaemons` and the window offers none (`sections`, `./internal/screens/boot/merge.go:237`). There is no swap (`./internal/game/engine.go:653`), so the line promises none · when: every · pick: fixed · uses: A19; the punchline answers `story.first-merge`'s "There's plenty of room."
+where: the merge window's daemon section when the boot holds `MaxDaemons` and the window offers none, under the daemons held, where the offers would be (`daemonsFull`, `./internal/screens/boot/merge.go:202`, `:310`). There is no swap (`./internal/game/engine.go:653`), so the line promises none · when: every · pick: fixed · uses: A19; the punchline answers `story.first-merge`'s "There's plenty of room."
 ```text
 "No room! No room!" Every daemon seat is taken. For once, it's true.
 ```
@@ -1021,7 +1022,7 @@ Twice as fast as that! The Red Queen nods, once. Free upgrade.
 ## Regressions (the White Queen)
 
 ### regression.door
-where: new: the dmesg strip as a regression door opens, its `↺ regression` part with this line (`doorMods`, `./internal/screens/boot/dmesg.go:413`). The card already says how long ago it crashed you, so the lines don't · when: every · pick: pool · uses: G18, G17 (allusion), White Queen's jam rule (ch. V, paraphrase). No line asks for the solve on a day (retention GR2)
+where: the dmesg strip as a regression door opens, its `↺ regression` part with this line, ahead of a blind or mystery door's (`doorMods`, `./internal/screens/boot/dmesg.go:419`). The card already says how long ago it crashed you, so the lines don't · when: every · pick: pool · uses: G18, G17 (allusion), White Queen's jam rule (ch. V, paraphrase). No line asks for the solve on a day (retention GR2)
 ```text
 "You again?" says the door. It remembers you. You remember it, a bit.
 "It's a poor sort of memory that only works backwards." Forwards, now.
@@ -1030,7 +1031,7 @@ Same door, blank file. Since last time, one of you learned something.
 ```
 
 ### regression.stage.1
-where: GRUB's regressions submenu, the note under a due regression at stage 1 (`regressionNote`, `./internal/screens/meta/grub.go:704`); `{days}` is that stage's delay, `Regression.Days[0]` (3 in the standard rules) · pick: fixed · uses: G19
+where: GRUB's regressions submenu, the note under a due regression at stage 1 (`regressionNote`, `./internal/screens/meta/grub.go:729`); `{days}` is that stage's delay, `Regression.Days[0]` (3 in the standard rules) · pick: fixed · uses: G19
 ```text
 "I haven't pricked it yet, but I soon shall—oh, oh, oh!" Day {days}.
 ```
@@ -1051,15 +1052,15 @@ Solved, blank file and all. The White Queen forgets it, backwards.
 
 ## RTFM (the Mock Turtle's school)
 
-None of these is drawn yet. The browser's header stays the guide's
-license line (`manTitle`, `./internal/screens/rtfm/browser.go:424`). The
-page's tail, after the module list and before `COLOPHON`
-(`./internal/screens/rtfm/browser.go:610`), is where a man page keeps its
-odd sections, so `help.vocab`, `rtfm.syllabus`, `white-knight.song` and
-`rtfm.underflow` go there.
+The browser's header stays the guide's license line (`manTitle`,
+`./internal/screens/rtfm/browser.go:454`). The page's tail, after the module
+list and before `COLOPHON`, is where a man page keeps its odd sections, so
+`help.vocab`, `rtfm.syllabus`, `white-knight.song` and `rtfm.underflow`
+go there, as `WORDS`, `CURRICULUM`, `EXAMPLES` and `BUGS` (`storyTail`,
+`./internal/screens/rtfm/browser.go:664`).
 
 ### rtfm.module.intro
-where: new: module page, a faint line after the NAME section's description (`./internal/screens/rtfm/module.go:118`) · when: every · pick: pool, seeded by module · uses: A40, A42 (allusion), A44 (*parody*: the Gryphon's line with the module name added)
+where: module page, a faint line after the NAME section's description, `{module}` the title (`introLine`, `./internal/screens/rtfm/module.go:162`) · when: every · pick: pool, seeded by module · uses: A40, A42 (allusion), A44 (*parody*: the Gryphon's line with the module name added)
 ```text
 "{module}," sighs the Mock Turtle. "We did it at sea."
 {module}: a branch of Arithmetic, the Gryphon insists.
@@ -1074,19 +1075,19 @@ where: new: a flash as a trial starts (`startTrial`, `./internal/app/learn.go:88
 ```
 
 ### rtfm.trial.pass
-where: new: the cleared screen of a trial that granted a capability (`TrialState.Granted`), in place of `cleared.<p>` (`./internal/screens/boot/cleared.go:117`) · pick: fixed
+where: the cleared screen of a trial that granted a capability (`TrialState.Granted`), in place of `cleared.<p>`; `{biome}` is the trial's integration topic, the one the capability unlocks (`trialLine`, `./internal/screens/boot/cleared.go:221`) · pick: fixed
 ```text
 The Gryphon claps: {cap}. {biome} joins routes.
 ```
 
 ### rtfm.trial.fail
-where: new: the crash screen of a trial, in place of the epitaph (`./internal/screens/boot/crash.go:426`) · pick: fixed · uses: A46
+where: the crash screen of a trial, in place of the epitaph, whatever ended it (`epitaph`, `./internal/screens/boot/crash.go:433`) · pick: fixed · uses: A46
 ```text
 "That's enough about lessons," says the Gryphon. Try a boot instead.
 ```
 
 ### help.vocab
-where: new: the RTFM page's tail, a `WORDS` section first: the in-game manual is the closest thing to `man katharsis` · pick: block · uses: G25, G26
+where: the RTFM page's tail, a `WORDS` section first: the in-game manual is the closest thing to `man katharsis` · pick: block · uses: G25, G26
 ```text
 "When I use a word," Humpty Dumpty said in rather a scornful tone,
 "it means just what I choose it to mean—neither more nor less."
@@ -1096,7 +1097,7 @@ pay it extra."
 ```
 
 ### rtfm.syllabus
-where: new: the RTFM page's tail, a `CURRICULUM` section · pick: block · uses: Mock Turtle's subjects, ch. IX
+where: the RTFM page's tail, a `CURRICULUM` section · pick: block · uses: Mock Turtle's subjects, ch. IX
 ```text
 Reeling and Writhing .......... fast I/O
 Ambition ...................... addition, and its overflow
@@ -1111,7 +1112,7 @@ Laughing and Grief ............ Latin and Greek: strings
 ```
 
 ### white-knight.song
-where: new: the RTFM page's tail, an `EXAMPLES` section: the prologue's man page had none, and this is the only example on offer · pick: block · uses: G31 and the rest of the Knight's speech (ch. VIII: "The name really is 'The Aged Aged Man'", "The song is called 'Ways and Means'", "The song really is 'A-sitting On A Gate'")
+where: the RTFM page's tail, an `EXAMPLES` section: the prologue's man page had none, and this is the only example on offer · pick: block · uses: G31 and the rest of the Knight's speech (ch. VIII: "The name really is 'The Aged Aged Man'", "The song is called 'Ways and Means'", "The song really is 'A-sitting On A Gate'")
 ```text
 The White Knight explains his song, K&R-style:
   song          "A-sitting On A Gate"   what the song really is
@@ -1122,7 +1123,7 @@ The White Knight explains his song, K&R-style:
 ```
 
 ### rtfm.underflow
-where: new: the RTFM page's tail, a `BUGS` section, last before `COLOPHON` · pick: fixed · uses: A45
+where: the RTFM page's tail, a `BUGS` section, last before `COLOPHON` · pick: fixed · uses: A45
 ```text
 "And how did you manage on the twelfth?" Unsigned: 4294967295 hours.
 ```
