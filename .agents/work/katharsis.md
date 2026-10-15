@@ -177,7 +177,11 @@ S8 consolidation (after all code QA lands; from the cross-package report):
      (qa/chaos/oracle.sh); single-player honor system, not fixed
 
 ## Now
-Merged since last: S9 part 2 (scenes at their moments via app/story.go: splash, prologue,
+Merged since last: D end-of-boot (game.Debrief + State.AtStart; crash/clear debrief: kept,
+lever, next; double-r guard; lost dump headline; goal bars; 1.5x independent upsolve;
+GRUB order, subtitles, /proc/story, nightly best, regressions capped at 3;
+katharsis motd; settings.toml + --session-budget; git log r replays a seed;
+Carroll + SICP on the c credits page), S9 part 2 (scenes at their moments via app/story.go: splash, prologue,
 first door, ACCEPTED on AC, first merge, biome drops, boss cards, the Cat 1.5 s
 after a first crash; never over an open door; esc drops the queue; --motion
 full|reduced, --fps; story styles on ui; Carroll + SICP in the RTFM COLOPHON;
@@ -221,8 +225,7 @@ and :Debug; samples clang ASan on libstdc++ + _GLIBCXX_ASSERTIONS; cin 1e6 ints
 binary 28.4 MB). Main tests green (judge TLE timing flaked at load 23; passed
 alone); nix build ok.
 Running (workspaces): s10-engine (RT0 now treats the CF 800 floor as a clamp:
-an "800" problem is <= 800, per the user), d-end (debrief, core dump, goal bar,
-presets, session nudge, motd, nightly, GRUB story page, end-of-boot text), d-boot
+an "800" problem is <= 800, per the user), d-boot
 (dmesg strip, onboarding lines, :Submit! and R R, statement-first pane, door
 readiness, D36, in-boot text)  Agents keep .agents/work/progress-<ws>.md for
 restarts (spamming esc stops every agent).
@@ -269,5 +272,10 @@ Run with the unslop pass (package by package), then core-loop QA, then alpha.
 - top's Solves meter tells parts apart by colour only; expanded git log
   rating not in its own column (E18); real 4-line GRUB art fits 80x24 only
   with <= 11 entries.
+- Engine hooks for the final pass: boot/debrief.go easeItems (list State.Ease
+  with Why, "declined"), the comeback boot on GRUB's status row, register
+  short and patch as built-in presets (the end screens offer s/p only then).
+- D end leftovers: RT1 "RTFM as the next step after 2+ crashes on a topic in
+  14 days"; D36 predicted-vs-observed in top; a real-binary smoke run.
 - When deps change: recompute vendorHash with a fake hash (nix reuses a
   cached vendor dir and hides a stale hash).
