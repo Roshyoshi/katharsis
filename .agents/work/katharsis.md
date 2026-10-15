@@ -171,7 +171,9 @@ S8 consolidation (after all code QA lands; from the cross-package report):
      (qa/chaos/oracle.sh); single-player honor system, not fixed
 
 ## Now
-Merged since last: R1 (14 robustness items: store lock, unwritable store, W1 submit
+Merged since last: A2 (D22, D24, D25 spend + apt shop of 19 packages / 10,272 B,
+D31 progress + quit confirm, Attempt.Biome, Verdict type, RT2/RT3 sim tests; 4
+small conflicts with R1/S9 resolved by hand; qa/chaos Verdict fix), R1 (14 robustness items: store lock, unwritable store, W1 submit
 snapshot + resume re-judge, editor shell line, orphan panes, idle saves, guide
 stall cut; one hud conflict with the GCC change resolved), S9 part 1 (flavor story table + RT6 pacing, Meta.Seen, internal/anim,
 screens/story scenes + cmd/demo-story incl. the ACCEPTED beat; Part 2 map and
@@ -182,7 +184,7 @@ and :Debug; samples clang ASan on libstdc++ + _GLIBCXX_ASSERTIONS; cin 1e6 ints
 38 ms vs 967 ms on libc++; clang 21 out; package closure 2013 -> 1989 MiB;
 binary 28.4 MB). Main tests green (judge TLE timing flaked at load 23; passed
 alone); nix build ok.
-Running (workspaces): a2-economy, audio, b-judge, b-content (content/web, one topic
+Running (workspaces): audio, b-judge, b-content (content/web, one topic
 table, DivisionBand, CF cache-only start, deps tidy), submit-busy (a :Submit while
 one judges is refused, so a failing pass is always charged; chaos r01/r04/r05/
 r09/r13b scripts)
@@ -196,6 +198,12 @@ bits/stdc++.h (-0.8 s per g++ build, 175 MB .gch) and libc++ hardening for the
 clang fallback.
 Final QA must make the tmux/lldb session tests and the judge timing tests
 robust under load (both flaked at load ~20, pass alone).
+A2 leftovers: RT0 root cause is the pool floor (94-98% of a 1000 player's Userland
+doors are off target; 63% of first boots crash before a merge) -> S10 engine; D22
+fails for the 1000 model at p2-3 (0.57, 0.55) -> S10 engine; sim always takes
+daemons -> S10 engine (ML3); RT3 goal bar + ETA, upsolve-pays-for line -> D;
+install event -> ML2; linked libs covariate -> ML4; GRUB cursor reset after
+install, fork text "(normally 3)" with tmux -> C part 2.
 Next: merge A2; then wave 1: S10 lane (RT0 first,
 ML1 -> ML3 -> ML4/ML5 -> ML6 code -> ML7-ML10; ML2 + D37 in the store lane;
 ML11 after B), C part 2; wave 2: D (+story text, D36, retention UI), S9 part 2;
