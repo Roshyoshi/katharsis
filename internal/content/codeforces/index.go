@@ -52,10 +52,18 @@ type index struct {
 	Entries  []entry `json:"entries"`
 }
 
-// schema changes whenever entry, text.bin, the derivation rules or what
-// Fetch writes into a problem dir change, so a stale cache is rebuilt
-// rather than misread.
-const schema = 2 // 2: catalog.Problem.AnyCase
+// schema changes whenever entry, text.bin or the derivation rules change,
+// so a stale index is rebuilt rather than misread. What Fetch writes into a
+// problem dir has its own number (dirSchema), so a rule change does not
+// throw away hundreds of MB of downloaded tests.
+//
+//	2: catalog.Problem.AnyCase
+//	3: multi-answer problems need a checker, checker or not in the
+//	   dataset; multiRE and caseRE rewritten; Russian-only statements
+//	   skipped
+//	4: a dataset checker is a float checker only if no phrase, loose ones
+//	   in the description included, says the answer may vary
+const schema = 4
 
 func indexKey(l layout) string {
 	b, _ := json.Marshal(l) // strings, ints and a string-keyed map cannot fail
@@ -86,6 +94,7 @@ const (
 	skipUnrated       = "unrated"
 	skipJoke          = "april-fools"
 	skipNoStatement   = "no-statement"
+	skipRussian       = "russian"       // the statement is in Russian only
 	skipNoTests       = "no-tests"      // official tests truncated, none generated
 	skipTestsTooBig   = "tests-too-big" // generated tests over maxGenFile
 	skipTestsMissing  = "tests-missing" // a fetch found the tests absent
@@ -142,7 +151,7 @@ func buildIndex(l layout, splits []split, gen map[int]int64) (*index, []byte, er
 				return nil, nil, err
 			}
 			e.Text = [2]int64{off, int64(blob.Len()) - off}
-			e.judgeable(r.Description != "")
+			e.judgeable(r.Description)
 			idx.Entries = append(idx.Entries, e)
 		}
 	}
@@ -191,7 +200,7 @@ func newEntry(r tableRow) (entry, bool) {
 		GenTests:    int(r.GeneratedTests),
 	}
 	p := &e.Problem
-	p.ID = catalog.ID("cf:" + strconv.Itoa(cid) + idxStr)
+	p.ID = catalog.NewID(catalog.CF, strconv.Itoa(cid)+idxStr)
 	p.Source = catalog.CF
 	p.Title = strings.TrimSpace(r.Title)
 	p.URL = fmt.Sprintf("https://codeforces.com/contest/%d/problem/%s", cid, idxStr)
@@ -218,11 +227,19 @@ func newEntry(r tableRow) (entry, bool) {
 	p.FloatTolerance = floatTolerance(r.OutputFormat, r.Description, r.Note)
 	e.Multi = multiAnswer(r.OutputFormat, r.Description)
 	p.AnyCase = caseInsensitive(r.OutputFormat, r.Note)
-	// A checker written only to compare reals within the stated error is
-	// the judge's built-in float checker; 240 of the 1780 checkers at rev
-	// are that. Anything else (several valid answers, or a reason the
-	// statement does not spell out) needs the checker.
-	p.NeedsChecker = e.HasChecker && (p.FloatTolerance == 0 || e.Multi)
+	// Several valid answers need a checker whether or not the dataset
+	// wrote one: cf:233A has none, and its reference output is one
+	// permutation of many, so another valid one was WA. A checker written
+	// only to compare reals within the stated error is the judge's
+	// built-in float checker; 240 of the 1780 checkers at rev are that.
+	// Any other checker exists for a reason the statement does not spell
+	// out, and is needed. A checker is taken for a float checker only when
+	// no phrase, however loose, says the answer may vary: cf:306D asks to
+	// "draw any such polygon" in its description, with a checker and a
+	// tolerance. (No multi-answer statement at rev is explained by its
+	// float tolerance alone: the 9 with both say "print any".)
+	p.NeedsChecker = e.Multi ||
+		e.HasChecker && (p.FloatTolerance == 0 || maybeMultiAnswer(r.OutputFormat, r.Description))
 	p.HasEditorial = strings.TrimSpace(r.Editorial) != ""
 	return e, true
 }
@@ -245,8 +262,10 @@ func contestLabel(name, idx string) string {
 // unrated problem is not offered: the 257 at rev are mostly April Fools,
 // Q#, Kotlin Heroes and VK Cup engine rounds, where no estimate would be
 // honest. Rated April Fools problems are riddles, not algorithms, and are
-// left out too.
-func (e *entry) judgeable(hasStatement bool) {
+// left out too. So are statements in Russian only (VK Cup and Technocup
+// mirrors such as 646A and 1769B1; 20 were judgeable at rev): the door
+// would be unreadable.
+func (e *entry) judgeable(description string) {
 	reason := ""
 	switch {
 	case !e.Executable:
@@ -261,8 +280,10 @@ func (e *entry) judgeable(hasStatement bool) {
 		reason = skipUnrated
 	case strings.Contains(strings.ToLower(e.Name), "april fools"):
 		reason = skipJoke
-	case !hasStatement:
+	case strings.TrimSpace(description) == "":
 		reason = skipNoStatement
+	case russian(description):
+		reason = skipRussian
 	case e.Complete && e.VFile != "":
 	case e.GenTests == 0 || e.GenBytes == 0:
 		reason = skipNoTests

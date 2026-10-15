@@ -16,6 +16,7 @@ import (
 
 	"katharsis/internal/judge"
 	"katharsis/internal/problem"
+	"katharsis/internal/units"
 )
 
 var (
@@ -223,14 +224,14 @@ func TestRun(t *testing.T) {
 				}
 				// deref.cpp:9 is the store; a line number proves the
 				// binary's dSYM was found.
-				if !strings.Contains(r.Reason, "AddressSanitizer: SEGV") || !strings.Contains(r.Reason, "deref.cpp:9") {
+				if r.Reason != "SEGV at deref.cpp:9" {
 					t.Errorf("Reason = %q, want the symbolized ASan SEGV summary at deref.cpp:9", r.Reason)
 				}
 			}},
 		{name: "RE heap overflow", src: "heapoob.cpp", in: "10\n", profs: withHardened(samples), want: judge.RE,
 			check: func(t *testing.T, p judge.Profile, r judge.Result) {
 				if sanitizes(p, "address") {
-					if !strings.Contains(r.Reason, "heap-buffer-overflow") || !strings.Contains(r.Reason, "heapoob.cpp:9") {
+					if r.Reason != "heap-buffer-overflow at heapoob.cpp:9" {
 						t.Errorf("Reason = %q, want the ASan heap-buffer-overflow summary at heapoob.cpp:9", r.Reason)
 					}
 					return
@@ -242,8 +243,8 @@ func TestRun(t *testing.T) {
 			}},
 		{name: "UB signed overflow", src: "overflow.cpp", in: "2147483647\n", profs: withHardened(samples), want: judge.RE,
 			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
-				if !strings.HasPrefix(r.Reason, "UB: signed integer overflow") {
-					t.Errorf("Reason = %q, want UB: signed integer overflow ...", r.Reason)
+				if !strings.HasPrefix(r.Reason, "signed integer overflow") || !strings.HasSuffix(r.Reason, " at overflow.cpp:7") {
+					t.Errorf("Reason = %q, want signed integer overflow ... at overflow.cpp:7", r.Reason)
 				}
 			}},
 		{name: "RE exit status", src: "exit3.cpp", out: "3\n", profs: both, want: judge.RE,
@@ -258,8 +259,14 @@ func TestRun(t *testing.T) {
 				if !strings.HasPrefix(r.Reason, "cpu ") {
 					t.Errorf("Reason = %q, want cpu ...", r.Reason)
 				}
-				if kill := 2*budget + 500*time.Millisecond; r.Wall > kill+time.Second {
-					t.Errorf("Wall = %v, want killed near %v", r.Wall, kill)
+				// Killed on CPU time: at the budget under a sample
+				// profile, at twice it under the judged one.
+				kill := 2 * budget
+				if p.Slack > 1 {
+					kill = budget
+				}
+				if r.Wall > kill+time.Second {
+					t.Errorf("Wall = %v, want killed near %v of CPU", r.Wall, kill)
 				}
 			}},
 		// burn.cpp uses 500 ms of CPU: over 400 ms, within any sanitizer slack.
@@ -302,12 +309,74 @@ func TestRun(t *testing.T) {
 				}
 			}},
 		{name: "AC file io", src: "fileio.cpp", in: "1 2\n", out: "3\n", profs: both, want: judge.AC},
-		{name: "WA file io without out", src: "fileio_noout.cpp", in: "1 2\n", out: "3\n", profs: both, want: judge.WA,
+		// The answer is judged, not the I/O style: reading x.in and
+		// printing to stdout is still an answer.
+		{name: "AC file io answering on stdout", src: "fileio_noout.cpp", in: "1 2\n", out: "3\n", profs: both, want: judge.AC},
+		{name: "WA file io answering nowhere", src: "fileio_silent.cpp", in: "1 2\n", out: "3\n", profs: full, want: judge.WA,
 			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
 				if r.Reason != "no x.out written" {
 					t.Errorf("Reason = %q, want %q", r.Reason, "no x.out written")
 				}
 			}},
+		// usaco:567 with ifstream fin("paint.in") was WA 0/10.
+		{name: "AC file io with fstreams", src: "fileio_fstream.cpp", in: "1 2\n", out: "3\n", profs: both, want: judge.AC},
+		{name: "AC file io named at run time, problem stem known", src: "fileio_hidden.cpp", in: "1 2\n", out: "3\n",
+			lim: judge.Limits{FileIO: "x"}, profs: full, want: judge.AC},
+		{name: "RE file io named at run time, stem unknown", src: "fileio_hidden.cpp", in: "1 2\n", out: "3\n",
+			profs: full, want: judge.RE},
+		{name: "AC stdio program on a file io problem", src: "ab.cpp", in: "1 2\n", out: "3\n",
+			lim: judge.Limits{FileIO: "x"}, profs: full, want: judge.AC},
+		{name: "RE division by zero", src: "divzero.cpp", in: "1 0\n", profs: withHardened(both), want: judge.RE,
+			check: func(t *testing.T, p judge.Profile, r judge.Result) {
+				want := "division by zero at divzero.cpp:7"
+				if p.Name == judge.Full.Name {
+					want = "integer division by zero" // a trap: no runtime to say where
+				}
+				if r.Reason != want {
+					t.Errorf("Reason = %q, want %q", r.Reason, want)
+				}
+			}},
+		{name: "RE uncaught exception", src: "throw.cpp", in: "1\n", profs: both, want: judge.RE,
+			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
+				if r.Reason != "uncaught std::runtime_error: boom" {
+					t.Errorf("Reason = %q, want the exception's type and what()", r.Reason)
+				}
+			}},
+		{name: "RE assert", src: "assert.cpp", in: "7\n", profs: both, want: judge.RE,
+			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
+				if r.Reason != "assertion x != 7 failed at assert.cpp:8" {
+					t.Errorf("Reason = %q, want the assertion and its line", r.Reason)
+				}
+			}},
+		{name: "RE report after debug output", src: "noisy_oob.cpp", in: "10\n", profs: samples, want: judge.RE,
+			check: func(t *testing.T, p judge.Profile, r judge.Result) {
+				if sanitizes(p, "address") && r.Reason != "heap-buffer-overflow at noisy_oob.cpp:11" {
+					t.Errorf("Reason = %q, want ASan's report from after 64K of stderr", r.Reason)
+				}
+				if !strings.Contains(r.Stderr, "of stderr cut") {
+					t.Errorf("Stderr is %d bytes with no cut; want head and tail", len(r.Stderr))
+				}
+			}},
+		{name: "AC forked child left running", src: "fork.cpp", in: "1 2\n", out: "3\n", profs: full, want: judge.AC,
+			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
+				if r.Wall > 500*time.Millisecond {
+					t.Errorf("Wall = %v, want the run over when the program exits", r.Wall)
+				}
+				// The child is in the run's process group, killed with it.
+				if out, _ := exec.Command("pgrep", "-f", "sleep 31.41592").Output(); len(out) > 0 {
+					_ = exec.Command("pkill", "-f", "sleep 31.41592").Run()
+					t.Errorf("forked child still running after Run returned (pids %q)", out)
+				}
+			}},
+		{name: "MLE static data", src: "static.cpp", in: "5 5\n", out: "1\n", profs: full, want: judge.MLE,
+			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
+				if r.Reason != "static data 1.2G > 256M" {
+					t.Errorf("Reason = %q, want the static size against the limit", r.Reason)
+				}
+			}},
+		{name: "AC static data within the limit", src: "static.cpp", in: "5 5\n", out: "1\n",
+			lim: judge.Limits{Mem: 2 << 30}, profs: full, want: judge.AC},
+		{name: "AC GNU-isms", src: "gnu.cpp", in: "12 18\n", out: "6 10 12\n", profs: withHardened(both), want: judge.AC},
 		{name: "AC deep recursion", src: "recurse.cpp", in: "1000000\n", out: "1000000\n", profs: both, want: judge.AC},
 		{name: "RE deep recursion on 8M stack", src: "recurse.cpp", in: "1000000\n", out: "1000000\n",
 			profs: []judge.Profile{defaultStack(sample), defaultStack(judge.Full)}, want: judge.RE,
@@ -321,7 +390,7 @@ func TestRun(t *testing.T) {
 		{name: "MLE on peak", src: "mle.cpp", in: "1\n", out: "ok\n", lim: judge.Limits{Mem: 256 << 20}, profs: full, want: judge.MLE,
 			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
 				if !strings.HasPrefix(r.Reason, "peak ") || r.MaxRSS < 300<<20 {
-					t.Errorf("Reason = %q, MaxRSS = %s; want peak over 300M", r.Reason, judge.Bytes(r.MaxRSS))
+					t.Errorf("Reason = %q, MaxRSS = %s; want peak over 300M", r.Reason, units.Mem(r.MaxRSS))
 				}
 			}},
 		{name: "MLE runaway killed", src: "hog.cpp", lim: judge.Limits{Mem: 64 << 20}, profs: full, want: judge.MLE,
@@ -332,7 +401,7 @@ func TestRun(t *testing.T) {
 				// The cap is 80M; a poll every 20 ms lets it overshoot by
 				// a chunk or two, not run on to the fixture's 2G.
 				if r.MaxRSS > 512<<20 {
-					t.Errorf("MaxRSS = %s, want the kill near 80M", judge.Bytes(r.MaxRSS))
+					t.Errorf("MaxRSS = %s, want the kill near 80M", units.Mem(r.MaxRSS))
 				}
 			}},
 		{name: "TLE under a stricter Scale", src: "burn.cpp", in: "1 2\n", out: "3\n",
@@ -386,7 +455,7 @@ func TestRun(t *testing.T) {
 					t.Fatalf("Run: %v", err)
 				}
 				t.Logf("%s %q cpu=%v wall=%v rss=%s", r.Verdict, r.Reason,
-					r.CPU.Round(time.Millisecond), r.Wall.Round(time.Millisecond), judge.Bytes(r.MaxRSS))
+					r.CPU.Round(time.Millisecond), r.Wall.Round(time.Millisecond), units.Mem(r.MaxRSS))
 				want := tc.want
 				if tc.wantFor != nil {
 					want = tc.wantFor(p)

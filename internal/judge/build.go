@@ -4,14 +4,19 @@ package judge
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/sha256"
+	"embed"
 	"encoding/hex"
 	"errors"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -35,6 +40,13 @@ type Profile struct {
 // 1e6-deep recursion, which judges with large stacks accept.
 const stackFlag = "-Wl,-stack_size,0x20000000"
 
+// divTrap makes integer division and modulo by zero crash, as they do on
+// the x86-64 judges (SIGFPE). arm64's sdiv returns 0 instead, so without it
+// a missed zero check passes here and fails there. Trap mode needs no
+// sanitizer runtime and costs a compare per division; crashReason names
+// the trap.
+var divTrap = []string{"-fsanitize=integer-divide-by-zero", "-fsanitize-trap=integer-divide-by-zero"}
+
 var (
 	// Samples: catch UB and memory errors early; timing is not trusted.
 	Samples = Profile{
@@ -50,19 +62,28 @@ var (
 	// Full: what the time limit is checked against.
 	Full = Profile{
 		Name:  "O2",
-		Flags: []string{"-std=gnu++23", "-O2", stackFlag},
+		Flags: slices.Concat([]string{"-std=gnu++23", "-O2"}, divTrap, []string{stackFlag}),
 		Slack: 1,
 	}
 	// Debug: what :Debug runs under lldb. -O0 keeps every variable and line
 	// steppable; no sanitizers, so the program behaves like the judged one
-	// short of optimization; the big stack so deep recursion reaches the bug
-	// instead of overflowing first.
+	// short of optimization (the division trap included, which also stops
+	// lldb on the faulting line); the big stack so deep recursion reaches
+	// the bug instead of overflowing first.
 	Debug = Profile{
 		Name:  "debug",
-		Flags: []string{"-std=gnu++23", "-O0", "-g", "-fno-omit-frame-pointer", stackFlag},
+		Flags: slices.Concat([]string{"-std=gnu++23", "-O0", "-g", "-fno-omit-frame-pointer"}, divTrap, []string{stackFlag}),
 		Slack: 1,
 	}
 )
+
+// trapsDivision reports whether p's builds trap on integer division by
+// zero (divTrap) rather than report it through UBSan's runtime.
+func (p Profile) trapsDivision() bool {
+	return slices.ContainsFunc(p.Flags, func(f string) bool {
+		return strings.HasPrefix(f, "-fsanitize-trap=") && strings.Contains(f, "integer-divide-by-zero")
+	})
+}
 
 type Build struct {
 	Binary   string
@@ -78,6 +99,11 @@ var Compiler = "clang++"
 
 // Compile builds source with p into a content-addressed cache, so rejudging
 // an unchanged file skips the compiler.
+//
+// Every build, whatever the profile, also gets what contest code expects
+// of a judge's g++ (see commonFlags): ONLINE_JUDGE defined, so a template's
+// "#ifndef ONLINE_JUDGE freopen(\"input.txt\")" stays out; <bits/stdc++.h>,
+// which libc++ lacks; and libstdc++'s std::__gcd and std::__lg.
 func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	src, err := os.ReadFile(source)
 	if err != nil {
@@ -87,13 +113,21 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	if err != nil {
 		return Build{}, err
 	}
+	inc, err := includeDir()
+	if err != nil {
+		return Build{}, err
+	}
+	flags := slices.Concat(p.Flags, commonFlags(inc))
 	h := sha256.New()
 	// Key on the resolved compiler path: nix store paths change with the
-	// compiler version, so an upgrade never reuses an old build.
-	h.Write([]byte(resolve(p.compiler()) + "\x00" + strings.Join(p.Flags, " ") + "\x00"))
+	// compiler version, so an upgrade never reuses an old build. The
+	// include dir's name carries its contents' hash.
+	h.Write([]byte(resolve(p.compiler()) + "\x00" + strings.Join(flags, " ") + "\x00"))
 	h.Write(src)
 	bin := filepath.Join(dir, hex.EncodeToString(h.Sum(nil))[:24])
 	if _, err := os.Stat(bin); err == nil {
+		now := time.Now()
+		_ = os.Chtimes(bin, now, now) // recently used: evictBuilds keeps it
 		return Build{Binary: bin, Src: src, OK: true, Cached: true}, nil
 	}
 
@@ -108,8 +142,7 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	}
 	defer func() { _ = os.RemoveAll(work) }()
 	out := filepath.Join(work, filepath.Base(bin))
-	args := append(append([]string{}, p.Flags...),
-		"-fno-color-diagnostics", "-x", "c++", source, "-o", out)
+	args := append(flags, "-fno-color-diagnostics", "-x", "c++", source, "-o", out)
 	cmd := exec.CommandContext(ctx, p.compiler(), args...)
 	cmd.Env = compileEnv(p)
 	var stderr bytes.Buffer
@@ -135,7 +168,88 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 		return b, err
 	}
 	b.OK = true
+	evictBuilds(dir, BuildCacheCap, time.Now().Add(-evictMinAge))
 	return b, nil
+}
+
+// commonFlags go into every build after the profile's own; see Compile.
+// -isystem puts the shim headers after the toolchain's (nix's wrapper adds
+// libc++ with -isystem first), so they only fill the gaps libc++ leaves.
+func commonFlags(inc string) []string {
+	return []string{"-DONLINE_JUDGE", "-isystem", inc, "-include", filepath.Join(inc, "katharsis_gnu.h")}
+}
+
+// shim is the headers commonFlags adds: include/bits/stdc++.h and
+// include/katharsis_gnu.h.
+//
+//go:embed include
+var shim embed.FS
+
+// includeDir writes the shim headers to <cache>/katharsis/include-<hash>
+// and returns that dir; later calls only check it is still there. The hash
+// names the contents, so a new version gets a new dir (and new build
+// keys), and a dir that exists is complete: it is written aside and
+// renamed into place.
+func includeDir() (string, error) {
+	incMu.Lock()
+	defer incMu.Unlock()
+	if incPath != "" {
+		if _, err := os.Stat(incPath); err == nil {
+			return incPath, nil
+		}
+	}
+	h := sha256.New()
+	err := fs.WalkDir(shim, "include", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		b, err := shim.ReadFile(p)
+		h.Write([]byte(p + "\x00"))
+		h.Write(b)
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+	dir, err := cacheDir()
+	if err != nil {
+		return "", err
+	}
+	inc := filepath.Join(filepath.Dir(dir), "include-"+hex.EncodeToString(h.Sum(nil))[:12])
+	if _, err := os.Stat(inc); err != nil {
+		if err := writeShim(filepath.Dir(dir), inc); err != nil {
+			return "", err
+		}
+	}
+	incPath = inc
+	return inc, nil
+}
+
+var (
+	incMu   sync.Mutex
+	incPath string // set once includeDir has written it
+)
+
+func writeShim(parent, inc string) error {
+	tmp, err := os.MkdirTemp(parent, ".include-")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.RemoveAll(tmp) }()
+	sub, err := fs.Sub(shim, "include")
+	if err != nil {
+		return err
+	}
+	if err := os.CopyFS(tmp, sub); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, inc); err != nil {
+		if _, serr := os.Stat(inc); serr == nil {
+			return nil // another process put it there first
+		}
+		return err
+	}
+	return nil
 }
 
 // compileEnv disables nix's hardening for judge builds. Inside a nix dev
@@ -155,14 +269,130 @@ func cacheDir() (string, error) {
 		return "", err
 	}
 	dir := filepath.Join(base, "katharsis", "build")
-	return dir, os.MkdirAll(dir, 0o755)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	sweepOnce.Do(func() {
+		cleanDebris(dir, time.Now().Add(-debrisAge), "build-")
+		evictBuilds(dir, BuildCacheCap, time.Now().Add(-evictMinAge))
+	})
+	return dir, nil
+}
+
+var sweepOnce sync.Once
+
+// Sweep removes what killed processes leave behind, older than an hour:
+// katharsis-run-* and katharsis-probe-* dirs in the temp dir (a run's
+// working dir holds a copy of a hidden test's input) and build-* dirs in
+// the build cache (SIGKILL skips a compile's deferred cleanup), and trims
+// the build cache to BuildCacheCap. A process's first build sweeps the
+// cache by itself; a command calls Sweep at startup to cover the temp dir
+// too. Other processes judging meanwhile are safe: nothing they use is
+// that old.
+func Sweep() {
+	cleanDebris(os.TempDir(), time.Now().Add(-debrisAge), "katharsis-run-", "katharsis-probe-")
+	_, _ = cacheDir()
+}
+
+// BuildCacheCap is the size the build cache is trimmed to, least recently
+// used first. A build is a few hundred KB to a few MB with its dSYM.
+var BuildCacheCap int64 = 256 << 20
+
+const (
+	// debrisAge: a build-* or run dir older than this is from a compile or
+	// a run that was killed (SIGKILL skips the deferred RemoveAll); none
+	// takes that long.
+	debrisAge = time.Hour
+	// evictMinAge protects recent builds from eviction even over the cap:
+	// one may be the binary a judge pass or a debugger is running now.
+	evictMinAge = 10 * time.Minute
+)
+
+// cleanDebris removes the dirs in dir named with one of prefixes and last
+// touched before before.
+func cleanDebris(dir string, before time.Time, prefixes ...string) {
+	des, _ := os.ReadDir(dir) // a missing dir has nothing to clean
+	for _, d := range des {
+		ours := slices.ContainsFunc(prefixes, func(p string) bool { return strings.HasPrefix(d.Name(), p) })
+		if !d.IsDir() || !ours {
+			continue
+		}
+		if fi, err := d.Info(); err == nil && fi.ModTime().Before(before) {
+			_ = os.RemoveAll(filepath.Join(dir, d.Name()))
+		}
+	}
+}
+
+// evictBuilds deletes the least recently used builds (a binary and its
+// dSYM, by the binary's mtime, which a cache hit refreshes) until the
+// cache is within capBytes, sparing any used since keepAfter.
+func evictBuilds(dir string, capBytes int64, keepAfter time.Time) {
+	des, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	type build struct {
+		name string
+		used time.Time
+		size int64
+	}
+	var builds []build
+	var total int64
+	for _, d := range des {
+		name := d.Name()
+		if d.IsDir() || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "build-") {
+			continue
+		}
+		fi, err := d.Info()
+		if err != nil {
+			continue
+		}
+		b := build{name: name, used: fi.ModTime(), size: fi.Size() + dirSize(filepath.Join(dir, name+".dSYM"))}
+		builds = append(builds, b)
+		total += b.size
+	}
+	if total <= capBytes {
+		return
+	}
+	slices.SortFunc(builds, func(a, b build) int { return a.used.Compare(b.used) })
+	for _, b := range builds {
+		if total <= capBytes || !b.used.Before(keepAfter) {
+			break
+		}
+		_ = os.RemoveAll(filepath.Join(dir, b.name+".dSYM"))
+		if os.Remove(filepath.Join(dir, b.name)) == nil {
+			total -= b.size
+		}
+	}
+	// A dSYM whose binary is gone is unreachable. A young one may be a
+	// build moving into place: its dSYM goes first.
+	for _, d := range des {
+		if base, ok := strings.CutSuffix(d.Name(), ".dSYM"); ok && d.IsDir() {
+			if fi, err := d.Info(); err != nil || !fi.ModTime().Before(keepAfter) {
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(dir, base)); errors.Is(err, fs.ErrNotExist) {
+				_ = os.RemoveAll(filepath.Join(dir, d.Name()))
+			}
+		}
+	}
+}
+
+func dirSize(p string) int64 {
+	var n int64
+	_ = filepath.WalkDir(p, func(_ string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			if fi, err := d.Info(); err == nil {
+				n += fi.Size()
+			}
+		}
+		return nil
+	})
+	return n
 }
 
 func (p Profile) compiler() string {
-	if p.Compiler != "" {
-		return p.Compiler
-	}
-	return Compiler
+	return cmp.Or(p.Compiler, Compiler)
 }
 
 // resolve maps a compiler name to its absolute path, symlinks followed.

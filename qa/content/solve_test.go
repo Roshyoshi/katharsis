@@ -119,6 +119,9 @@ type outcome struct {
 	err     error
 	elapsed time.Duration
 	ce      string
+	// excluded: the catalog no longer offers the problem (it needs a
+	// checker, say), so no door judges it and neither does this.
+	excluded bool
 }
 
 func TestSolve(t *testing.T) {
@@ -132,6 +135,10 @@ func TestSolve(t *testing.T) {
 			continue
 		}
 		o := solve(ctx, u, filepath.Join(dir, s.file), s)
+		if o.excluded {
+			rows = append(rows, fmt.Sprintf("%-12s %-24s want=%-3s EXCLUDED (not judgeable) %s", s.id, s.file, s.want, s.note))
+			continue
+		}
 		row := fmt.Sprintf("%-12s %-24s want=%-3s got=%-3s %3d/%-3d r=%-4d T=%-4v tol=%-6g any=%-5v cpu=%-6v %s",
 			s.id, s.file, s.want, o.sum.Verdict, o.sum.Passed, o.sum.Total, o.p.Rating, o.p.TimeLimit,
 			o.p.FloatTolerance, o.p.AnyCase, o.sum.MaxCPU.Round(time.Millisecond), s.note)
@@ -162,6 +169,10 @@ func solve(ctx context.Context, u catalog.Catalog, src string, s solution) outco
 	p, ok := u.Get(s.id)
 	if !ok {
 		o.err = fmt.Errorf("not in catalog")
+		return o
+	}
+	if !p.Judgeable {
+		o.p, o.excluded = p, true
 		return o
 	}
 	a, err := u.Fetch(ctx, s.id)

@@ -83,17 +83,25 @@ func probeSamples(ctx context.Context) Profile {
 			}
 		}
 	}
-	chosen := HardenedSamples
+	var present []Profile
 	for _, p := range candidates {
 		if p.Compiler != "" {
 			if _, err := os.Stat(p.Compiler); err != nil {
 				continue
 			}
 		}
-		if runs(ctx, p) {
-			chosen = p
-			break
-		}
+		present = append(present, p)
+	}
+	chosen, ok := firstRunning(ctx, present, probeTimeout)
+	if !ok && ctx.Err() == nil {
+		// Before settling on the fallback for good, give the candidates a
+		// longer try: a machine busy enough to slow hello world past
+		// probeTimeout is a passing state, while the broken runtimes this
+		// guards against spin forever.
+		chosen, ok = firstRunning(ctx, present, retryTimeout)
+	}
+	if !ok {
+		chosen = HardenedSamples
 	}
 	// A cancelled probe proves nothing; caching its fallback would downgrade
 	// this machine for good.
@@ -103,8 +111,25 @@ func probeSamples(ctx context.Context) Profile {
 	return chosen
 }
 
-// runs compiles a trivial program with p and checks it prints within 3 s.
-func runs(ctx context.Context, p Profile) bool {
+// probeTimeout is how long a probe's hello world may take; retryTimeout is
+// the second chance before the fallback is cached.
+const (
+	probeTimeout = 3 * time.Second
+	retryTimeout = 15 * time.Second
+)
+
+func firstRunning(ctx context.Context, ps []Profile, timeout time.Duration) (Profile, bool) {
+	for _, p := range ps {
+		if runs(ctx, p, timeout) {
+			return p, true
+		}
+	}
+	return Profile{}, false
+}
+
+// runs compiles a trivial program with p and checks it prints within
+// timeout.
+func runs(ctx context.Context, p Profile, timeout time.Duration) bool {
 	dir, err := os.MkdirTemp("", "katharsis-probe-")
 	if err != nil {
 		return false
@@ -121,16 +146,20 @@ func runs(ctx context.Context, p Profile) bool {
 	if cc.Run() != nil {
 		return false
 	}
-	rctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	rctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	out, err := exec.CommandContext(rctx, bin).Output()
 	return err == nil && strings.TrimSpace(string(out)) == "ok"
 }
 
+// probeKey names the compilers and OS a probe result holds for. Compiler
+// paths are resolved first: a nix profile symlink keeps its path when the
+// profile switches compilers, and every nix store file has mtime 1, so
+// only the store path a link points to tells two clangs apart.
 func probeKey() string {
 	h := sha256.New()
 	for _, c := range []string{Compiler, appleClang} {
-		path, _ := exec.LookPath(c)
+		path := resolve(c)
 		h.Write([]byte(path + "\x00"))
 		if fi, err := os.Stat(path); err == nil {
 			h.Write(fmt.Appendf(nil, "%d\x00", fi.ModTime().Unix()))

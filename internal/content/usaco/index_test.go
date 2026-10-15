@@ -47,7 +47,7 @@ func TestIndex(t *testing.T) {
 		{"usaco:84", catalog.Problem{
 			Title: "Contest Timing", Division: "bronze", Contest: "2011 November, Bronze P1", Position: 1,
 			Tags: []string{"Simulation"}, Topic: "simulation",
-			Rating: 1000, RatingSource: "division+position+guide-label", // old bronze 1150, Very Easy -150
+			Rating: 850, RatingSource: "division+position+guide-label", // old bronze 1000, Very Easy -150
 			TimeLimit: 2 * time.Second, MemLimit: 256 << 20, FileIO: "ctiming",
 			Judgeable: true, HasEditorial: true,
 		}},
@@ -110,7 +110,7 @@ func TestIndex(t *testing.T) {
 			continue
 		}
 		w := tc.want
-		w.ID, w.Source, w.URL = tc.id, catalog.USACO, statementURL(atoi(string(tc.id)[len("usaco:"):]))
+		w.ID, w.Source, w.URL = tc.id, catalog.USACO, statementURL(atoi(tc.id.Native()))
 		if !equalProblem(got, w) {
 			t.Errorf("Get(%s)\n got %+v\nwant %+v", tc.id, got, w)
 		}

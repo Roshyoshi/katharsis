@@ -130,7 +130,7 @@ func TestOpenBuildsIndex(t *testing.T) {
 
 // digits is the contest number of "cf:1899C".
 func digits(id string) string {
-	s := strings.TrimPrefix(id, "cf:")
+	s := catalog.ID(id).Native()
 	return s[:strings.IndexFunc(s, func(r rune) bool { return r < '0' || r > '9' })]
 }
 
@@ -310,4 +310,70 @@ func mustJSON(t *testing.T, v any) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+// The rules newEntry and judgeable apply to a row, on made rows shaped like
+// the problems that were judged unfairly.
+func TestJudgeRules(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		row     func(*tableRow)
+		skip    string
+		anyCase bool
+	}{
+		{"plain", nil, "", false},
+		// cf:233A: no checker in the dataset, so it was judged against one
+		// of many valid permutations.
+		{"several answers, no checker", func(r *tableRow) {
+			r.OutputFormat = "Print the permutation. If there are multiple solutions, print any of them."
+		}, skipChecker, false},
+		{"several answers, a float checker", func(r *tableRow) {
+			r.GeneratedChecker = "import sys"
+			r.OutputFormat = "Print the point with absolute or relative error at most $$$10^{-6}$$$. If there are multiple answers, print any."
+		}, skipChecker, false},
+		// cf:306D: the loose phrase is in the description.
+		{"a float checker, any polygon", func(r *tableRow) {
+			r.GeneratedChecker = "import sys"
+			r.Description = "Draw for him any such polygon with the given number of vertexes."
+			r.OutputFormat = "Print the coordinates with absolute or relative error at most $$$10^{-3}$$$."
+		}, skipChecker, false},
+		{"no checker, any such in the story", func(r *tableRow) {
+			r.Description = "Divisor of n is any such natural number that divides n."
+		}, "", false},
+		{"a float-only checker", func(r *tableRow) {
+			r.GeneratedChecker = "import sys"
+			r.OutputFormat = "Print the answer with absolute or relative error at most $$$10^{-6}$$$."
+		}, "", false},
+		{"several answers, one picked", func(r *tableRow) {
+			r.OutputFormat = "If there are several solutions, print the lexicographically minimal one."
+		}, "", false},
+		{"any order", func(r *tableRow) {
+			r.OutputFormat = "Print the indices in any order."
+		}, skipChecker, false},
+		// cf:832A said "arbitrary case", which caseRE missed.
+		{"arbitrary case", func(r *tableRow) {
+			r.OutputFormat = `Print "YES" or "NO". You can print each letter in arbitrary case (upper or lower).`
+		}, "", true},
+		// cf:646A.
+		{"russian", func(r *tableRow) {
+			r.Description = "У Васи есть $$$n$$$ братьев. Найдите, какой из них опоздал на встречу, если известны номера двух пришедших."
+		}, skipRussian, false},
+		{"english with a russian name", func(r *tableRow) {
+			r.Description = "Vasya (Вася) has $$$n$$$ brothers and wants to know which one of them came late to the meeting."
+		}, "", false},
+		{"no statement", func(r *tableRow) { r.Description = " " }, skipNoStatement, false},
+	}
+	for _, tc := range tests {
+		r := made("1000/A", tc.row)
+		e, ok := newEntry(r)
+		if !ok {
+			t.Fatalf("%s: newEntry rejected the row", tc.name)
+		}
+		e.VFile = "verifiable_tests/x.parquet"
+		e.judgeable(r.Description)
+		if e.Skip != tc.skip || e.AnyCase != tc.anyCase {
+			t.Errorf("%s: skip %q any-case %v, want %q %v", tc.name, e.Skip, e.AnyCase, tc.skip, tc.anyCase)
+		}
+	}
 }

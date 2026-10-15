@@ -204,13 +204,28 @@ func TestFileIO(t *testing.T) {
 		{"commented out", `// freopen("milk2.in", "r", stdin);`, ""},
 		{"commented out, indented, no space", "\t//freopen(\"milk2.in\", \"r\", stdin);", ""},
 		{"comment after code", `int n; // freopen("milk2.in", "r", stdin);`, ""},
-		{"output only", `freopen("milk2.out", "w", stdout);`, ""},
+		{"output only", `freopen("milk2.out", "w", stdout);`, "milk2"},
 		{"path is not a stem", `freopen("../milk2.in", "r", stdin);`, ""},
 		{"stdin program", "int n;\nstd::cin >> n;\nstd::cout << n << '\\n';\n", ""},
 		{"first live one wins",
 			"// freopen(\"old.in\", \"r\", stdin);\nfreopen(\"new.in\", \"r\", stdin);\nfreopen(\"new.out\", \"w\", stdout);\n",
 			"new"},
 		{"user template", `    freopen("problem.in", "r", stdin);` + "\n" + `    freopen("problem.out", "w", stdout);`, "problem"},
+		{"block comment", "/* old version:\n   freopen(\"milk2.in\", \"r\", stdin);\n*/\nint n;", ""},
+		{"block comment before code", `/* x */ freopen("a.in", "r", stdin);`, "a"},
+		{"comment marker in a string", `puts("//"); freopen("a.in", "r", stdin);`, "a"},
+		{"fopen", `FILE *f = fopen("paint.in", "r");`, "paint"},
+		{"fstreams", "ifstream fin(\"paint.in\");\nofstream fout(\"paint.out\");", "paint"},
+		{"fstream braces", `std::ifstream in{"paint.in"};`, "paint"},
+		{"open", "ifstream fin;\nfin.open(\"paint.in\");", "paint"},
+		{"usaco guide setIO", "void setIO(string name = \"\") {\n" +
+			"\tfreopen((name + \".in\").c_str(), \"r\", stdin);\n" +
+			"\tfreopen((name + \".out\").c_str(), \"w\", stdout);\n}\n" +
+			"int main() { setIO(\"milk2\"); }", "milk2"},
+		{"define", "#define TASK \"milk2\"\nint main() { freopen(TASK \".in\", \"r\", stdin); }", "milk2"},
+		{"string variable", "string name = \"milk2\";\nfreopen((name + \".in\").c_str(), \"r\", stdin);", "milk2"},
+		{"setIO with no stem is stdio", "void setIO(string s = \"\") {}\nint main() { setIO(); }", ""},
+		{"names without an extension are not stems", `puts("hello"); printFile("x");`, ""},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

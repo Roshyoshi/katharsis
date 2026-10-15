@@ -224,6 +224,30 @@ func TestFetchNotJudgeable(t *testing.T) {
 	}
 }
 
+// A dir fetched while a problem was not judgeable has no tests. If a rule
+// change (a new schema) makes the problem judgeable, the next Fetch must
+// get its tests rather than serve the empty dir.
+func TestFetchAfterBecomingJudgeable(t *testing.T) {
+	t.Parallel()
+	c, _ := openFixture(t)
+	c.mu.Lock()
+	e := c.entries["cf:919E"]
+	e.Judgeable, e.Skip = false, skipChecker
+	c.mu.Unlock()
+	a, err := c.Fetch(context.Background(), "cf:919E")
+	if err != nil || len(a.Tests) != 0 {
+		t.Fatalf("unjudgeable fetch: %v, %d tests", err, len(a.Tests))
+	}
+	c.mu.Lock()
+	e.Judgeable, e.Skip = true, ""
+	c.mu.Unlock()
+	a, err = c.Fetch(context.Background(), "cf:919E")
+	if err != nil || len(a.Tests) != 3 {
+		t.Errorf("judgeable fetch over the old dir: %v, %d tests, want 3", err, len(a.Tests))
+	}
+	assertNoDebris(t, c.root)
+}
+
 func TestFetchErrors(t *testing.T) {
 	t.Parallel()
 	c, h := openFixture(t)

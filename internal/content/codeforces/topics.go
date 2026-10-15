@@ -1,5 +1,7 @@
 package codeforces
 
+import "katharsis/internal/catalog"
+
 // tagTopic maps Codeforces tags onto catalog.Topics. Tags that name no
 // technique are left out so they never decide a topic: constructive
 // algorithms, divide and conquer, schedules, interactive and *special.
@@ -72,7 +74,8 @@ var topicRank = []string{
 	"sorting-greedy", "complete-search", "simulation",
 }
 
-// topicFor picks the biome topic for a tag list, "mixed" if no tag maps.
+// topicFor picks the biome topic for a tag list, catalog.Mixed if no tag
+// maps.
 func topicFor(tags []string) string {
 	have := map[string]bool{}
 	for _, t := range tags {
@@ -85,5 +88,5 @@ func topicFor(tags []string) string {
 			return t
 		}
 	}
-	return "mixed"
+	return catalog.Mixed
 }

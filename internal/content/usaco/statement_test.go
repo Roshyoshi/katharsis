@@ -274,3 +274,23 @@ func TestChecker(t *testing.T) {
 		}
 	}
 }
+
+// "[" must reach the reader unescaped: it reads "\[" as display math, and
+// "A\[1...N\]" showed as "A1...N" (cpids 91, 97, 508).
+func TestBracketsStayLiteral(t *testing.T) {
+	t.Parallel()
+	md, _ := plainToMarkdown("Bessie keeps an array A[1...N], where A[j] is the j-th cow.\n", nil)
+	if strings.Contains(md, `\[`) || !strings.Contains(md, `A[1...N\]`) {
+		t.Errorf("plainToMarkdown = %q, want A[1...N\\] and no \\[", md)
+	}
+	for _, tc := range []struct{ in, want string }{
+		{"P\\[j] sums A\\[1...j].\n", "P[j] sums A[1...j].\n"},
+		{"keep \\* and \\\\[x]\n", "keep \\* and \\\\[x]\n"},
+		{"code `a\\[i]` stays\n", "code `a\\[i]` stays\n"},
+		{"```cpp\nx = \"\\[\";\n```\nP\\[i]\n", "```cpp\nx = \"\\[\";\n```\nP[i]\n"},
+	} {
+		if got := unescapeBrackets(tc.in); got != tc.want {
+			t.Errorf("unescapeBrackets(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}

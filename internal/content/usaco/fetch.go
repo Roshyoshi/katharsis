@@ -43,6 +43,51 @@ type meta struct {
 	Samples      int       `json:"samples"`
 	Tests        int       `json:"tests"`
 	Fetched      time.Time `json:"fetched"`
+	// Render is the renderVersion statement.md and editorial.md were
+	// written with; 0 before versions were kept.
+	Render int `json:"render,omitempty"`
+}
+
+// renderVersion changes whenever the markdown rendered from a cached page
+// changes, so Fetch re-renders old dirs from the statement.html and
+// editorial.html they keep, without the network.
+//
+//	1: "[" no longer escaped (it read as display math)
+const renderVersion = 1
+
+// rerender rewrites dir's statement.md and editorial.md, and the facts in
+// m, from the pages saved there, and stamps m with renderVersion.
+func rerender(dir string, cpid int, m *meta) error {
+	page, err := os.ReadFile(filepath.Join(dir, "statement.html"))
+	if err != nil {
+		return err
+	}
+	st, err := parseStatement(page, statementURL(cpid))
+	if err != nil {
+		return err
+	}
+	if err := writeAtomic(filepath.Join(dir, "statement.md"), []byte(st.Markdown)); err != nil {
+		return err
+	}
+	if m.HasEditorial {
+		sol, err := os.ReadFile(filepath.Join(dir, "editorial.html"))
+		if err != nil {
+			return err
+		}
+		md, err := editorialMarkdown(sol, st, site+"/current/data/sol_"+m.Stem+".html")
+		if err != nil {
+			return err
+		}
+		if err := writeAtomic(filepath.Join(dir, "editorial.md"), []byte(md)); err != nil {
+			return err
+		}
+	}
+	m.Facts, m.Render = st.facts, renderVersion
+	mb, err := json.MarshalIndent(m, "", " ")
+	if err != nil {
+		return err
+	}
+	return writeAtomic(filepath.Join(dir, "meta.json"), mb)
 }
 
 func loadAssets(dir string) (catalog.Assets, meta, bool) {
@@ -82,7 +127,7 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 	}
 	defer func() { _ = os.RemoveAll(tmp) }()
 
-	m := meta{CPID: e.CPID, Stem: e.Stem, Fetched: time.Now().UTC()}
+	m := meta{CPID: e.CPID, Stem: e.Stem, Fetched: time.Now().UTC(), Render: renderVersion}
 	page, err := c.client.getBytes(ctx, c.base+statementPath(e.CPID), maxPage)
 	if err != nil {
 		return catalog.Assets{}, fmt.Errorf("%s statement: %w", e.ID, err)

@@ -240,6 +240,12 @@ func (c *Catalog) fetch(ctx context.Context, e entry) (catalog.Assets, error) {
 	if !ok {
 		return c.materialize(ctx, e, dir)
 	}
+	// A dir rendered by an older renderer is re-rendered in place. If the
+	// saved pages cannot be read the old markdown stays: it is still the
+	// statement, only less well drawn.
+	if m.Render < renderVersion {
+		_ = rerender(dir, e.CPID, &m)
+	}
 	// An index rebuilt since that fetch (new facts.json, new guide commit)
 	// is back on guess-work for a problem facts.json lacks: default
 	// limits, and judgeable even if its zip turned out not to exist.

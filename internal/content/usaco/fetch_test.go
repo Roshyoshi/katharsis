@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -395,5 +396,50 @@ func TestCopyEntryCap(t *testing.T) {
 	}
 	if _, err := copyEntry(zr.File[0], filepath.Join(t.TempDir(), "1.in"), 100); err != nil {
 		t.Errorf("exact size: %v", err)
+	}
+}
+
+// A dir rendered before renderVersion is re-rendered from its saved pages,
+// with no network, and stamped.
+func TestFetchRerendersOldDir(t *testing.T) {
+	t.Parallel()
+	fake, srv := newFakeUSACO(t)
+	root := t.TempDir()
+	c := testCatalog(t, root, srv)
+	ctx := context.Background()
+	if _, err := c.Fetch(ctx, "usaco:84"); err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(root, "84")
+	var m meta
+	if err := readJSON(filepath.Join(dir, "meta.json"), &m); err != nil || m.Render != renderVersion {
+		t.Fatalf("fresh meta: %v, render %d, want %d", err, m.Render, renderVersion)
+	}
+	fresh, _ := os.ReadFile(filepath.Join(dir, "statement.md"))
+	freshSol, _ := os.ReadFile(filepath.Join(dir, "editorial.md"))
+
+	// As an older build left it.
+	m.Render = 0
+	mb, _ := json.Marshal(m)
+	for name, body := range map[string][]byte{"meta.json": mb, "statement.md": []byte("A\\[1...N\\]\n"), "editorial.md": []byte("old\n")} {
+		if err := os.WriteFile(filepath.Join(dir, name), body, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n := fake.total()
+	if _, err := c.Fetch(ctx, "usaco:84"); err != nil {
+		t.Fatal(err)
+	}
+	if fake.total() != n {
+		t.Error("re-rendering touched the network")
+	}
+	if got, _ := os.ReadFile(filepath.Join(dir, "statement.md")); !bytes.Equal(got, fresh) {
+		t.Errorf("statement.md not re-rendered:\n%s", got)
+	}
+	if got, _ := os.ReadFile(filepath.Join(dir, "editorial.md")); !bytes.Equal(got, freshSol) {
+		t.Errorf("editorial.md not re-rendered:\n%s", got)
+	}
+	if err := readJSON(filepath.Join(dir, "meta.json"), &m); err != nil || m.Render != renderVersion {
+		t.Errorf("meta after re-render: %v, render %d", err, m.Render)
 	}
 }

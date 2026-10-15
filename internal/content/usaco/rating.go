@@ -8,19 +8,23 @@ import "math"
 // 1200-1900, Gold 1500-2200 and Platinum 1900+ ("very rough"). The table
 // spaces positions 150 apart inside those bands.
 //
-// Before the 2015-16 season there was no Platinum. The old divisions are
-// rated about half a division above today's of the same name. That is an
-// inference from where the guide files them: "Old Silver" problems in
+// Before the 2015-16 season there was no Platinum. Old Silver and Old Gold
+// are rated about half a division above today's of the same name. That is
+// an inference from where the guide files them: "Old Silver" problems in
 // Silver and Gold modules, "Old Gold" ones in Gold, Platinum and Advanced
-// modules. Old Bronze had a fourth problem in six contests (Nov 2011, Dec
-// 2014, Jan 2015 and the 2012, 2013 and 2015 US Opens), rated like P3.
+// modules. Old Bronze is not: it sat half a division up too until solving
+// them showed otherwise (content QA, 2026-10-14: five old P1s, cpids 84,
+// 94, 121, 340 and 358, took Codeforces 800-1000 effort, below the 1150
+// they were rated), so it now shares today's Bronze row. Old Bronze had a
+// fourth problem in six contests (Nov 2011, Dec 2014, Jan 2015 and the
+// 2012, 2013 and 2015 US Opens), rated like P3.
 //
 //	            P1    P2    P3    P4
 //	bronze     1000  1150  1300
 //	silver     1350  1500  1650
 //	gold       1700  1850  2000
 //	platinum   2100  2250  2400
-//	old bronze 1150  1300  1450  1450
+//	old bronze 1000  1150  1300  1300
 //	old silver 1550  1700  1850  1850
 //	old gold   1950  2100  2250  2250
 var baseRating = map[string][4]int{
@@ -28,7 +32,7 @@ var baseRating = map[string][4]int{
 	"silver":     {1350, 1500, 1650, 1650},
 	"gold":       {1700, 1850, 2000, 2000},
 	"platinum":   {2100, 2250, 2400, 2400},
-	"old bronze": {1150, 1300, 1450, 1450},
+	"old bronze": {1000, 1150, 1300, 1300},
 	"old silver": {1550, 1700, 1850, 1850},
 	"old gold":   {1950, 2100, 2250, 2250},
 }

@@ -117,7 +117,7 @@ func logStats(t *testing.T, all []catalog.Problem) {
 	}
 	t.Logf("problems: %d", len(all))
 	t.Logf("division:%s", byKey(func(p catalog.Problem) string {
-		cpid, _ := strconv.Atoi(strings.TrimPrefix(string(p.ID), "usaco:"))
+		cpid, _ := strconv.Atoi(p.ID.Native())
 		return eraDivision(cpid, p.Division)
 	}))
 	t.Logf("judgeable=%d interactive=%d needs-checker=%d float=%d no-zip=%d",

@@ -28,40 +28,60 @@ func memCap(mem int64) int64 {
 	return mem + mem/4
 }
 
-// watchMemory samples proc's memory every memPoll and kills it once it
-// grows past limit. stop ends the watch and returns the size that triggered
-// the kill, or 0 if there was none. Call stop after Wait: os.Process refuses
-// to signal a process Wait has reaped (ErrProcessDone), which keeps the kill
-// off a reused pid. On darwin the refusal starts just after wait4 returns
-// rather than before it, a window of a few instructions.
-func watchMemory(proc *os.Process, limit int64) (stop func() (killedAt int64)) {
+// kill says why the watchdog killed a run: Mem is the size that crossed
+// the memory cap, CPU is set when the run used up its CPU allowance. Both
+// zero means it did not kill.
+type kill struct {
+	Mem int64
+	CPU bool
+}
+
+// watch samples proc every memPoll and kills it once its memory grows past
+// memLimit or its CPU time past cpuLimit (no CPU limit when <= 0). Killing
+// on CPU rather than waiting for the wall clock ends an infinite loop as
+// soon as it is over budget instead of at 2x budget plus slack in wall
+// time, which on a busy machine is later still.
+//
+// stop ends the watch and returns what it killed for. Call stop after
+// Wait: os.Process refuses to signal a process Wait has reaped
+// (ErrProcessDone), which keeps the kill off a reused pid. On darwin the
+// refusal starts just after wait4 returns rather than before it, a window
+// of a few instructions.
+func watch(proc *os.Process, memLimit int64, cpuLimit time.Duration) (stop func() kill) {
 	done := make(chan struct{})
-	res := make(chan int64, 1)
+	res := make(chan kill, 1)
 	go func() {
 		t := time.NewTicker(memPoll)
 		defer t.Stop()
 		for {
 			// An error means the process has exited (ESRCH) or the
 			// platform cannot tell; either way there is nothing to watch.
-			n, err := rss(proc.Pid)
+			n, cpu, err := usage(proc.Pid)
 			if err != nil {
-				res <- 0
+				res <- kill{}
 				return
 			}
-			if n > limit {
+			var k kill
+			switch {
+			case n > memLimit:
+				k.Mem = n
+			case cpuLimit > 0 && cpu > cpuLimit:
+				k.CPU = true
+			}
+			if k != (kill{}) {
 				_ = proc.Kill() // ErrProcessDone if it exited meanwhile
-				res <- n
+				res <- k
 				return
 			}
 			select {
 			case <-done:
-				res <- 0
+				res <- kill{}
 				return
 			case <-t.C:
 			}
 		}
 	}()
-	return func() int64 {
+	return func() kill {
 		close(done)
 		return <-res
 	}

@@ -219,7 +219,7 @@ func (c *Catalog) Fetch(ctx context.Context, id catalog.ID) (catalog.Assets, err
 	}
 	dir := filepath.Join(c.root, dirName(e))
 	for {
-		if a, ok := loadAssets(dir); ok {
+		if a, ok := loadAssets(dir); usable(a, ok, e) {
 			return a, nil
 		}
 		c.flightMu.Lock()
@@ -254,7 +254,7 @@ func (c *Catalog) Fetch(ctx context.Context, id catalog.ID) (catalog.Assets, err
 
 // dirName is "1899C": the id without "cf:". newEntry admits only digits
 // and an index of capital letters and digits, so it is a safe path.
-func dirName(e entry) string { return string(e.ID)[len("cf:"):] }
+func dirName(e entry) string { return e.ID.Native() }
 
 func isCtxErr(err error) bool {
 	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)

@@ -142,20 +142,110 @@ func natCmp(a, b string) int {
 	return strings.Compare(a, b)
 }
 
-var freopenRE = regexp.MustCompile(`freopen\s*\(\s*"([^"/]+)\.in"`)
+var (
+	// fileRE is a file name literal, wherever the source opens it:
+	// freopen("milk2.in", ...), fopen("milk2.in", "r"), ifstream
+	// fin("milk2.in"), fin.open("milk2.in"), ofstream fout("milk2.out").
+	fileRE = regexp.MustCompile(`"([^"/\\\s]+)\.(in|out)"`)
+	// extRE is a bare extension literal, which a helper appends to a stem
+	// given elsewhere: freopen((name + ".in").c_str(), ...), or
+	// freopen(TASK ".in", ...) after #define TASK "milk2".
+	extRE = regexp.MustCompile(`"\.(?:in|out)"`)
+	// stemRE is where those stems come from: a call such as the USACO
+	// Guide's setIO("milk2"), a #define, or a string variable's
+	// initializer.
+	stemRE = regexp.MustCompile(`\b\w*(?:IO|Io|io|File|file)\w*\s*\(\s*"(\w[\w.\-]*)"\s*\)` +
+		`|#\s*define\s+\w+\s+"(\w[\w.\-]*)"` +
+		`|\bstring\s+\w+\s*(?:=\s*|\{\s*|\(\s*)"(\w[\w.\-]*)"`)
+)
 
-// FileIO returns the stem the source reads from (old USACO style,
-// freopen("milk2.in", ...)), or "" for stdin/stdout. It is re-read on every
-// judge because the source changes while the player edits. A freopen behind
-// a // comment does not count; block comments are not parsed.
+// FileIO returns the stem the source reads or writes as files (old USACO
+// style: "milk2" for milk2.in and milk2.out), or "" for stdin/stdout. It is
+// re-read on every judge because the source changes while the player
+// edits. Comments do not count.
+//
+// It looks for a literal "<stem>.in" or "<stem>.out" first. Failing that,
+// a source that appends ".in" to a name (the USACO Guide's setIO template,
+// a #define TASK) gets the name it passes. A wrong guess costs little: the
+// judge also feeds stdin and reads stdout when <stem>.out stays empty.
 func FileIO(source []byte) string {
-	for line := range strings.Lines(string(source)) {
-		if i := strings.Index(line, "//"); i >= 0 {
-			line = line[:i]
-		}
-		if m := freopenRE.FindStringSubmatch(line); m != nil {
-			return m[1]
-		}
+	code := stripComments(source)
+	if m := fileRE.FindStringSubmatch(code); m != nil {
+		return m[1]
+	}
+	if !extRE.MatchString(code) {
+		return ""
+	}
+	if m := stemRE.FindStringSubmatch(code); m != nil {
+		return m[1] + m[2] + m[3]
 	}
 	return ""
+}
+
+// stripComments blanks out // and /* */ comments, leaving string and
+// character literals alone, and keeps line breaks.
+func stripComments(src []byte) string {
+	var b strings.Builder
+	b.Grow(len(src))
+	const (
+		code = iota
+		line
+		block
+		str
+		char
+	)
+	state := code
+	for i := 0; i < len(src); i++ {
+		c := src[i]
+		next := byte(0)
+		if i+1 < len(src) {
+			next = src[i+1]
+		}
+		switch state {
+		case code:
+			switch {
+			case c == '/' && next == '/':
+				state, i = line, i+1
+				continue
+			case c == '/' && next == '*':
+				state, i = block, i+1
+				b.WriteByte(' ')
+				continue
+			case c == '"':
+				state = str
+			case c == '\'':
+				state = char
+			}
+		case line:
+			if c != '\n' {
+				continue
+			}
+			state = code
+		case block:
+			if c == '*' && next == '/' {
+				state, i = code, i+1
+			} else if c == '\n' {
+				b.WriteByte('\n')
+			}
+			continue
+		case str, char:
+			quote := byte('"')
+			if state == char {
+				quote = '\''
+			}
+			switch c {
+			case '\\':
+				b.WriteByte(c)
+				if i+1 < len(src) {
+					i++
+					b.WriteByte(src[i])
+				}
+				continue
+			case quote, '\n':
+				state = code
+			}
+		}
+		b.WriteByte(c)
+	}
+	return b.String()
 }

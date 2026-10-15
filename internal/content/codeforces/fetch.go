@@ -45,7 +45,12 @@ type meta struct {
 
 // dirKey names what a problem dir's contents depend on, so a dir written
 // under another revision or schema is fetched again, not served stale.
-var dirKey = fmt.Sprintf("rev=%s schema=%d", rev, schema)
+var dirKey = fmt.Sprintf("rev=%s schema=%d", rev, dirSchema)
+
+// dirSchema changes whenever what Fetch writes into a problem dir changes.
+// It was the index schema until that reached 3, hence the shared "schema"
+// in dirKey, which keeps dirs written under schema 2 valid.
+const dirSchema = 2
 
 func loadAssets(dir string) (catalog.Assets, bool) {
 	b, err := os.ReadFile(filepath.Join(dir, "meta.json"))
@@ -153,8 +158,8 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 		return catalog.Assets{}, err
 	}
 	// A dir loadAssets rejects is debris from a crash or another build;
-	// replace it.
-	if _, ok := loadAssets(dir); !ok {
+	// replace it, and so one written before the problem was judgeable.
+	if a, ok := loadAssets(dir); !usable(a, ok, e) {
 		_ = os.RemoveAll(dir)
 	}
 	if err := os.Rename(tmp, dir); err != nil {
@@ -169,6 +174,14 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 		return catalog.Assets{}, fmt.Errorf("%s: cache dir %s unreadable after fetch", e.ID, dir)
 	}
 	return a, nil
+}
+
+// usable reports whether a problem dir loadAssets returned can be served
+// for e. A dir fetched while e was not judgeable has no tests; once a
+// rule change makes e judgeable, that dir must be fetched again, or a door
+// would judge against nothing.
+func usable(a catalog.Assets, ok bool, e entry) bool {
+	return ok && (len(a.Tests) > 0 || !e.Judgeable)
 }
 
 func writeFiles(dir string, files map[string]string) error {

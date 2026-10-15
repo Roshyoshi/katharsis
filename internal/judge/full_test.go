@@ -13,6 +13,7 @@ import (
 
 	"katharsis/internal/judge"
 	"katharsis/internal/problem"
+	"katharsis/internal/units"
 )
 
 func TestSummarize(t *testing.T) {
@@ -117,10 +118,11 @@ func TestJudgeFull(t *testing.T) {
 	}
 }
 
-// burn.cpp uses 500 ms of CPU. Against a 450 ms budget that TLE is within
-// the parallel drift, so JudgeFull reruns it alone; it stays TLE because
-// burn.cpp burns CPU time, not a fixed amount of work.
-func TestJudgeFullRerunsBorderlineTLE(t *testing.T) {
+// burn.cpp uses 500 ms of CPU. Against a 450 ms budget every test is TLE
+// in the parallel pass, so JudgeFull reruns the first alone; it stays TLE
+// because burn.cpp burns CPU time, not a fixed amount of work, and that
+// settles the verdict: the other two are emitted as the pass saw them.
+func TestJudgeFullRerunsTLE(t *testing.T) {
 	needCompiler(t)
 	t.Parallel()
 	if judge.Workers < 2 {
@@ -137,16 +139,67 @@ func TestJudgeFullRerunsBorderlineTLE(t *testing.T) {
 		t.Fatalf("got %d TestDone events, want 3", len(evs))
 	}
 	for _, e := range evs {
-		if e.Result.Verdict != judge.TLE || !e.Result.Rerun {
-			t.Errorf("test %d: %s rerun=%v cpu=%v; want a rerun TLE", e.Index, e.Result.Verdict, e.Result.Rerun, e.Result.CPU)
+		if e.Result.Verdict != judge.TLE || e.Result.Rerun != (e.Index == 0) {
+			t.Errorf("test %d: %s rerun=%v cpu=%v; want TLE, rerun only for test 0",
+				e.Index, e.Result.Verdict, e.Result.Rerun, e.Result.CPU)
 		}
 	}
-	// Reruns are sequential and in test order.
+	// Held TLEs come out after the pass, in test order.
 	if got := indices(evs); !slices.Equal(got, []int{0, 1, 2}) {
 		t.Errorf("rerun order %v, want [0 1 2]", got)
 	}
 	if s.First != 0 || s.Verdict != judge.TLE {
 		t.Errorf("Summary = %+v, want first failure 0 TLE", s)
+	}
+}
+
+// A TLE the parallel pass alone causes (crowd.cpp spins while another
+// run holds its lock) must not cost the player: whatever its CPU time,
+// it is rerun alone and passes. Codeforces-heavy I/O does this for real:
+// endl a million times read 5x its CPU time at 5 workers.
+func TestJudgeFullRerunsCrowdedTLE(t *testing.T) {
+	needCompiler(t)
+	t.Parallel()
+	if judge.Workers < 2 {
+		t.Skip("one worker: nothing runs in parallel, nothing to rerun")
+	}
+	lock := filepath.Join(t.TempDir(), "lock")
+	var files []testFile
+	for i := range 2 * judge.Workers {
+		files = append(files, testFile{fmt.Sprint(i + 1), fmt.Sprintf("%s %d 1\n", lock, i), fmt.Sprintf("%d\n", i+1)})
+	}
+	lim := quick
+	lim.Time = 300 * time.Millisecond
+	s, evs, err := fullPass(t, context.Background(), "crowd.cpp", files, lim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reruns := 0
+	for _, e := range evs {
+		if e.Result.Rerun {
+			reruns++
+		}
+	}
+	if s.Verdict != judge.AC || s.Passed != len(files) {
+		t.Errorf("Summary = %+v, want every test AC once rerun alone", s)
+	}
+	if reruns == 0 {
+		t.Errorf("no reruns: the parallel pass saw no crowding to undo (%d workers)", judge.Workers)
+	}
+
+	// Behind a WA, the verdict is settled: no TLE after it is rerun.
+	files[0] = testFile{"1", "- 1 1\n", "3\n"}
+	s, evs, err = fullPass(t, context.Background(), "crowd.cpp", files, lim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.First != 0 || s.Verdict != judge.WA {
+		t.Errorf("Summary = %+v, want first failure 0 WA", s)
+	}
+	for _, e := range evs {
+		if e.Result.Rerun {
+			t.Errorf("test %d rerun behind a WA", e.Index)
+		}
 	}
 }
 
@@ -277,7 +330,7 @@ func TestHardMemCap(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", tc.name, err)
 		}
-		t.Logf("%s: %s %q rss=%s wall=%v", tc.name, r.Verdict, r.Reason, judge.Bytes(r.MaxRSS), r.Wall.Round(time.Millisecond))
+		t.Logf("%s: %s %q rss=%s wall=%v", tc.name, r.Verdict, r.Reason, units.Mem(r.MaxRSS), r.Wall.Round(time.Millisecond))
 		if r.Verdict != judge.MLE || !strings.HasSuffix(r.Reason, "> 192M cap") {
 			t.Errorf("%s: %s %q, want MLE killed at the 192M cap\nstderr:\n%s", tc.name, r.Verdict, r.Reason, r.Stderr)
 		}

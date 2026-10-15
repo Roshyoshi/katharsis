@@ -18,14 +18,12 @@ import (
 // performance + 6 efficiency cores), CPU time per run rose over sequential
 // runs of the same binary by 11% at 4 workers, 14-15% at 5 and 19-25% at 8,
 // for compute-bound and cache-missing programs alike (shared L2, and clocks
-// drop as more cores wake). Half the cores keeps the drift near 15% for a
-// 4x speedup; JudgeFull reruns alone the TLEs that the drift could explain.
+// drop as more cores wake). Programs heavy on system calls fare far worse:
+// one flushing a million lines (endl) read 5x its CPU time alone at 5
+// workers, kernel time that grows with contention. Half the cores keeps
+// compute drift near 15% for a 4x speedup, and JudgeFull reruns a TLE
+// alone before it counts.
 var Workers = max(1, runtime.NumCPU()/2)
-
-// retrySlack: a TLE in a parallel pass whose CPU time is under
-// budget*retrySlack is rerun alone before it counts. 1.3 covers the drift
-// measured at up to 8 workers.
-const retrySlack = 1.3
 
 // Summary is a full pass as the HP bar shows it: ▓▓▓▓░░ 37/52.
 type Summary struct {
@@ -74,9 +72,14 @@ func Summarize(rs []Result) Summary {
 //
 // It keeps going after a failure, because the HP bar counts every test. The
 // verdict is the first failure in test order (Summary.First), not the first
-// to finish, so it does not depend on scheduling. For the same reason a TLE
-// that the parallel slowdown could explain (see Workers) is held back and
-// rerun alone after the rest, in test order; only the rerun is emitted.
+// to finish, so it does not depend on scheduling. For the same reason no
+// TLE from the parallel pass counts as is: the slowdown there can inflate
+// CPU time several times over (see Workers). Every TLE is held back and,
+// after the rest, rerun alone in test order until a rerun fails, which
+// settles the verdict; only reruns are emitted for the tests rerun, and
+// the TLEs after that one are emitted as the parallel pass saw them. A TLE
+// after a failure that is not a TLE cannot change the verdict and is not
+// rerun either.
 //
 // Cancelling ctx stops the pass: JudgeFull returns ctx.Err() and emits
 // nothing more. An error running a test (an unreadable .out) stops it too.
@@ -116,8 +119,7 @@ func JudgeFull(ctx context.Context, tests []problem.Test, fileIO string, b Build
 	}()
 
 	results := make([]Result, len(tests))
-	budget := lim.budget(prof)
-	var retry []int
+	var held []int // parallel TLEs, kept in results until rerun
 	var failed error
 	for d := range out {
 		switch {
@@ -126,8 +128,9 @@ func JudgeFull(ctx context.Context, tests []problem.Test, fileIO string, b Build
 		case d.err != nil:
 			failed = d.err
 			stop()
-		case workers > 1 && d.r.Verdict == TLE && float64(d.r.CPU) < float64(budget)*retrySlack:
-			retry = append(retry, d.i)
+		case workers > 1 && d.r.Verdict == TLE:
+			results[d.i] = d.r
+			held = append(held, d.i)
 		default:
 			results[d.i] = d.r
 			emit(TestDone{Index: d.i, Result: d.r})
@@ -139,8 +142,20 @@ func JudgeFull(ctx context.Context, tests []problem.Test, fileIO string, b Build
 	if failed != nil {
 		return Summarize(results), failed
 	}
-	slices.Sort(retry)
-	for _, i := range retry {
+	slices.Sort(held)
+	other := len(tests) // the first failure in test order that is not held
+	for i, r := range results {
+		if r.Verdict != AC && !slices.Contains(held, i) {
+			other = i
+			break
+		}
+	}
+	settled := false // a rerun failed
+	for _, i := range held {
+		if settled || other < i {
+			emit(TestDone{Index: i, Result: results[i]})
+			continue
+		}
 		r, err := run(ctx, i)
 		if ctx.Err() != nil {
 			return Summary{}, ctx.Err()
@@ -151,6 +166,7 @@ func JudgeFull(ctx context.Context, tests []problem.Test, fileIO string, b Build
 		r.Rerun = true
 		results[i] = r
 		emit(TestDone{Index: i, Result: r})
+		settled = r.Verdict != AC
 	}
 	return Summarize(results), nil
 }

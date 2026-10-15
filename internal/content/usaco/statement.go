@@ -272,7 +272,51 @@ func htmlToMarkdown(body *html.Node, textPre bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return v.restore(string(md)), nil
+	return v.restore(unescapeBrackets(string(md))), nil
+}
+
+// unescapeBrackets turns the converter's "\[" back into "[" outside code:
+// screens/reader reads "\[" as the start of display math, so "A\[1..n]"
+// in an old analysis could show as math. Math itself is still a
+// placeholder here, so every "\[" left is an escaped bracket. A bare "["
+// only starts a link when "](" follows, which prose does not write.
+func unescapeBrackets(md string) string {
+	if !strings.Contains(md, `\[`) {
+		return md
+	}
+	var b strings.Builder
+	fenced := "" // the fence marker while inside a fenced block
+	for line := range strings.Lines(md) {
+		if t := strings.TrimLeft(line, " "); strings.HasPrefix(t, "```") || strings.HasPrefix(t, "~~~") {
+			switch mark := t[:3]; fenced {
+			case "":
+				fenced = mark
+			case mark:
+				fenced = ""
+			}
+			b.WriteString(line)
+			continue
+		}
+		if fenced != "" {
+			b.WriteString(line)
+			continue
+		}
+		code := false // inside an inline code span
+		for i := 0; i < len(line); i++ {
+			switch {
+			case line[i] == '`':
+				code = !code
+			case !code && line[i] == '\\' && i+1 < len(line) && line[i+1] == '[':
+				continue // drop the backslash, keep the bracket
+			case !code && line[i] == '\\' && i+1 < len(line):
+				b.WriteString(line[i : i+2]) // another escape stays whole
+				i++
+				continue
+			}
+			b.WriteByte(line[i])
+		}
+	}
+	return b.String()
 }
 
 // ---- old plain-text statements ---------------------------------------------
@@ -448,8 +492,12 @@ func paragraph(blk []string) string {
 	return p + "\n"
 }
 
+// mdEscaper escapes what markdown reads as syntax in plain-text prose. "["
+// stays as it is: screens/reader reads "\[" as display math, which turned
+// "A[1...N]" into "A1...N" (cpids 91, 97, 508). With "]" escaped no link
+// can form.
 var mdEscaper = strings.NewReplacer(
-	`\`, `\\`, "`", "\\`", `*`, `\*`, `_`, `\_`, `[`, `\[`, `]`, `\]`,
+	`\`, `\\`, "`", "\\`", `*`, `\*`, `_`, `\_`, `]`, `\]`,
 	`<`, `\<`, `>`, `\>`, `|`, `\|`, `$`, `\$`,
 )
 

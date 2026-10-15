@@ -1,5 +1,7 @@
 package usaco
 
+import "katharsis/internal/catalog"
+
 // tagTopic maps USACO Guide tags onto catalog.Topics. Tags that name no
 // technique (Casework, Constructive, Amortized Analysis, Divide and
 // Conquer) are left out so they never decide a topic.
@@ -117,7 +119,7 @@ var moduleTopic = map[string]string{
 }
 
 // topicFor picks the biome topic from tags, then from modules, else
-// "mixed".
+// catalog.Mixed.
 func topicFor(tags, modules []string) string {
 	if t := bestTopic(tags, tagTopic); t != "" {
 		return t
@@ -125,7 +127,7 @@ func topicFor(tags, modules []string) string {
 	if t := bestTopic(modules, moduleTopic); t != "" {
 		return t
 	}
-	return "mixed"
+	return catalog.Mixed
 }
 
 func bestTopic(keys []string, table map[string]string) string {
