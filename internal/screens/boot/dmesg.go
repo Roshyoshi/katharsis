@@ -508,23 +508,22 @@ func dstamp(d time.Duration) string {
 
 // strip is the dmesg strip in rows lines of width cells, the newest at the
 // bottom. The newest moment's events show first (all of them, as rows
-// allow), then the newest event's flavor line under it, then older events,
-// one row each.
+// allow, the newest first), then the newest event's flavor line under it,
+// then older events, one row each. An event cut short keeps its head, and
+// its last row ends in an ellipsis.
 func (e Env) strip(width, rows int) []string {
 	evs := e.Events
 	if rows <= 0 || len(evs) == 0 {
 		return nil
 	}
 	pad := strings.Repeat(" ", len(dstamp(0))+1)
-	line := func(ev Event, all bool) []string {
+	// line is an event in at most n rows (0 for all of it).
+	line := func(ev Event, n int) []string {
 		at := ev.At.Sub(e.State.Started)
 		if e.State.Started.IsZero() {
 			at = 0
 		}
-		ls := ui.WrapN(ev.Text, max(width-len(pad), 10), 0)
-		if !all {
-			ls = ls[:1]
-		}
+		ls := ui.WrapN(ev.Text, max(width-len(pad), 10), n) // marks a cut
 		for i := range ls {
 			pre := pad
 			if i == 0 {
@@ -540,11 +539,8 @@ func (e Env) strip(width, rows int) []string {
 		cut--
 	}
 	var newest []string // the newest moment, oldest first
-	for i := cut; i < len(evs); i++ {
-		newest = append(newest, line(evs[i], true)...)
-	}
-	if len(newest) > rows {
-		newest = newest[len(newest)-rows:]
+	for i := len(evs) - 1; i >= cut && len(newest) < rows; i-- {
+		newest = append(line(evs[i], rows-len(newest)), newest...)
 	}
 	// The flavor line is the newest event's that has one: a tip has none.
 	var voice []string
@@ -561,7 +557,7 @@ func (e Env) strip(width, rows int) []string {
 	voice = voice[:min(len(voice), rows-len(newest))]
 	var older []string
 	for i := cut - 1; i >= 0 && len(older)+len(newest)+len(voice) < rows; i-- {
-		older = append(line(evs[i], false), older...)
+		older = append(line(evs[i], 1), older...)
 	}
 	out := slices.Concat(older, newest, voice)
 	return append(make([]string, rows-len(out)), out...)
@@ -626,6 +622,8 @@ func tips(st *game.State, m *game.Meta, now time.Time, out []Event) []Event {
 // at most, wrapped and with no stamp, which the narrow pane has no room
 // for: the newest moment since the open door opened, its events, then its
 // one-time line, then the flavor line. Nil when the door has had none.
+// What the rows cut short ends in an ellipsis; what does not fit at all is
+// left out.
 func (e Env) DoorLines(width, rows int) []string {
 	c := e.State.Current
 	if c == nil || rows <= 0 || len(e.Events) == 0 {
@@ -635,25 +633,38 @@ func (e Env) DoorLines(width, rows int) []string {
 	if last.At.Before(c.Opened) {
 		return nil
 	}
-	var real, tips, voice []string
+	var real, tips, voice [][]string // each event's or flavor line's rows
 	speaker := Event{}
 	for _, ev := range e.Events {
 		switch {
 		case !ev.At.Equal(last.At):
 		case ev.Kind == EvTip:
-			tips = append(tips, ui.WrapN(ev.Text, width, 0)...)
+			tips = append(tips, ui.WrapN(ev.Text, width, 0))
 		default:
-			real = append(real, ui.WrapN(ev.Text, width, 0)...)
+			real = append(real, ui.WrapN(ev.Text, width, 0))
 			if ev.Hook != "" {
 				speaker = ev
 			}
 		}
 	}
 	for _, v := range e.voice(speaker) {
+		var ls []string
 		for _, l := range ui.WrapN(v, width, 0) {
-			voice = append(voice, ui.Voice.Render(ui.Muted.Render(l)))
+			ls = append(ls, ui.Voice.Render(ui.Muted.Render(l)))
 		}
+		voice = append(voice, ls)
 	}
-	out := slices.Concat(real, tips, voice)
-	return out[:min(len(out), rows)]
+	var out []string
+	for _, ls := range slices.Concat(real, tips, voice) {
+		room := rows - len(out)
+		if room == 0 {
+			break
+		}
+		if len(ls) > room {
+			ls = slices.Clone(ls[:room])
+			ls[room-1] = ui.Clip(ls[room-1]+" "+ui.G.Ellipsis, width)
+		}
+		out = append(out, ls...)
+	}
+	return out
 }

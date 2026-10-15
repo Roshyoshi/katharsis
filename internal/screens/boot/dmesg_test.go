@@ -427,3 +427,47 @@ func TestDoorModsRegression(t *testing.T) {
 		t.Errorf("regression.door line %q", s)
 	}
 }
+
+// A line the strip cuts ends in an ellipsis, at 80 columns as anywhere: an
+// older event kept to its first row, an event too long for the rows left,
+// and the problem pane's lines (DoorLines). A cut event keeps its head and
+// its timestamp.
+func TestStripMarksCuts(t *testing.T) {
+	long := "door_2: AC \"A Problem Whose Title Runs Long\" 00:42 of 17:00 · -O3 · +41 B · " +
+		"and a mechanic line long enough to wrap twice at eighty columns, more than the strip has"
+	st := fixture.Problem()
+	e := env(st)
+	opened := st.Current.Opened
+	older := Event{At: opened.Add(-time.Minute), Kind: EvAC, Text: long}
+	newest := Event{At: opened.Add(time.Second), Kind: EvVerdict, Text: long}
+	plain := func(ls []string) []string {
+		var out []string
+		for _, l := range ls {
+			out = append(out, strings.TrimRight(ansi.Strip(l), " "))
+		}
+		return out
+	}
+	cut := func(what string, ls []string, i int) {
+		t.Helper()
+		if i >= len(ls) || !strings.HasSuffix(ls[i], ui.G.Ellipsis) {
+			t.Errorf("%s: line %d is cut without an ellipsis: %q", what, i, ls)
+		}
+	}
+	e.Events = []Event{older, {At: newest.At, Kind: EvFree, Text: "door_2: CE, free"}}
+	cut("older event", plain(e.strip(80, 2)), 0)
+	e.Events = []Event{older, newest}
+	got := plain(e.strip(80, 2))
+	cut("newest event in two rows", got, 1)
+	if !strings.HasPrefix(got[0], "[") || !strings.Contains(got[0], "door_2: AC") {
+		t.Errorf("the cut newest event lost its timestamp: %q", got)
+	}
+	cut("newest event in one row", plain(e.strip(80, 1)), 0)
+	cut("problem pane", plain(e.DoorLines(40, 2)), 1)
+	for w, ls := range map[int][]string{80: e.strip(80, 2), 40: e.DoorLines(40, 2)} {
+		for _, l := range ls {
+			if got := ansi.StringWidth(l); got > w {
+				t.Errorf("line %d wide at %d: %q", got, w, ansi.Strip(l))
+			}
+		}
+	}
+}
