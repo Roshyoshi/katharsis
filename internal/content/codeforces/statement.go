@@ -189,6 +189,12 @@ func splitMath(s string) []seg {
 			}
 		}
 		switch {
+		case run == 4 && (i+4 == len(s) || strings.IndexByte(" \t\n.,;:)", s[i+4]) >= 0):
+			// The OCR's $$…$$ around nothing: the page has a formula here,
+			// as an image, that the dataset did not read. Read as $$$ and
+			// a $, it opened a span that swallowed the next formulas.
+			text.WriteString(lostFormula)
+			i += 4
 		case run >= 3:
 			if j := closeAt(s, i+3, "$$$"); j >= 0 {
 				emit(segInline, s[i+3:j], j+3)
@@ -222,6 +228,10 @@ func splitMath(s string) []seg {
 	flush()
 	return out
 }
+
+// lostFormula stands where the dataset lost a formula, for the reader to
+// see the page for it.
+const lostFormula = "⟨formula missing from the dataset: see the page⟩"
 
 // mergeInline joins inline spans with nothing between them. After the
 // delimiter rewrite "$a$$^{b}$" would read as a $$ display opener;

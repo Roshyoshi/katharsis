@@ -96,6 +96,7 @@ func TestProse(t *testing.T) {
 		{"unclosed", "a $$$ b", `a \$\$\$ b`},
 		{"escaped dollar in math", "$$$a \\$ b$$$", `$a \$ b$`},
 		{"bare dollar in math", "$$$$100$$$", `$\$100$`},
+		{"lost formula", "formally, $$$$. Then $$a$$ and $$$b$$$", "formally, " + lostFormula + ". Then $a$ and $b$"},
 		{"emphasis chars", `"**.*.." and a_b`, `"\*\*.\*.." and a\_b`},
 		{"heading and quote", "#define x\n> y", `\#define x` + "\n\n" + `\> y`},
 		{"lines are paragraphs", "one\ntwo\n\n\nthree", "one\n\ntwo\n\nthree"},
