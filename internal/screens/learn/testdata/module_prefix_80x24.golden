@@ -1,0 +1,24 @@
+RTFM ▸ Silver ▸ Prefix Sums                                    ◇ CAP_PREFIX_SUMS
+
+NAME
+       prefix-sums - Introduction to Prefix Sums              ★★★★ very frequent
+       Computing range sum queries in constant time over a fixed 1D array.
+
+TRIAL                         unit: Easy → Hard, tags shown · integration: blind
+       1  Breed Counting                    Very Easy  1250  2015 December, Sil…
+       2  Hoof, Paper, Scissors             Very Easy  1300  2017 January, Silv…
+       3  Subsequences Summing to Sevens    Easy       1450  2016 January, Silv…
+       4  Farmer John's Favorite Operation  Medium     1600
+       +  2 blind integration doors · The Accumulator · 1350–1650
+       ◇  pass → ◆ CAP_PREFIX_SUMS: The Accumulator joins your route choices
+
+SEE ALSO
+       requires  nothing
+       authors   Darren Yao, Dustin Miao
+
+“Introduction to Prefix Sums” by Darren Yao, Dustin Miao, USACO Guide
+(https://usaco.guide/silver/prefix-sums), CC BY-NC-SA 4.0
+(https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
+Markdown.
+
+[r] read  [t] start trial  [o] usaco.guide  [q] back

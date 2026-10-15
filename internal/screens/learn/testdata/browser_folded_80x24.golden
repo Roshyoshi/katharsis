@@ -1,0 +1,24 @@
+RTFM(7)                  USACO Guide · CC BY-NC-SA 4.0                   RTFM(7)
+       MODULE                               CAPABILITY             TRIAL
+▾ GENERAL                                                       1 module
+   ▸ Language-Specific  · 1 module
+▾ BRONZE                                                        1 module
+   ▾ Additional
+       Casework                                                    4
+▾ SILVER                                               2 modules · ◆ 1/2
+   ▸ Prefix Sums  · 1 module
+   ▸ Sorting & Searching  · 1 module
+▾ GOLD                                                  1 module · ◆ 0/1
+   ▸ Additional Topics  · 1 module
+▾ PLATINUM                                              1 module · ◆ 0/1
+   ▸ Misc. Topics  · 1 module
+▾ ADVANCED                                              1 module · ◆ 0/1
+   ▸ Data Structures  · 1 module
+
+COLOPHON
+       Learn mode content is adapted from the USACO Guide (https://usaco.guide,
+       github.com/cpinitiative/usaco-guide) by the Competitive Programming
+       Initiative and its contributors, licensed under CC BY-NC-SA 4.0
+       (https://creativecommons.org/licenses/by-nc-sa/4.0/). Modules were
+       converted from MDX to Markdown and adapted for a terminal; the adapted
+ rtfm(7) line 1/24 · ◆ 1/4 held       enter open · tab fold · / filter · q quit

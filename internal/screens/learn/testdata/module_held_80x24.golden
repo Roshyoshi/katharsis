@@ -1,0 +1,24 @@
+RTFM ▸ Silver ▸ Sorting & Searching                           ◆ CAP_TWO_POINTERS
+
+NAME
+       two-pointers - Two Pointers                             ★★☆☆ not frequent
+       Iterating two monotonic pointers across an array to search for a pair of
+       indices satisfying some condition in linear time.
+
+TRIAL                         unit: Easy → Hard, tags shown · integration: blind
+       1  Paired Up           Easy       1350  2017 US Open, Silver P1
+       2  Diamond Collector   Medium     1500  2016 US Open, Silver P2
+       3  Sleepy Cow Herding  Medium
+       4  Cow Checkups        Hard
+       +  2 blind integration doors · The Sliding Window · 1350–1650
+       ◆  CAP_TWO_POINTERS held: The Sliding Window is already on your routes
+
+SEE ALSO
+       requires  intro-sorting
+       authors   Darren Yao, Qi Wang, Ryan Chou, David Zhou
+
+“Two Pointers” by Darren Yao, Qi Wang, Ryan Chou, David Zhou, USACO Guide
+(https://usaco.guide/silver/two-pointers), CC BY-NC-SA 4.0
+(https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
+Markdown.
+[r] read  [t] start trial  [o] usaco.guide  [q] back
