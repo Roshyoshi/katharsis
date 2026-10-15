@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 )
 
 // deadPid is the pid of a process that has exited and been reaped.
@@ -60,7 +59,7 @@ func TestSweepOrphans(t *testing.T) {
 	tagAs(t, lldb, dead, RoleLLDB)
 	tagAs(t, live, os.Getppid(), RoleLLDB)
 
-	n, err := SweepOrphans(5 * time.Second)
+	n, err := SweepOrphans(patience)
 	if err != nil || n != 2 {
 		t.Fatalf("SweepOrphans = %d, %v; want the 2 orphans", n, err)
 	}

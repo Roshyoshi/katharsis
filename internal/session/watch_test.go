@@ -1,6 +1,7 @@
 package session
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -13,11 +14,15 @@ import (
 )
 
 const (
-	testDebounce = 50 * time.Millisecond
+	// Several times the game's 80 ms: on a loaded machine (load 30+) a
+	// writer stalled mid-save for 50 ms split one save into two fires.
+	testDebounce = 200 * time.Millisecond
 	// Long enough for any straggler event to arm and fire the timer again.
 	quiet = 4 * testDebounce
-	// Upper bound on a fire we expect; generous so a loaded machine passes.
-	patience = 3 * time.Second
+	// Upper bound on anything a test waits for: a fire, a pane, a reply.
+	// Waits end as soon as the thing happens, so only a failure pays it;
+	// under load lldb took 3 s to draw its first breakpoint.
+	patience = 30 * time.Second
 )
 
 // startWatch runs watch on path until the test ends and returns a channel
@@ -188,9 +193,9 @@ func TestWatchCancel(t *testing.T) {
 	t.Parallel()
 	_, path := setup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	// A debounce long enough that the save below is still pending when the
-	// watch is cancelled.
-	fired, done := startWatchCtx(t, ctx, path, time.Second)
+	// A debounce the test never outlasts, so the save below is still
+	// pending when the watch is cancelled, however slow the machine.
+	fired, done := startWatchCtx(t, ctx, path, time.Minute)
 	write(t, path, "int main() { return 0; }\n")
 	time.Sleep(testDebounce)
 	cancel()
@@ -260,24 +265,33 @@ func TestWatchVim(t *testing.T) {
 			logRaw(t, dir)
 			fired := startWatch(t, path)
 
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), patience)
 			defer cancel()
-			// -u NONE -i NONE: no vimrc, plugins or viminfo. Two saves, far
-			// enough apart to be judged separately.
+			// -u NONE -i NONE: no vimrc, plugins or viminfo. Two saves,
+			// the second once the test has seen the first and written
+			// next (a name the watch ignores): a fixed sleep between them
+			// merged the two into one fire on a loaded machine.
 			args := append([]string{"-u", "NONE", "-i", "NONE", "-N", "-es"}, tc.opts...)
 			args = append(args,
 				"-c", "call setline(1, 'int main() { return 0; }')", "-c", "w",
-				"-c", "sleep 300m",
+				"-c", "while !filereadable('next') | sleep 10m | endwhile",
 				"-c", "call setline(1, 'int main() { return 1; }')", "-c", "w",
 				"-c", "qa!", "sol.cpp")
 			cmd := exec.CommandContext(ctx, vim, args...)
 			cmd.Dir = dir
 			// Anything vim would put under ~ goes to a scratch dir instead.
 			cmd.Env = append(os.Environ(), "HOME="+t.TempDir())
-			if out, err := cmd.CombinedOutput(); err != nil {
-				t.Fatalf("vim: %v\n%s", err, out)
+			var out bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &out, &out
+			if err := cmd.Start(); err != nil {
+				t.Fatal(err)
 			}
-			expectFires(t, fired, 2)
+			expectFires(t, fired, 1)
+			write(t, filepath.Join(dir, "next"), "")
+			expectFires(t, fired, 1)
+			if err := cmd.Wait(); err != nil {
+				t.Fatalf("vim: %v\n%s", err, out.Bytes())
+			}
 			got, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatal(err)
