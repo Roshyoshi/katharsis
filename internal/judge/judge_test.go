@@ -307,17 +307,26 @@ func TestRun(t *testing.T) {
 		{name: "TLE infinite loop", src: "spin.cpp", lim: judge.Limits{Time: tl}, profs: both, want: judge.TLE,
 			check: func(t *testing.T, p judge.Profile, r judge.Result) {
 				budget := time.Duration(float64(tl) * p.Slack)
-				if !strings.HasPrefix(r.Reason, "cpu ") {
-					t.Errorf("Reason = %q, want cpu ...", r.Reason)
-				}
 				// Killed on CPU time: at the budget under a sample
-				// profile, at twice it under the judged one.
+				// profile, at twice it under the judged one, within a
+				// poll or two. The wall clock is no measure of that: on a
+				// busy machine CPU time accrues slower than it (1.89 s of
+				// wall for 0.8 s of CPU at load 23). spin.cpp never ends,
+				// so short of the kill only the wall clock stops it, which
+				// a machine too busy to give it the CPU by then cannot help.
 				kill := 2 * budget
 				if p.Slack > 1 {
 					kill = budget
 				}
-				if r.Wall > kill+time.Second {
-					t.Errorf("Wall = %v, want killed near %v of CPU", r.Wall, kill)
+				wallKill := 2*budget + 500*time.Millisecond // as Run sets it
+				if r.CPU < kill && r.Wall >= wallKill-100*time.Millisecond {
+					t.Skipf("starved: cpu %v by the wall-clock kill at %v", r.CPU, wallKill)
+				}
+				if !strings.HasPrefix(r.Reason, "cpu ") {
+					t.Errorf("Reason = %q, want cpu ...", r.Reason)
+				}
+				if r.CPU < kill || r.CPU > kill+300*time.Millisecond {
+					t.Errorf("CPU = %v, want killed just past %v of CPU", r.CPU, kill)
 				}
 			}},
 		// burn.cpp uses 500 ms of CPU: over 400 ms, within any sanitizer slack.
