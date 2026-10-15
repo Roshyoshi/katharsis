@@ -328,9 +328,15 @@ The curriculum in Carroll's chapter IX maps onto CP almost without help:
 
 The running gag is "lessons lessen": ten hours the first day, nine the next.
 Alice asks how they managed on the twelfth, and the Gryphon changes the
-subject. The game's answer is unsigned underflow (`rtfm.underflow`). This
-is a joke only. RTFM timers do not shrink unless a rule says they do (tone
-rule 5).
+subject. This is a joke only. RTFM timers do not shrink unless a rule says
+they do (tone rule 5).
+
+The story shows only at game events: scenes, boss cards, biome falls,
+strip lines and boot-end beats (user, 10-15: "keep the story non visible
+outside of actual game events keep it esoteric … remove the lore tab").
+So the RTFM page carries no story tail (the vocabulary, syllabus, Knight's
+song and underflow sections are cut), and there is no reread page. Beats
+stay terse and cryptic: a beat hints, and the game never explains it.
 
 ## Wiring notes (for the implementation agent)
 

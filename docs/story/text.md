@@ -116,7 +116,6 @@ anchors `#chap01` … `#chap12`.
 | A42 | and then the different branches of Arithmetic—Ambition, Distraction, Uglification, and Derision. | Mock Turtle | [IX](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap09) |
 | A43 | Ten hours the first day, | Mock Turtle | [IX](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap09) |
 | A44 | because they lessen from day to day. | Gryphon | [IX](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap09) |
-| A45 | And how did you manage on the twelfth? | Alice | [IX](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap09) |
 | A46 | That's enough about lessons, | Gryphon | [IX](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap09) |
 | A47 | Consider your verdict, | King | [XI](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap11) |
 | A48 | Where shall I begin, please your Majesty? | White Rabbit | [XII](https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap12) |
@@ -167,7 +166,6 @@ Base: <https://www.gutenberg.org/cache/epub/12/pg12-images.html>, anchors
 | G28 | All the King's horses and all the King's men / Couldn't put Humpty Dumpty in his place again. | the rhyme, as Alice recites it | [VI](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0006) |
 | G29 | it's my crown all the while! | White King | [VII](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0007) |
 | G30 | It's my own invention | White Knight | [VIII](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0008) |
-| G31 | The name of the song is called 'Haddocks' Eyes.' | White Knight | [VIII](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0008) |
 | G32 | Which do you think it was? | narration | [XII](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0012) |
 | G33 | Life, what is it but a dream? | closing poem | [after XII](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0012) |
 | G34 | .YKCOWREBBAJ / sevot yhtils eht dna, gillirb sawT' | the Looking-glass book, as printed | [I](https://www.gutenberg.org/cache/epub/12/pg12-images.html#link2HCH0001) |
@@ -521,9 +519,9 @@ it: you halted, and Turing allows that.
 where: boot end. The first line is the teaser in RT1's kept block
 (`teaser`, `./internal/screens/boot/debrief.go:101`), so it fits in 59
 columns, the room the block has at 80; `b` reads the rest as a
-`story.NewBeat` page. Reread in GRUB's `cat /proc/story`
-(`./internal/screens/meta/grub.go:236`) · when: once · pick: block, except
-`milestone.capability`
+`story.NewBeat` page. There is no reread page: GRUB's `cat /proc/story`
+is cut (user, 10-15), so a beat missed is missed · when: once · pick:
+block, except `milestone.capability`
 
 | Hook | Earned at |
 |---|---|
@@ -1235,11 +1233,8 @@ Solved, blank file and all. The White Queen forgets it, backwards.
 ## RTFM (the Mock Turtle's school)
 
 The browser's header stays the guide's license line (`manTitle`,
-`./internal/screens/rtfm/browser.go:454`). The page's tail, after the module
-list and before `COLOPHON`, is where a man page keeps its odd sections, so
-`help.vocab`, `rtfm.syllabus`, `white-knight.song` and `rtfm.underflow`
-go there, as `WORDS`, `CURRICULUM`, `EXAMPLES` and `BUGS` (`storyTail`,
-`./internal/screens/rtfm/browser.go:664`).
+`./internal/screens/rtfm/browser.go:454`). RTFM keeps only the lines its
+events show: a module page, a trial starting, passing, failing.
 
 ### rtfm.module.intro
 where: module page, a faint line after the NAME section's description, `{module}` the title (`introLine`, `./internal/screens/rtfm/module.go:162`) · when: every · pick: pool, seeded by module · uses: A40, A42 (allusion), A44 (*parody*: the Gryphon's line with the module name added)
@@ -1268,47 +1263,15 @@ where: the crash screen of a trial, in place of the epitaph, whatever ended it (
 "That's enough about lessons," says the Gryphon. Try a boot instead.
 ```
 
-### help.vocab
-where: the RTFM page's tail, a `WORDS` section first: the in-game manual is the closest thing to `man katharsis` · pick: block · uses: G25, G26
-```text
-"When I use a word," Humpty Dumpty said in rather a scornful tone,
-"it means just what I choose it to mean—neither more nor less."
-Here, boot means run, bytes means money, and panic means you died.
-"When I make a word do a lot of work like that," he adds, "I always
-pay it extra."
-```
-
-### rtfm.syllabus
-where: the RTFM page's tail, a `CURRICULUM` section · pick: block · uses: Mock Turtle's subjects, ch. IX
-```text
-Reeling and Writhing .......... fast I/O
-Ambition ...................... addition, and its overflow
-Distraction ................... subtraction, and off-by-one
-Uglification .................. multiplication, mod 1e9+7
-Derision ...................... division, truncated toward zero
-Mystery, ancient and modern ... the editorial
-Seaography .................... geometry
-Drawling, Stretching .......... grids and ASCII art
-Fainting in Coils ............. painting in oils: flood fill
-Laughing and Grief ............ Latin and Greek: strings
-```
-
-### white-knight.song
-where: the RTFM page's tail, an `EXAMPLES` section: the prologue's man page had none, and this is the only example on offer · pick: block · uses: G31 and the rest of the Knight's speech (ch. VIII: "The name really is 'The Aged Aged Man'", "The song is called 'Ways and Means'", "The song really is 'A-sitting On A Gate'")
-```text
-The White Knight explains his song, K&R-style:
-  song          "A-sitting On A Gate"   what the song really is
-  *called       "Ways and Means"        what the song is called
-  *name         "The Aged Aged Man"     what the name really is
-  **name_called "Haddocks' Eyes"        what the name is called
-"It's my own invention."
-```
-
-### rtfm.underflow
-where: the RTFM page's tail, a `BUGS` section, last before `COLOPHON` · pick: fixed · uses: A45
-```text
-"And how did you manage on the twelfth?" Unsigned: 4294967295 hours.
-```
+### Cut: help.vocab, rtfm.syllabus, white-knight.song, rtfm.underflow
+The RTFM page's story tail (`WORDS`, `CURRICULUM`, `EXAMPLES`, `BUGS`;
+`storyTail`, `./internal/screens/rtfm/browser.go:670`) is cut, with GRUB's
+`cat /proc/story` reread page: the story shows only at game events, never
+on a lore page (user, 10-15: "keep the story non visible outside of actual
+game events keep it esoteric … remove the lore tab"). The four hooks are
+gone from the table. Their quotes A45 ("And how did you manage on the
+twelfth?") and G31 ("Haddocks' Eyes") left the register with them; G25,
+G26 (`lib.saved`) and G30 (`daemon.intro`) stay.
 
 ---
 

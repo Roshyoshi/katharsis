@@ -619,34 +619,9 @@ The Gryphon: "{module}. They lessen from day to day."
 	"rtfm.trial.start": fixedOf(`"Ten hours the first day," says the Mock Turtle. Your timer is soft.`),
 	"rtfm.trial.pass":  fixedOf("The Gryphon claps: {cap}. {biome} joins routes."),
 	"rtfm.trial.fail":  fixedOf(`"That's enough about lessons," says the Gryphon. Try a boot instead.`),
-	"rtfm.underflow":   fixedOf(`"And how did you manage on the twelfth?" Unsigned: 4294967295 hours.`),
-	"rtfm.syllabus": blockOf(`
-Reeling and Writhing .......... fast I/O
-Ambition ...................... addition, and its overflow
-Distraction ................... subtraction, and off-by-one
-Uglification .................. multiplication, mod 1e9+7
-Derision ...................... division, truncated toward zero
-Mystery, ancient and modern ... the editorial
-Seaography .................... geometry
-Drawling, Stretching .......... grids and ASCII art
-Fainting in Coils ............. painting in oils: flood fill
-Laughing and Grief ............ Latin and Greek: strings
-`),
-	"help.vocab": blockOf(`
-"When I use a word," Humpty Dumpty said in rather a scornful tone,
-"it means just what I choose it to mean—neither more nor less."
-Here, boot means run, bytes means money, and panic means you died.
-"When I make a word do a lot of work like that," he adds, "I always
-pay it extra."
-`),
-	"white-knight.song": blockOf(`
-The White Knight explains his song, K&R-style:
-  song          "A-sitting On A Gate"   what the song really is
-  *called       "Ways and Means"        what the song is called
-  *name         "The Aged Aged Man"     what the name really is
-  **name_called "Haddocks' Eyes"        what the name is called
-"It's my own invention."
-`),
+	// The RTFM page's story tail (help.vocab, rtfm.syllabus,
+	// white-knight.song, rtfm.underflow) is cut: the story shows only at
+	// game events, never on a lore page (user, 10-15).
 
 	// ---- The dmesg strip and the app's flashes ----
 	"verdict.AC":    fixedOf("The Queen looks for a head to remove. Finds none. Sulks."),

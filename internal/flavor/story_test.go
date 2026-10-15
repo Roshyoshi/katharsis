@@ -303,7 +303,6 @@ var register = map[string]string{
 	"A42": "and then the different branches of Arithmetic—Ambition, Distraction, Uglification, and Derision.",
 	"A43": "Ten hours the first day,",
 	"A44": "because they lessen from day to day.",
-	"A45": "And how did you manage on the twelfth?",
 	"A46": "That's enough about lessons,",
 	"A47": "Consider your verdict,",
 	"A48": "Where shall I begin, please your Majesty?",
@@ -348,7 +347,6 @@ var register = map[string]string{
 	"G28": "All the King's horses and all the King's men / Couldn't put Humpty Dumpty in his place again.",
 	"G29": "it's my crown all the while!",
 	"G30": "It's my own invention",
-	"G31": "The name of the song is called 'Haddocks' Eyes.'",
 	"G32": "Which do you think it was?",
 	"G33": "Life, what is it but a dream?",
 	"G34": ".YKCOWREBBAJ / sevot yhtils eht dna, gillirb sawT'",
@@ -449,7 +447,6 @@ var quoted = map[string][]use{
 	"rtfm.module.intro":              {{"A40", ""}},
 	"rtfm.trial.start":               {{"A43", ""}},
 	"rtfm.trial.fail":                {{"A46", ""}},
-	"rtfm.underflow":                 {{"A45", ""}},
 	"verdict.TLE":                    {{"A25", "He's murdering the time!"}},
 	"verdict.MLE":                    {{"A50", "All persons more than a mile high to leave the court."}},
 	"verdict.CE":                     {{"A51", ""}},
@@ -457,8 +454,6 @@ var quoted = map[string][]use{
 	"timer.warn.1m":                  {{"A2", ""}},
 	"door.mystery":                   {{"G24", ""}},
 	"lib.saved":                      {{"G25", ""}, {"G26", ""}},
-	"help.vocab":                     {{"G25", ""}, {"G26", ""}},
-	"white-knight.song":              {{"G30", ""}, {"G31", "Haddocks' Eyes"}},
 }
 
 // alludedOnly are register quotes no line carries verbatim: text.md marks
