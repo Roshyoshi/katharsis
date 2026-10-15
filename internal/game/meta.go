@@ -105,6 +105,7 @@ func advanceRegression(m *Meta, id catalog.ID, now time.Time) {
 	g.Stage++
 	if g.Stage >= len(days) {
 		m.Regressions = slices.Delete(m.Regressions, i, i+1)
+		m.Retired++
 		if len(m.Regressions) == 0 {
 			m.Regressions = nil // same JSON as a player who never crashed
 		}

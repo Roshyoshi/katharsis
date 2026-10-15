@@ -2,6 +2,7 @@ package game_test
 
 import (
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -101,5 +102,29 @@ func TestCapabilitiesAndLibs(t *testing.T) {
 	game.AddLib(m, game.Lib{Name: "dsu", Source: "v2"})
 	if len(m.Libs) != 2 || m.Libs[0].Source != "v2" {
 		t.Errorf("libs %+v", m.Libs)
+	}
+}
+
+// A regression re-solved at its last stage leaves the schedule and is
+// counted in Meta.Retired (the story's first-retired milestone); an earlier
+// stage, an editorial or an early re-solve counts nothing.
+func TestRetired(t *testing.T) {
+	t.Parallel()
+	day := 24 * time.Hour
+	m := game.Meta{Retired: 2, Regressions: []game.Regression{
+		{Problem: "x", Due: t0, Stage: 0, Days: []int{3, 17}},
+		{Problem: "y", Due: t0, Stage: 1, Days: []int{3, 17}},
+	}}
+	game.Upsolve(&m, "y", game.Editorial, time.Hour, t0.Add(day))
+	game.Upsolve(&m, "x", game.Independent, time.Hour, t0.Add(day))
+	if m.Retired != 2 || len(m.Regressions) != 2 {
+		t.Fatalf("retired %d, regressions %+v: nothing should retire yet", m.Retired, m.Regressions)
+	}
+	game.Upsolve(&m, "y", game.Hinted, time.Hour, t0.Add(day))
+	if m.Retired != 3 || len(m.Regressions) != 1 || m.Regressions[0].Problem != "x" {
+		t.Errorf("retired %d, regressions %+v after y's last stage", m.Retired, m.Regressions)
+	}
+	if got := mustJSON(t, game.Meta{}); strings.Contains(got, "Retired") {
+		t.Errorf("a new player's meta %s carries Retired", got)
 	}
 }

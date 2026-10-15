@@ -88,8 +88,12 @@ type Meta struct {
 	Libs         []Lib
 	CoreDump     *CoreDump
 	Regressions  []Regression
-	Solves       []Solve
-	Boots        int // boots started, for "Boot #N"
+	// Retired counts the regressions that came back at every stage and
+	// were re-solved each time, so no longer return (the story's first one
+	// is a milestone).
+	Retired int `json:",omitempty"`
+	Solves  []Solve
+	Boots   int // boots started, for "Boot #N"
 
 	// Seen lists the one-time story scenes already shown, each once, in
 	// the order shown (MarkSeen). It is the story's reread log.
