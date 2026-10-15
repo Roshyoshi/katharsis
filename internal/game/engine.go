@@ -635,10 +635,10 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 
 // enterMerge opens the window between biomes: ducks refill to the boot's
 // base plus Duck upgrades, and daemons not yet running are offered, but
-// not those a package not installed locks (rules.Package.Daemon), and
-// more with packages that add offers. A trial offers none: fork and kexec
-// need rooms that re-roll, which a trial's do not, and the rest are boot
-// perks.
+// not those a package not installed locks (rules.Package.Daemon) or that
+// would do nothing (idle), and more with packages that add offers. A
+// trial offers none: fork and kexec need rooms that re-roll, which a
+// trial's do not, and the rest are boot perks.
 func (e *engine) enterMerge() {
 	s, r := e.s, &e.s.Rules
 	s.Phase = PhaseMerge
@@ -653,7 +653,7 @@ func (e *engine) enterMerge() {
 	if len(s.Daemons) < r.MaxDaemons && s.Trial == nil {
 		var pool []Daemon
 		for _, d := range AllDaemons {
-			if !slices.Contains(s.Daemons, d) && !s.DaemonLocked(d) {
+			if !slices.Contains(s.Daemons, d) && !s.DaemonLocked(d) && !s.idle(d) {
 				pool = append(pool, d)
 			}
 		}
@@ -661,6 +661,18 @@ func (e *engine) enterMerge() {
 	}
 	e.logf("merge window: %s uncommitted, ducks %d, daemons on offer %v",
 		units.Bytes(s.Uncommitted), s.Ducks, s.DaemonOffers)
+}
+
+// idle reports whether daemon d would change nothing in this boot: fork
+// once the rooms hold its ForkDoors without it (tmux's door; the two do
+// not stack, roomSize). In the simulator (every package installed, the
+// 1000 and 1600 models at prestige 0 and 4, 1600 boots each) such a fork
+// took a daemon slot from kexec or /dev/random: leaving it off the offer
+// raised full clears by 3 to 9 points, while letting it stack a fifth
+// door moved them by -1 to +3, within noise.
+func (s *State) idle(d Daemon) bool {
+	r := &s.Rules
+	return d == Fork && r.DoorsPerRoom+r.Grants(s.Packages).Doors >= r.ForkDoors
 }
 
 func (e *engine) commit() error {

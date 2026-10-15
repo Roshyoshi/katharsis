@@ -956,7 +956,8 @@ func TestMergeWindow(t *testing.T) {
 
 // A merge window offers daemons not yet running, never one a package not
 // installed locks (strace and /dev/random in the standard rules), and one
-// more with procps.
+// more with procps. Nor fork once tmux is installed: its rooms already
+// hold fork's four doors, and the two do not stack (roomSize).
 func TestDaemonOffers(t *testing.T) {
 	t.Parallel()
 	ps := dense(catalog.Topics, 800, 2600, 20)
@@ -971,6 +972,8 @@ func TestDaemonOffers(t *testing.T) {
 		{daemons, []game.Daemon{game.Fork, game.Kexec}, 3},
 		{append(daemons, "procps"), nil, 4},
 		{append(daemons, "procps"), []game.Daemon{game.Fork, game.Kexec, game.Nice}, 0}, // MaxDaemons
+		{[]string{"tmux"}, nil, 2},
+		{[]string{"tmux"}, []game.Daemon{game.Kexec, game.Nice}, 0},
 	}
 	for _, tc := range tests {
 		h := newHarness(t, plain(), &game.Meta{Installed: tc.installed}, ps, 0, 1)
@@ -980,7 +983,7 @@ func TestDaemonOffers(t *testing.T) {
 			t.Errorf("%v held %v: offers %v, want %d", tc.installed, tc.held, h.s.DaemonOffers, tc.want)
 		}
 		for _, d := range h.s.DaemonOffers {
-			if slices.Contains(tc.held, d) || h.s.DaemonLocked(d) {
+			if slices.Contains(tc.held, d) || h.s.DaemonLocked(d) || d == game.Fork && slices.Contains(tc.installed, "tmux") {
 				t.Errorf("%v held %v: offered %q", tc.installed, tc.held, d)
 			}
 		}

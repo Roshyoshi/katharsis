@@ -649,12 +649,12 @@ func Standard() Rules {
 		// reading and D44 let most of its boots past Userland), so bought
 		// cheapest first the first package is one cleared door and every next
 		// one is at most three boots away until binutils, about 42 boots in;
-		// the catalog is about 62 boots of that player's bank and 51 of the
-		// 1600-rated one's (249 B a boot). The measured rate moves by a tenth
-		// with the prices themselves (when a package lands changes the
-		// boots), so the ladder holds for 176 to 212 B. rules_test.go checks the ladder at those
-		// rates and sim TestAptLadder against the players; prices are
-		// settings like any other (D2).
+		// the catalog is about 62 boots of that player's bank and 49 of the
+		// 1600-rated one's (263 B a boot). The measured rate moves by a
+		// tenth with the prices themselves (when a package lands changes the
+		// boots), so the ladder holds for 176 to 212 B. rules_test.go checks
+		// the ladder at those rates and sim TestAptLadder against the
+		// players; prices are settings like any other (D2).
 		//
 		// binutils is the one package of raw power: a lib slot pastes more
 		// of the player's own code, which the door model does not see

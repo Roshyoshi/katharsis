@@ -228,10 +228,8 @@ func (e *engine) pick(cs []cand, n int) []drawn {
 // DoorsPerRoom plus what packages add (tmux), or ForkDoors after an AC
 // with fork running, whichever is more. Fork and the packages do not
 // stack: each more door is one more chance to dodge a cursed or blind
-// one, so stacked they would undo much of what prestige adds as risk
-// (D22). In the simulator, every package installed raised the 1600
-// model's prestige 4 full clears from 12.3% to 16.3% with 5 doors after
-// an AC, and to 14.9% with 4.
+// one, which prestige adds as risk (D22). So with tmux fork adds nothing,
+// and is not offered (idle).
 func (e *engine) roomSize(b *BiomeState) int {
 	r := &e.s.Rules
 	if b.Kind == rules.Boss {
