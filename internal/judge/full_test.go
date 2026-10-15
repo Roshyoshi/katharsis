@@ -118,19 +118,20 @@ func TestJudgeFull(t *testing.T) {
 	}
 }
 
-// burn.cpp uses 500 ms of CPU. Against a 450 ms budget every test is TLE
-// in the parallel pass, so JudgeFull reruns the first alone; it stays TLE
-// because burn.cpp burns CPU time, not a fixed amount of work, and that
-// settles the verdict: the other two are emitted as the pass saw them.
+// burn.cpp burns 70 ms of CPU here. Against a 50 ms budget every test is
+// TLE in the parallel pass, so JudgeFull reruns the first alone; it stays
+// TLE because burn.cpp burns CPU time, not a fixed amount of work, and
+// that settles the verdict: the other two are emitted as the pass saw
+// them.
 func TestJudgeFullRerunsTLE(t *testing.T) {
 	needCompiler(t)
 	t.Parallel()
 	if judge.Workers < 2 {
 		t.Skip("one worker: nothing runs in parallel, nothing to rerun")
 	}
-	files := []testFile{{"1", "1 2\n", "3\n"}, {"2", "2 2\n", "4\n"}, {"3", "3 3\n", "6\n"}}
+	files := []testFile{{"1", "70 1 2\n", "3\n"}, {"2", "70 2 2\n", "4\n"}, {"3", "70 3 3\n", "6\n"}}
 	lim := quick
-	lim.Time = 450 * time.Millisecond
+	lim.Time = 50 * time.Millisecond
 	s, evs, err := fullPass(t, context.Background(), "burn.cpp", files, lim)
 	if err != nil {
 		t.Fatal(err)
@@ -212,14 +213,21 @@ func TestJudgeFullCancelled(t *testing.T) {
 	}
 	lim := quick
 	lim.Time = 10 * time.Second // the wall-clock kill would come at 20.5s
-	// Build before starting the clock: under load the compile alone can
-	// outlast the 500 ms, and then no test would run before the cancel.
-	build(t, "ab.cpp", judge.Full)
+	b := build(t, "ab.cpp", judge.Full)
+	p := load(t, "ab.cpp", files)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	time.AfterFunc(500*time.Millisecond, cancel)
+	var evs []judge.TestDone
 	start := time.Now()
-	_, evs, err := fullPass(t, ctx, "ab.cpp", files, lim)
+	// The cancel comes once test 0 is done, with the rest in flight: a
+	// fixed delay from the start would race test 0 on a busy machine.
+	_, err := judge.JudgeFull(ctx, p.Tests, "", b, lim, judge.Full, func(e judge.Event) {
+		td := e.(judge.TestDone)
+		evs = append(evs, td)
+		if td.Index == 0 {
+			time.AfterFunc(100*time.Millisecond, cancel)
+		}
+	})
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("err = %v, want context.Canceled", err)
 	}

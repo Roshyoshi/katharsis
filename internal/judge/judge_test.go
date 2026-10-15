@@ -219,10 +219,29 @@ func anyOf(s string, subs ...string) bool {
 	return false
 }
 
+// skipStarved skips t when the wall-clock kill cut r short while it was
+// still computing within its CPU budget: a "wall" reason, with at least
+// 5% of the wall clock on the CPU (a 10-core machine at load 200 still
+// gives that). That is a machine too busy to run it, not a fault of the
+// program or the judge. A run that blocked has next to no CPU time, is
+// not starved, and fails.
+func skipStarved(t *testing.T, r judge.Result) {
+	t.Helper()
+	if strings.HasPrefix(r.Reason, "wall ") && r.CPU*20 >= r.Wall {
+		t.Skipf("starved: %q", r.Reason)
+	}
+}
+
 func TestRun(t *testing.T) {
 	needCompiler(t)
 	t.Parallel()
-	const tl = 200 * time.Millisecond
+	// The timed cases keep their budgets to tens of ms. The wall-clock kill
+	// comes at twice the budget plus 0.5 s, so the less CPU time a case
+	// needs, the busier the machine can be before that kill cuts it short:
+	// 70 ms of CPU by a 600 ms kill takes 12% of a core, while the 500 ms
+	// these cases once burned by a 1.3 s kill took 38%, more than a
+	// 10-core machine at load 30 gives.
+	const tl = 50 * time.Millisecond
 	tests := []struct {
 		name    string
 		src     string
@@ -304,9 +323,9 @@ func TestRun(t *testing.T) {
 					t.Errorf("Reason = %q, want %q", r.Reason, "exit 3")
 				}
 			}},
-		{name: "TLE infinite loop", src: "spin.cpp", lim: judge.Limits{Time: tl}, profs: both, want: judge.TLE,
+		{name: "TLE infinite loop", src: "spin.cpp", lim: judge.Limits{Time: tl / 2}, profs: both, want: judge.TLE,
 			check: func(t *testing.T, p judge.Profile, r judge.Result) {
-				budget := time.Duration(float64(tl) * p.Slack)
+				budget := time.Duration(float64(tl/2) * p.Slack)
 				// Killed on CPU time: at the budget under a sample
 				// profile, at twice it under the judged one, within a
 				// poll or two. The wall clock is no measure of that: on a
@@ -329,18 +348,19 @@ func TestRun(t *testing.T) {
 					t.Errorf("CPU = %v, want killed just past %v of CPU", r.CPU, kill)
 				}
 			}},
-		// burn.cpp uses 500 ms of CPU: over 400 ms, within any sanitizer slack.
-		{name: "TLE slow but finishes", src: "burn.cpp", in: "1 2\n", out: "3\n", lim: judge.Limits{Time: 2 * tl},
+		// burn.cpp burning 70 ms: over the 50 ms limit, short of the judged
+		// profile's kill at twice it, within any sanitizer slack.
+		{name: "TLE slow but finishes", src: "burn.cpp", in: "70 1 2\n", out: "3\n", lim: judge.Limits{Time: tl},
 			profs: full, want: judge.TLE,
 			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
-				// The wall-clock kill is at 1.3 s; finishing earlier shows
+				// The wall-clock kill is at 600 ms; finishing earlier shows
 				// the verdict came from CPU time. A machine too busy to give
-				// it 500 ms of CPU by then cannot show that.
-				if r.Wall >= 1300*time.Millisecond {
-					if r.CPU < 500*time.Millisecond {
+				// it 70 ms of CPU by then cannot show that.
+				if r.Wall >= 2*tl+500*time.Millisecond {
+					if r.CPU < 70*time.Millisecond {
 						t.Skipf("starved: cpu %v by the kill", r.CPU)
 					}
-					t.Errorf("Wall = %v, want under the 1.3s kill", r.Wall)
+					t.Errorf("Wall = %v, want under the 600ms kill", r.Wall)
 				}
 			}},
 		// A blocked run only the wall-clock kill stops: its reason must not
@@ -351,8 +371,8 @@ func TestRun(t *testing.T) {
 					t.Errorf("Reason = %q, want wall ...", r.Reason)
 				}
 			}},
-		{name: "AC slow within sanitizer slack", src: "burn.cpp", in: "1 2\n", out: "3\n",
-			lim: judge.Limits{Time: 2 * tl}, profs: samples, want: judge.AC},
+		{name: "AC slow within sanitizer slack", src: "burn.cpp", in: "70 1 2\n", out: "3\n",
+			lim: judge.Limits{Time: tl}, profs: samples, want: judge.AC},
 		{name: "OLE infinite print", src: "spam.cpp", profs: both, want: judge.OLE,
 			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
 				if r.Reason != "output over 1M" {
@@ -471,15 +491,16 @@ func TestRun(t *testing.T) {
 					t.Errorf("MaxRSS = %s, want the kill near 80M", units.Mem(r.MaxRSS))
 				}
 			}},
-		{name: "TLE under a stricter Scale", src: "burn.cpp", in: "1 2\n", out: "3\n",
-			lim: judge.Limits{Time: time.Second, Scale: 0.25}, profs: full, want: judge.TLE,
+		{name: "TLE under a stricter Scale", src: "burn.cpp", in: "70 1 2\n", out: "3\n",
+			lim: judge.Limits{Time: 4 * tl, Scale: 0.25}, profs: full, want: judge.TLE,
 			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
-				if !strings.HasSuffix(r.Reason, "> 250ms") {
-					t.Errorf("Reason = %q, want a 250ms budget", r.Reason)
+				skipStarved(t, r)
+				if !strings.HasSuffix(r.Reason, "> 50ms") {
+					t.Errorf("Reason = %q, want a 50ms budget", r.Reason)
 				}
 			}},
-		{name: "AC under a looser Scale", src: "burn.cpp", in: "1 2\n", out: "3\n",
-			lim: judge.Limits{Time: 300 * time.Millisecond, Scale: 2}, profs: full, want: judge.AC},
+		{name: "AC under a looser Scale", src: "burn.cpp", in: "70 1 2\n", out: "3\n",
+			lim: judge.Limits{Time: tl, Scale: 2}, profs: full, want: judge.AC},
 		// float.cpp prints 0.333333333; the answer file says 0.3333333.
 		{name: "AC float within tolerance", src: "float.cpp", in: "3\n", out: "0.3333333 ok\n",
 			lim: judge.Limits{FloatTolerance: 1e-6}, profs: full, want: judge.AC},
@@ -527,13 +548,10 @@ func TestRun(t *testing.T) {
 				if tc.wantFor != nil {
 					want = tc.wantFor(p)
 				}
-				// A wall-clock kill with the CPU still under its limit
-				// is a starved machine, not the solution: at a load
-				// average of 30 or more, AC cases sat 400 ms on the CPU
-				// and 1.7 s on the wall.
-				if r.Verdict == judge.TLE && want != judge.TLE &&
-					strings.HasPrefix(r.Reason, "wall ") && r.CPU < lim.Time {
-					t.Skipf("starved: %q with cpu %v under the %v limit", r.Reason, r.CPU, lim.Time)
+				// At a load average of 30 or more, AC cases sat 400 ms
+				// on the CPU and 1.7 s on the wall.
+				if r.Verdict == judge.TLE && want != judge.TLE {
+					skipStarved(t, r)
 				}
 				if r.Verdict != want {
 					t.Fatalf("Verdict = %s (%q), want %s\nstderr:\n%s", r.Verdict, r.Reason, want, r.Stderr)
