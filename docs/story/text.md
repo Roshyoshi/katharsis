@@ -427,6 +427,144 @@ Life, what is it but a dream? Reboot.
 
 ---
 
+## Milestone beats
+
+Draft by the S9 wiring thread for the pacing in
+`docs/research/retention.md` RT6; the storyteller should revise. These
+fill the dry spells after the first ten boots. Each is earned by a
+cumulative learning act, never by a date, a streak or bytes (RT6, GR2),
+and shows at a boot end (crash or cleared) only after
+`flavor.DefaultBeatGap` (8) boot ends in a row went by without a new beat.
+At most one beat shows per boot end, and a triggered beat (first crash, a
+reveal) goes first. Each ends on a small question. The rated-door thread
+is the note the prologue mentions ("Turing left a note about that"); the
+final clear answers it. The count in a first line is a floor: the beat may
+show some doors later.
+
+where: boot end, as a teaser line (the first line) with a key to read the
+rest (RT1's kept block); reread in `/proc/story` · when: once · pick:
+block, except `milestone.capability`
+
+| Hook | Earned at |
+|---|---|
+| `milestone.doors.N` | N rated doors (`Meta.Rated`): 10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500 |
+| `milestone.upsolve.N` | N upsolves of any kind: 5, 25 |
+| `milestone.gate.half` | half the rated doors the first prestige gate needs (`Rules.CalibAfter`), still at prestige 0 and short of it |
+| `milestone.gate.open` | all of them, still at prestige 0 |
+| `milestone.lib.1` | the first lib |
+| `milestone.capability` | each capability, in the order earned; a 2-line pool keyed by the capability |
+
+### milestone.doors.10
+```text
+Ten doors in, under a doormat: a note, typed, folded very small.
+On the outside, in pencil: halts? Who asks a doormat that?
+```
+
+### milestone.upsolve.5
+```text
+Five upsolves. The Cat keeps a ledger now: grins lost, grins found.
+It won't show you the totals. What is it saving them for?
+```
+
+### milestone.doors.25
+```text
+Twenty-five doors in, the note's initials come clear: A. M. T., 1936.
+The Rabbit reads it over your shoulder and drops his watch. Why?
+```
+
+### milestone.gate.half
+```text
+The mirror over the mantel has gone cloudy, like breath on glass.
+Half the rated doors it wants are behind you. What's it waiting for?
+```
+
+### milestone.doors.50
+```text
+Fifty doors in, you unfold the note once: a tape, a head, a table.
+"That's the judge," says the Cat. "Or its grandfather." Is it?
+```
+
+### milestone.gate.open
+```text
+The glass has gone soft, like gauze. Clear a boot to step through.
+Is the other side the same room? The Red Queen won't stop to say.
+```
+
+### milestone.lib.1
+```text
+Your first lib. Humpty Dumpty, on his wall, insists on naming it.
+He'd call it Humpty. You didn't. Does a name change what it means?
+```
+
+### milestone.capability
+pick: 2-line pool, seeded by the capability
+```text
+The Gryphon stamps a certificate: {cap}. Another road opens.
+The Mock Turtle sobs: lessons lessen. How short can one get?
+
+{cap}, earned. The Mock Turtle weeps: pride, or salt water.
+The Gryphon can't tell which. Can you?
+
+The Gryphon pins {cap} on a crowded wall.
+What's under the oldest certificate? The Mock Turtle won't look.
+```
+
+### milestone.doors.75
+```text
+Seventy-five doors in, the second fold asks one thing of any machine:
+does it ever stop? The Rabbit stops winding his watch. Does it?
+```
+
+### milestone.doors.100
+```text
+A hundred doors in, the note answers itself: not for every machine.
+The Rabbit winds his watch again. For one machine, then? Which one?
+```
+
+### milestone.upsolve.25
+```text
+Twenty-five upsolves. The ledger is full, so the Cat eats it.
+"Every grin you take back," it says, "I keep a copy." A copy of what?
+```
+
+### milestone.doors.150
+```text
+A hundred and fifty doors, and every one stopped. You checked each.
+The Queen calls that a proof. The Cat calls it a sample. Who's right?
+```
+
+### milestone.doors.200
+```text
+Two hundred doors in, something under the floor snores in 4/4 time.
+The judge's clock keeps the beat. Who sleeps through every verdict?
+```
+
+### milestone.doors.250
+```text
+Two hundred and fifty doors in, the note has one more fold. Inside,
+a sketch of PID 1, falling. It stops before you land. On purpose?
+```
+
+### milestone.doors.300
+```text
+Three hundred doors. The Wizards have heard about your note.
+"An old question," says Eval. "Older than us," says Apply. How old?
+```
+
+### milestone.doors.400
+```text
+Four hundred doors. "We set it as an exercise once," says Eval.
+"Four-fifteen," says Apply. "It got out." What got out?
+```
+
+### milestone.doors.500
+```text
+Five hundred doors. Unfolded flat, the note is the size of a door.
+On the back, in an old terse hand: hello, world. Who carved it first?
+```
+
+---
+
 ## Biomes
 
 ### biome.intro.<topic>
