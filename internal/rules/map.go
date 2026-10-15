@@ -57,14 +57,15 @@ func Map() Rules {
 
 // MapPriceMult scales the legacy package prices for the map (retention
 // RT3: the catalog lasts at least 40 boots of the bank). A map boot is nine
-// doors and three bosses, and banks about 2.7 times what a boot of the
-// legacy rules did (sim TestAptLadder: 530 and 593 B a boot for the 1000-
-// and 1600-rated models over their first 40 boots, against 203 and 249).
+// doors and three bosses, and banks about 2.5 times what a boot of the
+// legacy rules did (sim TestAptLadder: 531 and 605 B a boot for the 1000-
+// and 1600-rated models over their first 40 boots at these prices,
+// against 203 and 249).
 // The prices follow, so the ladder stays 40 boots deep, every next package
 // within three boots and binutils, the capstone, after 40 boots of the
 // ladder; the first stays one cleared door (32 B), as boot #1 still plays
 // the short shape and banks what it did.
-const MapPriceMult = 2.5
+const MapPriceMult = 2.7
 
 // mapPrice is a legacy price on the map, to the nearest 8 B.
 func mapPrice(p int64) int64 { return int64(math.Round(float64(p)*MapPriceMult/8)) * 8 }

@@ -251,7 +251,7 @@ func TestLoadStrictKeysAndFileName(t *testing.T) {
 // per boot over their first 40 boots at prestige 0 (commits and upsolved
 // core dumps): sim TestAptLadder measures them and holds the catalog to
 // the same rules at the real rates. The legacy prices were set at 203 and
-// 249 B a boot (RT0's floor reading and D44); the map's at 474 and 562
+// 249 B a boot (RT0's floor reading and D44); the map's at 531 and 605
 // (rules.MapPriceMult).
 func TestPackageLadder(t *testing.T) {
 	t.Parallel()
@@ -261,7 +261,7 @@ func TestPackageLadder(t *testing.T) {
 		weak, strong int64 // B a boot, the 1000- and 1600-rated models
 	}{
 		{"legacy", rules.Legacy(), 203, 249},
-		{"map", rules.Standard(), 474, 562},
+		{"map", rules.Standard(), 531, 605},
 	} {
 		ps := tc.r.Packages
 		if len(ps) < 14 {

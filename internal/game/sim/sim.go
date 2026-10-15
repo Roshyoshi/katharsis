@@ -93,6 +93,20 @@ type Player struct {
 	// (an upgrade pick at the exit) first. Real players pick by topic.
 	Route string
 
+	// GiveUpAt, above 0, has the model :q! a door it will not clear in time
+	// at this share of the timer, where a give-up closes the door for no
+	// more than a timeout would cost (State.FailCost; D47: a give-up and a
+	// timeout both burn the biome's price). 0 waits for the timer.
+	GiveUpAt float64
+
+	// TwistCost is the effective rating a boss twist (Door.Twist) costs the
+	// model on that boss's doors, as BlindCost does hidden tags: the twists
+	// the engine does not carry out itself hide or take something the
+	// model would have used (samples' detail, sanitizers, the clock, half
+	// the memory). Off-by-One and Race Condition need none: their burn and
+	// clock are the engine's.
+	TwistCost map[string]float64
+
 	// Install lists the packages (rules.Package) the model buys at GRUB
 	// between boots, in this order, each once the bank covers it; nil buys
 	// none.
@@ -115,6 +129,10 @@ func DefaultPlayer(rating float64) Player {
 		Stake:          1,
 		FloorDrop:      250,
 		DeclineDaemons: true,
+		GiveUpAt:       0.75,
+		// As much as hidden tags (BlindCost): an assumption, not a
+		// measurement (no player has met a twist yet).
+		TwistCost: map[string]float64{"oom-killer": 25, "heisenbug": 25, "undefined-behavior": 25, "halting-problem": 25},
 
 		Spend:        true,
 		RerollMargin: 0.2,
@@ -159,6 +177,11 @@ type Config struct {
 	// Block is how many boots each entry of Report.Blocks sums, warm-up
 	// included; 0 leaves Blocks empty.
 	Block int
+	// ClimbFloor, above 0 with Prestige < 0, has the player choose its
+	// level: the highest unlocked one whose last 10 boots there cleared at
+	// least this share (fewer than 10 count as cleared), a level that fell
+	// short tried again 5 boots after its last (map.md §(i)5).
+	ClimbFloor float64
 }
 
 // Block sums a stretch of boots, to show the cold start, the calibration
@@ -252,7 +275,20 @@ type Report struct {
 
 	// Learn sums a learning player's run (Player.Learn), nil otherwise.
 	Learn *LearnStats
+
+	// The map (map.md §(i)): each boot's time inside doors (D46's uptime),
+	// the cleared boots' apart; the cycles fountains restored, the boss
+	// doors failed without ending the boot, the fscks bought, how often
+	// each node was taken, and each boss's boots.
+	DoorTime, DoorTimeClear      []time.Duration
+	Fountained, BossSaves, Fscks int
+	Nodes                        map[string]int
+	Bosses                       map[string]BossTally
 }
+
+// BossTally is one boss's boots: how many reached it, how many it ended,
+// and its doors failed for cycles (a retry).
+type BossTally struct{ Reached, Crashed, Retries int }
 
 // Simulate runs boots with DefaultPlayer(playerRating), climbing prestige.
 func Simulate(r rules.Rules, pool []catalog.Problem, playerRating float64, boots int, seed uint64) Report {
@@ -292,6 +328,8 @@ func Run(c Config) Report {
 	var ratings []float64
 	var banked []int64
 	var blocks []Block
+	recent := map[int][]bool{} // outcomes per prestige, for ClimbFloor
+	last := map[int]int{}      // the boot each prestige was last played
 	for i := range c.Warmup + c.Boots {
 		sm := main
 		if i < c.Warmup {
@@ -301,6 +339,12 @@ func Run(c Config) Report {
 		p := m.Prestige
 		if c.Prestige >= 0 {
 			p = min(c.Prestige, m.Prestige)
+		} else if c.ClimbFloor > 0 {
+			// A level that fell short is tried again 5 boots after its last.
+			for p > 0 && recentClear(recent[p]) < c.ClimbFloor && i-last[p] < 5 {
+				p--
+			}
+			last[p] = i
 		}
 		s, fx, err := game.NewBoot(c.Rules, m, c.Pool, p, rng.Uint64(), clock)
 		if c.Check != nil {
@@ -316,6 +360,7 @@ func Run(c Config) Report {
 		rep.Boots++
 		rep.ByPrestige[p].Boots++
 		rep.Forecast += s.Forecast
+		sm.mapped(s)
 		for _, es := range s.Ease {
 			rep.Eased[es.Kind]++
 		}
@@ -376,6 +421,7 @@ func Run(c Config) Report {
 			}
 		}
 		cleared := s.Phase == game.PhaseCleared
+		recent[p] = append(recent[p], cleared)
 		quit := false
 		if lr == nil || !lr.l.Sessions {
 			clock = clock.Add(24 * time.Hour) // a boot a day, so regressions come due
@@ -482,6 +528,8 @@ func newSums(nb int) *sums {
 			CrashLives:    make([]int, nb),
 			Causes:        map[game.Outcome]int{},
 			Eased:         map[game.EaseKind]int{},
+			Nodes:         map[string]int{},
+			Bosses:        map[string]BossTally{},
 			Attempts:      make([]int, nb),
 			Clears:        make([]int, nb),
 			MeanTimer:     make([]time.Duration, nb),
@@ -622,6 +670,9 @@ func (b *boot) play() {
 			d, pick := b.daemon()
 			switch {
 			case it != "":
+				if it == game.Fsck {
+					b.sums.rep.Fscks++
+				}
 				b.step(game.Spend{Item: it})
 			case s.Uncommitted > 0:
 				b.step(game.Commit{})
@@ -683,6 +734,7 @@ func (b *boot) solveP(d game.Door) float64 {
 	if d.Mystery {
 		eff -= b.p.BlindCost
 	}
+	eff -= b.p.TwistCost[d.Twist]
 	p := game.Expected(eff, b.difficulty(d))
 	if b.learn != nil && d.Regression {
 		if seen, ok := b.learn.seen[string(d.Problem)]; ok {
@@ -783,7 +835,9 @@ func (b *boot) buy() game.Item {
 		it game.Item
 		ok bool
 	}{
-		{game.Fsck, s.Cycles < b.lives0},
+		// An fsck for each life lost below the boot's start (a life is
+		// LifeCycles under cycles: 10 of 30).
+		{game.Fsck, s.Cycles <= b.lives0-s.Rules.Life()},
 		{game.Dup, s.Ducks == 0},
 		{game.Shuf, s.Rerolls == 0 && !bossNext},
 		{game.At, s.AtTime == 0 && bossNext},
@@ -837,12 +891,19 @@ func (b *boot) upgrade() game.Upgrade {
 		u  game.Upgrade
 		ok bool
 	}{
-		{game.ECC, b.s.Cycles <= 2},
+		{game.ECC, b.s.Cycles <= 2*b.s.Rules.Life()},
 		{game.Duck, b.s.Ducks == 0},
-		{game.Overclock, true},
+		// Overclock while it leaves two fails of cushion where it costs
+		// cycles (rules.OverclockCycles).
+		{game.Overclock, b.s.Rules.OverclockCycles == 0 || b.s.Cycles-b.s.Rules.OverclockCycles >= 2*b.s.Rules.Life()},
 	} {
 		if want.ok && slices.Contains(offers, want.u) {
 			return want.u
+		}
+	}
+	for _, u := range offers {
+		if u != game.Overclock || b.s.Rules.OverclockCycles == 0 {
+			return u
 		}
 	}
 	return offers[0]
@@ -921,7 +982,15 @@ func (b *boot) attempt(biome int) {
 			at := time.Duration((0.3 + 0.7*b.rng.Float64()) * float64(timer))
 			evs = append(evs, event{min(at, timer-time.Second), b.fail()})
 		}
-		evs = append(evs, event{timer, game.Tick{}})
+		end := event{timer, game.Tick{}}
+		if b.p.GiveUpAt > 0 {
+			gc, gok := s.FailCost(game.GaveUp)
+			tc, tok := s.FailCost(game.TimedOut)
+			if gok && (!tok || gc <= tc) {
+				end = event{time.Duration(b.p.GiveUpAt * float64(timer)), game.GiveUp{}}
+			}
+		}
+		evs = append(evs, end)
 	}
 	slices.SortStableFunc(evs, func(x, y event) int { return cmp.Compare(x.at, y.at) })
 	for _, ev := range evs {
@@ -1072,4 +1141,51 @@ func (b *boot) route() int {
 		}
 	}
 	return bi
+}
+
+// mapped sums what the map report reads of a played boot (map.md §(i)).
+func (sm *sums) mapped(s *game.State) {
+	rep := &sm.rep
+	var inDoors time.Duration
+	for j, h := range s.History {
+		inDoors += h.Closed.Sub(h.Opened)
+		ended := s.Crash != nil && j == len(s.History)-1
+		if h.Door.Boss != "" && h.Outcome != game.Cleared && h.Outcome != game.Retreated && !ended {
+			rep.BossSaves++
+			t := rep.Bosses[h.Door.Boss]
+			t.Retries++
+			rep.Bosses[h.Door.Boss] = t
+		}
+	}
+	rep.DoorTime = append(rep.DoorTime, inDoors)
+	if s.Phase == game.PhaseCleared {
+		rep.DoorTimeClear = append(rep.DoorTimeClear, inDoors)
+	}
+	rep.Fountained += s.Fountained
+	for i, bs := range s.Biomes {
+		if bs.Node != "" {
+			rep.Nodes[bs.Node]++
+		}
+		if bs.Boss != "" && i <= s.Biome {
+			t := rep.Bosses[bs.Boss]
+			t.Reached++
+			if s.Phase == game.PhaseCrashed && i == s.Biome {
+				t.Crashed++
+			}
+			rep.Bosses[bs.Boss] = t
+		}
+	}
+}
+
+// recentClear is the clear share of the last 10 outcomes, padded with
+// clears while there are fewer: a level is worth trying until it is known.
+func recentClear(xs []bool) float64 {
+	n, c := 0, 0
+	for i := len(xs) - 1; i >= 0 && n < 10; i-- {
+		n++
+		if xs[i] {
+			c++
+		}
+	}
+	return float64(c+10-n) / 10
 }

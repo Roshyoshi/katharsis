@@ -225,12 +225,14 @@ func windowMean(aim, floor float64) float64 {
 	return sum / float64(n)
 }
 
-// TestGuardrailG1 holds guardrail G1 (ml-pipeline §1.2, slice ML7): the
-// default model players from 900 to 1600 crash before the first merge
-// window in at most 20% of their boots at prestige 0, on a pool with the
-// Codeforces floor (synthetic, a tenth at 800). The union pool's numbers
-// are in TestBalanceReport/guardrails, with the floor running out for a
-// player who never improves.
+// TestGuardrailG1 holds guardrail G1 (ml-pipeline §1.2, slice ML7) at the
+// trial-by-fire band's 10% (D49): the default model players from 900 to
+// 1600 crash before the first merge window in at most 10% of their boots
+// at prestige 0, on a pool with the Codeforces floor (synthetic, a tenth
+// at 800), over boots 51-250 only: past them a player who never improves
+// runs the floor dry (D46: the static model is judged there, the learning
+// player on the long horizon, TestMapLearn). The union pool's numbers are
+// in TestMapReport.
 func TestGuardrailG1(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -243,14 +245,14 @@ func TestGuardrailG1(t *testing.T) {
 			crash, boots := 0, 0
 			for _, seed := range []uint64{7, 8} {
 				rep := sim.Run(sim.Config{Rules: rules.Standard(), Pool: pool, Player: sim.DefaultPlayer(rating),
-					Boots: 300, Warmup: 50, Seed: seed})
+					Boots: 200, Warmup: 50, Seed: seed})
 				crash += rep.CrashBiome[0]
 				boots += rep.Boots
 			}
 			g1 := float64(crash) / float64(boots)
 			t.Logf("model %.0f: G1 %.1f%% over %d boots", rating, 100*g1, boots)
-			if g1 > 0.2 {
-				t.Errorf("model %.0f crashes in Userland in %.1f%% of boots, over G1's 20%%", rating, 100*g1)
+			if g1 > 0.1 {
+				t.Errorf("model %.0f crashes in Userland in %.1f%% of boots, over the band's 10%%", rating, 100*g1)
 			}
 		})
 	}
