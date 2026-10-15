@@ -29,7 +29,8 @@ USACO only and tries Codeforces again next time.
 | `--template` | `~/cp/atcoder/template.cpp` | stdin/stdout template |
 | `--template-fileio` | `~/cp/template.cpp` | file-I/O template; `problem` becomes the file stem |
 | `--scale` | `1` | multiply CPU time limits (below 1 is stricter) |
-| `--quiet` | off | no sounds |
+| `--quiet` | off | no sound at all; `--no-music` and `--no-sfx` silence one each |
+| `--music-volume`, `--sfx-volume` | `audio.toml` | 0..1, over the settings file |
 | `--preset` | | also load a rules preset file (repeatable); presets in `~/.config/katharsis/presets` load automatically. `presets/short.toml` is a ~1 h boot |
 
 `katharsis practice <dir>` is the training room: any folder with
@@ -91,6 +92,9 @@ In a tmux session the game starts, `g++` and `clang++` on PATH are these.
 | `~/.local/share/katharsis/katharsis.db` | saves: boots, attempts, rating, bank |
 | `~/Library/Caches/katharsis/` | problems, tests, editorials, builds |
 | `~/.config/katharsis/presets/*.toml` | custom rules (each overrides the standard rules) |
+| `~/.config/katharsis/audio.toml` | volumes, fades, ducking, the timer warning ([settings](internal/audio/settings.go)) |
+| `~/.config/katharsis/music/<pool or topic>/` | your own mp3, ogg, wav or VGS mml files for that pool or biome |
+| `~/Library/Caches/katharsis/music/` | downloaded music |
 
 ## Content
 
@@ -111,3 +115,36 @@ ed., by Harold Abelson and Gerald Jay Sussman with Julie Sussman (MIT Press,
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Quotes
 are verbatim and credited; the story bible and its sources are in
 [docs/story/](docs/story/story-bible.md).
+
+## Music and sound
+
+```sh
+katharsis audio fetch     # download the music once (176 files, 5 MiB)
+katharsis audio credits   # every track, its arranger and license
+```
+
+The music is Touhou chiptune: SUZUKI PLAN's 東方BGM on VGS, 175 chiptune
+arrangements of ZUN's music, used with the arranger's written permission
+for Touhou Project fan works, plus SwapXFO's NES "Misty Lake" (CC BY 4.0).
+Each biome draws from the matching part of the games: title themes on
+GRUB, stage 1-2 themes in Userland, later stages in the topic biomes,
+boss themes for the named bugs, and final-boss themes for The Halting
+Problem. A toast credits each track as it starts; GRUB → Credits lists
+them all. The game never bundles the music: `audio fetch` downloads it
+from each source, checked against pinned SHA-256 hashes. Without it the
+game plays on with its effects only. `ctrl+t` turns the music on or off.
+
+Sound effects are synthesized at start (`internal/audio/sfx.toml`).
+Licensing evidence, the stage-to-pool mapping and the engine's numbers:
+[docs/research/audio.md](docs/research/audio.md).
+
+> 東方Project二次創作: the Touhou music in katharsis is fan arrangements, a
+> fan work based on Touhou Project. Touhou Project and its original music
+> are by ZUN (上海アリス幻樂団, Team Shanghai Alice). katharsis is unofficial
+> and not affiliated with Team Shanghai Alice. Each arrangement belongs to
+> its arranger and is used under the license shown on the credits page.
+
+VGS songs play through a Go port of SUZUKI PLAN's VGS MML compiler and
+BGM decoder, Copyright (c) 2016, Yoji Suzuki, under the BSD 2-Clause
+License (full text in `internal/audio/vgs/vgs.go` and on the credits
+page).
