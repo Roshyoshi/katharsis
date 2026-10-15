@@ -434,7 +434,7 @@ func (d *Doors) modifiers(door game.Door, cw int, form hiddenForm) []string {
 		mods = append(mods, h)
 	}
 	if door.Cursed {
-		mods = append(mods, modLine{mod: ui.ModCursed, text: withMult("no ducks · 1 WA = crash", r.CursedMult)})
+		mods = append(mods, modLine{mod: ui.ModCursed, text: withMult("no ducks"+ui.G.Sep+"1 WA = crash", r.CursedMult)})
 	}
 	if t, ok := timeoutNote(d.env.State); ok {
 		mods = append(mods, modLine{text: ui.G.Timer + t, mastered: true}) // Muted, no modifier

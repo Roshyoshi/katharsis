@@ -62,7 +62,7 @@ func (p *Prior) View(width, height int) string {
 		"",
 		"rating: " + ui.Select.Render(p.digits+" "),
 		"",
-		ui.Muted.Render("enter saves · esc skips · asked once"),
+		ui.Muted.Render("enter saves" + ui.G.Sep + "esc skips" + ui.G.Sep + "asked once"),
 	}
 	top := max((h-len(body))/2, 0)
 	lines := make([]string, top, h)

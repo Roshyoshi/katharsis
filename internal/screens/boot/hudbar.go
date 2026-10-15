@@ -81,9 +81,9 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	hidden := door.Blind || door.Mystery || door.Mastered || st.Rules.BlindAll
 	switch {
 	case hidden && att.Hint < 1 && door.Cursed:
-		out = append(out, ui.Muted.Render("tags hidden · cursed: no ducks"))
+		out = append(out, ui.Muted.Render("tags hidden"+ui.G.Sep+"cursed: no ducks"))
 	case hidden && att.Hint < 1:
-		out = append(out, ui.Muted.Render("tags hidden · "+strings.TrimSpace(ui.G.Duck)+" quack to reveal"))
+		out = append(out, ui.Muted.Render("tags hidden"+ui.G.Sep+strings.TrimSpace(ui.G.Duck)+" quack to reveal"))
 	case len(prob.Tags) == 0:
 		out = append(out, ui.Muted.Render("no tags"))
 	default:

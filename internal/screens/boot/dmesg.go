@@ -1,6 +1,7 @@
 package boot
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"math"
@@ -227,7 +228,7 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 	for _, name := range slices.Sorted(maps.Keys(n.libs)) {
 		if src, had := p.libs[name]; !had || src != n.libs[name] {
 			add(EvLib, "lib: "+ui.Strong.Render(name)+" saved"+ui.Muted.Render(ui.G.Sep+"link it when a boot starts"),
-				"lib.saved", "name", clipTo(name, 16))
+				"lib.saved", "name", ui.Clip(name, 16))
 		}
 	}
 
@@ -252,7 +253,7 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 	for _, a := range st.History[min(p.hist, len(st.History)):] {
 		switch a.Outcome {
 		case game.Cleared:
-			title := strconv.Quote(clipTo(t.problem(a.Door.Problem).Title, 24))
+			title := strconv.Quote(ui.Clip(t.problem(a.Door.Problem).Title, 24))
 			text := "judge: " + ui.OK.Render(ui.G.Pass) + " AC " + title +
 				ui.Muted.Render(fmt.Sprintf(" in %s of %s", units.Clock(elapsed(a, now)), units.Clock(a.Door.Timer)))
 			hook := "verdict.AC"
@@ -310,9 +311,9 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 	if n.door != "" && n.door == p.door && n.quacks > p.quacks && st.Current != nil {
 		c := st.Current
 		prob := t.problem(c.Door.Problem)
-		what, hook, fill := "tags shown", "duck.quack.1", []string{"tags", clipTo(strings.Join(prob.Tags, ", "), 24)}
+		what, hook, fill := "tags shown", "duck.quack.1", []string{"tags", ui.Clip(strings.Join(prob.Tags, ", "), 24)}
 		if c.Hint >= 2 {
-			what, hook, fill = "technique shown", "duck.quack.2", []string{"technique", clipTo(prob.Topic, 15)}
+			what, hook, fill = "technique shown", "duck.quack.2", []string{"technique", ui.Clip(prob.Topic, 15)}
 		}
 		add(EvQuack, "duck: "+what+ui.Muted.Render(ui.G.Sep)+fmt.Sprintf("%s%d left", ui.G.Duck, n.ducks), hook, fill...)
 	}
@@ -419,19 +420,12 @@ func doorMods(d game.Door) (text, hook string) {
 	switch {
 	case d.Mystery:
 		parts = append(parts, ui.Modifier(ui.ModMystery, "mystery: title and tags hidden"))
-		hook = cmpOr(hook, "door.mystery")
+		hook = cmp.Or(hook, "door.mystery")
 	case d.Blind:
 		parts = append(parts, ui.Modifier(ui.ModBlind, "blind: tags hidden"))
-		hook = cmpOr(hook, "door.blind")
+		hook = cmp.Or(hook, "door.blind")
 	}
 	return strings.Join(parts, ui.Muted.Render(ui.G.Sep)), hook
-}
-
-func cmpOr(a, b string) string {
-	if a != "" {
-		return a
-	}
-	return b
 }
 
 // regressionCleared says when a cleared regression comes back, or that it
@@ -452,9 +446,6 @@ func regressionCleared(m *game.Meta, id catalog.ID, now time.Time) string {
 func pct(f float64) string {
 	return strconv.FormatFloat(math.Round(f*1000)/10, 'f', -1, 64) + "%"
 }
-
-// clipTo cuts s to n cells, for a flavor placeholder with a width cap.
-func clipTo(s string, n int) string { return ui.Clip(s, n) }
 
 func (t *Tracker) problem(id catalog.ID) catalog.Problem {
 	return Env{Lookup: t.Lookup}.problem(id)
@@ -560,7 +551,7 @@ func (e Env) strip(width, rows int) []string {
 	for i := cut - 1; i >= 0 && len(older)+len(newest)+len(voice) < rows; i-- {
 		older = append(line(evs[i], false), older...)
 	}
-	out := concat(older, newest, voice)
+	out := slices.Concat(older, newest, voice)
 	return append(make([]string, rows-len(out)), out...)
 }
 
@@ -599,13 +590,13 @@ func tips(st *game.State, m *game.Meta, now time.Time, out []Event) []Event {
 	}{
 		{"tip.doors", "doors: aimed at your rating, and the aim adapts as you play",
 			st.Phase == game.PhaseDoors && !st.PendingUpgrade},
-		{"tip.door", ":w judges samples · :Submit all tests, a fail costs " + ui.Life.Render(ui.G.Life) + " · :q! gives up",
+		{"tip.door", ":w judges samples" + ui.G.Sep + ":Submit all tests, a fail costs " + ui.Life.Render(ui.G.Life) + ui.G.Sep + ":q! gives up",
 			st.Phase == game.PhaseProblem && st.Current != nil},
-		{"tip.upgrade", "upgrades last the boot · AC under half the timer (-O3): a second pick",
+		{"tip.upgrade", "upgrades last the boot" + ui.G.Sep + "AC under half the timer (-O3): a second pick",
 			st.PendingUpgrade},
-		{"tip.bytes", "bytes: a crash loses the uncommitted · commit them at a merge window",
+		{"tip.bytes", "bytes: a crash loses the uncommitted" + ui.G.Sep + "commit them at a merge window",
 			st.Phase == game.PhaseDoors && !st.PendingUpgrade && st.Uncommitted > 0},
-		{"tip.fail", "a failed submit costs " + ui.Life.Render(ui.G.Life) + ", a CE nothing · red samples need :Submit!",
+		{"tip.fail", "a failed submit costs " + ui.Life.Render(ui.G.Life) + ", a CE nothing" + ui.G.Sep + "red samples need :Submit!",
 			has(EvVerdict)},
 		{"tip.duck", "ducks: the 1st quack shows hidden tags, the 2nd the technique",
 			has(EvQuack)},
@@ -651,6 +642,6 @@ func (e Env) DoorLines(width, rows int) []string {
 			voice = append(voice, ui.Voice.Render(ui.Muted.Render(l)))
 		}
 	}
-	out := concat(real, tips, voice)
+	out := slices.Concat(real, tips, voice)
 	return out[:min(len(out), rows)]
 }

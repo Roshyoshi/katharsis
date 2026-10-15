@@ -1370,3 +1370,23 @@ func TestCompactRowsKeepTheNumbers(t *testing.T) {
 		}
 	}
 }
+
+// Under the ASCII glyph set no screen falls back on a literal "·": every
+// separator is ui.G.Sep (§2.4).
+func TestASCIISeparators(t *testing.T) {
+	ui.SetGlyphs(ui.ASCII)
+	defer ui.SetGlyphs(ui.Unicode)
+	for _, c := range append(cases(), endCases()...) {
+		for _, sz := range goldenSizes {
+			if v := ansi.Strip(c.make().View(sz[0], sz[1])); strings.Contains(v, "·") {
+				t.Errorf("%s at %dx%d draws a literal ·:\n%s", c.name, sz[0], sz[1], v)
+			}
+		}
+	}
+	st := fixture.Problem()
+	st.Current.Door.Blind, st.Current.Door.Cursed = true, true
+	prob, _ := fixture.Lookup("usaco:764")
+	if v := ansi.Strip(HUDBar(st, prob, fixture.Now, 48)); strings.Contains(v, "·") {
+		t.Errorf("the HUD bar draws a literal ·:\n%s", v)
+	}
+}

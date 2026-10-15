@@ -52,15 +52,11 @@ func (s *Shop) Refresh(c ShopConfig) {
 	s.sel = min(s.sel, max(len(c.Packages)-1, 0))
 }
 
-func (s *Shop) installed(name string) bool {
-	return slices.ContainsFunc(s.c.Packages, func(p Package) bool { return p.Name == name && p.Installed })
-}
-
-// missing lists p's requirements not yet installed.
-func (s *Shop) missing(p Package) []string {
+// missing lists p's requirements that ps does not have installed.
+func missing(ps []Package, p Package) []string {
 	var out []string
 	for _, r := range p.Requires {
-		if !s.installed(r) {
+		if !slices.ContainsFunc(ps, func(q Package) bool { return q.Name == r && q.Installed }) {
 			out = append(out, r)
 		}
 	}
@@ -112,8 +108,8 @@ func (s *Shop) status(p Package) string {
 		return ui.OK.Render("in use")
 	case p.Installed:
 		return ui.OK.Render("installed")
-	case len(s.missing(p)) > 0:
-		return ui.Muted.Render("needs " + strings.Join(s.missing(p), ", "))
+	case len(missing(s.c.Packages, p)) > 0:
+		return ui.Muted.Render("needs " + strings.Join(missing(s.c.Packages, p), ", "))
 	case p.Price > s.c.Bank:
 		return ui.Muted.Render(units.Bytes(p.Price-s.c.Bank) + " short")
 	}
@@ -130,8 +126,8 @@ func (s *Shop) View(width, height int) string {
 		}
 	}
 	out := []string{
-		ui.Spread(ui.Strong.Render("apt")+ui.Muted.Render(" · packages for every boot after"),
-			fmt.Sprintf("bank %s · %d/%d installed", units.Bytes(s.c.Bank), done, len(ps)), w),
+		ui.Spread(ui.Strong.Render("apt")+ui.Muted.Render(ui.G.Sep+"packages for every boot after"),
+			fmt.Sprintf("bank %s"+ui.G.Sep+"%d/%d installed", units.Bytes(s.c.Bank), done, len(ps)), w),
 		"",
 	}
 	nameW := 4
@@ -177,20 +173,15 @@ func (s *Shop) View(width, height int) string {
 	} else {
 		out = append(out, "", ui.Muted.Render(" no packages in these rules"))
 	}
-	for len(out) < h-1 {
-		out = append(out, "")
-	}
-	out = append(out[:h-1], keyBar("j/k", "Move  ", "enter", "Install  ", "t", "Theme  ", "q", "Back  "))
-	return ui.Layout(w, h, out, "")
+	return ui.Layout(w, h, out, keyBar("j/k", "Move  ", "enter", "Install  ", "t", "Theme  ", "q", "Back  "))
 }
 
 // Goal is the next package on the ladder (D25, retention RT3): the first,
 // in shelf order, not installed whose requirements are, with what it
 // costs against bank. ok is false when nothing is left to install.
 func Goal(ps []Package, bank int64) (p Package, short int64, ok bool) {
-	s := &Shop{c: ShopConfig{Packages: ps}}
 	for _, p := range ps {
-		if !p.Installed && len(s.missing(p)) == 0 {
+		if !p.Installed && len(missing(ps, p)) == 0 {
 			return p, max(p.Price-bank, 0), true
 		}
 	}

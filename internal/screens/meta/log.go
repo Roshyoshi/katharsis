@@ -162,11 +162,7 @@ func (l *Log) View(width, height int) string {
 	}
 
 	out := append([]string{head}, body...)
-	for len(out) < h-1 {
-		out = append(out, "")
-	}
-	out = append(out[:h-1], keys)
-	return ui.Layout(w, h, out, "")
+	return ui.Layout(w, h, out, keys)
 }
 
 // lines renders every shown boot, with the expansion under the open one.
@@ -265,13 +261,13 @@ func (l *Log) details(b BootRow, w int) []string {
 	if preset == "" {
 		preset = standardPreset
 	}
-	sum := fmt.Sprintf("started %s · seed %x · preset %s · %s · banked %s",
+	sum := fmt.Sprintf("started %s"+ui.G.Sep+"seed %x"+ui.G.Sep+"preset %s"+ui.G.Sep+"%s"+ui.G.Sep+"banked %s",
 		b.Started.Format("2006-01-02 15:04"), b.Seed, preset, prestigeText(b.Prestige, l.nameOf), units.Bytes(b.Banked))
 	if b.Dumped > 0 {
-		sum += " · dumped " + units.Bytes(b.Dumped)
+		sum += ui.G.Sep + "dumped " + units.Bytes(b.Dumped)
 	}
 	if b.Problem != "" && !b.Cleared {
-		sum += " · on " + b.Problem
+		sum += ui.G.Sep + "on " + b.Problem
 	}
 	var out []string
 	for _, line := range strings.Split(ansi.Wordwrap(sum, max(w-4, 10), ""), "\n") {

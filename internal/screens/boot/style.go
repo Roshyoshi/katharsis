@@ -1,6 +1,7 @@
 package boot
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -66,14 +67,5 @@ func centered(head, block []string, height int) []string {
 	if free := height - len(head) - 1 - len(block); free > 0 {
 		pad = max(free/2, 1)
 	}
-	return append(append(append([]string(nil), head...), make([]string, pad)...), block...)
-}
-
-// concat joins slices into a new one.
-func concat[T any](parts ...[]T) []T {
-	var out []T
-	for _, p := range parts {
-		out = append(out, p...)
-	}
-	return out
+	return slices.Concat(head, make([]string, pad), block)
 }

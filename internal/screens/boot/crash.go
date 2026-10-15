@@ -2,6 +2,7 @@ package boot
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -273,14 +274,14 @@ func (c *Crash) panic(cr game.Crash, verdict, title string, seed uint64, width, 
 	}
 	doors, boot := c.frames(cr, up)
 	head := headOf(0)
-	rest := concat(doors, []string{boot})
-	tooTall := func() bool { return lines(head)+lines(tail)+lines(dlines(up, concat(kernel, rest))) > room }
+	rest := slices.Concat(doors, []string{boot})
+	tooTall := func() bool { return lines(head)+lines(tail)+lines(dlines(up, slices.Concat(kernel, rest))) > room }
 	// Elide the oldest doors until the trace fits, then the outer kernel
 	// frames, then the head's lines that can go; the panic line, the
 	// innermost frame, the door that crashed and the boot frame always
 	// stay.
 	for k := len(doors) - 1; k >= 1 && tooTall(); k-- {
-		rest = concat(doors[:k], []string{fmt.Sprintf(" ... %d older doors", len(doors)-k), boot})
+		rest = slices.Concat(doors[:k], []string{fmt.Sprintf(" ... %d older doors", len(doors)-k), boot})
 	}
 	for k := len(kernel) - 1; k >= 1 && tooTall(); k-- {
 		kernel = kernel[:k]
@@ -288,7 +289,7 @@ func (c *Crash) panic(cr game.Crash, verdict, title string, seed uint64, width, 
 	for d := 1; d <= 3 && tooTall(); d++ {
 		head = headOf(d)
 	}
-	body := concat(head, dlines(up, concat(kernel, rest)), tail)
+	body := slices.Concat(head, dlines(up, slices.Concat(kernel, rest)), tail)
 
 	var pre []dline
 	free := room - lines(body)
@@ -376,8 +377,8 @@ func (c *Crash) next(b game.Brief, width int) []string {
 	return nextSection(s, width)
 }
 
-// keys is the console prompt: every key but the highlighted one, as many
-// as fit on one line, then a second; git log and GRUB come last.
+// keys is the console prompt, one line: every key but the highlighted
+// one, git log and GRUB last.
 func (c *Crash) keys(b game.Brief, width int) []string {
 	env := c.env
 	var pairs []string
@@ -513,23 +514,16 @@ func (c *Crash) attempt(cr game.Crash) game.Attempt {
 }
 
 // taint maps door modifiers onto kernel taint flags, in the kernel's own
-// flag order.
+// flag order: "Tainted: B (blind) C (cursed)".
 func taint(d game.Door) string {
 	var fs []string
-	if d.Regression {
-		fs = append(fs, "R (regression)")
-	}
-	if d.Mystery {
-		fs = append(fs, "M (mystery)")
-	}
-	if d.Blind {
-		fs = append(fs, "B (blind)")
-	}
-	if d.Cursed {
-		fs = append(fs, "C (cursed)")
-	}
-	if d.Boss != "" {
-		fs = append(fs, "X (boss)")
+	for _, f := range []struct {
+		on  bool
+		mod ui.Mod
+	}{{d.Regression, ui.ModRegression}, {d.Mystery, ui.ModMystery}, {d.Blind, ui.ModBlind}, {d.Cursed, ui.ModCursed}, {d.Boss != "", ui.ModBoss}} {
+		if f.on {
+			fs = append(fs, f.mod.Taint()+" ("+f.mod.Word()+")")
+		}
 	}
 	if len(fs) == 0 {
 		return "Not tainted"

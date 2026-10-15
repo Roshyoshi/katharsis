@@ -147,20 +147,20 @@ func NewGrub(c GrubConfig) *Menu {
 			m.presets = append(m.presets, p)
 		}
 	}
-	m.status = fmt.Sprintf("bank %s · rating %.0f · next boot #%d",
+	m.status = fmt.Sprintf("bank %s"+ui.G.Sep+"rating %.0f"+ui.G.Sep+"next boot #%d",
 		units.Bytes(c.Meta.Bank), c.Meta.Rating, c.Meta.Boots+1)
 	// The days away go next to the boot they make a comeback, before what
 	// a narrow line clips. A fact, never a guilt line (GR8).
 	if c.Away > 0 {
-		m.status += " · first boot in " + units.Plural(c.Away, "day")
+		m.status += ui.G.Sep + "first boot in " + units.Plural(c.Away, "day")
 	}
 	if c.Load != nil {
-		m.status += " · " + LoadText(*c.Load)
+		m.status += ui.G.Sep + LoadText(*c.Load)
 	}
 	// Past the session budget the status line says so, and nothing more
 	// (retention RT12: a nudge, never a lock).
 	if c.Budget > 0 && c.Today >= c.Budget {
-		m.status += fmt.Sprintf(" · today %s of %s", units.HM(c.Today), units.HM(c.Budget))
+		m.status += fmt.Sprintf(ui.G.Sep+"today %s of %s", units.HM(c.Today), units.HM(c.Budget))
 	}
 	m.motd = c.Story("boot.motd", uint64(max(c.Meta.Boots, 0)))
 	m.gate = screens.GateText(c.Gate, m.maxP, func(p int) string {
@@ -272,9 +272,9 @@ func nightlyBest(b *NightlyBest) string {
 	case b == nil || b.Played == 0:
 		return ""
 	case b.Cleared:
-		return " · best: cleared in " + units.Clock(b.Uptime)
+		return ui.G.Sep + "best: cleared in " + units.Clock(b.Uptime)
 	}
-	return " · best: " + units.Plural(b.Doors, "door") + " cleared"
+	return ui.G.Sep + "best: " + units.Plural(b.Doors, "door") + " cleared"
 }
 
 // NightlySeed is the nightly build's seed for the day t falls on in t's own
@@ -560,12 +560,12 @@ func (m *Menu) View(width, height int) string {
 	status := m.status
 	if m.sources != nil {
 		if note := m.sources(); note != "" {
-			status += " · " + note
+			status += ui.G.Sep + note
 		}
 	}
 	// The motd rides along where the line has room for it (boot.motd).
-	if m.motd != "" && ansi.StringWidth(status+" · "+m.motd) <= w-2 {
-		status += " · " + m.motd
+	if m.motd != "" && ansi.StringWidth(status+ui.G.Sep+m.motd) <= w-2 {
+		status += ui.G.Sep + m.motd
 	}
 	gap := len(foot) // the blank row above the status line
 	foot = append(foot, "", ui.Center(ui.Muted.Render(status), w))

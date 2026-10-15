@@ -22,6 +22,7 @@ import (
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/meta/fixture"
+	"katharsis/internal/ui"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/*.golden from the current output")
@@ -638,6 +639,27 @@ func TestTopSolvesWithoutColor(t *testing.T) {
 		for _, p := range []string{fmt.Sprintf("|%d independent", ind), fmt.Sprintf("#%d hinted", hint), fmt.Sprintf("*%d editorial", ed)} {
 			if !strings.Contains(lines[i+1], p) {
 				t.Errorf("at %dx%d the legend lacks %q: %q", sz[0], sz[1], p, lines[i+1])
+			}
+		}
+	}
+}
+
+// Under the ASCII glyph set no screen falls back on a literal "·": every
+// separator is ui.G.Sep (§2.4).
+func TestASCIISeparators(t *testing.T) {
+	ui.SetGlyphs(ui.ASCII)
+	defer ui.SetGlyphs(ui.Unicode)
+	log := meta.NewLog(fixture.Boots(), fixture.PrestigeName)
+	log.Update(key("enter"))
+	c := fixture.GrubConfig()
+	c.Away, c.Today, c.Budget = 5, 4*time.Hour, 3*time.Hour
+	for name, s := range map[string]screens.Screen{
+		"grub": meta.NewGrub(c), "log": log, "top": meta.NewTop(fixture.Stats()),
+		"shop": meta.NewShop(fixture.ShopConfig()), "prior": meta.NewPrior(),
+	} {
+		for _, sz := range sizes {
+			if v := plain(s.View(sz[0], sz[1])); strings.Contains(v, "·") {
+				t.Errorf("%s at %dx%d draws a literal ·:\n%s", name, sz[0], sz[1], v)
 			}
 		}
 	}

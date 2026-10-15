@@ -134,11 +134,7 @@ func (t *Top) View(width, height int) string {
 		out = append(out, t.tableHeader(w))
 		out = append(out, t.table(w, tableH)...)
 	}
-	for len(out) < h-1 {
-		out = append(out, "")
-	}
-	out = append(out[:h-1], t.keys())
-	return ui.Layout(w, h, out, "")
+	return ui.Layout(w, h, out, t.keys())
 }
 
 func (t *Top) chart(w, h int) []string {
@@ -146,7 +142,7 @@ func (t *Top) chart(w, h int) []string {
 	title := ui.Focus.Render("Rating ") + ui.Rank(t.st.Rating).Render(fmt.Sprintf("%.0f", t.st.Rating))
 	if len(vals) > 0 {
 		peak := slices.Max(vals)
-		title += ui.Muted.Render(fmt.Sprintf("  peak %.0f · %d rated", peak, len(vals)))
+		title += ui.Muted.Render(fmt.Sprintf("  peak %.0f"+ui.G.Sep+"%d rated", peak, len(vals)))
 	}
 	if len(vals) < 2 {
 		return []string{title, "", ui.Muted.Render("  not enough rated attempts for a trend")}

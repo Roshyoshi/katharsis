@@ -51,7 +51,7 @@ func (r *Route) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 func (r *Route) View(width, height int) string {
 	st := r.env.State
 	offers := r.offers()
-	where := fmt.Sprintf("route · biome %d/%d", st.Biome+1, len(st.Biomes))
+	where := fmt.Sprintf("route"+ui.G.Sep+"biome %d/%d", st.Biome+1, len(st.Biomes))
 	head := r.env.header(where, width, height)
 	footer := ui.Footer(width, "←/→", "choose", "enter", "take route")
 	block := []string{ui.Center(ui.Strong.Render("Pick a route.")+

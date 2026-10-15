@@ -116,7 +116,7 @@ func (t *Top) alarmLine(w int) string {
 	if n := len(r.Alarms) - 1; n > 0 {
 		s += fmt.Sprintf(" (+%d more)", n)
 	}
-	return ui.Clip(ui.Warn.Render(s)+ui.Muted.Render(" · r retention"), w)
+	return ui.Clip(ui.Warn.Render(s)+ui.Muted.Render(ui.G.Sep+"r retention"), w)
 }
 
 // keys is top's function-key bar.
@@ -160,11 +160,11 @@ func (t *Top) retention(w, h int) []string {
 	label := func(s string) string { return ui.Focus.Render(s + ": ") }
 	out = append(out,
 		label("Sessions")+fmt.Sprintf("median %s, %s apart, %s ended 00:00–05:00", span(r.MedianSession),
-			span(r.MedianReturn), ratio(r.Late))+ui.Muted.Render(" · 30 days"),
+			span(r.MedianReturn), ratio(r.Late))+ui.Muted.Render(ui.G.Sep+"30 days"),
 		label("Crashes")+fmt.Sprintf("%s replayed in 10m, %s upsolved in 48h", ratio(r.Replay), ratio(r.Upsolve))+
-			ui.Muted.Render(" · 30 days"),
+			ui.Muted.Render(ui.G.Sep+"30 days"),
 		label("Worth it")+fmt.Sprintf("%d yes, %d no, %d skipped", r.Worth.Yes, r.Worth.No, r.Worth.Skip)+
-			ui.Muted.Render(" · 14 days"),
+			ui.Muted.Render(ui.G.Sep+"14 days"),
 	)
 	strip, weeks := t.strip(), t.weeks()
 	for i := range max(len(strip), len(weeks)) {
