@@ -254,13 +254,14 @@ func (m *Model) onRequest(req session.Request) tea.Cmd {
 			req.Answer(session.Reply{Text: "no door open"})
 			return nil
 		}
+		var mark tea.Cmd
 		if req.Cmd == session.CmdSubmit && m.open != nil {
 			// The submit most players make, so it must hold the clock
-			// for the grace the way the s key does.
-			m.judging = true
+			// for the grace, and be noted, the way the s key's is.
+			mark = m.judgingOn()
 		}
 		_, cmd := h.Update(req)
-		return guard(cmd)
+		return tea.Batch(mark, guard(cmd))
 	}
 	if !inBoot {
 		req.Answer(session.Reply{Text: req.Cmd + " needs an open door in a boot"})

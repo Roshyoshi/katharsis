@@ -107,12 +107,12 @@ func TestCompileErrorDropsSourceDir(t *testing.T) {
 			"/usr/include/c++/v1/vector:12:1",
 		}},
 		{"submit CE line", func(m *Model, log string) string {
-			m.sub = submission{started: true, build: &judge.Build{OK: false, Log: log}}
+			m.sub = submission{started: true, src: m.prob.Source, build: &judge.Build{OK: false, Log: log}}
 			return screen(m)
 		}, []string{"submit CE  milk2.cpp:3:1: error: expected ';'"}},
 		{"submit CE reply", func(m *Model, log string) string {
 			sum := judge.Summary{Verdict: judge.CE}
-			m.sub = submission{started: true, build: &judge.Build{OK: false, Log: log}, sum: &sum}
+			m.sub = submission{started: true, src: m.prob.Source, build: &judge.Build{OK: false, Log: log}, sum: &sum}
 			return m.submitReply().Text
 		}, []string{"CE: milk2.cpp:3:1: error: expected ';' after expression"}},
 	} {

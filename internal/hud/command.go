@@ -31,6 +31,7 @@ type submission struct {
 	started bool            // a submit has happened; show the HP bar
 	running bool
 	tests   []problem.Test
+	src     string // the file judged: the source, or Options.SubmitCopy
 	build   *judge.Build
 	results []judge.Result // indexed like tests; zero Verdict = pending
 	sum     *judge.Summary
@@ -100,12 +101,48 @@ func (m *Model) command(req session.Request) tea.Cmd {
 }
 
 // submit judges the full tests at -O2, replacing any submit still running.
+// With Options.SubmitCopy it judges a copy of the source made now.
 func (m *Model) submit(req session.Request) tea.Cmd {
 	if m.prob == nil {
-		err := fmt.Errorf("cannot submit: %v", m.loadErr)
-		req.Answer(fail(err.Error()))
-		return func() tea.Msg { return SubmittedMsg{Err: err} }
+		return refuse(req, fmt.Errorf("cannot submit: %v", m.loadErr))
 	}
+	src := m.prob.Source
+	if c := m.opt.SubmitCopy; c != "" {
+		err := os.MkdirAll(filepath.Dir(c), 0o755)
+		if err == nil {
+			err = copyFile(src, c)
+		}
+		if err != nil {
+			return refuse(req, fmt.Errorf("cannot submit: %w", err))
+		}
+		src = c
+	}
+	return m.judgeSubmit(req, src)
+}
+
+// Resubmit judges again the copy the last :Submit left at
+// Options.SubmitCopy, as it stands: for a host whose game quit while that
+// submit was judged, so its verdict was never charged (qa/chaos r05). Call
+// it after Init, which loads the problem.
+func (m *Model) Resubmit() tea.Cmd {
+	req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	if m.prob == nil {
+		return refuse(req, fmt.Errorf("cannot judge the submit again: %v", m.loadErr))
+	}
+	if _, err := os.Stat(m.opt.SubmitCopy); err != nil {
+		return refuse(req, fmt.Errorf("the submitted copy is gone: %w", err))
+	}
+	return m.judgeSubmit(req, m.opt.SubmitCopy)
+}
+
+// refuse answers a submit that cannot start, and ends it for the host.
+func refuse(req session.Request, err error) tea.Cmd {
+	req.Answer(fail(err.Error()))
+	return func() tea.Msg { return SubmittedMsg{Err: err} }
+}
+
+// judgeSubmit starts the submit pass on src.
+func (m *Model) judgeSubmit(req session.Request, src string) tea.Cmd {
 	if m.sub.cancel != nil {
 		m.sub.cancel()
 	}
@@ -116,7 +153,7 @@ func (m *Model) submit(req session.Request) tea.Cmd {
 		tests = m.prob.Tests
 	}
 	prof := m.opt.SubmitProfile
-	src, lim := m.prob.Source, m.limits()
+	lim := m.limits()
 	ch, cancel := start(func(ctx context.Context, emit func(judge.Event)) {
 		if prof.Name == "" {
 			// Off the update loop: Profiles may wait on the sample probe.
@@ -126,7 +163,7 @@ func (m *Model) submit(req session.Request) tea.Cmd {
 	})
 	m.sub = submission{
 		ch: ch, cancel: cancel, req: req, started: true, running: true,
-		tests: tests, results: make([]judge.Result, len(tests)),
+		tests: tests, src: src, results: make([]judge.Result, len(tests)),
 	}
 	return tea.Batch(next(ch), m.updateBorder())
 }
@@ -168,7 +205,7 @@ func (m *Model) submitReply() session.Reply {
 	case s.sum.Verdict == judge.CE:
 		log := ""
 		if s.build != nil {
-			log = firstError(m.compilerLog(s.build.Log))
+			log = firstError(relLog(s.build.Log, s.src))
 		}
 		return fail("CE: " + log)
 	case s.sum.Verdict == judge.AC:
@@ -222,7 +259,7 @@ func (m *Model) submitLines(w int) []string {
 	case s.build == nil && s.running:
 		return []string{faint.Render("submit · compiling -O2…")}
 	case s.build != nil && !s.build.OK:
-		return []string{red.Render("submit CE") + faint.Render("  "+firstError(m.compilerLog(s.build.Log)))}
+		return []string{red.Render("submit CE") + faint.Render("  "+firstError(relLog(s.build.Log, s.src)))}
 	}
 	sum := judge.Summarize(s.results)
 	style := faint

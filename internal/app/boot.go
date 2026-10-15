@@ -155,12 +155,14 @@ func (m *Model) step(a game.Action) tea.Cmd {
 
 // try is step for a caller that reports a refusal itself: the editor's
 // commands answer in vim, where the player is looking, not over the game.
-func (m *Model) try(a game.Action) (tea.Cmd, error) {
+func (m *Model) try(a game.Action) (tea.Cmd, error) { return m.tryAt(a, m.d.Now()) }
+
+// tryAt is try with the engine's clock at now.
+func (m *Model) tryAt(a game.Action, now time.Time) (tea.Cmd, error) {
 	if m.state == nil {
 		return nil, nil
 	}
 	before, mark := m.baseKey(), m.tickMark()
-	now := m.d.Now()
 	effs, err := game.Step(m.state, &m.meta, m.pool, a, now)
 	if errors.Is(err, game.ErrInvalid) {
 		return nil, err
@@ -230,7 +232,7 @@ func (m *Model) onTick() tea.Cmd {
 // has passed, after which no judge result can save it.
 func (m *Model) pastGrace() bool {
 	c := m.state.Current
-	return c == nil || !m.d.Now().Before(c.Deadline.Add(m.state.Rules.SubmitGrace.Duration))
+	return c == nil || !m.judgeNow().Before(c.Deadline.Add(m.state.Rules.SubmitGrace.Duration))
 }
 
 // effects carries out what the engine asked for. RevealTags, ShowCrash and
@@ -298,10 +300,14 @@ func (m *Model) onFetched(f fetchedMsg) tea.Cmd {
 	}
 	m.open = d
 	m.refresh()
+	var cmds []tea.Cmd
 	if h := m.hud(); h != nil {
-		return guard(h.Init())
+		cmds = append(cmds, guard(h.Init()))
 	}
-	return nil
+	if !f.upsolve && !m.resumed.at.IsZero() {
+		cmds = append(cmds, m.resubmit())
+	}
+	return tea.Batch(cmds...)
 }
 
 // awaits reports whether the door f fetched is still on screen waiting to
@@ -318,7 +324,7 @@ func (m *Model) closeDoor() {
 	if m.open != nil {
 		m.d.Runner.Close()
 	}
-	m.open, m.judging = nil, false
+	m.open, m.judging, m.resumed = nil, false, resumedSubmit{}
 }
 
 // recheck takes the catalog's word on problems a fetch just touched: one
@@ -461,15 +467,19 @@ func (m *Model) submit() tea.Cmd {
 	if h := m.hud(); h != nil {
 		// The HUD judges and reports back with a SubmittedMsg. A submit
 		// while one runs replaces it, as :Submit from the editor does.
-		m.judging = true
+		mark := m.judgingOn()
 		req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
 		_, cmd := h.Update(req)
-		return guard(cmd)
+		return tea.Batch(mark, guard(cmd))
 	}
 	if m.d.Judge == nil || m.judging {
 		return nil
 	}
-	m.judging = true
+	return tea.Batch(m.judgingOn(), m.judgeHeadless())
+}
+
+// judgeHeadless judges the open door through Deps.Judge.
+func (m *Model) judgeHeadless() tea.Cmd {
 	d, judge := *m.open, m.d.Judge
 	return func() tea.Msg {
 		v, p, t, err := judge(context.Background(), d)
@@ -477,10 +487,65 @@ func (m *Model) submit() tea.Cmd {
 	}
 }
 
+// judgingOn marks a submit of the open door in flight. The clock holds for
+// it, up to the grace (onTick); in a boot the engine notes when it was
+// made (Attempt.SubmitAt), saved before the verdict, so a game that quits
+// mid-judge (ctrl+c, a kill) judges it again on resume. A new submit
+// replaces a resumed one.
+func (m *Model) judgingOn() tea.Cmd {
+	m.judging, m.resumed = true, resumedSubmit{}
+	if !m.inBootDoor() {
+		return nil
+	}
+	cmd, _ := m.try(game.Judging{On: true}) // refused: nothing to note
+	return cmd
+}
+
+// inBootDoor reports whether a boot's door is open, not an upsolve.
+func (m *Model) inBootDoor() bool {
+	return m.state != nil && m.state.Phase == game.PhaseProblem && m.open != nil && !m.open.Upsolve
+}
+
+// resumedSubmit is a submit made at at that the last game quit while
+// judging. This game took it up at since; its verdict counts as of at plus
+// the time this judge takes (judgeNow), as it would have had the game not
+// quit.
+type resumedSubmit struct{ at, since time.Time }
+
+// judgeNow is the time a verdict arriving now counts as of.
+func (m *Model) judgeNow() time.Time {
+	if r := m.resumed; !r.at.IsZero() {
+		return r.at.Add(max(m.d.Now().Sub(r.since), 0))
+	}
+	return m.d.Now()
+}
+
+// resubmit judges again the submit the last game quit while judging. Its
+// verdict was never charged: ctrl+c or a kill mid-judge dodged a failure,
+// on a cursed door too (qa/chaos r05). The HUD judges the copy it made of
+// what was submitted.
+func (m *Model) resubmit() tea.Cmd {
+	m.judging, m.resumed.since = true, m.d.Now()
+	if h := m.hud(); h != nil {
+		return guard(h.Resubmit())
+	}
+	if m.d.Judge == nil {
+		m.judging, m.resumed = false, resumedSubmit{}
+		return nil
+	}
+	return m.judgeHeadless()
+}
+
 func (m *Model) onJudged(j judgedMsg) tea.Cmd {
-	m.judging = false
+	at := m.judgeNow()
+	m.judging, m.resumed = false, resumedSubmit{}
 	if j.err != nil {
-		return fail("judge: %v", j.err)
+		// No verdict, so nothing to judge again on resume.
+		var clear tea.Cmd
+		if m.inBootDoor() {
+			clear, _ = m.try(game.Judging{On: false})
+		}
+		return tea.Batch(clear, fail("judge: %v", j.err))
 	}
 	// Libs come from accepted code only; harvest before the step so the
 	// checkpoint it makes saves them.
@@ -491,5 +556,9 @@ func (m *Model) onJudged(j judgedMsg) tea.Cmd {
 	if m.open != nil && m.open.Upsolve {
 		return tea.Batch(harvest, m.onUpsolveJudged(j))
 	}
-	return tea.Batch(harvest, m.step(game.SubmitResult{Verdict: j.verdict, Passed: j.passed, Total: j.total}))
+	cmd, err := m.tryAt(game.SubmitResult{Verdict: j.verdict, Passed: j.passed, Total: j.total}, at)
+	if err != nil {
+		cmd = func() tea.Msg { return errMsg{err} }
+	}
+	return tea.Batch(harvest, cmd)
 }

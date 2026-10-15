@@ -84,6 +84,9 @@ type Model struct {
 	stack   []screens.Screen // top is shown; the bottom is GRUB or a boot screen
 	open    *Door            // the door being played, nil otherwise
 	judging bool
+	// resumed is a submit this game judges again: the last game quit
+	// while judging it (Attempt.SubmitAt). Zero otherwise.
+	resumed resumedSubmit
 	flash   string // one-line error shown over the screen until the next key
 	// saveErr is the last save that failed. It shows on every screen
 	// until a save succeeds: as a flash the next key cleared, a store the
@@ -148,9 +151,13 @@ func (m *Model) Init() tea.Cmd {
 	// absolute, so time spent away still counted. A door that ran out while
 	// the game was closed crashes now, rather than opening the editor only
 	// for the first tick to close it again. A soft timer (a trial) only
-	// goes overtime, so its door reopens.
+	// goes overtime, so its door reopens. A submit the last game quit while
+	// judging is judged again first, as of when it was made (resubmit): the
+	// door opens for it, and the clock holds.
 	if s := m.state; s != nil && s.Phase == game.PhaseProblem && s.Current != nil {
-		if !m.d.Now().Before(s.Current.Deadline) && !s.SoftTimer() {
+		if at := s.Current.SubmitAt; !at.IsZero() {
+			m.judging, m.resumed = true, resumedSubmit{at: at, since: m.d.Now()}
+		} else if !m.d.Now().Before(s.Current.Deadline) && !s.SoftTimer() {
 			return tea.Batch(tick(), m.step(game.Tick{}))
 		}
 		return tea.Batch(tick(), m.initTop(), m.openDoor(s.Current.Door, false))
@@ -226,8 +233,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				p.closed, p.editorErr = true, failed
 			}
 		}
-		// The HUD cancels its submit pass when it quits; no result comes.
-		m.judging = false
 		return m, nil
 	case fetchedMsg:
 		return m, m.onFetched(msg)

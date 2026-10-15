@@ -198,6 +198,10 @@ type Attempt struct {
 	// Overtime is set when the timer ran out under rules.ExpireOvertime and
 	// the attempt went on; a clear then pays and rates less.
 	Overtime bool
+	// SubmitAt is when the submit being judged was made, zero when none
+	// is (Judging). Saved before the verdict, it lets a game that quit
+	// mid-judge judge that submit again on resume, from that time.
+	SubmitAt time.Time `json:",omitzero"`
 }
 
 // Upgrade is picked after each cleared door.
@@ -332,6 +336,11 @@ type SubmitResult struct {
 	Total   int
 }
 
+// Judging reports that a submit of the open door started being judged
+// (On; Attempt.SubmitAt is now) or ended without a verdict (a judge
+// error). A SubmitResult ends it too.
+type Judging struct{ On bool }
+
 type Tick struct{} // the clock moved; checks the deadline
 
 // Merge window choices.
@@ -350,6 +359,7 @@ func (Retreat) isAction()      {}
 func (Quack) isAction()        {}
 func (GiveUp) isAction()       {}
 func (SubmitResult) isAction() {}
+func (Judging) isAction()      {}
 func (Tick) isAction()         {}
 func (Commit) isAction()       {}
 func (PickUpgrade) isAction()  {}

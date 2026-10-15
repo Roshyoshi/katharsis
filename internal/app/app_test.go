@@ -115,7 +115,13 @@ func (r *hudFakeRunner) Reopen() error {
 	if r.reopenErr != nil {
 		return r.reopenErr
 	}
+	// As the tmux runner does: the new HUD takes over a submit in flight.
+	prev := r.hud
 	r.hud = hud.New(r.opt)
+	if prev != nil {
+		r.hud.Adopt(prev)
+		prev.Cleanup()
+	}
 	return nil
 }
 

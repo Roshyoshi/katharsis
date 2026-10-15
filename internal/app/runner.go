@@ -136,9 +136,12 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 		},
 		SubmitProfile: judge.Profiles(ctx).Full,
 		FullTests:     d.Assets.Tests,
-		EditorAlive:   func() bool { return session.PaneAlive(pane) },
-		CloseEditor:   func() error { return session.CloseEditor(pane) },
-		Clock:         r.Clock,
+		// A hidden directory: the door's own source stays the only .cpp
+		// in it, and a compile error names the file the player knows.
+		SubmitCopy:  filepath.Join(dir, ".submit", filepath.Base(src)),
+		EditorAlive: func() bool { return session.PaneAlive(pane) },
+		CloseEditor: func() error { return session.CloseEditor(pane) },
+		Clock:       r.Clock,
 		// The problem screen draws the boot bar and the keys around it.
 		Embedded: true,
 	}
@@ -191,12 +194,25 @@ func (r *TmuxRunner) EditorFailed() string {
 // command: 2 s, plus the HUD's 1 s poll that notices.
 const editorGrace = 3 * time.Second
 
-// Reopen brings the editor back after the player closed vim mid-door.
+// Reopen brings the editor back after the player closed vim mid-door. A
+// submit still being judged goes on in the new HUD (hud.Model.Adopt):
+// closing vim mid-judge must not cancel it. If the editor cannot open,
+// the old HUD stays, and the submit with it.
 func (r *TmuxRunner) Reopen() error {
 	if r.dir == "" {
 		return errors.New("no door open")
 	}
-	return r.Open(context.Background(), r.door)
+	prev := r.hud
+	r.hud = nil // so Open's Close leaves prev's submit running
+	if err := r.Open(context.Background(), r.door); err != nil {
+		r.hud = prev
+		return err
+	}
+	if prev != nil {
+		r.hud.Adopt(prev)
+		prev.Cleanup()
+	}
+	return nil
 }
 
 // Close ends the door's side: watcher, HUD, editor, border. The control

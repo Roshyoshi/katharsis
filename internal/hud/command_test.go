@@ -391,27 +391,92 @@ func TestQuitClosesEditorFirst(t *testing.T) {
 	})
 }
 
-// Quitting cancels the submit, and a cancelled pass sends nothing more. An
-// embedded HUD outlives its quit (the host reopens the editor), so the
-// submit must read stopped, not judging, and :Submit gets its answer.
-func TestQuitStopsSubmit(t *testing.T) {
+// running is a submit in flight on m's tests whose cancel sets *cancelled.
+func running(m *Model, cancelled *bool) (session.Request, <-chan session.Reply) {
+	req, ch := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	m.sub = submission{ch: make(chan judge.Event), cancel: func() { *cancelled = true }, req: req,
+		started: true, running: true, tests: m.prob.Tests, results: make([]judge.Result, len(m.prob.Tests)),
+		build: &judge.Build{OK: true}}
+	return req, ch
+}
+
+// The HUD quits when the editor closes, and an embedded one outlives its
+// quit. Quitting cancelled the submit with no verdict, so closing vim
+// mid-judge dodged a failing submit (qa/chaos r05). It now runs on, and
+// only Cleanup, when the door ends, stops it: answered, reading stopped.
+func TestQuitKeepsSubmit(t *testing.T) {
 	m := fixture(t, 2)
 	m.opt.EditorAlive = func() bool { return false }
 	cancelled := false
-	req, ch := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
-	m.sub = submission{ch: make(chan judge.Event), cancel: func() { cancelled = true }, req: req,
-		started: true, running: true, tests: m.prob.Tests, results: make([]judge.Result, 2)}
+	_, ch := running(m, &cancelled)
 	if _, cmd := m.Update(tickMsg{hud: m, at: time.Now()}); !isQuit(cmd) {
 		t.Fatal("the editor closed but the HUD did not quit")
 	}
-	if !cancelled {
-		t.Error("quit left the submit running")
+	if cancelled || len(ch) != 0 {
+		t.Fatalf("quit cancelled %v, answered %d: the submit should run on", cancelled, len(ch))
 	}
-	if len(ch) == 0 {
+	if s := screen(m); !strings.Contains(s, "judging") {
+		t.Errorf("after quitting the submit should read judging:\n%s", s)
+	}
+	m.Cleanup()
+	if !cancelled || len(ch) == 0 {
+		t.Errorf("Cleanup cancelled %v, answered %d: the door is over", cancelled, len(ch))
+	}
+	if s := screen(m); strings.Contains(s, "judging") || !strings.Contains(s, "stopped") {
+		t.Errorf("after Cleanup the submit should read stopped:\n%s", s)
+	}
+}
+
+// The editor reopened makes a new HUD; it takes over the submit, whose
+// events then apply to it, and the old HUD's Cleanup leaves it running.
+func TestAdoptMovesTheSubmit(t *testing.T) {
+	prev, next := fixture(t, 2), fixture(t, 2)
+	cancelled := false
+	_, answer := running(prev, &cancelled)
+	pass := prev.sub.ch
+	next.Adopt(prev)
+	prev.Cleanup()
+	if cancelled {
+		t.Fatal("the old HUD's Cleanup cancelled the adopted submit")
+	}
+	next.Update(eventMsg{ch: pass, ev: judge.BuildDone{Build: judge.Build{OK: true}}})
+	next.Update(eventMsg{ch: pass, ev: judge.TestDone{Index: 0, Result: judge.Result{Verdict: judge.WA}}})
+	if s := screen(next); !strings.Contains(s, "judging 1/2") {
+		t.Errorf("the new HUD should show the adopted pass:\n%s", s)
+	}
+	next.Update(eventMsg{ch: pass, ev: judge.Finished{Summary: &judge.Summary{Verdict: judge.WA, Total: 2, Done: 1, First: 0}}})
+	if s := screen(next); !strings.Contains(s, "WA #1") {
+		t.Errorf("the new HUD should show the verdict:\n%s", s)
+	}
+	if len(answer) == 0 {
 		t.Error(":Submit was never answered")
 	}
-	s := screen(m)
-	if strings.Contains(s, "judging") || strings.Contains(s, "running…") || !strings.Contains(s, "stopped") {
-		t.Errorf("after quitting the passes should read stopped:\n%s", s)
+}
+
+// With SubmitCopy the submit judges a copy of the source made when it was
+// sent, which Resubmit judges again as it stands: later edits to the
+// source change neither.
+func TestSubmitCopy(t *testing.T) {
+	m := fixture(t, 1)
+	m.opt.SubmitCopy = filepath.Join(m.opt.Dir, ".submit", "milk2.cpp")
+	if cmd := m.Resubmit(); cmd == nil {
+		t.Fatal("Resubmit with no copy started nothing")
+	} else if msg, ok := cmd().(SubmittedMsg); !ok || msg.Err == nil {
+		t.Fatalf("Resubmit with no copy = %#v, want an error", msg)
+	}
+	req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	m.submit(req)
+	m.sub.cancel()
+	must(t, os.WriteFile(m.prob.Source, []byte("edited after the submit"), 0o644))
+	if b, err := os.ReadFile(m.opt.SubmitCopy); err != nil || string(b) != "int main(){}" {
+		t.Fatalf("copy = %q, %v; want the source as submitted", b, err)
+	}
+	if m.sub.src != m.opt.SubmitCopy {
+		t.Errorf("judged %s, want the copy", m.sub.src)
+	}
+	m.Resubmit()
+	m.sub.cancel()
+	if m.sub.src != m.opt.SubmitCopy || !m.sub.running {
+		t.Errorf("Resubmit judged %s (running %v), want the copy", m.sub.src, m.sub.running)
 	}
 }

@@ -15,6 +15,7 @@ import (
 
 	"katharsis/internal/game"
 	"katharsis/internal/hud"
+	"katharsis/internal/judge"
 	"katharsis/internal/screens"
 	"katharsis/internal/session"
 	"katharsis/internal/store"
@@ -202,4 +203,107 @@ type failedEditorRunner struct{ hudFakeRunner }
 
 func (r *failedEditorRunner) EditorFailed() string {
 	return "the editor exited at once: nosuchvim (see --editor)"
+}
+
+// A game that quits while a submit is judged (ctrl+c, a kill) charged no
+// verdict: a failing submit was dodged, on a cursed door too (qa/chaos
+// r05). The submit is noted and saved when it is made, and the next game
+// judges it again, as of when it was made: a door that ran out while the
+// game was closed is still saved by an AC sent in time.
+func TestQuitMidJudgeJudgesOnResume(t *testing.T) {
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	cur := h.enterDoor()
+	h.stall = make(chan struct{})
+	h.clock.t = cur.Deadline.Add(-time.Minute)
+	submitted := h.clock.t
+	h.send(submitMsg{})
+	if at := h.m.state.Current.SubmitAt; !at.Equal(submitted) {
+		t.Fatalf("SubmitAt = %v, want %v", at, submitted)
+	}
+	saved, err := h.st.ActiveBoot()
+	if err != nil || !saved.Current.SubmitAt.Equal(submitted) {
+		t.Fatalf("saved SubmitAt = %v (%v), want it saved before the verdict", saved.Current.SubmitAt, err)
+	}
+	h.m.quit() // ctrl+c mid-judge
+	close(h.stall)
+	h.stall = nil
+
+	h.clock.t = cur.Deadline.Add(time.Hour)
+	h.restart()
+	if h.m.state.Phase == game.PhaseCrashed {
+		t.Fatalf("resumed into a crash %+v; the submit was in time", h.m.state.Crash)
+	}
+	last := h.m.state.History[len(h.m.state.History)-1]
+	if last.Outcome != game.Cleared || !last.Closed.Equal(submitted) || !last.SubmitAt.IsZero() {
+		t.Fatalf("door %q closed %v SubmitAt %v; want cleared as of %v", last.Outcome, last.Closed, last.SubmitAt, submitted)
+	}
+}
+
+// A failing submit judged again on resume costs its life, and the door,
+// whose time ran out while the game was closed, then times out.
+func TestQuitMidJudgeChargesTheFailure(t *testing.T) {
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	cur := h.enterDoor()
+	lives := h.m.state.Lives
+	h.stall = make(chan struct{})
+	h.send(submitMsg{})
+	h.m.quit()
+	close(h.stall)
+	h.stall, h.verdict = nil, "WA"
+
+	h.clock.t = cur.Deadline.Add(time.Hour)
+	h.restart()
+	h.send(tickMsg(h.clock.t))
+	if h.m.state.Lives != lives-1 {
+		t.Errorf("lives %d, want %d: the failure went uncharged", h.m.state.Lives, lives-1)
+	}
+	last := h.m.state.History[len(h.m.state.History)-1]
+	if last.Submits != 1 || last.Failed != 1 || last.Outcome != game.TimedOut {
+		t.Errorf("door %q with %d submits, %d failed; want 1 WA, then timed out", last.Outcome, last.Submits, last.Failed)
+	}
+}
+
+// A judge error is no verdict: nothing is left to judge again on resume.
+func TestJudgeErrorClearsThePendingSubmit(t *testing.T) {
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.enterDoor()
+	h.stall = make(chan struct{})
+	close(h.stall) // the judge returns an error at once
+	h.send(submitMsg{})
+	if c := h.m.state.Current; h.m.judging || !c.SubmitAt.IsZero() {
+		t.Fatalf("judging %v SubmitAt %v after a judge error", h.m.judging, c.SubmitAt)
+	}
+}
+
+// Closing vim mid-judge quits the HUD but not its submit: the clock stays
+// held for it, and its verdict, arriving after, is charged.
+func TestClosedEditorKeepsTheSubmit(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(dir+"/sol.cpp", []byte("int main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := newHarnessWith(t, func(f *fakeRunner) Runner {
+		return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: dir}}
+	})
+	h.send(screens.StartBoot{Preset: "standard"})
+	cur := h.enterDoor()
+	lives := h.m.state.Lives
+	req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	h.send(req)
+	h.send(hudQuitMsg{}) // :q in vim
+	if !h.m.judging {
+		t.Fatal("closing the editor released the clock held for the submit")
+	}
+	h.clock.t = cur.Deadline.Add(10 * time.Second)
+	h.send(tickMsg(h.clock.t))
+	if h.m.state.Phase != game.PhaseProblem {
+		t.Fatalf("phase %q inside the grace, want problem", h.m.state.Phase)
+	}
+	h.send(hud.SubmittedMsg{Summary: judge.Summary{Verdict: judge.WA, Passed: 1, Total: 4, Done: 4, First: 1}})
+	if h.m.state.Lives != lives-1 {
+		t.Errorf("lives %d, want %d after the verdict", h.m.state.Lives, lives-1)
+	}
 }

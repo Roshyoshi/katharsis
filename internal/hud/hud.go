@@ -59,6 +59,10 @@ type Options struct {
 	// (session.CloseEditor). With it, quitting the HUD waits for the
 	// editor to close first; nil quits at once.
 	CloseEditor func() error
+	// SubmitCopy, when set, is where :Submit copies the source to judge the
+	// copy: what was submitted stays on disk, unchanged by later edits,
+	// for a host that quit mid-judge to judge it again (Resubmit).
+	SubmitCopy string
 	// Conceal hides the full tests while it returns true: a submit reply
 	// names the failing test but not its expected and actual output, and
 	// :Debug takes samples only. In a boot the full tests are the judge's
@@ -276,14 +280,21 @@ func (m *Model) requestQuit() tea.Cmd {
 	}, closeTick())
 }
 
+// quit stops the sample pass and leaves a submit in flight running. The
+// HUD quits when the editor closes, and an embedded one lives on in its
+// host until the door ends (Cleanup): cancelled here, a failing submit
+// was dodged by closing vim mid-judge (qa/chaos r05). Its verdict comes
+// as usual, and a HUD that replaces this one takes it over (Adopt).
 func (m *Model) quit() tea.Cmd {
-	m.stop()
+	if m.cancel != nil {
+		m.cancel()
+	}
+	m.running = false
 	return tea.Quit
 }
 
 // stop cancels both passes. A cancelled pass sends nothing more, so a
-// submit in flight is answered and marked stopped here; otherwise a host
-// that reopens the editor finds the HP bar judging forever.
+// submit in flight is answered and marked stopped here.
 func (m *Model) stop() {
 	if m.cancel != nil {
 		m.cancel()
@@ -294,6 +305,13 @@ func (m *Model) stop() {
 		m.sub.running = false
 		m.sub.req.Answer(fail("judge stopped"))
 	}
+}
+
+// Adopt takes over prev's submit, running or done, with its HP bar: prev
+// is the HUD this one replaces on the same door (the editor reopened).
+// prev's Cleanup then leaves it running.
+func (m *Model) Adopt(prev *Model) {
+	m.sub, prev.sub = prev.sub, submission{}
 }
 
 // EditorLeftOpen reports whether the player quit the HUD while it waited

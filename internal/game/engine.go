@@ -119,6 +119,8 @@ func Step(s *State, meta *Meta, pool []catalog.Problem, a Action, now time.Time)
 		err = e.chooseDoor(a.Index)
 	case SubmitResult:
 		err = e.submit(a)
+	case Judging:
+		err = e.judging(a.On)
 	case Quack:
 		err = e.quack()
 	case GiveUp:
@@ -235,6 +237,7 @@ func (e *engine) submit(v SubmitResult) error {
 		return err
 	}
 	a := s.Current
+	a.SubmitAt = time.Time{}
 	late := a.Deadline.Add(s.Rules.SubmitGrace.Duration)
 	if !e.now.Before(late) && s.Rules.OnExpire != rules.ExpireOvertime {
 		e.crash(TimedOut, false)
@@ -274,6 +277,19 @@ func (e *engine) submit(v SubmitResult) error {
 		return nil
 	}
 	e.emit(Sound{Name: "wa"})
+	return nil
+}
+
+// judging records a submit in flight. It is no judge of time: a submit
+// made past the deadline is the verdict's to refuse, as before.
+func (e *engine) judging(on bool) error {
+	if err := e.need(PhaseProblem, "judging"); err != nil {
+		return err
+	}
+	e.s.Current.SubmitAt = time.Time{}
+	if on {
+		e.s.Current.SubmitAt = e.now
+	}
 	return nil
 }
 
@@ -361,6 +377,7 @@ func (e *engine) close(o Outcome) Attempt {
 	s := e.s
 	a := s.Current
 	a.Outcome, a.Closed = o, e.now
+	a.SubmitAt = time.Time{} // a verdict still out is moot now
 	score := 0.0
 	if o == Cleared {
 		score = 1
