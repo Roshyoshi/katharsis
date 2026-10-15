@@ -183,9 +183,16 @@ machinery built, only D34 life + governor on; Meta.Retired; ML1 offer logging
 with propensities (chi2 p 0.75); ML3 learning player, EOMM ratio 2.16; ML7
 TestGuardrailG1; RT8 comeback; RT11 boot #1 short, 66 min for the 1000 model;
 apt prices up to keep the ladder 40+ boots deep). All wave 2 merged.
+Final pass merged: g-learn (reader: \[ is an escaped bracket, not math: fixed 568 lines on 61
+module pages and 4 USACO statements; product denominators parenthesised; rtfm
+offers t only when a trial grants a capability; parseFrontmatter 73 -> 18,
+parseOrdering, Load split; TeX conversion kept: cutting it put raw TeX on 16
+pages), g-content (USACO tags aligned, schema 3, 8 problems move; web.Flights
+single-flight closes a codeforces double-download window; old guide snapshots
+swept; fsync before publish; Codeforces retries once after 10 min).
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
-retired milestone); cleanup wave 1: g-judge, g-content, g-learn, g-store, g-qa
+retired milestone); cleanup wave 1: g-judge, g-store, g-qa
 (brief: ~/.claude/jobs/e2124f03/tmp/cleanup-brief.md). After f-hooks merges:
 cleanup wave 2 g-engine (game, sim, rules), g-flavor (flavor, anim, story), g-ui
 (ui, units, screens/boot, screens/meta), g-app (app, cmd, demos; -race in the
