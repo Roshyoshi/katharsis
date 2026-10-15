@@ -191,24 +191,28 @@ func (m *Model) applySubmit(ev judge.Event) tea.Cmd {
 		m.sub.results[ev.Index] = ev.Result
 	case judge.Finished:
 		m.sub.running, m.sub.err, m.sub.sum = false, ev.Err, ev.Summary
-		m.sub.req.Answer(m.submitReply())
+		msg := SubmittedMsg{req: m.sub.req, reply: m.submitReply()}
+		if ev.Summary == nil || !m.opt.HostAnswers {
+			msg.Answer("")
+		}
 		if ev.Summary != nil {
-			s := *ev.Summary
-			return func() tea.Msg { return SubmittedMsg{Summary: s} }
+			msg.Summary = *ev.Summary
+			return func() tea.Msg { return msg }
 		}
 		// A pass that ended without a verdict still ends the submit, so the
 		// host stops waiting on it.
-		err := ev.Err
-		if err == nil {
-			err = errors.New("judge stopped")
+		msg.Err = ev.Err
+		if msg.Err == nil {
+			msg.Err = errors.New("judge stopped")
 		}
-		return func() tea.Msg { return SubmittedMsg{Err: err} }
+		return func() tea.Msg { return msg }
 	}
 	return nil
 }
 
 // submitReply is the one line vim shows when a submit ends, e.g.
-// "WA 37/52 · #38 line 2: want 7, got 6".
+// "WA 37/52 · #38 line 2: want 7, got 6", before a host adds the cost
+// (Options.HostAnswers).
 func (m *Model) submitReply() session.Reply {
 	s := m.sub
 	switch {

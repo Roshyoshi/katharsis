@@ -17,6 +17,7 @@ import (
 
 	"katharsis/internal/judge"
 	"katharsis/internal/problem"
+	"katharsis/internal/session"
 	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
@@ -34,6 +35,21 @@ type WatchErrMsg struct{ Err error }
 type SubmittedMsg struct {
 	Summary judge.Summary
 	Err     error
+
+	req   session.Request // the editor's :Submit
+	reply session.Reply   // its answer, before the cost
+}
+
+// Answer replies to the editor's :Submit with the verdict's line, ended
+// with cost unless it is "": "WA 37/52 · #38 line 2 · -1 ♥, 2 left". Only
+// the first answer counts, and the HUD gives it itself unless
+// Options.HostAnswers, so Answer does nothing then.
+func (s SubmittedMsg) Answer(cost string) {
+	rep := s.reply
+	if cost != "" {
+		rep.Text += " · " + cost
+	}
+	s.req.Answer(rep)
 }
 
 type Options struct {
@@ -94,6 +110,11 @@ type Options struct {
 	// the samples wait for the first save (or r) instead of judging it on
 	// open, where it could only fail (UX J13).
 	Unjudged bool
+	// HostAnswers leaves the reply to a :Submit that reached a verdict to
+	// the host: it charges the verdict, then calls SubmittedMsg.Answer
+	// with what it cost, which the HUD cannot know. It must answer every
+	// SubmittedMsg it takes; one with no verdict the HUD has answered.
+	HostAnswers bool
 }
 
 type row struct {

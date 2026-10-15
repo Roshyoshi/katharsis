@@ -1,6 +1,7 @@
 package hud
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -187,6 +188,49 @@ func TestBorderTextEscapes(t *testing.T) {
 	}
 	if got := m.statusText(); got != "⏱ 23:41 #1 · samples 0/1" {
 		t.Errorf("status %q stays plain", got)
+	}
+}
+
+// A host that charges verdicts (Options.HostAnswers) answers :Submit
+// itself, once, with the cost the HUD cannot know. A submit that reached
+// no verdict costs nothing, and the HUD answers it at once.
+func TestHostAnswersWithTheCost(t *testing.T) {
+	m := fixture(t, 3)
+	m.opt.HostAnswers, m.opt.Conceal = true, func() bool { return true }
+	submitting := func() <-chan session.Reply {
+		req, ch := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+		m.sub = submission{ch: make(chan judge.Event), req: req, started: true, running: true,
+			tests: m.prob.Tests, results: make([]judge.Result, 3)}
+		return ch
+	}
+
+	ch := submitting()
+	wa := judge.Result{Verdict: judge.WA, Reason: "line 1", Diff: &judge.Diff{Line: 1, Want: "7", Got: "6"}}
+	m.sub.results = []judge.Result{{Verdict: judge.AC}, {Verdict: judge.AC}, wa}
+	sum := judge.Summarize(m.sub.results)
+	msg := m.applySubmit(judge.Finished{Summary: &sum})().(SubmittedMsg)
+	if rep, ok := replied(ch); ok {
+		t.Fatalf("answered %+v before the host charged the verdict", rep)
+	}
+	if msg.Summary != sum {
+		t.Errorf("SubmittedMsg summary %+v, want %+v", msg.Summary, sum)
+	}
+	msg.Answer("-1 ♥, 2 left")
+	msg.Answer("again")
+	if rep := <-ch; rep.OK || rep.Text != "WA 2/3 · #3 line 1 · -1 ♥, 2 left" {
+		t.Errorf("reply %+v, want the concealed verdict and its cost", rep)
+	}
+	if rep, ok := replied(ch); ok {
+		t.Errorf("answered twice: %+v", rep)
+	}
+
+	ch = submitting()
+	msg = m.applySubmit(judge.Finished{Err: errors.New("no compiler")})().(SubmittedMsg)
+	if rep, ok := replied(ch); !ok || rep.Text != "judge error: no compiler" {
+		t.Errorf("a submit with no verdict: answered %v with %+v, want it at once", ok, rep)
+	}
+	if msg.Err == nil {
+		t.Error("SubmittedMsg without its error")
 	}
 }
 
