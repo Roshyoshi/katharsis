@@ -13,10 +13,10 @@ import (
 //	$\lfloor a_i / 2 \rfloor$     →  ⌊aᵢ / 2⌋
 //	$a_1, a_2, \ldots, a_N$       →  a[1], a[2], …, a[N]
 //
-// Math is whatever sits between $…$, $$…$$, $$$…$$$ (Codeforces), \(…\) or
-// \[…\]. Text outside math is left alone, and so are fenced code blocks and
-// inline code spans, because sample input must reach the judge's reader
-// byte for byte.
+// Math is whatever sits between $…$, $$…$$, $$$…$$$ or $$$$$$…$$$$$$
+// (Codeforces inline and display), \(…\) or \[…\]. Text outside math is
+// left alone, and so are fenced code blocks and inline code spans, because
+// sample input must reach the judge's reader byte for byte.
 //
 // Subscripts become Unicode subscripts when every character has one (aᵢ,
 // x₁₀); otherwise the whole math span switches to brackets (a[N], b[i,j]) so
@@ -146,7 +146,13 @@ func convertProse(s string) string {
 			b.WriteString(s[i : i+2])
 			i += 2
 		case c == '$':
-			n := min(runLen(s, i, '$'), 3)
+			// Six dollars is Codeforces display math; read as three, it would
+			// open an empty span and swap math and prose for the rest of the
+			// statement.
+			n := runLen(s, i, '$')
+			if n != 6 {
+				n = min(n, 3)
+			}
 			inner, end, ok := dollarMath(s, i, n)
 			if !ok {
 				b.WriteString(s[i : i+n])
@@ -242,7 +248,7 @@ func findRun(s string, i int, c byte, n int) int {
 // mathToMarkdown converts one math span and escapes what markdown would
 // misread.
 func mathToMarkdown(tex string) string {
-	return escapeMarkdown(MathToUnicode(tex))
+	return escapeMarkdown(mathToUnicode(tex))
 }
 
 func escapeMarkdown(s string) string {
@@ -257,17 +263,17 @@ func escapeMarkdown(s string) string {
 	return b.String()
 }
 
-// MathToUnicode converts the inside of one math span (no delimiters) to
+// mathToUnicode converts the inside of one math span (no delimiters) to
 // plain Unicode text; see TeXToUnicode for the rules.
-func MathToUnicode(tex string) string {
+func mathToUnicode(tex string) string {
 	p := &texParser{src: tex}
-	out := p.render()
+	out := p.seq(0, false, false)
 	if p.subFallback {
 		// One subscript needed brackets: render every index the same way.
 		p = &texParser{src: tex, brackets: true}
-		out = p.render()
+		out = p.seq(0, false, false)
 	}
-	return out
+	return tidy(out)
 }
 
 type texParser struct {
@@ -276,11 +282,6 @@ type texParser struct {
 	brackets bool // render index subscripts as a[i]
 
 	subFallback bool // an index subscript had no Unicode form
-}
-
-func (p *texParser) render() string {
-	p.pos = 0
-	return tidy(p.seq(0, false, false))
 }
 
 // tidy collapses the runs of spaces that relation padding leaves behind. No
@@ -344,7 +345,7 @@ func (p *texParser) seq(depth int, script, text bool) string {
 			b.WriteString("  ")
 		case c == '^' || c == '_':
 			p.pos++
-			arg := p.scriptArg()
+			arg := p.rawArg()
 			b.WriteString(p.script(c, arg, prevOp != ""))
 			if prevOp != "" {
 				op = prevOp // ∑_{i=1}^{n}: both scripts are limits
@@ -384,10 +385,6 @@ func (p *texParser) seq(depth int, script, text bool) string {
 	return b.String()
 }
 
-// scriptArg reads the source of the argument of ^ or _: a braced group, a
-// control sequence, or one character, as TeX does (10^18 is 10¹8 in TeX too).
-func (p *texParser) scriptArg() string { return p.rawArg() }
-
 // script renders a sub- or superscript from its source. limits marks the
 // scripts of a big operator (∑, max), whose fallback must not force brackets
 // on the whole formula.
@@ -425,11 +422,10 @@ func (p *texParser) sub(src string, depth int, script, text bool) string {
 }
 
 // rawArg returns the source of the next argument and moves past it: the
-// inside of a braced group, a control sequence, or one character.
+// inside of a braced group, a control sequence, or one character, as TeX
+// reads one (10^18 is 10¹8 in TeX too).
 func (p *texParser) rawArg() string {
-	for p.pos < len(p.src) && p.src[p.pos] == ' ' {
-		p.pos++
-	}
+	p.skipSpaces()
 	if p.pos >= len(p.src) {
 		return ""
 	}
@@ -503,6 +499,12 @@ func (p *texParser) textEscape() string {
 	return `\` + name
 }
 
+func (p *texParser) skipSpaces() {
+	for p.pos < len(p.src) && p.src[p.pos] == ' ' {
+		p.pos++
+	}
+}
+
 func (p *texParser) letters() string {
 	start := p.pos
 	for p.pos < len(p.src) && isLetter(p.src[p.pos]) {
@@ -568,18 +570,15 @@ func (p *texParser) command(script bool) (out string, isOp bool) {
 			return "", false
 		case '\\':
 			return " ", false // line break in display math
-		case '{', '}', '%', '$', '#', '&', '|':
-			if c == '|' {
-				return "‖", false
-			}
+		case '{', '}', '%', '$', '#', '&', '*':
 			return string(c), false
+		case '|':
+			return "‖", false
 		case '_':
 			// A converter that escapes markdown turns a_i into a\_i; a
 			// literal underscore in math is rare enough to read it back as
 			// a subscript.
-			return p.script('_', p.scriptArg(), false), false
-		case '*':
-			return "*", false
+			return p.script('_', p.rawArg(), false), false
 		}
 		return `\` + string(c), false
 	}
@@ -591,7 +590,7 @@ func (p *texParser) command(script bool) (out string, isOp bool) {
 		return " " + s + " "
 	}
 	switch name {
-	case "frac", "dfrac", "tfrac":
+	case "frac", "dfrac", "tfrac", "cfrac":
 		num, den := p.arg(script, false), p.arg(script, false)
 		return wrapOperand(tidy(num)) + "/" + wrapOperand(tidy(den)), false
 	case "binom", "dbinom", "tbinom":
@@ -611,7 +610,8 @@ func (p *texParser) command(script bool) (out string, isOp bool) {
 		return x + "^(1/" + root + ")", false
 	case "text", "textrm", "textit", "textbf", "texttt", "textsf", "mbox",
 		"mathrm", "mathit", "mathbf", "mathtt", "mathsf", "operatorname",
-		"boldsymbol", "bm", "emph", "textnormal":
+		"boldsymbol", "bm", "emph", "textnormal", "substack", "cancel",
+		"mathbin", "mathrel", "mathop", "smash":
 		textMode := strings.HasPrefix(name, "text") || name == "mbox" || name == "emph"
 		return p.arg(script, textMode), false
 	case "mathbb":
@@ -623,27 +623,56 @@ func (p *texParser) command(script bool) (out string, isOp bool) {
 	case "mathcal", "mathscr", "mathfrak":
 		return p.arg(script, false), false
 	case "overline", "bar", "hat", "widehat", "tilde", "widetilde", "vec",
-		"dot", "ddot":
+		"dot", "ddot", "overrightarrow", "overleftarrow":
 		return combine(p.arg(script, false), accents[name]), false
 	case "underline":
 		return p.arg(script, false), false
+	case "underbrace", "overbrace":
+		// The brace and its label have no linear form; the label goes.
+		x := p.arg(script, false)
+		p.skipSpaces()
+		if p.pos < len(p.src) && (p.src[p.pos] == '_' || p.src[p.pos] == '^') {
+			p.pos++
+			p.rawArg()
+		}
+		return x, false
+	case "overset", "underset", "stackrel":
+		p.rawArg() // the annotation above, as in \stackrel{def}{=}
+		return p.arg(script, false), false
+	case "xrightarrow", "xleftarrow":
+		p.optArg() // the label below
+		label := tidy(p.arg(true, false))
+		if name == "xleftarrow" {
+			return pad("←" + label + "—"), false
+		}
+		return pad("—" + label + "→"), false
+	case "color", "textcolor", "require":
+		// \color{red}x and \textcolor{red}{x} print x; \require{cancel}
+		// loads a MathJax extension.
+		p.rawArg()
+		return "", false
+	case "over":
+		p.skipSpaces()
+		return "/", false
+	case "hline":
+		return "", false
 	case "pmod":
 		return " (mod " + tidy(p.arg(script, false)) + ")", false
 	case "bmod", "mod":
 		return " mod ", false
 	case "left", "right", "big", "Big", "bigg", "Bigg", "bigl", "bigr",
 		"Bigl", "Bigr", "biggl", "biggr", "middle", "displaystyle",
-		"textstyle", "scriptstyle", "limits", "nolimits":
-		// Sizing only; the delimiter that follows renders on its own. A
-		// \left. is an invisible delimiter.
+		"textstyle", "scriptstyle", "limits", "nolimits", "tiny", "small",
+		"normalsize", "large", "Large", "LARGE", "huge", "Huge",
+		"bf", "it", "rm", "tt", "sf", "cal":
+		// Sizing and font switches only; the delimiter or text that follows
+		// renders on its own. A \left. is an invisible delimiter.
 		if p.pos < len(p.src) && p.src[p.pos] == '.' {
 			p.pos++
 		}
 		return "", false
 	case "not":
-		for p.pos < len(p.src) && p.src[p.pos] == ' ' {
-			p.pos++
-		}
+		p.skipSpaces()
 		if strings.HasPrefix(p.src[p.pos:], "=") {
 			p.pos++
 			return pad("≠"), false
@@ -654,10 +683,16 @@ func (p *texParser) command(script bool) (out string, isOp bool) {
 		}
 		return "¬", false
 	case "begin", "end":
-		p.arg(script, true) // environment name: cases, aligned, ...
+		// The environment name (cases, aligned, ...) and an array's column
+		// spec are layout.
+		if env := p.rawArg(); name == "begin" && (env == "array" || env == "tabular") {
+			p.rawArg()
+		}
 		return " ", false
 	case "quad":
 		return "  ", false
+	case "enspace", "space":
+		return " ", false
 	case "qquad":
 		return "    ", false
 	}
@@ -716,7 +751,7 @@ func combine(s, mark string) string {
 var accents = map[string]string{
 	"overline": "̅", "bar": "̄", "hat": "̂", "widehat": "̂",
 	"tilde": "̃", "widetilde": "̃", "vec": "⃗", "dot": "̇",
-	"ddot": "̈",
+	"ddot": "̈", "overrightarrow": "⃗", "overleftarrow": "⃖",
 }
 
 // relations and binary operators get a space on each side, as TeX sets them.
@@ -728,11 +763,13 @@ var relations = map[string]string{
 	"supset": "⊃", "supseteq": "⊇", "to": "→", "rightarrow": "→",
 	"leftarrow": "←", "gets": "←", "Rightarrow": "⇒", "Leftarrow": "⇐",
 	"implies": "⇒", "iff": "⇔", "Leftrightarrow": "⇔", "leftrightarrow": "↔",
-	"mapsto": "↦", "longrightarrow": "⟶",
+	"mapsto": "↦", "longrightarrow": "⟶", "longleftrightarrow": "⟷", "leadsto": "⇝",
+	"uparrow": "↑", "downarrow": "↓", "ngtr": "≯", "nless": "≮",
 	"times": "×", "cdot": "·", "div": "÷", "pm": "±", "mp": "∓",
 	"oplus": "⊕", "otimes": "⊗", "cup": "∪", "cap": "∩", "setminus": "∖",
 	"land": "∧", "wedge": "∧", "lor": "∨", "vee": "∨", "mid": "|",
-	"circ": "∘", "ast": "∗", "star": "⋆", "bullet": "•",
+	"circ": "∘", "ast": "∗", "star": "⋆", "bullet": "•", "bigcirc": "◯",
+	"odot": "⊙", "diamond": "⋄",
 }
 
 // bigOps take limits as scripts.
@@ -749,6 +786,7 @@ var functions = map[string]bool{
 	"gcd": true, "lcm": true, "sin": true, "cos": true, "tan": true,
 	"lim": true, "sup": true, "inf": true, "deg": true, "det": true,
 	"dim": true, "arg": true, "argmin": true, "argmax": true, "Pr": true,
+	"arcsin": true, "arccos": true, "arctan": true,
 }
 
 var symbols = map[string]string{
@@ -759,7 +797,7 @@ var symbols = map[string]string{
 	"vdots": "⋮", "ddots": "⋱", "infty": "∞", "partial": "∂", "nabla": "∇",
 	"forall": "∀", "exists": "∃", "neg": "¬", "lnot": "¬", "emptyset": "∅",
 	"varnothing": "∅", "prime": "′", "ell": "ℓ", "angle": "∠", "degree": "°",
-	"triangle": "△", "square": "□", "checkmark": "✓", "dagger": "†",
+	"triangle": "△", "square": "□", "checkmark": "✓", "dagger": "†", "ddagger": "‡",
 	"aleph": "ℵ", "hbar": "ℏ", "Re": "ℜ", "Im": "ℑ", "wp": "℘",
 	"alpha": "α", "beta": "β", "gamma": "γ", "delta": "δ", "epsilon": "ε",
 	"varepsilon": "ε", "zeta": "ζ", "eta": "η", "theta": "θ", "vartheta": "ϑ",

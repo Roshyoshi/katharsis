@@ -72,22 +72,20 @@ func mapNodes(st *game.State) (nodes [][]node, merge, here int) {
 	return nodes, merge, here
 }
 
-// RenderMap draws the whole boot as a strip: one box per biome with its
+// renderMap draws the whole boot as a strip: one box per biome with its
 // rooms as nodes (✓ cleared, ● here, ○ ahead, ☠ crash, ⚔ boss) and the
 // merge windows as the links between boxes. It falls back to a single line
 // when the boxes don't fit width. Other screens embed it.
-func RenderMap(st *game.State, width int) string {
-	if st == nil || len(st.Biomes) == 0 || width <= 0 {
-		return ""
-	}
+func renderMap(st *game.State, width int) []string {
 	nodes, merge, here := mapNodes(st)
-	if s, ok := boxMap(st, nodes, merge, here, width); ok {
-		return s
+	if ls := boxMap(st, nodes, merge, here, width); ls != nil {
+		return ls
 	}
-	return lineMap(st, nodes, merge, here, width)
+	return []string{lineMap(st, nodes, merge, here, width)}
 }
 
-func boxMap(st *game.State, nodes [][]node, merge, here, width int) (string, bool) {
+// boxMap is the map as a row of boxes, or nil when they don't fit width.
+func boxMap(st *game.State, nodes [][]node, merge, here, width int) []string {
 	var rows [3]strings.Builder
 	total := 0
 	for i := range st.Biomes {
@@ -128,9 +126,9 @@ func boxMap(st *game.State, nodes [][]node, merge, here, width int) (string, boo
 		total += w
 	}
 	if total > width {
-		return "", false
+		return nil
 	}
-	return rows[0].String() + "\n" + rows[1].String() + "\n" + rows[2].String(), true
+	return []string{rows[0].String(), rows[1].String(), rows[2].String()}
 }
 
 func allDone(ns []node) bool {
@@ -192,16 +190,13 @@ func (m *Map) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 }
 
 func (m *Map) View(width, height int) string {
-	if m.env.State == nil {
-		return noBoot(width, height)
-	}
 	return mapScreen(m.env, width, height, hint("esc", "back"))
 }
 
 func mapScreen(env Env, width, height int, footer string) string {
 	st := env.State
 	body := append(env.header("map", width), "")
-	body = append(body, centerBlock(RenderMap(st, width), width)...)
+	body = append(body, centerBlock(renderMap(st, width), width)...)
 	legend := strings.Join([]string{
 		nodeDone.glyph() + " cleared", nodeHere.glyph() + " here", nodeAhead.glyph() + " ahead",
 		nodeCrash.glyph() + " crash", nodeBoss.glyph() + " boss",

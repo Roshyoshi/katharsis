@@ -79,15 +79,18 @@ func Rules() rules.Rules {
 	return r
 }
 
-// Meta is the player: rated about 1180, Silver unlocked, a regression due.
+// Meta is the player: rated about 1180, with enough doors behind dp, data
+// structures and graphs that those aim by their own ratings, Silver
+// unlocked, a regression due.
 func Meta() game.Meta {
 	return game.Meta{
-		Rating:      1180,
-		TopicRating: map[string]float64{"dp": 1120, "data-structures": 1240, "graphs": 1210},
-		Prestige:    1,
-		Bank:        2150,
-		Regressions: []game.Regression{{Problem: cereal, Due: Now.Add(-2 * time.Hour), Stage: 0}},
-		Boots:       42,
+		Rating:        1180,
+		TopicRating:   map[string]float64{"dp": 1120, "data-structures": 1240, "graphs": 1210},
+		TopicAttempts: map[string]int{"dp": 6, "data-structures": 9, "graphs": 7},
+		Prestige:      1,
+		Bank:          2150,
+		Regressions:   []game.Regression{{Problem: cereal, Due: Now.Add(-2 * time.Hour), Stage: 0}},
+		Boots:         42,
 	}
 }
 

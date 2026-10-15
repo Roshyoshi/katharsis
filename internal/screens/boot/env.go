@@ -20,10 +20,11 @@ import (
 // Lookup resolves a door's problem. catalog.Catalog.Get satisfies it.
 type Lookup func(catalog.ID) (catalog.Problem, bool)
 
-// Env is everything a boot screen reads. Screens never write through
-// State. After the engine steps or the clock ticks, the app either builds a
-// new screen or calls Refresh, which keeps the cursor where the player left
-// it.
+// Env is everything a boot screen reads. State is the boot in progress,
+// never nil: the app builds these screens only during a boot. Screens never
+// write through State. After the engine steps or the clock ticks, the app
+// either builds a new screen or calls Refresh, which keeps the cursor where
+// the player left it.
 type Env struct {
 	State  *game.State
 	Meta   game.Meta
@@ -93,7 +94,7 @@ func (e Env) hasEditorial(id catalog.ID) bool {
 }
 
 func (e Env) uptime() time.Duration {
-	if e.State == nil || e.State.Started.IsZero() || e.Now.IsZero() {
+	if e.State.Started.IsZero() || e.Now.IsZero() {
 		return 0
 	}
 	return e.Now.Sub(e.State.Started)
@@ -132,7 +133,7 @@ func daemonText(d game.Daemon, r rules.Rules) (string, string) {
 // ruleBiome is the preset entry behind biome i, for its timer and target
 // clear rate, which BiomeState does not carry.
 func ruleBiome(st *game.State, i int) (rules.Biome, bool) {
-	if st == nil || i < 0 || i >= len(st.Rules.Biomes) {
+	if i < 0 || i >= len(st.Rules.Biomes) {
 		return rules.Biome{}, false
 	}
 	return st.Rules.Biomes[i], true
@@ -143,7 +144,7 @@ func ruleBiome(st *game.State, i int) (rules.Biome, bool) {
 // biome it is. The boss goes before the topic because a boss biome's topic
 // is Mixed, whose flavor name (Userland) belongs to the first biome.
 func biomeLabel(st *game.State, i int) string {
-	if st == nil || i < 0 || i >= len(st.Biomes) {
+	if i < 0 || i >= len(st.Biomes) {
 		return "?"
 	}
 	b := st.Biomes[i]
@@ -192,9 +193,6 @@ type step struct {
 // exact. The open or crashing attempt is included once even if the engine
 // has not yet moved it into History.
 func steps(st *game.State) []step {
-	if st == nil {
-		return nil
-	}
 	atts := append([]game.Attempt(nil), st.History...)
 	if c := st.Current; c != nil {
 		dup := false
@@ -236,7 +234,7 @@ func (e Env) doorText(d game.Door) doorText {
 	if d.Mystery {
 		t.Title = "???"
 	}
-	if d.Blind || d.Mystery || (e.State != nil && e.State.Rules.BlindAll) {
+	if d.Blind || d.Mystery || e.State.Rules.BlindAll {
 		t.Tags, t.Hidden = nil, true
 	}
 	return t
@@ -273,9 +271,6 @@ func sourceLabel(p catalog.Problem, contest bool) string {
 // player. Regression keeps only the due date and stage, so the crash is
 // inferred as Due minus that stage's delay.
 func (e Env) regressionAge(id catalog.ID) (int, bool) {
-	if e.State == nil {
-		return 0, false
-	}
 	days := e.State.Rules.RegressionDays
 	for _, r := range e.Meta.Regressions {
 		if r.Problem != id || r.Stage < 0 || r.Stage >= len(days) {
@@ -299,8 +294,8 @@ func (e Env) header(where string, width int) []string {
 	right := sFaint.Render("uptime ") + fmtClock(e.uptime())
 
 	status := hearts(st.Lives, st.MaxLives) + "  " + fmt.Sprintf("🦆%d", st.Ducks) + "  " +
-		sGreen.Render(FormatBytes(st.Uncommitted)) + sFaint.Render(" uncommitted") + dot +
-		FormatBytes(st.Committed) + sFaint.Render(" committed")
+		sGreen.Render(formatBytes(st.Uncommitted)) + sFaint.Render(" uncommitted") + dot +
+		formatBytes(st.Committed) + sFaint.Render(" committed")
 	var ds []string
 	for _, d := range st.Daemons {
 		n, _ := daemonText(d, st.Rules)
@@ -351,8 +346,4 @@ func move(key string, sel, n int) int {
 		}
 	}
 	return min(sel, n-1)
-}
-
-func noBoot(width, height int) string {
-	return layout(width, height, []string{sFaint.Render("no boot in progress")}, "")
 }

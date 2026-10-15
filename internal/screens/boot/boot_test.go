@@ -257,8 +257,8 @@ func TestRouteKeys(t *testing.T) {
 	}
 	r.Update(press("1"))
 	r.Update(press("9")) // out of range: ignored
-	if r.Selected() != 0 {
-		t.Errorf("1, 9: selected %d, want 0", r.Selected())
+	if r.sel != 0 {
+		t.Errorf("1, 9: selected %d, want 0", r.sel)
 	}
 }
 
@@ -272,8 +272,8 @@ func TestDoorsKeys(t *testing.T) {
 	d.Update(press("h"))
 	d.Update(press("left"))
 	d.Update(press("left"))
-	if d.Selected() != 0 {
-		t.Errorf("left past the first door: selected %d", d.Selected())
+	if d.sel != 0 {
+		t.Errorf("left past the first door: selected %d", d.sel)
 	}
 
 	d.Update(press("m"))
@@ -396,37 +396,39 @@ func TestMergeRefreshMovesPastTakenPick(t *testing.T) {
 	}
 }
 
-func TestMergeDaemonSlotsFull(t *testing.T) {
+// Daemon slots are a preset's max_daemons, not a fixed three: with a
+// fourth slot free the offers stay pickable.
+func TestMergeDaemonSlotsFromRules(t *testing.T) {
 	st := fixture.Merge()
 	st.PendingUpgrade = false
+	st.Rules.MaxDaemons = 4
 	st.Daemons = []game.Daemon{game.Strace, game.Kexec, game.Fork}
 	m := NewMerge(env(st))
 	_, cmd := m.Update(press("enter"))
-	if got := emitted(cmd); got != (game.LeaveMerge{}) {
-		t.Errorf("with full slots the only row is leave, got %#v", got)
+	if got := emitted(cmd); got != (game.PickDaemon{Daemon: game.Nice}) {
+		t.Errorf("enter on the first daemon: got %#v", got)
 	}
-	if v := ansi.Strip(m.View(80, 24)); !strings.Contains(v, "all daemon slots in use") {
-		t.Errorf("full slots not explained:\n%s", v)
+	if v := ansi.Strip(m.View(80, 24)); !strings.Contains(v, "held 3/4") {
+		t.Errorf("held count should come from the rules:\n%s", v)
 	}
 }
 
 func TestUpgradePicker(t *testing.T) {
-	p := NewUpgradePicker([]game.Upgrade{game.Overclock, game.ECC, game.Duck}, fixture.Rules())
-	p, _ = p.Update(press("right"))
-	p, cmd := p.Update(press("enter"))
-	if got := emitted(cmd); got != (game.PickUpgrade{Upgrade: game.ECC}) {
+	p := picker{offers: []game.Upgrade{game.Overclock, game.ECC, game.Duck}, rules: fixture.Rules()}
+	p.update(press("right"))
+	if got := emitted(p.update(press("enter"))); got != (game.PickUpgrade{Upgrade: game.ECC}) {
 		t.Errorf("right, enter: got %#v", got)
 	}
-	if v := ansi.Strip(p.View(100)); !strings.Contains(v, "▸ 2") || !strings.Contains(v, "+1 life") {
+	if v := ansi.Strip(strings.Join(p.lines(100), "\n")); !strings.Contains(v, "▸ 2") || !strings.Contains(v, "+1 life") {
 		t.Errorf("cards view:\n%s", v)
 	}
-	if v := ansi.Strip(p.View(40)); !strings.Contains(v, "▸ ECC") {
+	if v := ansi.Strip(strings.Join(p.lines(40), "\n")); !strings.Contains(v, "▸ ECC") {
 		t.Errorf("narrow view should fall back to a list:\n%s", v)
 	}
 
 	u := NewUpgradeScreen(env(fixture.Upgrade()))
 	u.Update(press("3"))
-	_, cmd = u.Update(press("enter"))
+	_, cmd := u.Update(press("enter"))
 	if got := emitted(cmd); got != (game.PickUpgrade{Upgrade: game.Duck}) {
 		t.Errorf("screen 3, enter: got %#v", got)
 	}
@@ -767,10 +769,10 @@ func TestCrashTailSkipsEngineEchoes(t *testing.T) {
 func TestCrashReveal(t *testing.T) {
 	c := NewCrash(env(fixture.Crash(game.TimedOut)))
 	full := c.View(100, 40)
-	if c.Revealing() {
+	if c.revealing() {
 		t.Fatal("a new crash screen shows everything until Init")
 	}
-	if c.Init() == nil || !c.Revealing() {
+	if c.Init() == nil || !c.revealing() {
 		t.Fatal("Init should start the reveal")
 	}
 	if v := c.View(100, 40); strings.TrimSpace(ansi.Strip(v)) != "" {
@@ -786,17 +788,17 @@ func TestCrashReveal(t *testing.T) {
 	if _, cmd := c.Update(press("u")); cmd != nil {
 		t.Errorf("key during reveal should only skip, got %#v", emitted(cmd))
 	}
-	if c.Revealing() || c.View(100, 40) != full {
+	if c.revealing() || c.View(100, 40) != full {
 		t.Error("skip should show the full panic")
 	}
 
 	// Ticking to the end stops the ticks.
 	c.Init()
 	var cmd tea.Cmd
-	for i := 0; i < 100 && c.Revealing(); i++ {
+	for i := 0; i < 100 && c.revealing(); i++ {
 		_, cmd = c.Update(revealMsg{gen: c.gen})
 	}
-	if c.Revealing() || cmd != nil || c.View(100, 40) != full {
+	if c.revealing() || cmd != nil || c.View(100, 40) != full {
 		t.Errorf("reveal should end on the full panic with no further tick")
 	}
 }
@@ -846,24 +848,24 @@ func TestRenderMap(t *testing.T) {
 	var sb strings.Builder
 	for _, f := range fixtures {
 		for _, w := range []int{80, 50, 30} {
-			s := RenderMap(f.st, w)
-			for _, l := range strings.Split(s, "\n") {
+			ls := renderMap(f.st, w)
+			for _, l := range ls {
 				if ansi.StringWidth(l) > w {
 					t.Errorf("%s at %d: line %d wide: %q", f.name, w, ansi.StringWidth(l), ansi.Strip(l))
 				}
 			}
-			fmt.Fprintf(&sb, "--- %s @%d ---\n%s\n", f.name, w, ansi.Strip(s))
+			fmt.Fprintf(&sb, "--- %s @%d ---\n%s\n", f.name, w, ansi.Strip(strings.Join(ls, "\n")))
 		}
 	}
 	golden(t, "rendermap", sb.String())
-	doors := ansi.Strip(RenderMap(fixture.Doors(), 80))
+	doors := ansi.Strip(strings.Join(renderMap(fixture.Doors(), 80), "\n"))
 	if !strings.Contains(doors, "✓ ✓") || !strings.Contains(doors, "✓ ●") || !strings.Contains(doors, "⚔") {
 		t.Errorf("doors map: want Userland done, here in the second biome, boss ahead:\n%s", doors)
 	}
-	if merge := ansi.Strip(RenderMap(fixture.Merge(), 80)); !strings.Contains(merge, "─●─") {
+	if merge := ansi.Strip(strings.Join(renderMap(fixture.Merge(), 80), "\n")); !strings.Contains(merge, "─●─") {
 		t.Errorf("merge map should mark the merge window:\n%s", merge)
 	}
-	if crash := ansi.Strip(RenderMap(fixture.Crash(game.TimedOut), 80)); !strings.Contains(crash, "✓ ☠") {
+	if crash := ansi.Strip(strings.Join(renderMap(fixture.Crash(game.TimedOut), 80), "\n")); !strings.Contains(crash, "✓ ☠") {
 		t.Errorf("crash map should mark the crash room:\n%s", crash)
 	}
 }
@@ -1058,8 +1060,8 @@ func TestFormatBytes(t *testing.T) {
 		0: "0 B", 312: "312 B", 1023: "1023 B", 1024: "1 KiB", 1536: "1.5 KiB",
 		10 << 10: "10 KiB", 150 << 10: "150 KiB", 1 << 20: "1 MiB", 3 << 19: "1.5 MiB", -312: "-312 B",
 	} {
-		if got := FormatBytes(n); got != want {
-			t.Errorf("FormatBytes(%d) = %q, want %q", n, got, want)
+		if got := formatBytes(n); got != want {
+			t.Errorf("formatBytes(%d) = %q, want %q", n, got, want)
 		}
 	}
 }
@@ -1077,16 +1079,62 @@ func TestStepsPlaceAttempts(t *testing.T) {
 	}
 }
 
-func TestNilState(t *testing.T) {
-	e := Env{}
-	for _, s := range []screens.Screen{NewRoute(e), NewDoors(e), NewMap(e), NewMerge(e), NewUpgradeScreen(e), NewCrash(e), NewCleared(e)} {
-		checkFits(t, fmt.Sprintf("%T", s), s.View(80, 24), 80, 24)
-		s.Update(press("enter"))
+// The route band previews the rating the engine aims the biome's doors at:
+// raised by the prestige offset, and from the topic's own rating only once
+// that topic has TopicRatingMin attempts behind it.
+func TestRouteBandFollowsEngineAim(t *testing.T) {
+	st := fixture.Route()
+	st.Prestige = 4
+	e := env(st)
+	e.Meta.TopicAttempts = map[string]int{"dp": 2, "data-structures": 9}
+	v := ansi.Strip(NewRoute(e).View(140, 40))
+	// dp, two attempts: the overall 1180 aims, 1033 at 70%, +4·25 = 1133.
+	// data-structures: its own 1240, 1093, +100 = 1193.
+	for _, want := range []string{"◆ 1050–1250", "◆ 1100–1300", "your data-structures rating 1240"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("route missing %q:\n%s", want, v)
+		}
 	}
-	if RenderMap(nil, 80) != "" {
-		t.Error("RenderMap(nil) should be empty")
+	if strings.Contains(v, "your dp rating") {
+		t.Errorf("dp doors aim by the overall rating, not dp's:\n%s", v)
 	}
-	if HUDBar(nil, catalog.Problem{}, fixture.Now, 40) == "" {
-		t.Error("HUDBar(nil) should still say something")
+}
+
+// The upgrade screen shows the -O3 the engine awarded, which counts a clear
+// at exactly the fraction, and centers the cards.
+func TestUpgradeScreenO3AndCentering(t *testing.T) {
+	st := fixture.Upgrade()
+	a := &st.History[len(st.History)-1]
+	a.Closed = a.Opened.Add(time.Duration(float64(a.Door.Timer) * st.Rules.O3Frac))
+	v := ansi.Strip(NewUpgradeScreen(env(st)).View(140, 40))
+	if !strings.Contains(v, "in 15:00 of 30:00  -O3") {
+		t.Errorf("an -O3 clear at exactly the fraction should say so:\n%s", v)
+	}
+	for _, l := range strings.Split(v, "\n") {
+		if !strings.Contains(l, "▸ 1") {
+			continue
+		}
+		left := len(l) - len(strings.TrimLeft(l, " "))
+		right := 140 - ansi.StringWidth(l)
+		if left-right > 1 || right-left > 1 {
+			t.Errorf("cards sit %d from the left and %d from the right:\n%s", left, right, v)
+		}
+	}
+}
+
+// The reveal ends when the screen has printed everything it shows at its
+// size; a key after that acts instead of only skipping.
+func TestCrashRevealEndsWithScreen(t *testing.T) {
+	c := NewCrash(crashEnv(game.TimedOut))
+	full := c.View(80, 16)
+	c.Init()
+	for i := 0; i < 100 && c.View(80, 16) != full; i++ {
+		c.Update(revealMsg{gen: c.gen})
+	}
+	if c.revealing() {
+		t.Error("still revealing with the whole panic on screen")
+	}
+	if _, cmd := c.Update(press("u")); emitted(cmd) == nil {
+		t.Error("u after the reveal should upsolve")
 	}
 }

@@ -29,15 +29,7 @@ func (d *Doors) Refresh(env Env) {
 	d.sel = move("", d.sel, len(d.doors()))
 }
 
-// Selected is the highlighted door.
-func (d *Doors) Selected() int { return d.sel }
-
-func (d *Doors) doors() []game.Door {
-	if d.env.State == nil {
-		return nil
-	}
-	return d.env.State.Doors
-}
+func (d *Doors) doors() []game.Door { return d.env.State.Doors }
 
 func (d *Doors) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	key, ok := keyName(msg)
@@ -67,9 +59,6 @@ func (d *Doors) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 
 func (d *Doors) View(width, height int) string {
 	st := d.env.State
-	if st == nil {
-		return noBoot(width, height)
-	}
 	if d.showMap {
 		return mapScreen(d.env, width, height, hint("m", "back to doors"))
 	}
@@ -86,7 +75,7 @@ func (d *Doors) View(width, height int) string {
 	// header when there is room for it.
 	room := height - len(head) - 1
 	block := d.cards(width, room)
-	if m := centerBlock(RenderMap(st, width), width); len(block)+1+len(m) <= room-1 {
+	if m := centerBlock(renderMap(st, width), width); len(block)+1+len(m) <= room-1 {
 		block = append(append(block, ""), m...)
 	}
 	return layout(width, height, centered(head, block, height), footer)
@@ -95,9 +84,6 @@ func (d *Doors) View(width, height int) string {
 func (d *Doors) where() string {
 	st := d.env.State
 	b := st.Biome
-	if b < 0 || b >= len(st.Biomes) {
-		return ""
-	}
 	name := biomeLabel(st, b)
 	if st.Biomes[b].Kind == rules.Boss {
 		return sMagenta.Render("⚔ " + name)
@@ -116,9 +102,6 @@ func (d *Doors) cards(width, room int) []string {
 	}
 	if width >= 90 {
 		cw := (width - 2*(n-1)) / n
-		if n == 1 {
-			cw = min(width, 78)
-		}
 		if cw >= 28 {
 			cw = min(cw, 52)
 			bodies := make([][]string, n)
@@ -133,14 +116,11 @@ func (d *Doors) cards(width, room int) []string {
 			}
 			row := joinH(2, blocks...)
 			if len(row) <= room {
-				return indent(max((width-widthOf(row[0]))/2, 0), row)
+				return centerBlock(row, width)
 			}
 		}
 	}
-	w := width
-	if width >= 90 {
-		w = min(width, 96)
-	}
+	w := min(width, 96)
 	var out []string
 	for i, door := range doors {
 		out = append(out, indent((width-w)/2, d.card(i, door, w, d.body(door, w-4, false), true))...)
@@ -213,11 +193,7 @@ func (d *Doors) body(door game.Door, cw int, wide bool) []string {
 		return d.bossBody(door, cw)
 	}
 	t := d.env.doorText(door)
-	stats := doorStats(door)
-	chance := ""
-	if door.SolveP > 0 {
-		chance = sFaint.Render(fmt.Sprintf("≈%d%% clear", int(door.SolveP*100+0.5)))
-	}
+	stats, chance := doorStats(door), clearChance(door)
 	var out []string
 	if wide {
 		if t.Source != "" {
@@ -271,7 +247,16 @@ func tagLines(t doorText, cw, n int) []string {
 func doorStats(door game.Door) string {
 	return sYellow.Render("◆") + fmt.Sprintf(" %d", door.Rating) +
 		"  ⏱ " + fmtClock(door.Timer) +
-		"  " + sGreen.Bold(true).Render("+"+FormatBytes(door.Bytes))
+		"  " + sGreen.Bold(true).Render("+"+formatBytes(door.Bytes))
+}
+
+// clearChance is the engine's estimate that the player clears door, "" when
+// it has none.
+func clearChance(door game.Door) string {
+	if door.SolveP <= 0 {
+		return ""
+	}
+	return sFaint.Render(fmt.Sprintf("≈%d%% clear", int(door.SolveP*100+0.5)))
 }
 
 func withMult(s string, m float64) string {
@@ -353,8 +338,8 @@ func (d *Doors) bossBody(door game.Door, cw int) []string {
 		out = append(out, center(l, cw))
 	}
 	out = append(out, center(doorStats(door), cw))
-	if door.SolveP > 0 {
-		out = append(out, center(sFaint.Render(fmt.Sprintf("≈%d%% clear", int(door.SolveP*100+0.5))), cw))
+	if c := clearChance(door); c != "" {
+		out = append(out, center(c, cw))
 	}
 	for _, l := range d.modifiers(door, cw, true) {
 		out = append(out, center(l, cw))
@@ -363,14 +348,7 @@ func (d *Doors) bossBody(door game.Door, cw int) []string {
 }
 
 // spaced letter-spaces a word for the boss banner: HEISENBUG → H E I S …
-func spaced(s string) string {
-	rs := []rune(s)
-	parts := make([]string, len(rs))
-	for i, r := range rs {
-		parts[i] = string(r)
-	}
-	return strings.Join(parts, " ")
-}
+func spaced(s string) string { return strings.Join(strings.Split(s, ""), " ") }
 
 // compact is the last resort for short terminals: one line per door.
 func (d *Doors) compact(width int) []string {

@@ -81,7 +81,7 @@ type Model struct {
 	started time.Time
 	now     time.Time
 
-	gen     int // judge pass; events from older passes are dropped
+	pass    <-chan judge.Event // the sample pass's events; see eventMsg
 	cancel  context.CancelFunc
 	running bool
 	build   *judge.Build
@@ -105,27 +105,36 @@ func New(opt Options) *Model {
 	return &Model{opt: opt, started: now, now: now}
 }
 
-type tickMsg time.Time
+// The HUD's own messages say which HUD and which pass they belong to. A
+// host that opens a HUD per door forwards every message to the current
+// one, so a late tick or judge event of the last door's HUD reaches the
+// next door's; applied there, it would fill rows with another problem's
+// results (or index past them) and double the tick.
+type tickMsg struct {
+	hud *Model
+	at  time.Time
+}
 
 // closeTickMsg polls the editor quickly while it is closing.
 type closeTickMsg struct{}
 
-// judgeMsg carries one event of pass gen, plus the channel to keep reading.
-type judgeMsg struct {
-	gen int
-	ev  judge.Event
-	ch  <-chan judge.Event
+// eventMsg is one event of a judge pass, plus the channel to keep reading.
+// The channel names the pass: one that is neither the current sample pass
+// nor the current submit is stale.
+type eventMsg struct {
+	ch <-chan judge.Event
+	ev judge.Event
 }
 
-func tick() tea.Cmd {
-	return tea.Tick(time.Second, func(t time.Time) tea.Msg { return tickMsg(t) })
+func (m *Model) tick() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg { return tickMsg{m, t} })
 }
 
 func closeTick() tea.Cmd {
 	return tea.Tick(100*time.Millisecond, func(time.Time) tea.Msg { return closeTickMsg{} })
 }
 
-func (m *Model) Init() tea.Cmd { return tea.Batch(tick(), m.rejudge(), m.updateBorder()) }
+func (m *Model) Init() tea.Cmd { return tea.Batch(m.tick(), m.rejudge(), m.updateBorder()) }
 
 // limits fills in the problem's own time limit when the options leave it
 // unset.
@@ -143,8 +152,7 @@ func (m *Model) rejudge() tea.Cmd {
 	if m.cancel != nil {
 		m.cancel()
 	}
-	m.gen++
-	m.build, m.passErr = nil, nil
+	m.pass, m.build, m.passErr = nil, nil, nil
 	m.prob, m.loadErr = problem.Load(m.opt.Dir)
 	if m.loadErr != nil {
 		m.running, m.rows = false, nil
@@ -154,29 +162,37 @@ func (m *Model) rejudge() tea.Cmd {
 	m.rows = make([]row, len(m.prob.Tests))
 	m.sel = min(m.sel, max(len(m.rows)-1, 0))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	m.cancel = cancel
-	ch := make(chan judge.Event, 8)
 	prob, prof, lim := m.prob, m.opt.Profile, m.limits()
+	m.pass, m.cancel = start(func(ctx context.Context, emit func(judge.Event)) {
+		judge.Judge(ctx, prob, prof, lim, emit)
+	})
+	return next(m.pass)
+}
+
+// start runs a judge pass in the background and streams its events into
+// the returned channel, which closes when the pass ends.
+func start(pass func(context.Context, func(judge.Event))) (<-chan judge.Event, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan judge.Event, 8)
 	go func() {
 		defer close(ch)
-		judge.Judge(ctx, prob, prof, lim, func(ev judge.Event) {
+		pass(ctx, func(ev judge.Event) {
 			select {
 			case ch <- ev:
 			case <-ctx.Done():
 			}
 		})
 	}()
-	return next(m.gen, ch)
+	return ch, cancel
 }
 
-func next(gen int, ch <-chan judge.Event) tea.Cmd {
+func next(ch <-chan judge.Event) tea.Cmd {
 	return func() tea.Msg {
 		ev, ok := <-ch
 		if !ok {
 			return nil
 		}
-		return judgeMsg{gen: gen, ev: ev, ch: ch}
+		return eventMsg{ch: ch, ev: ev}
 	}
 }
 
@@ -188,11 +204,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case tickMsg:
-		m.now = time.Time(msg)
+		if msg.hud != m {
+			return m, nil
+		}
+		m.now = msg.at
 		if m.opt.EditorAlive != nil && !m.opt.EditorAlive() {
 			return m, m.quit()
 		}
-		return m, tea.Batch(tick(), m.updateBorder())
+		return m, tea.Batch(m.tick(), m.updateBorder())
 	case closeTickMsg:
 		if !m.closing {
 			return m, nil
@@ -205,12 +224,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.watchErr = msg.Err
 	case SavedMsg:
 		return m, m.rejudge()
-	case judgeMsg:
-		if msg.gen != m.gen {
-			return m, nil
+	case eventMsg:
+		switch msg.ch {
+		case m.pass:
+			m.apply(msg.ev)
+			return m, tea.Batch(next(msg.ch), m.updateBorder())
+		case m.sub.ch:
+			return m, tea.Batch(m.applySubmit(msg.ev), next(msg.ch), m.updateBorder())
 		}
-		m.apply(msg.ev)
-		return m, tea.Batch(next(msg.gen, msg.ch), m.updateBorder())
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
@@ -249,13 +270,23 @@ func (m *Model) requestQuit() tea.Cmd {
 }
 
 func (m *Model) quit() tea.Cmd {
+	m.stop()
+	return tea.Quit
+}
+
+// stop cancels both passes. A cancelled pass sends nothing more, so a
+// submit in flight is answered and marked stopped here; otherwise a host
+// that reopens the editor finds the HP bar judging forever.
+func (m *Model) stop() {
 	if m.cancel != nil {
 		m.cancel()
 	}
-	if m.sub.cancel != nil {
+	m.running = false
+	if m.sub.running {
 		m.sub.cancel()
+		m.sub.running = false
+		m.sub.req.Answer(fail("judge stopped"))
 	}
-	return tea.Quit
 }
 
 // EditorLeftOpen reports whether the player quit the HUD while it waited
@@ -264,12 +295,11 @@ func (m *Model) quit() tea.Cmd {
 // have it closed.
 func (m *Model) EditorLeftOpen() bool { return m.leftOpen }
 
-// Cleanup closes the debugger and removes its files. Call it once the
-// program has exited.
+// Cleanup stops the judge passes and closes the debugger, removing its
+// files. Call it once the HUD is done with: its program exited, or its
+// door closed.
 func (m *Model) Cleanup() {
-	if m.sub.cancel != nil {
-		m.sub.cancel()
-	}
+	m.stop()
 	m.closeDebugger()
 }
 
@@ -328,13 +358,7 @@ func (m *Model) statusText() string {
 	case m.build != nil && !m.build.OK:
 		parts = append(parts, "samples CE")
 	case len(m.rows) > 0:
-		pass := 0
-		for _, r := range m.rows {
-			if r.done && r.res.Verdict == judge.AC {
-				pass++
-			}
-		}
-		parts = append(parts, fmt.Sprintf("samples %d/%d", pass, len(m.rows)))
+		parts = append(parts, fmt.Sprintf("samples %d/%d", m.passed(), len(m.rows)))
 	}
 	if m.sub.started {
 		s := judge.Summarize(m.sub.results)
@@ -378,10 +402,11 @@ func (m *Model) View() tea.View {
 	var b strings.Builder
 	line := func(s string) { b.WriteString(ansi.Truncate(s, w, "…") + "\n") }
 	rule := func() { line(faint.Render(strings.Repeat("─", w))) }
+	used := func() int { return strings.Count(b.String(), "\n") }
 
-	// header and help are the rows the header and the key help take; an
-	// embedded HUD has neither.
-	header, help := 0, 0
+	// help is the row the key help takes; an embedded HUD has none, nor a
+	// header.
+	help := 0
 	if !m.opt.Embedded {
 		name := "?"
 		if m.prob != nil {
@@ -391,7 +416,7 @@ func (m *Model) View() tea.View {
 		// bytes each for one or two cells.
 		clock := "⏱ " + m.clockText()
 		line(bold.Render(name) + strings.Repeat(" ", max(w-ansi.StringWidth(name)-ansi.StringWidth(clock), 1)) + clock)
-		header, help = 1, 1
+		help = 1
 	}
 	line(m.statusLine())
 	if m.closing {
@@ -402,27 +427,25 @@ func (m *Model) View() tea.View {
 	}
 	rule()
 
-	if m.loadErr != nil {
+	switch {
+	case m.loadErr != nil:
 		for _, l := range wrap(m.loadErr.Error(), w) {
 			line(red.Render(l))
 		}
-		return m.view(b.String())
-	}
-
-	if m.build != nil && !m.build.OK {
+	case m.build != nil && !m.build.OK:
 		line(red.Render("CE") + faint.Render("  compile error"))
 		rule()
-		for _, l := range firstLines(m.compilerLog(m.build.Log), max(m.height-4-header-help, 4)) {
+		for _, l := range firstLines(m.compilerLog(m.build.Log), max(m.height-used()-help, 4)) {
 			line(l)
 		}
-	} else {
+	default:
 		// Rows get the lines the header, the detail and the key help leave,
 		// and scroll to keep the selected one in view: a full test set is
 		// taller than the pane.
 		detail := m.detail(w)
 		room := len(m.rows)
 		if m.height > 0 {
-			room = max(m.height-strings.Count(b.String(), "\n")-len(detail)-1-help, 2)
+			room = max(m.height-used()-len(detail)-1-help, 2)
 		}
 		lo, hi := 0, len(m.rows)
 		if len(m.rows) > room {
@@ -446,41 +469,37 @@ func (m *Model) View() tea.View {
 			line(l)
 		}
 	}
-	if m.opt.Embedded {
-		return m.view(b.String())
-	}
 
-	// Pin the key help to the bottom row.
-	used := strings.Count(b.String(), "\n")
-	for i := used; i < m.height-1; i++ {
-		b.WriteString("\n")
+	// Cut or pad to exactly the pane's height, the key help pinned to the
+	// bottom row. The row and log budgets above keep a few lines even in a
+	// pane too short for them, and a view taller than its pane loses lines
+	// it needs: standalone the terminal scrolls the header away, embedded
+	// the host's lines above it go.
+	ls := strings.Split(strings.TrimSuffix(b.String(), "\n"), "\n")
+	if m.height > 0 {
+		room := max(m.height-help, 0)
+		ls = ls[:min(len(ls), room)]
+		for len(ls) < room {
+			ls = append(ls, "")
+		}
 	}
-	b.WriteString(ansi.Truncate(faint.Render(":w rejudges · :Submit · :Debug n · r rerun · j/k · q quit"), w, "…"))
-
-	v := tea.NewView(b.String())
+	if help > 0 {
+		ls = append(ls, ansi.Truncate(faint.Render(":w rejudges · :Submit · :Debug n · r rerun · j/k · q quit"), w, "…"))
+	}
+	v := tea.NewView(strings.Join(ls, "\n"))
 	v.AltScreen = true
 	return v
 }
 
-// view wraps body, newline-terminated lines, as the HUD's view. Standalone
-// it is shown as is; embedded it is cut or padded to exactly the pane's
-// height, since a host that stacks it under its own lines and over its own
-// footer cannot absorb a taller one (a long sanitizer report would push the
-// host's top lines off screen).
-func (m *Model) view(body string) tea.View {
-	if m.opt.Embedded {
-		ls := strings.Split(strings.TrimSuffix(body, "\n"), "\n")
-		if m.height > 0 {
-			ls = ls[:min(len(ls), m.height)]
-			for len(ls) < m.height {
-				ls = append(ls, "")
-			}
+// passed counts the samples judged AC so far.
+func (m *Model) passed() int {
+	n := 0
+	for _, r := range m.rows {
+		if r.done && r.res.Verdict == judge.AC {
+			n++
 		}
-		body = strings.Join(ls, "\n")
 	}
-	v := tea.NewView(body)
-	v.AltScreen = true
-	return v
+	return n
 }
 
 func (m *Model) statusLine() string {
@@ -501,15 +520,7 @@ func (m *Model) statusLine() string {
 	if m.build.Cached {
 		built = "cached build"
 	}
-	pass, done := 0, 0
-	for _, r := range m.rows {
-		if r.done {
-			done++
-			if r.res.Verdict == judge.AC {
-				pass++
-			}
-		}
-	}
+	pass := m.passed()
 	s := faint.Render(prof+" · "+built+" · ") + fmt.Sprintf("%d/%d", pass, len(m.rows))
 	if !m.running && len(m.rows) > 0 && pass == len(m.rows) {
 		s += "  " + green.Bold(true).Render("ALL PASS")

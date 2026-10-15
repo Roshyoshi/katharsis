@@ -23,10 +23,14 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	os.Setenv("HOME", home)
-	os.Setenv("XDG_CACHE_HOME", filepath.Join(home, ".cache"))
+	for k, v := range map[string]string{"HOME": home, "XDG_CACHE_HOME": filepath.Join(home, ".cache")} {
+		if err := os.Setenv(k, v); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
 	code := m.Run()
-	os.RemoveAll(home)
+	_ = os.RemoveAll(home)
 	os.Exit(code)
 }
 
@@ -104,24 +108,23 @@ func TestHPBar(t *testing.T) {
 		{37, 52, 8, "▓▓▓▓▓░░░"},
 		{51, 52, 8, "▓▓▓▓▓▓▓░"}, // full only when all pass
 		{52, 52, 8, "▓▓▓▓▓▓▓▓"},
-		{1, 3, 0, ""},
 	} {
-		if got := HPBar(tc.passed, tc.total, tc.cells); got != tc.want {
-			t.Errorf("HPBar(%d, %d, %d) = %q, want %q", tc.passed, tc.total, tc.cells, got, tc.want)
+		if got := hpBar(tc.passed, tc.total, tc.cells); got != tc.want {
+			t.Errorf("hpBar(%d, %d, %d) = %q, want %q", tc.passed, tc.total, tc.cells, got, tc.want)
 		}
 	}
 }
 
 func feedSubmit(m *Model, evs ...judge.Event) {
 	for _, ev := range evs {
-		m.Update(submitMsg{gen: m.sub.gen, ev: ev})
+		m.Update(eventMsg{ch: m.sub.ch, ev: ev})
 	}
 }
 
 func TestSubmitHPBar(t *testing.T) {
 	m := fixture(t, 3)
 	req, ch := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
-	m.sub = submission{gen: 1, req: req, started: true, running: true,
+	m.sub = submission{ch: make(chan judge.Event), req: req, started: true, running: true,
 		tests: m.prob.Tests, results: make([]judge.Result, 3)}
 	wa := judge.Result{Verdict: judge.WA, Reason: "line 1", Diff: &judge.Diff{Line: 1, Want: "7", Got: "6"}}
 	feedSubmit(m,
@@ -383,4 +386,29 @@ func TestQuitClosesEditorFirst(t *testing.T) {
 			t.Error("asked a closed editor to quit")
 		}
 	})
+}
+
+// Quitting cancels the submit, and a cancelled pass sends nothing more. An
+// embedded HUD outlives its quit (the host reopens the editor), so the
+// submit must read stopped, not judging, and :Submit gets its answer.
+func TestQuitStopsSubmit(t *testing.T) {
+	m := fixture(t, 2)
+	m.opt.EditorAlive = func() bool { return false }
+	cancelled := false
+	req, ch := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	m.sub = submission{ch: make(chan judge.Event), cancel: func() { cancelled = true }, req: req,
+		started: true, running: true, tests: m.prob.Tests, results: make([]judge.Result, 2)}
+	if _, cmd := m.Update(tickMsg{hud: m, at: time.Now()}); !isQuit(cmd) {
+		t.Fatal("the editor closed but the HUD did not quit")
+	}
+	if !cancelled {
+		t.Error("quit left the submit running")
+	}
+	if len(ch) == 0 {
+		t.Error(":Submit was never answered")
+	}
+	s := screen(m)
+	if strings.Contains(s, "judging") || strings.Contains(s, "running…") || !strings.Contains(s, "stopped") {
+		t.Errorf("after quitting the passes should read stopped:\n%s", s)
+	}
 }

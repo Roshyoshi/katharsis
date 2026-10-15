@@ -58,8 +58,7 @@ func optionCards(opts []option, cursor, width int) []string {
 		}
 		blocks[i] = box(f, cw, num, "", padLines(bodies[i], h))
 	}
-	row := joinH(2, blocks...)
-	return indent(max((width-widthOf(row[0]))/2, 0), row)
+	return joinH(2, blocks...)
 }
 
 // listWidth is how wide optionList draws opts when nothing is cut: the
@@ -96,103 +95,87 @@ func optionList(opts []option, cursor, width int) []string {
 	return out
 }
 
-// UpgradePicker is the pick-one-of-three after a clear. It works on its
-// own (see UpgradeScreen) and inside the merge window: ←/→ or 1-9 move,
-// enter emits game.PickUpgrade.
-type UpgradePicker struct {
-	Offers []game.Upgrade
-	Cursor int
-	Rules  rules.Rules // the boot's rules, which the descriptions quote
+// picker is the pick-one-of-three after a clear. The upgrade screen moves
+// its cursor with ←/→ or 1-9; the merge window draws it as a list under a
+// cursor of its own.
+type picker struct {
+	offers []game.Upgrade
+	cursor int
+	rules  rules.Rules // the boot's rules, which the descriptions quote
 }
 
-func NewUpgradePicker(offers []game.Upgrade, r rules.Rules) UpgradePicker {
-	return UpgradePicker{Offers: offers, Rules: r}
+// set takes the offers and rules from st, keeping the cursor in range.
+func (p *picker) set(st *game.State) {
+	p.offers, p.rules = st.UpgradeOffers, st.Rules
+	p.cursor = move("", p.cursor, len(p.offers))
 }
 
-// SetOffers replaces the offers, keeping the cursor in range.
-func (p *UpgradePicker) SetOffers(offers []game.Upgrade) {
-	p.Offers = offers
-	p.Cursor = move("", p.Cursor, len(offers))
-}
-
-func (p UpgradePicker) Update(msg tea.Msg) (UpgradePicker, tea.Cmd) {
+func (p *picker) update(msg tea.Msg) tea.Cmd {
 	key, ok := keyName(msg)
-	if !ok || len(p.Offers) == 0 {
-		return p, nil
+	if !ok || len(p.offers) == 0 {
+		return nil
 	}
 	if key == "enter" {
-		return p, screens.Emit(game.PickUpgrade{Upgrade: p.Offers[p.Cursor]})
+		return screens.Emit(game.PickUpgrade{Upgrade: p.offers[p.cursor]})
 	}
-	p.Cursor = move(key, p.Cursor, len(p.Offers))
-	return p, nil
+	p.cursor = move(key, p.cursor, len(p.offers))
+	return nil
 }
 
-// View draws the offers as cards when they fit width, else as a list.
-func (p UpgradePicker) View(width int) string {
-	opts := upgradeOptions(p.Offers, p.Rules)
-	ls := optionCards(opts, p.Cursor, width)
-	if ls == nil {
-		ls = optionList(opts, p.Cursor, width)
+// lines draws the offers as cards when they fit width, else as a list.
+func (p *picker) lines(width int) []string {
+	opts := upgradeOptions(p.offers, p.rules)
+	if ls := optionCards(opts, p.cursor, width); ls != nil {
+		return ls
 	}
-	return joinLines(ls)
+	return optionList(opts, p.cursor, width)
 }
 
-// List draws the offers one per line; active shows the cursor.
-func (p UpgradePicker) List(width int, active bool) []string {
+// list draws the offers one per line; active shows the cursor.
+func (p *picker) list(width int, active bool) []string {
 	cur := -1
 	if active {
-		cur = p.Cursor
+		cur = p.cursor
 	}
-	return optionList(upgradeOptions(p.Offers, p.Rules), cur, width)
+	return optionList(upgradeOptions(p.offers, p.rules), cur, width)
 }
 
 // UpgradeScreen is the upgrade pick right after a cleared door, outside a
 // merge window. It shows what was cleared, then the picker.
 type UpgradeScreen struct {
 	env    Env
-	picker UpgradePicker
+	picker picker
 }
 
 func NewUpgradeScreen(env Env) *UpgradeScreen {
 	u := &UpgradeScreen{env: env}
-	if env.State != nil {
-		u.picker = NewUpgradePicker(env.State.UpgradeOffers, env.State.Rules)
-	}
+	u.picker.set(env.State)
 	return u
 }
 
 // Refresh swaps in new state and clock, keeping the cursor.
 func (u *UpgradeScreen) Refresh(env Env) {
 	u.env = env
-	if env.State != nil {
-		u.picker.Rules = env.State.Rules
-		u.picker.SetOffers(env.State.UpgradeOffers)
-	}
+	u.picker.set(env.State)
 }
 
 func (u *UpgradeScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
-	var cmd tea.Cmd
-	u.picker, cmd = u.picker.Update(msg)
-	return u, cmd
+	return u, u.picker.update(msg)
 }
 
 func (u *UpgradeScreen) View(width, height int) string {
 	st := u.env.State
-	if st == nil {
-		return noBoot(width, height)
-	}
 	head := u.env.header("upgrade", width)
 	var block []string
 	if a, ok := lastClear(st); ok {
 		p := u.env.problem(a.Door.Problem)
-		took := elapsed(a, u.env.Now)
 		line := sGreen.Bold(true).Render("✓ AC") + "  " + sBold.Render(p.Title) +
-			sFaint.Render(fmt.Sprintf("  in %s of %s", fmtClock(took), fmtClock(a.Door.Timer)))
-		if f := st.Rules.O3Frac; f > 0 && a.Door.Timer > 0 && float64(took) < f*float64(a.Door.Timer) {
+			sFaint.Render(fmt.Sprintf("  in %s of %s", fmtClock(elapsed(a, u.env.Now)), fmtClock(a.Door.Timer)))
+		if a.O3 {
 			line += "  " + sYellow.Bold(true).Render("-O3")
 		}
 		block = append(block, center(line, width),
-			center(sGreen.Render("+"+FormatBytes(a.Door.Bytes))+sFaint.Render(" uncommitted"), width), "")
+			center(sGreen.Render("+"+formatBytes(a.Door.Bytes))+sFaint.Render(" uncommitted"), width), "")
 	}
 	ask := sBold.Render("Pick an upgrade.")
 	switch n, o3 := owedPicks(st); {
@@ -202,10 +185,10 @@ func (u *UpgradeScreen) View(width, height int) string {
 		ask = sBold.Render("Pick another upgrade") + sFaint.Render(" · ") + picksNote(n, o3)
 	}
 	block = append(block, center(ask, width), "")
-	if len(u.picker.Offers) == 0 {
+	if len(u.picker.offers) == 0 {
 		block = append(block, center(sFaint.Render("nothing on offer"), width))
 	} else {
-		block = append(block, centerBlock(u.picker.View(width), width)...)
+		block = append(block, centerBlock(u.picker.lines(width), width)...)
 	}
 	return layout(width, height, centered(head, block, height), hint("←/→", "choose", "enter", "take upgrade"))
 }

@@ -23,7 +23,7 @@ import (
 
 // submission is the latest :Submit pass.
 type submission struct {
-	gen     int
+	ch      <-chan judge.Event // the pass's events; see eventMsg
 	cancel  context.CancelFunc
 	req     session.Request // answered when the pass finishes
 	started bool            // a submit has happened; show the HP bar
@@ -35,18 +35,10 @@ type submission struct {
 	err     error
 }
 
-// submitMsg carries one event of submit pass gen.
-type submitMsg struct {
-	gen int
-	ev  judge.Event
-	ch  <-chan judge.Event
-}
-
 // debugger is the open lldb pane, if any.
 type debugger struct {
 	close func()
 	dir   string
-	test  string
 }
 
 // DebugTarget is what Options.Debug gets: a -O0 -g build and how to feed it
@@ -70,11 +62,6 @@ func (m *Model) updateCommand(msg tea.Msg) (tea.Cmd, bool) {
 	switch msg := msg.(type) {
 	case session.Request:
 		return m.command(msg), true
-	case submitMsg:
-		if msg.gen != m.sub.gen {
-			return nil, true
-		}
-		return tea.Batch(m.applySubmit(msg.ev), nextSubmit(msg.gen, msg.ch), m.updateBorder()), true
 	case debugReadyMsg:
 		m.debugReady(msg)
 		return nil, true
@@ -117,33 +104,15 @@ func (m *Model) submit(req session.Request) tea.Cmd {
 	if prof.Name == "" {
 		prof = judge.Full
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	src, lim := m.prob.Source, m.limits()
+	ch, cancel := start(func(ctx context.Context, emit func(judge.Event)) {
+		judge.Submit(ctx, src, tests, prof, lim, emit)
+	})
 	m.sub = submission{
-		gen: m.sub.gen + 1, cancel: cancel, req: req, started: true, running: true,
+		ch: ch, cancel: cancel, req: req, started: true, running: true,
 		tests: tests, results: make([]judge.Result, len(tests)),
 	}
-	ch := make(chan judge.Event, 8)
-	src, lim := m.prob.Source, m.limits()
-	go func() {
-		defer close(ch)
-		judge.Submit(ctx, src, tests, prof, lim, func(ev judge.Event) {
-			select {
-			case ch <- ev:
-			case <-ctx.Done():
-			}
-		})
-	}()
-	return tea.Batch(nextSubmit(m.sub.gen, ch), m.updateBorder())
-}
-
-func nextSubmit(gen int, ch <-chan judge.Event) tea.Cmd {
-	return func() tea.Msg {
-		ev, ok := <-ch
-		if !ok {
-			return nil
-		}
-		return submitMsg{gen: gen, ev: ev, ch: ch}
-	}
+	return tea.Batch(next(ch), m.updateBorder())
 }
 
 func (m *Model) applySubmit(ev judge.Event) tea.Cmd {
@@ -207,12 +176,9 @@ func firstError(log string) string {
 	return l
 }
 
-// HPBar draws passed of total as a bar of cells: ▓▓▓▓░░. It is full only
+// hpBar draws passed of total as a bar of cells: ▓▓▓▓░░. It is full only
 // when every test passed.
-func HPBar(passed, total, cells int) string {
-	if cells <= 0 {
-		return ""
-	}
+func hpBar(passed, total, cells int) string {
 	filled := 0
 	if total > 0 {
 		filled = min(passed*cells/total, cells)
@@ -245,7 +211,7 @@ func (m *Model) submitLines(w int) []string {
 	case sum.First >= 0:
 		style = red
 	}
-	out := "submit " + style.Render(HPBar(sum.Passed, sum.Total, min(max(w-24, 6), 24))) +
+	out := "submit " + style.Render(hpBar(sum.Passed, sum.Total, min(max(w-24, 6), 24))) +
 		fmt.Sprintf(" %d/%d", sum.Passed, sum.Total)
 	switch {
 	case s.running:
@@ -282,40 +248,39 @@ func (m *Model) startDebug(req session.Request) tea.Cmd {
 	}
 	src, open := m.prob.Source, m.opt.Debug
 	return func() tea.Msg {
-		ready := debugReadyMsg{req: req, test: t.Name}
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		defer cancel()
-		b, err := judge.Compile(ctx, src, judge.Debug)
-		if err == nil && !b.OK {
-			err = fmt.Errorf("CE: %s", firstError(relLog(b.Log, src)))
-		}
-		if err != nil {
-			ready.err = err
-			return ready
-		}
-		dir, err := os.MkdirTemp("", "katharsis-debug-")
-		if err != nil {
-			ready.err = err
-			return ready
-		}
-		target := DebugTarget{Binary: b.Binary, Dir: dir, Stdin: t.In, Test: t.Name}
-		if stem := problem.FileIO(b.Src); stem != "" {
-			target.Stdin = ""
-			if err := copyFile(t.In, filepath.Join(dir, stem+".in")); err != nil {
-				os.RemoveAll(dir)
-				ready.err = err
-				return ready
-			}
-		}
-		closePane, err := open(target)
-		if err != nil {
-			os.RemoveAll(dir)
-			ready.err = err
-			return ready
-		}
-		ready.dir, ready.close = dir, closePane
-		return ready
+		dir, closePane, err := openDebugger(src, t, open)
+		return debugReadyMsg{req: req, test: t.Name, dir: dir, close: closePane, err: err}
 	}
+}
+
+// openDebugger builds src at -O0 -g, gives it a working directory set up
+// for test t, and opens the debugger on it.
+func openDebugger(src string, t problem.Test, open func(DebugTarget) (func(), error)) (dir string, closePane func(), err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	b, err := judge.Compile(ctx, src, judge.Debug)
+	if err == nil && !b.OK {
+		err = fmt.Errorf("CE: %s", firstError(relLog(b.Log, src)))
+	}
+	if err != nil {
+		return "", nil, err
+	}
+	if dir, err = os.MkdirTemp("", "katharsis-debug-"); err != nil {
+		return "", nil, err
+	}
+	target := DebugTarget{Binary: b.Binary, Dir: dir, Stdin: t.In, Test: t.Name}
+	if stem := problem.FileIO(b.Src); stem != "" {
+		target.Stdin = ""
+		err = copyFile(t.In, filepath.Join(dir, stem+".in"))
+	}
+	if err == nil {
+		closePane, err = open(target)
+	}
+	if err != nil {
+		_ = os.RemoveAll(dir)
+		return "", nil, err
+	}
+	return dir, closePane, nil
 }
 
 // debugTest is the test :Debug means: the one named, else the first
@@ -366,7 +331,7 @@ func (m *Model) debugReady(msg debugReadyMsg) {
 		return
 	}
 	m.closeDebugger() // one debugger at a time
-	m.dbg = debugger{close: msg.close, dir: msg.dir, test: msg.test}
+	m.dbg = debugger{close: msg.close, dir: msg.dir}
 	msg.req.Answer(session.Reply{OK: true, Text: "lldb on #" + msg.test + ", stopped at main: type run"})
 }
 
@@ -375,7 +340,7 @@ func (m *Model) closeDebugger() {
 		m.dbg.close()
 	}
 	if m.dbg.dir != "" {
-		os.RemoveAll(m.dbg.dir)
+		_ = os.RemoveAll(m.dbg.dir)
 	}
 	m.dbg = debugger{}
 }

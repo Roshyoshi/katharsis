@@ -76,6 +76,24 @@ func TestTeXToUnicode(t *testing.T) {
 		{"bracket delims", `\[\sum_{i=1}^{n} i\]`, `∑ᵢ₌₁ⁿ i`},
 		{"display", "Compute\n\n$$\n\\sum_{i=1}^{n} i\n$$\n", "Compute\n\n∑ᵢ₌₁ⁿ i\n"},
 		{"codeforces", `$$$1 \le n \le 2 \cdot 10^5$$$`, `1 ≤ n ≤ 2 · 10⁵`},
+		// Six dollars is one display span; read as three, it swapped math
+		// and prose for the rest of the statement.
+		{"codeforces display", `$$$$$$\sum_{i=1}^{n} i$$$$$$ where $$$a_i$$$ is big`, `∑ᵢ₌₁ⁿ i where aᵢ is big`},
+
+		// Commands Codeforces statements use.
+		{"color", `$\color{red}{aa}b \rightarrow \color{blue}bb$`, `aab → bb`},
+		{"textcolor", `$\textcolor{red}{x}$`, `x`},
+		{"daggers", `$^\dagger$ and $^\ddagger$`, `^† and ^‡`},
+		{"xrightarrow", `$a \xrightarrow{\text{up}} b$`, `a —up→ b`},
+		{"operatorname", `$\operatorname{gcd}(x, y)$`, `gcd(x, y)`},
+		{"overset", `$\overset{3}{\rightarrow}$ and $a \stackrel{\mathrm{def}}{=} b$`, `→ and a = b`},
+		{"underbrace", `$\underbrace{p \times p}_{k \text{ times}}$`, `p × p`},
+		{"cancel", `$\require{cancel}\cancel{a_i}$`, `aᵢ`},
+		{"bigcirc", `$x \bigcirc y$`, `x ◯ y`},
+		{"over", `$2\over 12$`, `2/12`},
+		{"array", `$\begin{array}{|c|c|}\hline a & b\end{array}$`, `a b`},
+		{"font switch", `$\bf{1 \le t \le 5}$`, `1 ≤ t ≤ 5`},
+		{"overrightarrow", `$\overrightarrow{y}$`, "y⃗"},
 
 		// Things that are not math.
 		{"price", `It costs $5 and $10.`, `It costs $5 and $10.`},

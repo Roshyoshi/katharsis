@@ -31,10 +31,16 @@ type Crash struct {
 	env   Env
 	shown int // elements revealed so far; < 0 shows everything
 	gen   int // bumps on Init so ticks from an older reveal are dropped
+	// size is the last View's width and height. How many elements the
+	// panic has depends on it (a short terminal drops old log lines and
+	// doors), and the reveal ends when they are all on screen.
+	size [2]int
 }
 
 // NewCrash builds the panic fully printed. Call Init to play the reveal.
-func NewCrash(env Env) *Crash { return &Crash{env: env, shown: -1} }
+func NewCrash(env Env) *Crash {
+	return &Crash{env: env, shown: -1, size: [2]int{1 << 10, 1 << 10}}
+}
 
 // Refresh swaps in new state and clock.
 func (c *Crash) Refresh(env Env) { c.env = env }
@@ -47,10 +53,10 @@ func (c *Crash) Init() tea.Cmd {
 	return c.tick()
 }
 
-// Revealing reports whether the reveal is still printing.
-func (c *Crash) Revealing() bool { return c.shown >= 0 && c.shown < c.total() }
+// revealing reports whether the reveal is still printing.
+func (c *Crash) revealing() bool { return c.shown >= 0 && c.shown < c.total() }
 
-func (c *Crash) total() int { return len(c.elements(1<<10, 1<<10)) }
+func (c *Crash) total() int { return len(c.elements(c.size[0], c.size[1])) }
 
 func (c *Crash) tick() tea.Cmd {
 	gen := c.gen
@@ -58,33 +64,25 @@ func (c *Crash) tick() tea.Cmd {
 	return tea.Tick(d, func(time.Time) tea.Msg { return revealMsg{gen: gen} })
 }
 
-func (c *Crash) crash() game.Crash {
-	if c.env.State != nil && c.env.State.Crash != nil {
-		return *c.env.State.Crash
-	}
-	return game.Crash{}
-}
+func (c *Crash) crash() game.Crash { return *c.env.State.Crash }
 
 func (c *Crash) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	switch msg := msg.(type) {
 	case revealMsg:
-		if msg.gen != c.gen || !c.Revealing() {
+		if msg.gen != c.gen || !c.revealing() {
 			return c, nil
 		}
 		c.shown++
-		if c.Revealing() {
+		if c.revealing() {
 			return c, c.tick()
 		}
 		c.shown = -1
 	case tea.KeyPressMsg:
-		if c.Revealing() {
+		if c.revealing() {
 			c.shown = -1
 			return c, nil
 		}
 		st := c.env.State
-		if st == nil {
-			return c, nil
-		}
 		switch msg.String() {
 		case "u":
 			return c, screens.Emit(screens.Upsolve{Problem: string(c.crash().Door.Problem)})
@@ -104,9 +102,7 @@ func (c *Crash) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 }
 
 func (c *Crash) View(width, height int) string {
-	if c.env.State == nil {
-		return noBoot(width, height)
-	}
+	c.size = [2]int{width, height}
 	els := c.elements(width, height)
 	n := len(els)
 	if c.shown >= 0 {
@@ -381,13 +377,13 @@ func (c *Crash) frames(cr game.Crash, up time.Duration) (doors []string, boot st
 	ss := steps(st)
 	var sum time.Duration
 	mins := func(d time.Duration) int { return int(max(d, 0) / time.Minute) }
+	end := cr.At
+	if end.IsZero() {
+		end = c.env.Now
+	}
 	for i := len(ss) - 1; i >= 0; i-- {
 		s := ss[i]
 		a := s.Attempt
-		end := cr.At
-		if end.IsZero() {
-			end = c.env.Now
-		}
 		mark := " "
 		if a.Outcome == game.Retreated {
 			mark = " ? "
@@ -451,11 +447,11 @@ func (c *Crash) core(cr game.Crash, title string, width int) []string {
 	var dump string
 	switch d := c.env.Meta.CoreDump; {
 	case d != nil && cr.Door.Problem != "" && d.Problem == cr.Door.Problem:
-		dump = "core dumped: " + sGreen.Bold(true).Render(FormatBytes(d.Bytes)) + fmt.Sprintf(" on %q", title)
+		dump = "core dumped: " + sGreen.Bold(true).Render(formatBytes(d.Bytes)) + fmt.Sprintf(" on %q", title)
 	case cr.Lost > 0 && c.upsolved(cr):
-		dump = "core dump recovered: " + sGreen.Bold(true).Render("+"+FormatBytes(cr.Lost)) + sFaint.Render(" banked")
+		dump = "core dump recovered: " + sGreen.Bold(true).Render("+"+formatBytes(cr.Lost)) + sFaint.Render(" banked")
 	case cr.Lost > 0 && c.env.State.Trial != nil:
-		dump = sFaint.Render("no core dump: a trial loses its " + FormatBytes(cr.Lost) + " outright")
+		dump = sFaint.Render("no core dump: a trial loses its " + formatBytes(cr.Lost) + " outright")
 	case cr.Lost > 0:
 		dump = sFaint.Render("no core dump left to recover")
 	default:

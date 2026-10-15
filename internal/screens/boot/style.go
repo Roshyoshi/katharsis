@@ -69,7 +69,7 @@ func box(f frame, w int, title, tag string, body []string) []string {
 		right = ""
 	}
 	left := label(title, edge-widthOf(right))
-	fill := edge - ansi.StringWidth(left) - ansi.StringWidth(right)
+	fill := edge - widthOf(left) - widthOf(right)
 	out := make([]string, 0, len(body)+2)
 	out = append(out, p.Render(b.TopLeft+b.Top)+left+
 		p.Render(strings.Repeat(b.Top, fill))+right+p.Render(b.Top+b.TopRight))
@@ -83,7 +83,7 @@ func box(f frame, w int, title, tag string, body []string) []string {
 // fit clips s to w cells and pads it to exactly w.
 func fit(s string, w int) string {
 	s = clip(s, w)
-	return s + strings.Repeat(" ", max(w-ansi.StringWidth(s), 0))
+	return s + strings.Repeat(" ", max(w-widthOf(s), 0))
 }
 
 // clip shortens s to at most w cells, marking the cut with an ellipsis.
@@ -91,7 +91,7 @@ func clip(s string, w int) string {
 	if w <= 0 {
 		return ""
 	}
-	if ansi.StringWidth(s) <= w {
+	if widthOf(s) <= w {
 		return s
 	}
 	return ansi.Truncate(s, w, "…")
@@ -100,7 +100,7 @@ func clip(s string, w int) string {
 // spread puts left and right at the two ends of a w-cell line. When both
 // don't fit, right goes; it always carries the less important half.
 func spread(left, right string, w int) string {
-	lw, rw := ansi.StringWidth(left), ansi.StringWidth(right)
+	lw, rw := widthOf(left), widthOf(right)
 	if right == "" || lw+2+rw > w {
 		return clip(left, w)
 	}
@@ -109,7 +109,7 @@ func spread(left, right string, w int) string {
 
 // center pads s on the left so it sits in the middle of w cells.
 func center(s string, w int) string {
-	return strings.Repeat(" ", max((w-ansi.StringWidth(s))/2, 0)) + s
+	return strings.Repeat(" ", max((w-widthOf(s))/2, 0)) + s
 }
 
 // indent prefixes every non-empty line with n spaces.
@@ -155,7 +155,7 @@ func joinH(gap int, blocks ...[]string) []string {
 			if i < len(b) {
 				sb.WriteString(b[i])
 			} else if len(b) > 0 {
-				sb.WriteString(strings.Repeat(" ", ansi.StringWidth(b[0])))
+				sb.WriteString(strings.Repeat(" ", widthOf(b[0])))
 			}
 		}
 		out[i] = sb.String()
@@ -216,9 +216,9 @@ func hearts(lives, maxLives int) string {
 		sFaint.Render(strings.Repeat("♡", max(maxLives-lives, 0)))
 }
 
-// FormatBytes renders the game currency the way the HUD and screens show
-// it: whole bytes below 1 KiB, then one decimal of KiB or MiB.
-func FormatBytes(n int64) string {
+// formatBytes renders the game currency the way the HUD bar and screens
+// show it: whole bytes below 1 KiB, then one decimal of KiB or MiB.
+func formatBytes(n int64) string {
 	sign := ""
 	if n < 0 {
 		sign, n = "-", -n
@@ -264,13 +264,20 @@ func fmtMult(m float64) string {
 	return "×" + strconv.FormatFloat(m, 'f', -1, 64)
 }
 
-func splitLines(s string) []string { return strings.Split(s, "\n") }
-
 func widthOf(s string) int { return ansi.StringWidth(s) }
 
-func joinLines(ls []string) string { return strings.Join(ls, "\n") }
+// centerBlock indents lines as one block centered in width.
+func centerBlock(ls []string, width int) []string {
+	return indent(max((width-maxWidth(ls))/2, 0), ls)
+}
 
-func ansiStrip(s string) string { return ansi.Strip(s) }
+func maxWidth(ls []string) int {
+	w := 0
+	for _, l := range ls {
+		w = max(w, widthOf(l))
+	}
+	return w
+}
 
 // centered stacks head, then block centered vertically in the rows left
 // above a one-line footer, keeping at least one blank line under head.

@@ -54,9 +54,6 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	if width <= 0 {
 		width = 40
 	}
-	if st == nil {
-		return sFaint.Render("no boot")
-	}
 	var att game.Attempt
 	open := st.Current != nil
 	if open {
@@ -77,8 +74,8 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 		ducks = sFaint.Render("🦆✗")
 	}
 	status := timer + "  " + hearts(st.Lives, st.MaxLives) + "  " + ducks + "  " +
-		sGreen.Render(FormatBytes(st.Uncommitted))
-	if reward := sFaint.Render(" +" + FormatBytes(door.Bytes)); door.Bytes > 0 && widthOf(status+reward) <= width {
+		sGreen.Render(formatBytes(st.Uncommitted))
+	if reward := sFaint.Render(" +" + formatBytes(door.Bytes)); door.Bytes > 0 && widthOf(status+reward) <= width {
 		status += reward
 	}
 	out = append(out, status)

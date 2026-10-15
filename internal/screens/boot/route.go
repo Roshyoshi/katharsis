@@ -25,14 +25,8 @@ func (r *Route) Refresh(env Env) {
 	r.sel = move("", r.sel, len(r.offers()))
 }
 
-// Selected is the highlighted offer.
-func (r *Route) Selected() int { return r.sel }
-
 func (r *Route) offers() []string {
 	st := r.env.State
-	if st == nil || st.Biome < 0 || st.Biome >= len(st.Biomes) {
-		return nil
-	}
 	return st.Biomes[st.Biome].Offers
 }
 
@@ -54,9 +48,6 @@ func (r *Route) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 
 func (r *Route) View(width, height int) string {
 	st := r.env.State
-	if st == nil {
-		return noBoot(width, height)
-	}
 	offers := r.offers()
 	where := fmt.Sprintf("route · biome %d/%d", st.Biome+1, len(st.Biomes))
 	head := r.env.header(where, width)
@@ -84,7 +75,7 @@ func (r *Route) View(width, height int) string {
 		for i := range offers {
 			blocks[i] = r.card(i, cw, padLines(bodies[i], h))
 		}
-		cards = centerBlock(joinLines(joinH(2, blocks...)), width)
+		cards = centerBlock(joinH(2, blocks...), width)
 	}
 	if cards == nil || len(block)+len(cards) > room {
 		cards = nil
@@ -97,7 +88,7 @@ func (r *Route) View(width, height int) string {
 		cards = r.compact(width)
 	}
 	block = append(block, cards...)
-	if m := centerBlock(RenderMap(st, width), width); len(block)+2+len(m) <= room-1 {
+	if m := centerBlock(renderMap(st, width), width); len(block)+2+len(m) <= room-1 {
 		block = append(block, "", center(sFaint.Render("the boot so far"), width))
 		block = append(block, m...)
 	}
@@ -119,7 +110,7 @@ type route struct {
 	name, topic, blurb string
 	rooms              string // "2 rooms · ⏱ ~30:00"
 	band               string // "◆ 1050–1250 · aim 70% clear", "" without rules
-	mine               string // "your dp rating 1120", "" without a topic rating
+	mine               string // "your dp rating 1120", "" unless doors aim by it
 }
 
 func (r *Route) describe(topic string) route {
@@ -138,12 +129,16 @@ func (r *Route) describe(topic string) route {
 		out.rooms += sFaint.Render(" · ") + "⏱ ~" + fmtClock(rb.Timer.Duration)
 	}
 	if ok && rb.TargetClear > 0 && rb.TargetClear < 1 {
-		base, mine := r.rating(topic)
-		lo, hi := band(base, rb.TargetClear)
-		out.band = sYellow.Render("◆") + fmt.Sprintf(" %d–%d", lo, hi) +
+		// A preview of the rating the engine aims this topic's doors at,
+		// widened ±100 and rounded to 50; the pool picks the actual doors.
+		meta := &r.env.Meta
+		mid := int(math.Round(st.Target(meta, topic)/50) * 50)
+		out.band = sYellow.Render("◆") + fmt.Sprintf(" %d–%d", mid-100, mid+100) +
 			sFaint.Render(fmt.Sprintf(" · aim %d%% clear", int(math.Round(rb.TargetClear*100))))
-		if mine {
-			out.mine = sFaint.Render(fmt.Sprintf("your %s rating %d", topic, int(math.Round(base))))
+		// The engine aims with the topic's own rating only once it has
+		// enough attempts behind it; a mixed door always gets the overall one.
+		if own := game.PlayerRating(&st.Rules, meta, topic); own != game.PlayerRating(&st.Rules, meta, game.Mixed) {
+			out.mine = sFaint.Render(fmt.Sprintf("your %s rating %d", topic, int(math.Round(own))))
 		}
 	}
 	return out
@@ -195,39 +190,4 @@ func (r *Route) compact(width int) []string {
 		out = append(out, spread(mark+fmt.Sprintf("%d ", i+1)+sBold.Render(d.name), d.band, width))
 	}
 	return out
-}
-
-// rating is the player's rating for topic, and whether it is topic-specific
-// rather than the overall estimate.
-func (r *Route) rating(topic string) (float64, bool) {
-	if v, ok := r.env.Meta.TopicRating[topic]; ok && v > 0 {
-		return v, true
-	}
-	if r.env.Meta.Rating > 0 {
-		return r.env.Meta.Rating, false
-	}
-	return r.env.State.Rules.ColdStartRating, false
-}
-
-// band is the door rating a player rated base clears with probability p
-// under the Elo curve the catalog defines (rated R solves R half the
-// time), widened ±100 and rounded to 50. It is a preview: the engine picks
-// the actual doors.
-func band(base, p float64) (int, int) {
-	mid := base + 400*math.Log10(1/p-1)
-	mid = math.Round(mid/50) * 50
-	return int(mid - 100), int(mid + 100)
-}
-
-// centerBlock centers each line of a multi-line string as one block.
-func centerBlock(s string, width int) []string {
-	if s == "" {
-		return nil
-	}
-	ls := splitLines(s)
-	w := 0
-	for _, l := range ls {
-		w = max(w, widthOf(l))
-	}
-	return indent(max((width-w)/2, 0), ls)
 }

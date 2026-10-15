@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -28,7 +29,7 @@ func fixture(t *testing.T, n int) *Model {
 	m := New(Options{Dir: dir, Profile: judge.Samples})
 	p, err := problem.Load(dir)
 	must(t, err)
-	m.prob, m.rows, m.running = p, make([]row, n), true
+	m.prob, m.rows, m.running, m.pass = p, make([]row, n), true, make(chan judge.Event)
 	m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
 	return m
 }
@@ -44,7 +45,7 @@ func screen(m *Model) string { return ansi.Strip(m.View().Content) }
 
 func feed(m *Model, evs ...judge.Event) {
 	for _, ev := range evs {
-		m.Update(judgeMsg{gen: m.gen, ev: ev})
+		m.Update(eventMsg{ch: m.pass, ev: ev})
 	}
 }
 
@@ -82,17 +83,6 @@ func TestWrongAnswerShowsDiffAndSelectsIt(t *testing.T) {
 	}
 }
 
-func TestCompileErrorShowsLog(t *testing.T) {
-	m := fixture(t, 1)
-	feed(m,
-		judge.BuildDone{Build: judge.Build{OK: false, Log: "milk2.cpp:3:1: error: expected ';'"}},
-		judge.Finished{},
-	)
-	if s := screen(m); !strings.Contains(s, "CE") || !strings.Contains(s, "expected ';'") {
-		t.Fatalf("want CE and the compiler log, got:\n%s", s)
-	}
-}
-
 // The compiler names the source by its absolute path, which in a boot is a
 // deep temp directory; every place a CE shows must cut it, or a narrow pane
 // shows only the path.
@@ -117,12 +107,12 @@ func TestCompileErrorDropsSourceDir(t *testing.T) {
 			"/usr/include/c++/v1/vector:12:1",
 		}},
 		{"submit CE line", func(m *Model, log string) string {
-			m.sub = submission{gen: 1, started: true, build: &judge.Build{OK: false, Log: log}}
+			m.sub = submission{started: true, build: &judge.Build{OK: false, Log: log}}
 			return screen(m)
 		}, []string{"submit CE  milk2.cpp:3:1: error: expected ';'"}},
 		{"submit CE reply", func(m *Model, log string) string {
 			sum := judge.Summary{Verdict: judge.CE}
-			m.sub = submission{gen: 1, started: true, build: &judge.Build{OK: false, Log: log}, sum: &sum}
+			m.sub = submission{started: true, build: &judge.Build{OK: false, Log: log}, sum: &sum}
 			return m.submitReply().Text
 		}, []string{"CE: milk2.cpp:3:1: error: expected ';' after expression"}},
 	} {
@@ -157,11 +147,46 @@ func TestHeaderClockFlushRight(t *testing.T) {
 	}
 }
 
-func TestStalePassIsDropped(t *testing.T) {
-	m := fixture(t, 1)
-	m.Update(judgeMsg{gen: m.gen - 1, ev: judge.TestDone{Index: 0, Result: judge.Result{Verdict: judge.WA}}})
-	if m.rows[0].done {
-		t.Fatal("event from an older pass was applied")
+// A host opens a HUD per door and forwards every message to the current
+// one, so the last door's late events and ticks reach the next door's HUD.
+// Its own older passes are just as stale.
+func TestStaleMessagesAreDropped(t *testing.T) {
+	old, m := fixture(t, 3), fixture(t, 1)
+	m.sub = submission{ch: make(chan judge.Event), started: true, running: true,
+		tests: m.prob.Tests, results: make([]judge.Result, 1)}
+	old.sub = submission{ch: make(chan judge.Event)}
+	wa := judge.TestDone{Index: 2, Result: judge.Result{Verdict: judge.WA}}
+	for name, msg := range map[string]tea.Msg{
+		"older pass":       eventMsg{ch: make(chan judge.Event), ev: wa},
+		"other HUD's pass": eventMsg{ch: old.pass, ev: wa},
+		"other HUD's sub":  eventMsg{ch: old.sub.ch, ev: wa},
+		"other HUD's tick": tickMsg{hud: old, at: time.Now()},
+	} {
+		if _, cmd := m.Update(msg); cmd != nil {
+			t.Errorf("%s: answered with a command, so its chain lives on", name)
+		}
+	}
+	if m.rows[0].done || m.sub.results[0].Verdict != "" {
+		t.Errorf("a stale event was applied: rows %+v, submit %+v", m.rows, m.sub.results)
+	}
+}
+
+// A standalone pane's view is exactly its height, with the key help on the
+// bottom row, whatever sits above the rule: a submit's HP bar over a
+// compile error used to push the help a row below the pane.
+func TestStandaloneFitsHeight(t *testing.T) {
+	m := fixture(t, 2)
+	m.Update(tea.WindowSizeMsg{Width: 60, Height: 12})
+	m.sub = submission{started: true, tests: m.prob.Tests, results: make([]judge.Result, 2), build: &judge.Build{OK: true}}
+	m.closing = true
+	feed(m, judge.BuildDone{Build: judge.Build{OK: false, Log: strings.Repeat("sol.cpp:1:1: error: x\n", 40)}})
+	lines := strings.Split(screen(m), "\n")
+	if len(lines) != 12 || !strings.Contains(lines[11], "q quit") || !strings.Contains(lines[0], "milk2") {
+		t.Errorf("view is %d lines (pane is 12), want the header first and the key help last:\n%s",
+			len(lines), strings.Join(lines, "\n"))
+	}
+	if !strings.Contains(screen(m), "more lines") {
+		t.Errorf("the cut log should say how much it hides:\n%s", screen(m))
 	}
 }
 

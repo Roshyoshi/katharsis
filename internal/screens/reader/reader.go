@@ -31,29 +31,20 @@ type Doc struct {
 // app decides how (open(1), $BROWSER, or printing the link over ssh).
 type OpenURL struct{ URL string }
 
-// MaxMeasure caps the wrap width. Prose wider than about 100 columns is hard
+// maxMeasure caps the wrap width. Prose wider than about 100 columns is hard
 // to follow line to line; code blocks are not wrapped and may use the full
 // width.
-const MaxMeasure = 100
-
-type Option func(*Model)
-
-// WithStyle picks a Glamour standard style ("dark", "light", "notty", ...).
-// The default is "dark": Glamour v2 no longer detects the background, and
-// the app is the one that can ask the terminal.
-func WithStyle(name string) Option { return func(m *Model) { m.style = name } }
+const maxMeasure = 100
 
 type Model struct {
-	doc   Doc
-	style string
-	md    string // doc.Markdown after TeX and fence rewriting
+	doc Doc
+	md  string // doc.Markdown after TeX and fence rewriting
 
-	vp            viewport.Model
-	width, height int // from the last View or WindowSizeMsg
+	vp viewport.Model
 
-	wrap     int      // wrap width of the current render, 0 before the first
-	plain    []string // rendered lines without ANSI, for search
-	renderEr error
+	wrap      int      // wrap width of the current render, 0 before the first
+	plain     []string // rendered lines without ANSI, for search
+	renderErr error
 
 	typing  bool   // the / prompt is open
 	input   string // what has been typed at the prompt
@@ -64,14 +55,8 @@ type Model struct {
 
 // New builds a reader for doc. Rendering waits for the first View, which is
 // when the width is known.
-func New(doc Doc, opts ...Option) *Model {
-	m := &Model{doc: doc, style: "dark"}
-	for _, o := range opts {
-		o(m)
-	}
-	m.md = prepare(doc.Markdown)
-	m.vp = viewport.New()
-	return m
+func New(doc Doc) *Model {
+	return &Model{doc: doc, md: prepare(doc.Markdown), vp: viewport.New()}
 }
 
 // prepare converts math, labels bare code fences as plain text, and expands
@@ -122,7 +107,7 @@ func expandTabs(s string, w int) string {
 			col = 0
 		default:
 			b.WriteRune(r)
-			col += max(ansi.StringWidth(string(r)), 0)
+			col += ansi.StringWidth(string(r))
 		}
 	}
 	return b.String()
@@ -233,10 +218,9 @@ func (m *Model) show() {
 // layout sizes the viewport and re-renders when the wrap width changes,
 // keeping the reading position at the same fraction of the document.
 func (m *Model) layout(width, height int) {
-	m.width, m.height = width, height
 	m.vp.SetWidth(max(width, 1))
 	m.vp.SetHeight(max(height-3, 1))
-	wrap := min(max(width, 20), MaxMeasure)
+	wrap := min(max(width, 20), maxMeasure)
 	if wrap == m.wrap {
 		return
 	}
@@ -245,8 +229,8 @@ func (m *Model) layout(width, height int) {
 		frac = float64(m.vp.YOffset()) / float64(n)
 	}
 	m.wrap = wrap
-	out, err := render(m.md, m.style, wrap)
-	m.renderEr = err
+	out, err := render(m.md, wrap)
+	m.renderErr = err
 	m.vp.SetContent(out)
 	m.plain = strings.Split(ansi.Strip(out), "\n")
 	m.vp.SetYOffset(int(frac*float64(m.vp.TotalLineCount()) + 0.5))
@@ -258,9 +242,11 @@ func (m *Model) layout(width, height int) {
 
 // render runs Glamour, falling back to the prepared markdown wrapped as
 // plain text so a renderer failure still leaves something to read.
-func render(md, style string, wrap int) (string, error) {
+func render(md string, wrap int) (string, error) {
+	// Glamour v2 no longer detects the background, and nothing asks the
+	// terminal for it, so the style is fixed.
 	r, err := glamour.NewTermRenderer(
-		glamour.WithStandardStyle(style),
+		glamour.WithStandardStyle("dark"),
 		glamour.WithWordWrap(wrap),
 	)
 	var out string
@@ -365,8 +351,8 @@ func (m *Model) footer(width int) string {
 	keys += " · q back"
 	var right string
 	switch {
-	case m.renderEr != nil:
-		right = red.Render("render: " + m.renderEr.Error())
+	case m.renderErr != nil:
+		right = red.Render("render: " + m.renderErr.Error())
 	case m.query != "" && len(m.matches) == 0:
 		right = red.Render("no match: " + m.query)
 	case m.query != "":

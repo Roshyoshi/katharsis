@@ -2,6 +2,7 @@ package boot
 
 import (
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -28,7 +29,7 @@ func (c *Cleared) next() int {
 
 func (c *Cleared) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	k, ok := msg.(tea.KeyPressMsg)
-	if !ok || c.env.State == nil {
+	if !ok {
 		return c, nil
 	}
 	// Raw keys: l is git log here, not the vim move keyName makes it.
@@ -45,9 +46,6 @@ func (c *Cleared) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 
 func (c *Cleared) View(width, height int) string {
 	st := c.env.State
-	if st == nil {
-		return noBoot(width, height)
-	}
 	ss := steps(st)
 	var solves, hinted, retreats int
 	var boss string
@@ -77,8 +75,8 @@ func (c *Cleared) View(width, height int) string {
 
 	var body []string
 	if banner := fl.Banner("cleared"); banner != "" {
-		if bl := centerBlock(banner, width); len(bl) <= height/3 && maxWidth(bl) <= width {
-			body = append(body, bl...)
+		if bl := strings.Split(banner, "\n"); len(bl) <= height/3 && maxWidth(bl) <= width {
+			body = append(body, centerBlock(bl, width)...)
 		}
 	}
 	body = append(body, "", center(sGreen.Bold(true).Render(fmt.Sprintf("Boot #%d cleared", st.Boot))+
@@ -103,8 +101,8 @@ func (c *Cleared) View(width, height int) string {
 	}
 	rows := [][2]string{
 		{"uptime", fmtClock(uptime)},
-		{"committed", sGreen.Bold(true).Render(FormatBytes(st.Committed)) +
-			sFaint.Render(" · bank ") + FormatBytes(c.env.Meta.Bank)},
+		{"committed", sGreen.Bold(true).Render(formatBytes(st.Committed)) +
+			sFaint.Render(" · bank ") + formatBytes(c.env.Meta.Bank)},
 		{"solved", sol},
 		{"lives left", hearts(st.Lives, st.MaxLives)},
 	}
@@ -112,7 +110,7 @@ func (c *Cleared) View(width, height int) string {
 	for _, r := range rows {
 		table = append(table, sFaint.Render(fmt.Sprintf("%-12s", r[0]))+r[1])
 	}
-	body = append(body, centerBlock(joinLines(table), width)...)
+	body = append(body, centerBlock(table, width)...)
 
 	switch {
 	case c.env.Meta.Prestige == st.Prestige+1:
@@ -121,7 +119,7 @@ func (c *Cleared) View(width, height int) string {
 		body = append(body, "", center(sYellow.Bold(true).Render("★ highest prestige cleared"), width))
 	}
 
-	if mp := centerBlock(RenderMap(st, width), width); len(body)+1+len(mp) <= height-1 {
+	if mp := centerBlock(renderMap(st, width), width); len(body)+1+len(mp) <= height-1 {
 		body = append(body, "")
 		body = append(body, mp...)
 	}
@@ -130,12 +128,4 @@ func (c *Cleared) View(width, height int) string {
 	}
 	footer := center(hint("r", "reboot at "+prestigeLabel(c.next()), "l", "git log", "q", "quit"), width)
 	return layout(width, height, body, footer)
-}
-
-func maxWidth(ls []string) int {
-	w := 0
-	for _, l := range ls {
-		w = max(w, widthOf(l))
-	}
-	return w
 }
