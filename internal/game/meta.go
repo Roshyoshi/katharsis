@@ -22,7 +22,7 @@ func Upsolve(m *Meta, id catalog.ID, kind SolveKind, elapsed time.Duration, now 
 		Problem: id,
 		Kind:    kind,
 		At:      now,
-		Elapsed: elapsed,
+		Elapsed: max(elapsed, 0), // a clock that stepped back, as in clear
 		Boot:    m.Boots,
 		Upsolve: true,
 	})

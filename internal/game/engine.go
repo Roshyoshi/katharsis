@@ -385,8 +385,11 @@ func (e *engine) clear() {
 	name := e.door()
 	a := s.Current
 	d := a.Door
-	elapsed := e.now.Sub(a.Opened)
-	a.O3 = r.O3Frac > 0 && elapsed <= scale(d.Timer, r.O3Frac)
+	// A clock that stepped back (NTP, a hand-set date, a resume on another
+	// machine) puts now before Opened. That is no evidence of speed: the
+	// solve records 0, and -O3 wants a time that really passed.
+	elapsed := max(e.now.Sub(a.Opened), 0)
+	a.O3 = r.O3Frac > 0 && elapsed > 0 && elapsed <= scale(d.Timer, r.O3Frac)
 
 	kind := Independent
 	if a.Quacks > 0 {
