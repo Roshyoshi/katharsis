@@ -759,9 +759,12 @@ type OfferItem struct {
 	RatingSrc string         `json:",omitempty"` // the problem's RatingSource
 	Topic     string
 	Rating    int `json:",omitempty"`
+	// Node is a map exit's node (Exit.Node), "" for a door or a topic.
+	Node string `json:",omitempty"`
 	// Slot is how the draw found it: a rating window of the biome's topic
 	// or of any ("w100", "any250"), the nearest left past the windows
-	// ("near", "near-any"), or "review", "trial", "route".
+	// ("near", "near-any"), or "review", "trial", "route", "locked" (a map
+	// exit shown but closed by its gate).
 	Slot string
 	// P is the clear chance the engine expected with every stake (the
 	// timer bought back included), PBase without the buy-back.

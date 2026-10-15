@@ -175,5 +175,9 @@ func cyclesLinear() rules.Rules {
 }
 
 // presets are the rules the property tests play: a boot saved before
-// cycles, and the cycles meta.
-func presets() []rules.Rules { return []rules.Rules{rules.Legacy(), cyclesLinear()} }
+// cycles, the cycles meta on a linear shape, and the map.
+func presets() []rules.Rules {
+	m := rules.Map()
+	m.Name = "map"
+	return []rules.Rules{rules.Legacy(), cyclesLinear(), m}
+}

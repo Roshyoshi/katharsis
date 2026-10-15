@@ -85,6 +85,7 @@ func NewBoot(r rules.Rules, meta *Meta, pool []catalog.Problem, prestige int, se
 	first := !booted(meta)
 	if first && len(r.FirstBiomes) > 0 {
 		r.Biomes = slices.Clone(r.FirstBiomes)
+		r.Nodes = nil // off the map: the map starts at boot 2 (map.md §(h))
 	}
 	s := &State{Seed: seed, RNG: seed, Rules: r, Prestige: prestige, Started: now}
 	e := newEngine(s, meta, pool, now)
@@ -117,6 +118,7 @@ func (e *engine) begin() {
 	s.Cycles = max(1, r.Cycles+r.Ascend(s.Prestige).Cycles)
 	s.MaxCycles = max(r.MaxCycles, s.Cycles)
 	s.Packages = slices.Clone(m.Installed)
+	s.Caps = slices.Clone(m.Capabilities) // what a map's exits read
 	// A package's ducks come once, at the start; merge windows refill to
 	// the base.
 	s.Ducks = e.baseDucks() + r.Grants(s.Packages).Ducks
@@ -197,6 +199,9 @@ func (e *engine) door() string { return fmt.Sprintf("door_%d", len(e.s.History)+
 func (e *engine) chooseRoute(i int) error {
 	if err := e.need(PhaseRoute, "choose route"); err != nil {
 		return err
+	}
+	if e.s.mapped() {
+		return e.chooseExit(i)
 	}
 	b := &e.s.Biomes[e.s.Biome]
 	if i < 0 || i >= len(b.Offers) {
@@ -518,6 +523,10 @@ func (e *engine) clear() {
 		return
 	}
 	picks := 1
+	if n := r.Biomes[s.Biome].Picks; !more && n > 0 {
+		picks += n // the scroll at a gated biome's exit
+		e.logf("%s: %s cleared, %s at its exit", name, s.Biomes[s.Biome].Name, units.Plural(n, "upgrade pick"))
+	}
 	if a.O3 {
 		picks++
 		e.logf("%s: -O3, under %s, free upgrade", name, units.Clock(scale(d.Timer, r.O3Frac)))
@@ -765,9 +774,20 @@ func (e *engine) leaveMerge() error {
 
 // ---- biomes and the end ----------------------------------------------------
 
+// enterBiome moves the boot to biome i: on a map, to its exits (or the one
+// open exit, taken at once); else to its route or first room.
 func (e *engine) enterBiome(i int) {
 	s := e.s
 	s.Biome, s.Room, s.KexecUsed = i, 0, false
+	if e.enterMapTier(i) {
+		return
+	}
+	e.openBiome(i)
+}
+
+// openBiome announces biome i and offers its route or its first room.
+func (e *engine) openBiome(i int) {
+	s := e.s
 	b := &s.Biomes[i]
 	label := b.Name
 	if label == "" {

@@ -585,6 +585,13 @@ func (e *engine) routeOffers(i, k int, used map[string]bool) []string {
 func (e *engine) layout() {
 	s := e.s
 	r := &s.Rules
+	// The snapshot shares its slices with the caller's rules until here,
+	// and a map writes its tiers' nodes into it.
+	r.Biomes = slices.Clone(r.Biomes)
+	if s.mapped() {
+		e.layoutMap()
+		return
+	}
 	keys := sample(e.rng, BossKeys, len(BossKeys))
 	used := map[string]bool{}
 	bosses := 0

@@ -88,6 +88,11 @@ type Player struct {
 	// round, and commits the rest. 1 spends while anything is affordable.
 	SpendShare float64
 
+	// Route is how the model takes a map exit among the open ones: "" at
+	// random, "long" the most rooms, "short" the fewest, "gated" a scroll
+	// (an upgrade pick at the exit) first. Real players pick by topic.
+	Route string
+
 	// Install lists the packages (rules.Package) the model buys at GRUB
 	// between boots, in this order, each once the bank covers it; nil buys
 	// none.
@@ -587,7 +592,7 @@ func (b *boot) play() {
 		case s.PendingUpgrade:
 			b.step(game.PickUpgrade{Upgrade: b.upgrade()})
 		case s.Phase == game.PhaseRoute:
-			b.step(game.ChooseRoute{Index: b.rng.IntN(len(s.Biomes[s.Biome].Offers))})
+			b.step(game.ChooseRoute{Index: b.route()})
 		case s.Phase == game.PhaseDoors && b.reroll():
 			b.sums.rep.Rerolls++
 			b.step(game.Reroll{})
@@ -1032,4 +1037,39 @@ func (r Report) String() string {
 	}
 	fmt.Fprintf(&w, "\nengine rating estimate %.0f\n", r.FinalRating)
 	return w.String()
+}
+
+// route is the model's pick of the route on offer: a topic at random, or on
+// a map an open exit by Player.Route.
+func (b *boot) route() int {
+	bs := b.s.Biomes[b.s.Biome]
+	if len(bs.Exits) == 0 {
+		return b.rng.IntN(len(bs.Offers))
+	}
+	var open []int
+	for i, x := range bs.Exits {
+		if x.Locked == "" {
+			open = append(open, i)
+		}
+	}
+	if b.p.Route == "" {
+		return open[b.rng.IntN(len(open))]
+	}
+	best, bi := math.Inf(-1), open[0]
+	for _, i := range open {
+		x := bs.Exits[i]
+		v := 0.0
+		switch b.p.Route {
+		case "long":
+			v = float64(x.Rooms)
+		case "short":
+			v = -float64(x.Rooms)
+		case "gated":
+			v = float64(x.Picks)
+		}
+		if v += b.rng.Float64() * 0.5; v > best {
+			best, bi = v, i
+		}
+	}
+	return bi
 }
