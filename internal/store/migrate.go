@@ -70,6 +70,82 @@ var migrations = []string{
 	);
 	CREATE INDEX rating_history_at ON rating_history (at);
 	`,
+
+	// 2: ML logging (docs/research/ml-pipeline.md §4.2). events holds what
+	// only the app sees (§4.3, retention RT13); offers, skill_history and
+	// model_versions wait for the engine's ML1 types to fill them.
+	//
+	// Rows from before this step keep NULL in the new attempts columns but
+	// three: biome comes from the attempt's JSON where it has one, p is the
+	// door's SolveP (the Elo chance it was offered at), and slot is
+	// 'legacy', so calibration queries (G6) read every door.
+	`
+	CREATE TABLE offers (
+		boot      INTEGER NOT NULL REFERENCES boots (id),
+		seq       INTEGER NOT NULL,        -- index into State.Offers
+		kind      TEXT    NOT NULL CHECK (kind IN ('doors', 'route')),
+		biome     INTEGER NOT NULL,
+		room      INTEGER NOT NULL,
+		at        INTEGER NOT NULL,
+		policy    TEXT    NOT NULL,
+		reason    TEXT    NOT NULL,
+		set_prop  REAL    NOT NULL,
+		chosen    INTEGER,                 -- NULL until chosen
+		chosen_at INTEGER,
+		json      TEXT    NOT NULL,        -- game.Offer
+		PRIMARY KEY (boot, seq)
+	);
+
+	CREATE TABLE events (
+		id      INTEGER PRIMARY KEY,
+		at      INTEGER NOT NULL,
+		session INTEGER,                   -- id of this run's app_start event
+		boot    INTEGER,                   -- NULL outside a boot
+		attempt INTEGER,                   -- State.History index, NULL if none
+		problem TEXT    NOT NULL DEFAULT '',
+		kind    TEXT    NOT NULL,
+		json    TEXT    NOT NULL DEFAULT '{}'
+	);
+	CREATE INDEX events_kind_at ON events (kind, at);
+	CREATE INDEX events_boot ON events (boot, attempt);
+
+	CREATE TABLE skill_history (
+		id      INTEGER PRIMARY KEY,
+		at      INTEGER NOT NULL,
+		boot    INTEGER,
+		attempt INTEGER,
+		model   TEXT    NOT NULL,          -- version; 'shadow:<v>' during ML4
+		topic   TEXT    NOT NULL,          -- 'general' or a catalog topic
+		mu      REAL    NOT NULL,
+		sd      REAL    NOT NULL,
+		n       INTEGER NOT NULL           -- rated doors behind it
+	);
+	CREATE INDEX skill_history_topic_at ON skill_history (topic, at);
+
+	CREATE TABLE model_versions (
+		id         TEXT    PRIMARY KEY,    -- hash of the params JSON
+		created    INTEGER NOT NULL,
+		params     TEXT    NOT NULL,       -- rules.ModelParams
+		n_doors    INTEGER NOT NULL,
+		heldout_ll REAL,                   -- new params on the last 20%
+		current_ll REAL,                   -- current params on the same doors
+		accepted   INTEGER NOT NULL
+	);
+
+	ALTER TABLE boots    ADD COLUMN rules_hash TEXT NOT NULL DEFAULT '';
+	ALTER TABLE boots    ADD COLUMN model      TEXT NOT NULL DEFAULT '';
+	ALTER TABLE attempts ADD COLUMN biome      INTEGER;
+	ALTER TABLE attempts ADD COLUMN p          REAL;
+	ALTER TABLE attempts ADD COLUMN p_base     REAL;
+	ALTER TABLE attempts ADD COLUMN slot       TEXT NOT NULL DEFAULT '';
+	ALTER TABLE attempts ADD COLUMN propensity REAL;
+	ALTER TABLE attempts ADD COLUMN offer      INTEGER;
+
+	UPDATE attempts SET
+		biome = json_extract(json, '$.Biome'),
+		p     = json_extract(json, '$.Door.SolveP'),
+		slot  = 'legacy';
+	`,
 }
 
 // migrate applies the missing steps in one transaction, so a failed step

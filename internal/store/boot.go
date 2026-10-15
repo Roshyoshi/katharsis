@@ -45,6 +45,10 @@ func (s *Store) Checkpoint(meta game.Meta, st *game.State) error {
 	if err != nil {
 		return fmt.Errorf("store: boot %d: %w", st.Boot, err)
 	}
+	rulesHash, err := hashRules(st.Rules)
+	if err != nil {
+		return fmt.Errorf("store: boot %d: %w", st.Boot, err)
+	}
 	now := s.now()
 	return s.write(func(tx *sql.Tx) error {
 		if err := s.putMeta(tx, metaRaw, now); err != nil {
@@ -53,7 +57,7 @@ func (s *Store) Checkpoint(meta game.Meta, st *game.State) error {
 		if err := s.putRating(tx, meta.Rating, now); err != nil {
 			return err
 		}
-		if err := s.putBoot(tx, st, stateRaw, now); err != nil {
+		if err := s.putBoot(tx, st, stateRaw, rulesHash, now); err != nil {
 			return err
 		}
 		return s.putAttempts(tx, st)
@@ -110,7 +114,7 @@ func summarize(st *game.State, now time.Time) bootRow {
 	return r
 }
 
-func (s *Store) putBoot(tx *sql.Tx, st *game.State, raw []byte, now time.Time) error {
+func (s *Store) putBoot(tx *sql.Tx, st *game.State, raw []byte, rulesHash string, now time.Time) error {
 	r := summarize(st, now)
 	var (
 		seed, started int64
@@ -137,23 +141,24 @@ func (s *Store) putBoot(tx *sql.Tx, st *game.State, raw []byte, now time.Time) e
 	// same crash (say, a log line) must not stretch it.
 	_, err = tx.Exec(`
 		INSERT INTO boots (id, seed, prestige, rules, started, ended, phase,
-			outcome, cause, uptime, committed, last_door, state, saved)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			outcome, cause, uptime, committed, last_door, state, saved, rules_hash)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (id) DO UPDATE SET
-			prestige  = excluded.prestige,
-			rules     = excluded.rules,
-			ended     = COALESCE(boots.ended, excluded.ended),
-			phase     = excluded.phase,
-			outcome   = excluded.outcome,
-			cause     = excluded.cause,
-			uptime    = CASE WHEN boots.outcome = '' THEN excluded.uptime ELSE boots.uptime END,
-			committed = excluded.committed,
-			last_door = excluded.last_door,
-			state     = excluded.state,
-			saved     = excluded.saved`,
+			prestige   = excluded.prestige,
+			rules      = excluded.rules,
+			ended      = COALESCE(boots.ended, excluded.ended),
+			phase      = excluded.phase,
+			outcome    = excluded.outcome,
+			cause      = excluded.cause,
+			uptime     = CASE WHEN boots.outcome = '' THEN excluded.uptime ELSE boots.uptime END,
+			committed  = excluded.committed,
+			last_door  = excluded.last_door,
+			state      = excluded.state,
+			saved      = excluded.saved,
+			rules_hash = excluded.rules_hash`,
 		st.Boot, int64(st.Seed), st.Prestige, st.Rules.Name, unixNano(st.Started),
 		r.ended, st.Phase, r.outcome, r.cause, int64(r.uptime), st.Committed,
-		r.lastDoor, raw, unixNano(now))
+		r.lastDoor, raw, unixNano(now), rulesHash)
 	if err != nil {
 		return err
 	}
@@ -186,12 +191,12 @@ func (s *Store) putAttempts(tx *sql.Tx, st *game.State) error {
 		if _, err := tx.Exec(`
 			INSERT INTO attempts (boot, idx, problem, topic, rating, blind,
 				mystery, cursed, regression, boss, opened, closed, outcome,
-				submits, failed, quacks, best_pass, total, json)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				submits, failed, quacks, best_pass, total, json, biome, p, slot)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			st.Boot, i, d.Problem, d.Topic, d.Rating, d.Blind, d.Mystery,
 			d.Cursed, d.Regression, d.Boss, unixNano(a.Opened),
 			unixNano(a.Closed), a.Outcome, a.Submits, a.Failed, a.Quacks,
-			a.BestPass, a.Total, raw); err != nil {
+			a.BestPass, a.Total, raw, a.Biome, d.SolveP, slotLegacy); err != nil {
 			return err
 		}
 	}
