@@ -121,7 +121,8 @@ type snapshot struct {
 	libs                          map[string]string
 	biome, room                   int
 	offered                       string
-	warned                        int // timer marks passed on the open door: 1 at 5:00, 2 at 1:00
+	warned                        int  // timer marks passed on the open door: 1 at 5:00, 2 at 1:00
+	capped                        bool // State.Capped: the pool stood at its cap
 }
 
 func snap(st *game.State, m *game.Meta, now time.Time) snapshot {
@@ -130,6 +131,7 @@ func snap(st *game.State, m *game.Meta, now time.Time) snapshot {
 		uncommitted: st.Uncommitted, committed: st.Committed, spent: st.Spent,
 		upgrades: len(st.Upgrades), daemons: len(st.Daemons), rerolls: st.Rerolls, at: st.AtTime,
 		kexec: st.KexecUsed, declined: st.Declined, biome: st.Biome, room: st.Room, libs: map[string]string{},
+		capped: st.Capped,
 	}
 	if c := st.Current; c != nil {
 		s.door, s.opened, s.deadline, s.submits, s.quacks = c.Door.Problem, c.Opened, c.Deadline, c.Submits, c.Quacks
@@ -451,6 +453,12 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 	// Cycles that changed for a reason no line above names.
 	if !cyclesSeen && n.cycles != p.cycles && n.phase != game.PhaseCrashed && n.phase != game.PhaseCleared {
 		add(EvCycles, "cycles: "+cyclesShort(st), "")
+	}
+
+	// The pool at its cap for the first time on any boot: the Trial's
+	// third hint (achievements.md (f)).
+	if n.capped && !p.capped && m.Capped == st.Boot {
+		out = append(out, capEvent(st, now))
 	}
 	return out
 }

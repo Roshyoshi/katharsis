@@ -1,0 +1,40 @@
+
+
+
+
+
+
+                                                        ╔══════════════════════════╗
+                                                        ║  _  _ ___ _  _____ ___   ║
+                                                        ║ | || | _ \ | |_   _/ __| ║
+                                                        ║ | __ |   / |__| | \__ \  ║
+                                                        ║ |_||_|_|_\____|_| |___/  ║
+                                                        ╚══════════════════════════╝
+
+                                                        ✓ Boot #57 cleared · Silver
+                                                           ⚔ The Halting Problem
+                                       Stub boss.defeat.halting-problem, a line in the story's voice.
+                                                Stub cleared.1, a line in the story's voice.
+
+                                                uptime      2:37:00
+                                                committed   2 KiB · bank 3.3 KiB
+                                                solved      7 doors · 1 lost · 1 boss retry
+                                                cycles left ♥ 14/50 cycles · fountains +10
+
+                        kept   rating 1214 → 1262 ▲48 · Platinum ▓▓░░░░░░ 22/60 rated doors, then a clear
+                               ★ setuid +2 · snicker-snack, finds-none
+                               Stub first line of reveal.prestige.1, a question left open. · b read on
+                        lever  "Cow Poetry" ◆1700 cleared in 31:00 of 40:00 · ≈50% predicted
+                        next ▸ r reboot at Gold · ♥ 30 cycles
+
+ ╭─ Userland ─╮   ╭─ The Scheduler ─╮   ╭─ Off-by-One ─╮   ╭─ The ALU ─╮   ╭─ Heisenbug ─╮   ╭─ Kernel Space ─╮   ╭─ The Halting Problem ─╮
+ │    ✓ ✓     │───│        ✓        │───│      ✓       │───│     ✓     │───│      ✓      │───│       ✗        │───│           ✓           │
+ ╰────────────╯   ╰─────────────────╯   ╰──────────────╯   ╰───────────╯   ╰─────────────╯   ╰────────────────╯   ╰───────────────────────╯
+
+
+
+
+
+
+
+r reboot · b story · l git log · g GRUB

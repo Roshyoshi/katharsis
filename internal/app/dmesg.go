@@ -17,7 +17,18 @@ func (m *Model) syncDmesg() {
 	// Onboarding lines wait while anything is pushed over the phase's
 	// screen: a story scene, a statement, git log.
 	m.dmesg.Hold = m.top() != m.stack[0]
-	evs := m.dmesg.Observe(m.state, &m.meta, m.d.Now())
+	now := m.d.Now()
+	evs := m.dmesg.Observe(m.state, &m.meta, now)
+	// The bits a step set follow its own lines, in their moment, the newest
+	// speaking (setuid.go).
+	if m.state != nil {
+		for _, ev := range m.setuid.strip {
+			ev.At = now
+			m.dmesg.Add(ev)
+			evs = append(evs, ev)
+		}
+	}
+	m.setuid.strip = nil
 	marked := false
 	for _, ev := range evs {
 		if ev.Seen != "" && game.MarkSeen(&m.meta, ev.Seen) {

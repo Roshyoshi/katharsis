@@ -1,13 +1,20 @@
 package app
 
 import (
+	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"testing/synctest"
+	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/game"
+	"katharsis/internal/hud"
 	"katharsis/internal/screens"
+	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/setuid"
 	"katharsis/internal/store"
@@ -89,6 +96,294 @@ func TestSetuidNoticesToggle(t *testing.T) {
 		h.send(key("n"))
 		if !h.m.setuid.notices {
 			t.Error("n twice left the notices off")
+		}
+	})
+}
+
+// fakeBits is a SetuidCheck that sets its ids the first time a check runs
+// where pick allows (nil: anywhere), and logs the phase of every check, ""
+// outside a boot. The conditions are setuid's; the app's part is when it
+// asks and where it says what was set.
+type fakeBits struct {
+	ids    []string
+	pick   func(s *game.State) bool
+	phases []game.Phase
+}
+
+func (f *fakeBits) check(m *game.Meta, s *game.State, now time.Time) []game.SetuidBit {
+	var ph game.Phase
+	if s != nil {
+		ph = s.Phase
+	}
+	f.phases = append(f.phases, ph)
+	if len(f.ids) == 0 || f.pick != nil && !f.pick(s) {
+		return nil
+	}
+	var set []game.SetuidBit
+	for _, id := range f.ids {
+		b := game.SetuidBit{ID: id, At: now}
+		if s != nil {
+			b.Boot = s.Boot
+		}
+		m.Setuid = append(m.Setuid, b)
+		set = append(set, b)
+	}
+	f.ids = nil
+	return set
+}
+
+// fakeSetuid installs f on h's game with the notices on.
+func (h *harness) fakeSetuid(f *fakeBits) {
+	h.m.d.SetuidCheck = f.check
+	h.m.setuid.notices = true
+}
+
+// stripSays reports whether the strip has an event of kind saying text.
+func (h *harness) stripSays(kind, text string) bool {
+	return slices.ContainsFunc(h.m.dmesg.Events(), func(e bootui.Event) bool {
+		return e.Kind == kind && strings.Contains(ansi.Strip(e.Text), text)
+	})
+}
+
+// Every :w inside a boot's door is a game.SamplesRun: the door counts it
+// and the checkpoint keeps it. A sample pass ending after the door closed,
+// or in an upsolve, counts nothing and refuses nothing.
+func TestSamplesRunOnW(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.enterDoor()
+		pass := hud.SamplesMsg{Compiled: true, Passed: 1, Total: 2}
+		h.send(pass)
+		h.send(pass)
+		if n := h.m.state.Current.Samples; n != 2 {
+			t.Fatalf("Samples %d after two :w, want 2", n)
+		}
+		if st, err := h.st.ActiveBoot(); err != nil || st.Current == nil || st.Current.Samples != 2 {
+			t.Fatalf("saved %+v, %v", st, err)
+		}
+		h.send(submitMsg{}) // AC: the door closes
+		h.send(pass)
+		if a := h.m.state.History[len(h.m.state.History)-1]; a.Samples != 2 || h.m.flash != "" {
+			t.Errorf("after the door: Samples %d, flash %q", a.Samples, h.m.flash)
+		}
+		h.crashAndGrub()
+		h.send(screens.Upsolve{Problem: h.m.d.Catalog.All()[0].ID})
+		h.send(pass)
+		if h.m.flash != "" {
+			t.Errorf("an upsolve's :w: flash %q", h.m.flash)
+		}
+	})
+}
+
+// crashAndGrub ends the boot as a :q! crash and leaves for GRUB.
+func (h *harness) crashAndGrub() {
+	h.t.Helper()
+	h.verdict = "WA"
+	if got := h.play(); got != game.PhaseCrashed {
+		h.t.Fatalf("boot ended %q", got)
+	}
+	h.verdict = "AC"
+	h.send(screens.OpenGrub{})
+}
+
+// No check runs while a door is open (GR6): a bit that holds then is set
+// and said at the next safe point, after the door's own lines, and
+// recorded (setuid_set) and saved with the step that set it.
+func TestSetuidNotInADoor(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		f := &fakeBits{ids: []string{"hello-world"}, pick: func(s *game.State) bool { return s != nil && s.Phase != game.PhaseRoute }}
+		h.fakeSetuid(f)
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.enterDoor()
+		h.send(hud.SamplesMsg{Compiled: true, Passed: 1, Total: 2})
+		h.send(game.Quack{})
+		if slices.Contains(f.phases, game.PhaseProblem) {
+			t.Fatalf("a check ran inside the door: %v", f.phases)
+		}
+		if h.stripSays(bootui.EvSetuid, "chmod") || strings.Contains(ansi.Strip(h.m.View().Content), "chmod") {
+			t.Fatal("a bit said inside the door")
+		}
+		h.send(submitMsg{})
+		evs := h.m.dmesg.Events()
+		last := evs[len(evs)-1]
+		ac := slices.IndexFunc(evs, func(e bootui.Event) bool { return e.Kind == bootui.EvAC })
+		if last.Kind != bootui.EvSetuid || ansi.Strip(last.Text) != "chmod u+s /bin/hello-world" || ac < 0 || !evs[ac].At.Equal(last.At) {
+			t.Errorf("strip after the AC: %+v", evs)
+		}
+		if !strings.Contains(ansi.Strip(h.m.View().Content), "chmod u+s /bin/hello-world") {
+			t.Errorf("not on screen:\n%s", ansi.Strip(h.m.View().Content))
+		}
+		set := h.eventsOf(store.EventSetuidSet)
+		if len(set) != 1 || set[0]["id"] != "hello-world" || set[0]["kind"] != "progression" ||
+			set[0]["backfill"] != false || set[0]["phase"] != string(h.m.state.Phase) {
+			t.Errorf("setuid_set: %v", set)
+		}
+		if m, err := h.st.LoadMeta(); err != nil || !setuid.IsSet(&m, "hello-world") {
+			t.Errorf("the bit is not saved: %v", err)
+		}
+	})
+}
+
+// A bit a crash sets is said nowhere on the crash screen (GR3); the next
+// GRUB's status line says "setuid +1" until the find screen reads it.
+func TestSetuidCrashSaysGrub(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.fakeSetuid(&fakeBits{ids: []string{"exit-0"}, pick: func(s *game.State) bool { return s != nil && s.Phase == game.PhaseCrashed }})
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.verdict = "WA"
+		if got := h.play(); got != game.PhaseCrashed || !setuid.IsSet(&h.m.meta, "exit-0") {
+			t.Fatalf("boot ended %q, bits %v", got, h.m.meta.Setuid)
+		}
+		for _, sz := range [][2]int{{80, 24}, {140, 40}} {
+			h.send(tea.WindowSizeMsg{Width: sz[0], Height: sz[1]})
+			if v := ansi.Strip(h.m.View().Content); strings.Contains(v, "setuid") || strings.Contains(v, "chmod") {
+				t.Errorf("the crash screen says the bit at %v:\n%s", sz, v)
+			}
+		}
+		h.send(screens.OpenGrub{})
+		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "setuid +1") {
+			t.Errorf("GRUB lacks the news:\n%s", v)
+		}
+		h.send(screens.OpenSetuid{})
+		h.send(screens.Back{})
+		if v := ansi.Strip(h.m.View().Content); strings.Contains(v, "setuid +1") {
+			t.Errorf("GRUB still says it after the find screen:\n%s", v)
+		}
+	})
+}
+
+// A clear's bits are one line of the cleared screen's kept block; with
+// setuid_notices off, none, and none on the strip either.
+func TestSetuidClearedKept(t *testing.T) {
+	for _, on := range []bool{true, false} {
+		synctest.Test(t, func(t *testing.T) {
+			h := newHarness(t)
+			h.fakeSetuid(&fakeBits{ids: []string{"snicker-snack", "finds-none"}, pick: func(s *game.State) bool { return s != nil && s.Phase == game.PhaseCleared }})
+			h.m.setuid.notices = on
+			h.send(screens.StartBoot{Preset: "standard"})
+			if got := h.play(); got != game.PhaseCleared {
+				t.Fatalf("boot ended %q", got)
+			}
+			for _, sz := range [][2]int{{80, 24}, {140, 40}} {
+				h.send(tea.WindowSizeMsg{Width: sz[0], Height: sz[1]})
+				v := ansi.Strip(h.m.View().Content)
+				if says := strings.Contains(v, "setuid +2 · snicker-snack, finds-none"); says != on {
+					t.Errorf("notices %v at %v: the kept line shows %v:\n%s", on, sz, says, v)
+				}
+			}
+		})
+	}
+}
+
+// Outside a boot an upsolve's bits ride on its flash, and an install's on
+// apt's, recorded with no phase.
+func TestSetuidOutsideABoot(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.fakeSetuid(&fakeBits{ids: []string{"grin-returns"}, pick: func(s *game.State) bool { return s == nil }})
+		h.send(screens.Upsolve{Problem: h.m.d.Catalog.All()[0].ID})
+		h.send(submitMsg{})
+		if !strings.Contains(h.m.flash, "chmod u+s /bin/grin-returns") {
+			t.Errorf("upsolve flash %q", h.m.flash)
+		}
+		h.fakeSetuid(&fakeBits{ids: []string{"apt-full"}, pick: func(s *game.State) bool { return s == nil }})
+		h.m.meta.Bank = 1 << 20
+		h.send(screens.Install{Package: h.m.packages()[0].Name})
+		if !strings.Contains(h.m.flash, "installed ") || !strings.Contains(h.m.flash, "chmod u+s /usr/bin/apt-full") {
+			t.Errorf("install flash %q", h.m.flash)
+		}
+		set := h.eventsOf(store.EventSetuidSet)
+		if len(set) != 2 || set[0]["phase"] != "" || set[1]["id"] != "apt-full" {
+			t.Errorf("setuid_set: %v", set)
+		}
+	})
+}
+
+// The backfill runs once, at the launch that finds a save not backfilled,
+// before GRUB, which counts its bits; it is saved, so the next launch
+// runs none. One that fails changes nothing and runs again next launch.
+func TestSetuidBackfillOnce(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		// The store's own backfill marked the fresh save at the first launch.
+		if m, err := h.st.LoadMeta(); err != nil || !m.Record.Backfilled {
+			t.Fatalf("first launch: backfilled %v, %v", m.Record.Backfilled, err)
+		}
+		m := h.m.meta
+		m.Record.Backfilled = false
+		if err := h.st.SaveMeta(m); err != nil {
+			t.Fatal(err)
+		}
+		calls, fail := 0, true
+		d := h.m.d
+		d.SetuidNotices = true
+		d.SetuidBackfill = func(m *game.Meta, now time.Time) ([]game.SetuidBit, error) {
+			calls++
+			if fail {
+				return nil, errors.New("disk on fire")
+			}
+			b := game.SetuidBit{ID: "exit-0", At: now, Backfill: true}
+			m.Setuid, m.Record.Backfilled = append(m.Setuid, b), true
+			return []game.SetuidBit{b}, nil
+		}
+		h.start(d)
+		if m, _ := h.st.LoadMeta(); calls != 1 || m.Record.Backfilled {
+			t.Fatalf("a failed backfill: %d calls, backfilled %v", calls, m.Record.Backfilled)
+		}
+		fail = false
+		h.start(d)
+		m, _ = h.st.LoadMeta()
+		if calls != 2 || !m.Record.Backfilled || !setuid.IsSet(&m, "exit-0") {
+			t.Fatalf("backfill: %d calls, backfilled %v, bits %v", calls, m.Record.Backfilled, m.Setuid)
+		}
+		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "setuid +1") {
+			t.Errorf("GRUB lacks the backfill's news:\n%s", v)
+		}
+		if set := h.eventsOf(store.EventSetuidSet); len(set) != 1 || set[0]["backfill"] != true {
+			t.Errorf("setuid_set: %v", set)
+		}
+		h.start(d)
+		if calls != 2 {
+			t.Errorf("a backfilled save ran it again: %d calls", calls)
+		}
+	})
+}
+
+// heisenbugClear clears the boot's next door as Heisenbug's twisted door
+// (the engine deals it so on a map), after w :w runs on it, with the real
+// conditions (setuid.Check).
+func heisenbugClear(t *testing.T, w int) *harness {
+	t.Helper()
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.enterDoor()
+	d := &h.m.state.Current.Door
+	d.Boss, d.Twist = "heisenbug", "heisenbug"
+	for range w {
+		h.send(hud.SamplesMsg{Compiled: true, Passed: 2, Total: 2})
+	}
+	h.send(submitMsg{})
+	if !setuid.IsSet(&h.m.meta, "shelf-stays-full") {
+		t.Fatalf("Heisenbug's clear set no shelf-stays-full: %v", h.m.meta.Setuid)
+	}
+	return h
+}
+
+// SamplesRun and Check are a pair: a :w on Heisenbug's door keeps its
+// skill bit (S10, stopped-looking) unset, and only a door with none sets
+// it. Were the app to skip SamplesRun, every Heisenbug clear would set it.
+func TestSetuidSamplesPair(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		if h := heisenbugClear(t, 1); setuid.IsSet(&h.m.meta, "stopped-looking") {
+			t.Error("a :w on Heisenbug's door set stopped-looking")
+		}
+	})
+	synctest.Test(t, func(t *testing.T) {
+		if h := heisenbugClear(t, 0); !setuid.IsSet(&h.m.meta, "stopped-looking") {
+			t.Errorf("no :w, and stopped-looking is not set: %v", h.m.meta.Setuid)
 		}
 	})
 }

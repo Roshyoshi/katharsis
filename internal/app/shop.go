@@ -56,12 +56,13 @@ func (m *Model) install(name string) tea.Cmd {
 	if err := game.Install(&m.meta, p); err != nil {
 		return fail("apt: %v", err)
 	}
+	bits := m.setuidOutside() // apt list --installed (setuid.go)
 	if err := m.d.Store.SaveMeta(m.meta); err != nil {
 		return fail("save: %v", err)
 	}
 	m.event(store.EventAptInstall, "", kv{"package": name, "price": p.Price, "bank": m.meta.Bank})
 	m.shopChanged()
-	return note("installed %s: %s", name, flavor.PackageText(p, r))
+	return note("installed %s: %s%s", name, flavor.PackageText(p, r), bits)
 }
 
 // useTheme puts an installed banner theme in use, "" for the default.
@@ -82,18 +83,26 @@ func (m *Model) useTheme(theme string) tea.Cmd {
 // shopChanged rebuilds GRUB under the shop, its cursor where it was (on
 // apt, whose line now names the next package), and refreshes the shop.
 func (m *Model) shopChanged() {
-	if m.state == nil {
-		g := m.grub()
-		if old, ok := m.stack[0].(*meta.Menu); ok {
-			if nw, ok := g.(*meta.Menu); ok {
-				nw.Follow(old)
-			}
-		}
-		m.stack[0] = g
-	}
+	m.regrub()
 	for _, s := range m.stack {
 		if shop, ok := s.(*meta.Shop); ok {
 			shop.Refresh(m.shopConfig())
 		}
 	}
+}
+
+// regrub rebuilds GRUB under the screens over it, for a change its lines
+// show (the bank, apt's next package, the setuid news), the cursor kept
+// on the entry it was on. Outside GRUB it does nothing.
+func (m *Model) regrub() {
+	if m.state != nil {
+		return
+	}
+	g := m.grub()
+	if old, ok := m.stack[0].(*meta.Menu); ok {
+		if nw, ok := g.(*meta.Menu); ok {
+			nw.Follow(old)
+		}
+	}
+	m.stack[0] = g
 }

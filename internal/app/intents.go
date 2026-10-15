@@ -19,6 +19,7 @@ import (
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/screens/story"
 	"katharsis/internal/store"
+	"katharsis/internal/ui"
 )
 
 // intent handles navigation messages; ok is false for anything else.
@@ -118,7 +119,8 @@ func (m *Model) grub() screens.Screen {
 		Sources:  m.d.Sources,
 		// GRUB's default boot is the standard preset's, so its comeback
 		// rule says whether the next boot is one.
-		Away: game.Comeback(&std, &m.meta, now),
+		Away:       game.Comeback(&std, &m.meta, now),
+		SetuidNews: m.setuid.news, // a crash's bits, said here (setuid.go)
 	}))
 }
 
@@ -350,11 +352,15 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 	// The solve is recorded either way: unsaved, it goes with the next
 	// save, and a door left open would let it count twice.
 	m.closeDoor()
+	bits := m.setuidOutside() // a dump recovered, a regression retired (setuid.go)
 	m.reset()
 	if !m.saved(m.d.Store.SaveMeta(m.meta)) {
 		return nil // the banner says so
 	}
-	return upsolveNote(got, fixed) // coredump.recovered, regression.cleared (debrief.go)
+	if s := upsolveNote(got, fixed) + bits; s != "" { // coredump.recovered, regression.cleared (debrief.go)
+		return note("%s", strings.TrimPrefix(s, ui.G.Sep))
+	}
+	return nil
 }
 
 func openURL(url string) tea.Cmd {

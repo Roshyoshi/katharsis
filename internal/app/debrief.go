@@ -277,17 +277,15 @@ func (m *Model) upsolveOf(id catalog.ID, kind game.SolveKind) (got int64, fixed 
 
 // upsolveNote is the flash after an accepted upsolve: the core dump it
 // banked (coredump.recovered), else the regression it fixed
-// (regression.cleared), else nothing.
-func upsolveNote(got int64, fixed bool) tea.Cmd {
+// (regression.cleared), else "".
+func upsolveNote(got int64, fixed bool) string {
 	switch {
 	case got > 0:
-		return note("%s", recoveredNote(got))
+		return recoveredNote(got)
 	case fixed:
-		if s := flavor.Story("regression.cleared", 0); s != "" {
-			return note("%s", s)
-		}
+		return flavor.Story("regression.cleared", 0)
 	}
-	return nil
+	return ""
 }
 
 // recoveredNote is the flash after an upsolve banks a core dump

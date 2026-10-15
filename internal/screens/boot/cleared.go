@@ -188,6 +188,13 @@ func (c *Cleared) View(width, height int) string {
 	for _, f := range env.End.Firsts[:min(len(env.End.Firsts), 2)] {
 		kept = append(kept, star+ui.Strong.Render(f))
 	}
+	// The setuid bits the boot set, on a line of their own (achievements.md
+	// (h)). At 80x24 the screen is full, so the line takes the blank row
+	// above kept.
+	above := 0
+	if line := setuidKept(env); line != "" {
+		kept, above = append(kept, brk, line), 9
+	}
 	nextStep := rebootStep(env)
 	if l := env.End.Learn; l != nil {
 		nextStep = trialNextStep(l)
@@ -204,7 +211,7 @@ func (c *Cleared) View(width, height int) string {
 		{lines: said, pri: 4},
 		{lines: []string{""}},
 		{lines: centerBlock(table, width)},
-		{lines: []string{""}},
+		{lines: []string{""}, pri: above},
 		{lines: col(section("kept", kept, cw))},
 		{lines: col(teaser(beat(env), cw)), pri: 1},
 		{lines: col(section("lever", []string{leverText(env, b.Lever)}, cw))},

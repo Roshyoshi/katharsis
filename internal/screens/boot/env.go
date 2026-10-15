@@ -42,6 +42,9 @@ type Env struct {
 	// for the player, for a route's locked exit; nil, or "" while RTFM is
 	// not loaded, names the capability instead.
 	Module func(topic string) string
+	// SetuidNotices is setuid_notices: the cleared screen's kept block says
+	// the setuid bits the boot set (achievements.md (h)).
+	SetuidNotices bool
 }
 
 // flavorSource is the slice of internal/flavor the screens use. fl points at

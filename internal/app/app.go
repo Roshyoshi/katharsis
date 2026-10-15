@@ -108,6 +108,10 @@ type Deps struct {
 	// SpoilersNone for "").
 	SetuidNotices bool
 	Spoilers      string
+	// SetuidCheck and SetuidBackfill stand in for setuid.Check and
+	// Store.BackfillSetuid, for a test that fakes the bits; nil is them.
+	SetuidCheck    func(m *game.Meta, s *game.State, now time.Time) []game.SetuidBit
+	SetuidBackfill func(m *game.Meta, now time.Time) ([]game.SetuidBit, error)
 }
 
 // Model is the root tea.Model.
@@ -209,8 +213,11 @@ func New(d Deps) (*Model, error) {
 	m := &Model{d: d, meta: meta, state: st, pool: d.Catalog.All(), editorials: map[catalog.ID]time.Time{}}
 	m.setuid.notices = d.SetuidNotices
 	m.ctx, m.cancel = context.WithCancel(context.Background())
-	m.reset()
 	m.startTelemetry()
+	// Once, for a save from before the bits (setuid.go): before the first
+	// screen, so GRUB counts what it set.
+	m.backfillSetuid()
+	m.reset()
 	m.askPrior()
 	return m, nil
 }
@@ -337,7 +344,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case hud.SamplesMsg:
 		m.samplesJudged(msg)
-		return m, nil
+		return m, m.samplesRun() // a :w, counted on a boot's door (setuid.go)
 	case game.Action:
 		return m, m.step(msg)
 	case judgedMsg:

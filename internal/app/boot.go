@@ -61,6 +61,7 @@ func (m *Model) baseKey() baseKey {
 func (m *Model) env() bootui.Env {
 	e := bootui.Env{State: m.state, Meta: m.meta, Lookup: m.d.Catalog.Get, Now: m.d.Now(), End: m.endInfo(), Events: m.dmesg.Events(),
 		Module: m.rtfmModule} // hub.go
+	e.SetuidNotices = m.setuid.notices
 	m.fetchEnv(&e) // door readiness (fetch.go)
 	return e
 }
@@ -97,6 +98,9 @@ func (m *Model) startBoot(b screens.StartBoot) tea.Cmd {
 // saved before the first step, so quitting right away still resumes; a
 // failed save is shown, and the boot goes on, as after a step (try).
 func (m *Model) begin(st *game.State, effs []game.Effect) tea.Cmd {
+	if m.state == nil {
+		m.setuid.news = 0 // GRUB, which said it, is left
+	}
 	m.state = st
 	m.reset()
 	m.saved(m.d.Store.Checkpoint(m.meta, m.state))
@@ -179,6 +183,9 @@ func (m *Model) tryAt(a game.Action, now time.Time) (tea.Cmd, error) {
 	if err != nil {
 		return nil, fmt.Errorf("engine: %w", err)
 	}
+	// Between doors is a safe point (GR6): the bits that hold now land in
+	// this step's checkpoint, and are said once its own lines are.
+	bits := m.checkSetuid(m.state, now)
 	// The step happened whether or not it was saved, so its effects run
 	// either way: a door the engine opened must open on screen too.
 	//
@@ -189,9 +196,10 @@ func (m *Model) tryAt(a game.Action, now time.Time) (tea.Cmd, error) {
 	// failed is still retried on a tick, every saveRetry.
 	_, tick := a.(game.Tick)
 	retry := m.saveErr != nil && !now.Before(m.saveFailed.Add(saveRetry))
-	if !tick || len(effs) > 0 || m.tickMark() != mark || retry {
+	if !tick || len(effs) > 0 || m.tickMark() != mark || retry || len(bits) > 0 {
 		m.saved(m.d.Store.Checkpoint(m.meta, m.state))
 	}
+	m.noticeSetuid(bits, now)
 	cmds := []tea.Cmd{m.effects(effs)}
 	if m.baseKey() != before {
 		m.reset()
