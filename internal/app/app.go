@@ -80,6 +80,10 @@ type Deps struct {
 	// Log gets what goes wrong out of the player's sight, such as an event
 	// the store could not write; nil discards it.
 	Log *log.Logger
+	// Prompts turns on the questions that wait for the player: the
+	// first-launch rating (D37) and the boot-end line. The game sets it;
+	// headless tests leave it off.
+	Prompts bool
 }
 
 // Model is the root tea.Model.
@@ -165,6 +169,7 @@ func New(d Deps) (*Model, error) {
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 	m.reset()
 	m.startTelemetry()
+	m.askPrior()
 	return m, nil
 }
 

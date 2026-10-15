@@ -96,6 +96,9 @@ type Meta struct {
 	// Rated counts every rated attempt; the first
 	// rules.RatingColdAttempts move the ratings with rules.RatingKCold.
 	Rated int
+	// Prior is the answer to the first-launch rating question (D37,
+	// prior.go), nil until it is asked.
+	Prior *Prior `json:",omitempty"`
 	// Calibration corrects door aim per tier, keyed by CalibrationTier.
 	Calibration map[string]Calibration
 	// TrialsPassed lists the modules (TrialSpec.Module) whose trial was

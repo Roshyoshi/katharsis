@@ -43,6 +43,8 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 		return m.install(msg.Package), true
 	case screens.UseTheme:
 		return m.useTheme(msg.Theme), true
+	case meta.PriorAnswer:
+		return m.answerPrior(msg), true
 	case screens.OpenModule:
 		return m.openModule(msg.Module), true
 	case screens.StartTrial:

@@ -158,6 +158,7 @@ func runGame(args []string) error {
 		AudioSettings: audioSet,
 		Credits:       credits,
 		Log:           logger,
+		Prompts:       true,
 	})
 	if err != nil {
 		return err
