@@ -143,7 +143,7 @@ func (t *Top) View(width, height int) string {
 
 func (t *Top) chart(w, h int) []string {
 	vals := t.ratings
-	title := ui.Focus.Render("Rating ") + ui.Rank(t.st.Rating).Style().Bold(true).Render(fmt.Sprintf("%.0f", t.st.Rating))
+	title := ui.Focus.Render("Rating ") + ui.Rank(t.st.Rating).Render(fmt.Sprintf("%.0f", t.st.Rating))
 	if len(vals) > 0 {
 		peak := slices.Max(vals)
 		title += ui.Muted.Render(fmt.Sprintf("  peak %.0f · %d rated", peak, len(vals)))
@@ -160,6 +160,12 @@ func (t *Top) meters(w int) []string {
 	st := t.st
 	label := func(s string) string { return ui.Focus.Render(s + ": ") }
 	val := func(s string) string { return ui.Strong.Render(s) }
+	// counted is n of noun, the number a value: "1 crash", "3 crashes".
+	counted := func(n int, noun string) string {
+		s := units.Plural(n, noun)
+		i := strings.IndexByte(s, ' ')
+		return val(s[:i]) + s[i:]
+	}
 
 	crashes := 0
 	for _, n := range st.Crashes {
@@ -187,8 +193,8 @@ func (t *Top) meters(w int) []string {
 	}
 
 	return []string{
-		label("Boots") + val(fmt.Sprint(st.Boots)) + ", " + val(fmt.Sprint(st.FullClears)) +
-			" full clears, " + val(fmt.Sprint(crashes)) + " crashes",
+		label("Boots") + val(fmt.Sprint(st.Boots)) + ", " + counted(st.FullClears, "full clear") + ", " +
+			counted(crashes, "crash"),
 		label("Crashes") + strings.Join(causes, ", "),
 		solveBar,
 		legend(w, ind, hint, ed),
@@ -309,8 +315,10 @@ func (t *Top) table(w, h int) []string {
 	return out
 }
 
-// topicBar draws attempts to scale with the busiest topic: clears in green,
-// the rest in red, so both volume and success read at a glance.
+// topicBar draws attempts to scale with the busiest topic: clears as | in
+// OK, the rest as # in Danger, so both volume and success read at a
+// glance, and the split survives without color and on the selected row
+// (R1; htop's monochrome meters mark a second segment with # too).
 func topicBar(r TopicStat, maxAtt, w int) string {
 	if w < 4 {
 		return ""
@@ -322,5 +330,5 @@ func topicBar(r TopicStat, maxAtt, w int) string {
 		clr = (r.Clears*att + r.Attempts/2) / r.Attempts
 	}
 	return ui.Strong.Render("[") + ui.OK.Render(strings.Repeat("|", clr)) +
-		ui.Danger.Render(strings.Repeat("|", att-clr)) + strings.Repeat(" ", inner-att) + ui.Strong.Render("]")
+		ui.Danger.Render(strings.Repeat("#", att-clr)) + strings.Repeat(" ", inner-att) + ui.Strong.Render("]")
 }
