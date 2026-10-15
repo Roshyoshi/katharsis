@@ -1,4 +1,4 @@
-package learn
+package rtfm
 
 import (
 	"fmt"
@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
-	guide "katharsis/internal/learn"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/reader"
 )
@@ -32,11 +32,11 @@ type Module struct {
 
 // NewModule builds the page for mod. c resolves prerequisite ids to titles
 // and may be nil; judgeable and lookup are as for NewBrowser.
-func NewModule(c *guide.Curriculum, mod guide.Module, m game.Meta, judgeable Judgeable, lookup Lookup) *Module {
+func NewModule(c *curriculum.Curriculum, mod curriculum.Module, m game.Meta, judgeable Judgeable, lookup Lookup) *Module {
 	return newModule(c, newEntry(mod, judgeable), capSet(m), lookup)
 }
 
-func newModule(c *guide.Curriculum, e entry, caps map[string]bool, lookup Lookup) *Module {
+func newModule(c *curriculum.Curriculum, e entry, caps map[string]bool, lookup Lookup) *Module {
 	p := &Module{e: e, caps: caps, lookup: lookup}
 	for _, id := range e.mod.Prerequisites {
 		name := id
@@ -206,7 +206,7 @@ func (p *Module) unitLines(w int) []string {
 }
 
 // ref finds a unit problem's entry in the module's lists.
-func (p *Module) ref(id catalog.ID) (guide.ProblemRef, bool) {
+func (p *Module) ref(id catalog.ID) (curriculum.ProblemRef, bool) {
 	for _, l := range p.e.mod.Problems {
 		for _, r := range l.Problems {
 			if r.ID == id {
@@ -214,7 +214,7 @@ func (p *Module) ref(id catalog.ID) (guide.ProblemRef, bool) {
 			}
 		}
 	}
-	return guide.ProblemRef{}, false
+	return curriculum.ProblemRef{}, false
 }
 
 // passLine says what passing the trial grants.

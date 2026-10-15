@@ -1,15 +1,15 @@
-// demo-learn shows the RTFM (learn mode) screens on the fixture curriculum
+// demo-rtfm shows the RTFM (learn mode) screens on the fixture curriculum
 // so a human can eyeball them: the man-page index and the module pages it
 // opens. It routes the screens' intents the way the app will (r opens the
 // module in the reader, q/esc pop) and prints what it cannot act on, a
 // StartTrial or an OpenURL, in the status line instead.
 //
-//	go run ./cmd/demo-learn                        # the fixture index
-//	go run ./cmd/demo-learn -module prefix-sums    # straight to a page
-//	go run ./cmd/demo-learn -guide ~/Library/Caches/katharsis/guide/<sha> -usaco
+//	go run ./cmd/demo-rtfm                        # the fixture index
+//	go run ./cmd/demo-rtfm -module prefix-sums    # straight to a page
+//	go run ./cmd/demo-rtfm -guide ~/Library/Caches/katharsis/guide/<sha> -usaco
 //	                                               # a real snapshot, with the
 //	                                               # cached USACO catalog
-//	go run ./cmd/demo-learn -status=false          # screens get the full height
+//	go run ./cmd/demo-rtfm -status=false          # screens get the full height
 //
 // Keys: ctrl+c quits; everything else goes to the screen.
 package main
@@ -26,16 +26,16 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/usaco"
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
-	"katharsis/internal/learn"
 	"katharsis/internal/screens"
-	rtfm "katharsis/internal/screens/learn"
-	"katharsis/internal/screens/learn/fixture"
 	"katharsis/internal/screens/reader"
+	"katharsis/internal/screens/rtfm"
+	"katharsis/internal/screens/rtfm/fixture"
 )
 
 type model struct {
-	cur    *learn.Curriculum
+	cur    *curriculum.Curriculum
 	stack  []screens.Screen
 	status bool
 	last   string
@@ -104,7 +104,7 @@ func (m *model) View() tea.View {
 	}
 	out := m.top().View(w, max(sh, 1))
 	if m.status {
-		s := "demo-learn · ctrl+c quit"
+		s := "demo-rtfm · ctrl+c quit"
 		if m.last != "" {
 			s = "emitted " + m.last + " · " + s
 		}
@@ -122,9 +122,9 @@ func main() {
 	status := flag.Bool("status", true, "show the demo's status line (screens get one row less)")
 	flag.Parse()
 
-	cur, err := learn.Load(*dir)
+	cur, err := curriculum.Load(*dir)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "demo-learn:", err)
+		fmt.Fprintln(os.Stderr, "demo-rtfm:", err)
 		os.Exit(1)
 	}
 	var meta game.Meta
@@ -135,7 +135,7 @@ func main() {
 	if *useUSACO {
 		cat, err := usaco.Open(context.Background())
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "demo-learn: usaco catalog:", err)
+			fmt.Fprintln(os.Stderr, "demo-rtfm: usaco catalog:", err)
 			os.Exit(1)
 		}
 		lookup = cat.Get
@@ -147,12 +147,12 @@ func main() {
 
 	b := rtfm.NewBrowser(cur, meta, judgeable, lookup)
 	if *module != "" && !b.Open(*module) {
-		fmt.Fprintf(os.Stderr, "demo-learn: no module %q\n", *module)
+		fmt.Fprintf(os.Stderr, "demo-rtfm: no module %q\n", *module)
 		os.Exit(2)
 	}
 	m := &model{cur: cur, stack: []screens.Screen{b}, status: *status}
 	if _, err := tea.NewProgram(m).Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "demo-learn:", err)
+		fmt.Fprintln(os.Stderr, "demo-rtfm:", err)
 		os.Exit(1)
 	}
 }

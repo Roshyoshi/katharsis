@@ -11,17 +11,17 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/guide"
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
-	"katharsis/internal/learn"
 	"katharsis/internal/libs"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
-	learnui "katharsis/internal/screens/learn"
 	"katharsis/internal/screens/reader"
+	"katharsis/internal/screens/rtfm"
 )
 
 type learnLoadedMsg struct {
-	cur *learn.Curriculum
+	cur *curriculum.Curriculum
 	err error
 }
 
@@ -29,7 +29,7 @@ type learnLoadedMsg struct {
 // Guide snapshot the USACO source already downloaded, once per session.
 func (m *Model) openLearn() tea.Cmd {
 	if m.cur != nil {
-		return m.push(learnui.NewBrowser(m.cur, m.meta, m.judgeable, m.d.Catalog.Get))
+		return m.push(rtfm.NewBrowser(m.cur, m.meta, m.judgeable, m.d.Catalog.Get))
 	}
 	return m.background(func(ctx context.Context) tea.Msg {
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
@@ -38,7 +38,7 @@ func (m *Model) openLearn() tea.Cmd {
 		if err != nil {
 			return learnLoadedMsg{err: err}
 		}
-		cur, err := learn.Load(dir)
+		cur, err := curriculum.Load(dir)
 		return learnLoadedMsg{cur: cur, err: err}
 	})
 }
@@ -74,9 +74,9 @@ func (m *Model) openModule(id string) tea.Cmd {
 	}))
 }
 
-func (m *Model) module(id string) (learn.Module, bool) {
+func (m *Model) module(id string) (curriculum.Module, bool) {
 	if m.cur == nil {
-		return learn.Module{}, false
+		return curriculum.Module{}, false
 	}
 	return m.cur.Module(id)
 }
@@ -88,7 +88,7 @@ func (m *Model) startTrial(id string) tea.Cmd {
 	if !ok {
 		return fail("no module %q", id)
 	}
-	t := learn.TrialFor(mod, m.judgeable)
+	t := curriculum.TrialFor(mod, m.judgeable)
 	if t.Capability == "" {
 		return fail("%s has no trial: it teaches no gated topic", mod.Title)
 	}

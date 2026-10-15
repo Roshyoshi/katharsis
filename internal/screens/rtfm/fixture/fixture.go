@@ -1,5 +1,5 @@
 // Package fixture is the data the RTFM screens' golden tests and
-// cmd/demo-learn render: internal/learn's fixture snapshot of the USACO
+// cmd/demo-rtfm render: internal/curriculum's fixture snapshot of the USACO
 // Guide (seven real modules, at least one per division), a player holding
 // one capability, and a small hand-built catalog for problem titles and
 // ratings. What a human eyeballs in the demo is what the goldens pin.
@@ -11,29 +11,29 @@ import (
 	"strings"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
-	"katharsis/internal/learn"
 )
 
-// GuideDir is internal/learn/testdata/guide, found from this file so tests
+// GuideDir is internal/curriculum/testdata/guide, found from this file so tests
 // and `go run` work from any directory.
 func GuideDir() string {
 	_, file, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(file), "..", "..", "..", "learn", "testdata", "guide")
+	return filepath.Join(filepath.Dir(file), "..", "..", "..", "curriculum", "testdata", "guide")
 }
 
 // Curriculum loads the fixture snapshot.
-func Curriculum() (*learn.Curriculum, error) { return learn.Load(GuideDir()) }
+func Curriculum() (*curriculum.Curriculum, error) { return curriculum.Load(GuideDir()) }
 
 // Held is the topic whose capability the fixture player holds: Two
 // Pointers passed, Prefix Sums not yet.
 const Held = "two-pointers"
 
 // Meta is the fixture player. The capability name comes from
-// learn.CapabilityFor, so the fixture follows the name table rather than
+// curriculum.CapabilityFor, so the fixture follows the name table rather than
 // pinning a spelling.
 func Meta() game.Meta {
-	return game.Meta{Rating: 1432, Capabilities: []string{learn.CapabilityFor(Held)}}
+	return game.Meta{Rating: 1432, Capabilities: []string{curriculum.CapabilityFor(Held)}}
 }
 
 // Judgeable accepts USACO problems only, as the catalog does until CSES

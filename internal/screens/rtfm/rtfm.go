@@ -10,9 +10,9 @@
 // (read the module), screens.StartTrial, reader.OpenURL and screens.Back.
 //
 // The guide is CC BY-NC-SA 4.0. The browser names it in its header and
-// prints the collection notice (learn.Attribution) at the end of the index;
+// prints the collection notice (curriculum.Attribution) at the end of the index;
 // the module page prints the module's own attribution line.
-package learn
+package rtfm
 
 import (
 	"fmt"
@@ -23,14 +23,14 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/curriculum"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
-	guide "katharsis/internal/learn"
 )
 
 // Judgeable reports whether the catalog can serve and judge a problem; it
 // decides which of a module's problems make its trial unit. nil accepts
-// every USACO and CSES reference, as learn.TrialFor does.
+// every USACO and CSES reference, as curriculum.TrialFor does.
 type Judgeable = func(catalog.ID) bool
 
 // Lookup resolves a catalog problem for display (title, rating, contest).
@@ -48,13 +48,13 @@ const integrationDoors = 2
 // entry is one module as both screens show it. The trial is built once, up
 // front: its unit size and capability appear on every browser row.
 type entry struct {
-	mod   guide.Module
-	trial guide.Trial
+	mod   curriculum.Module
+	trial curriculum.Trial
 	biome string // flavor name of the biome the trial's doors come from
 }
 
-func newEntry(m guide.Module, judgeable Judgeable) entry {
-	t := guide.TrialFor(m, judgeable)
+func newEntry(m curriculum.Module, judgeable Judgeable) entry {
+	t := curriculum.TrialFor(m, judgeable)
 	// The integration topic, not the module's own: General modules have
 	// no topic, and their doors are drawn from Userland ("mixed").
 	return entry{mod: m, trial: t, biome: flavor.BiomeName(t.IntegTopic)}
@@ -62,7 +62,7 @@ func newEntry(m guide.Module, judgeable Judgeable) entry {
 
 // short is how many unit doors the engine tops up from the catalog, by the
 // integration topic and band.
-func (e entry) short() int { return max(guide.DefaultUnitSize-len(e.trial.Unit), 0) }
+func (e entry) short() int { return max(curriculum.DefaultUnitSize-len(e.trial.Unit), 0) }
 
 // capSet is the capabilities the player holds.
 func capSet(m game.Meta) map[string]bool {

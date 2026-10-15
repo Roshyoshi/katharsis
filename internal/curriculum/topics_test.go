@@ -1,4 +1,4 @@
-package learn
+package curriculum
 
 import (
 	"slices"
@@ -41,7 +41,7 @@ func TestCapabilityFor(t *testing.T) {
 }
 
 // A passed trial must open the biomes of the topic it taught: the bug this
-// guards is learn naming a capability the engine's gate never checks.
+// guards is the curriculum naming a capability the engine's gate never checks.
 func TestTrialUnlocksItsBiome(t *testing.T) {
 	for id, topic := range ModuleTopics() {
 		m := &game.Meta{}

@@ -11,8 +11,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
-	"katharsis/internal/learn"
 	"katharsis/internal/screens"
 )
 
@@ -77,11 +77,11 @@ func TestNoLinkScreenWithoutLibs(t *testing.T) {
 	}
 }
 
-// loadGuide gives the app the learn package's fixture guide as its RTFM
+// loadGuide gives the app the curriculum package's fixture guide as its RTFM
 // curriculum.
-func loadGuide(h *harness) *learn.Curriculum {
+func loadGuide(h *harness) *curriculum.Curriculum {
 	h.t.Helper()
-	cur, err := learn.Load(filepath.Join("..", "learn", "testdata", "guide"))
+	cur, err := curriculum.Load(filepath.Join("..", "curriculum", "testdata", "guide"))
 	if err != nil {
 		h.t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestTrialGrantsItsCapability(t *testing.T) {
 	if !ok {
 		t.Fatal("fixture guide has no prefix-sums module")
 	}
-	want := learn.TrialFor(mod, h.m.judgeable).Capability
+	want := curriculum.TrialFor(mod, h.m.judgeable).Capability
 	if want == "" {
 		t.Fatal("prefix-sums grants no capability")
 	}

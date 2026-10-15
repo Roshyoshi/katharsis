@@ -280,9 +280,9 @@ type State struct {
 	Trial *TrialState
 }
 
-// TrialSpec is a learn-mode trial as learn builds it (learn.Trial): the
-// module's unit problems, Easy to Hard, and where to draw the blind
-// integration doors from.
+// TrialSpec is a learn-mode trial as the curriculum builds it
+// (curriculum.Trial): the module's unit problems, Easy to Hard, and where
+// to draw the blind integration doors from.
 type TrialSpec struct {
 	Module, Title string
 	Unit          []catalog.ID

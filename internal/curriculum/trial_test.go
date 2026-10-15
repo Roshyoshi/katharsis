@@ -1,4 +1,4 @@
-package learn
+package curriculum
 
 import (
 	"reflect"
@@ -91,7 +91,7 @@ func TestTrialIntegration(t *testing.T) {
 	}
 }
 
-// TestTrialSpec: learn's trial is what the engine plays, and a short unit
+// TestTrialSpec: the curriculum's trial is what the engine plays, and a short unit
 // is the engine's to top up.
 func TestTrialSpec(t *testing.T) {
 	tr := TrialForN(trialModule, nil, 2)

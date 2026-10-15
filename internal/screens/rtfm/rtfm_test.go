@@ -1,4 +1,4 @@
-package learn_test
+package rtfm_test
 
 import (
 	"flag"
@@ -12,12 +12,12 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
-	guide "katharsis/internal/learn"
 	"katharsis/internal/screens"
-	rtfm "katharsis/internal/screens/learn"
-	"katharsis/internal/screens/learn/fixture"
 	"katharsis/internal/screens/reader"
+	"katharsis/internal/screens/rtfm"
+	"katharsis/internal/screens/rtfm/fixture"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/*.golden from the current output")
@@ -26,7 +26,7 @@ var update = flag.Bool("update", false, "rewrite testdata/*.golden from the curr
 // and a roomy 140×40.
 var sizes = [][2]int{{80, 24}, {140, 40}}
 
-func curriculum(t testing.TB) *guide.Curriculum {
+func loadCurriculum(t testing.TB) *curriculum.Curriculum {
 	t.Helper()
 	c, err := fixture.Curriculum()
 	if err != nil {
@@ -36,12 +36,12 @@ func curriculum(t testing.TB) *guide.Curriculum {
 }
 
 func browser(t testing.TB) *rtfm.Browser {
-	return rtfm.NewBrowser(curriculum(t), fixture.Meta(), fixture.Judgeable, fixture.Lookup)
+	return rtfm.NewBrowser(loadCurriculum(t), fixture.Meta(), fixture.Judgeable, fixture.Lookup)
 }
 
 func module(t testing.TB, id string) *rtfm.Module {
 	t.Helper()
-	c := curriculum(t)
+	c := loadCurriculum(t)
 	m, ok := c.Module(id)
 	if !ok {
 		t.Fatalf("fixture has no module %q", id)
@@ -219,7 +219,7 @@ func TestFits(t *testing.T) {
 		},
 		"module general": func(t *testing.T) screens.Screen { return module(t, "fast-io") },
 		"module bare": func(t *testing.T) screens.Screen {
-			return rtfm.NewModule(nil, guide.Module{ID: "x", Frequency: -1}, game.Meta{}, nil, nil)
+			return rtfm.NewModule(nil, curriculum.Module{ID: "x", Frequency: -1}, game.Meta{}, nil, nil)
 		},
 	}
 	for name, mk := range states {
@@ -441,8 +441,8 @@ func TestBrowserOpenByID(t *testing.T) {
 // ---- capability marks -------------------------------------------------------
 
 func TestCapabilityMarks(t *testing.T) {
-	two := guide.CapabilityFor("two-pointers")
-	pre := guide.CapabilityFor("prefix-sums")
+	two := curriculum.CapabilityFor("two-pointers")
+	pre := curriculum.CapabilityFor("prefix-sums")
 	if two == "" || pre == "" {
 		t.Skip("capability table gates neither prefix sums nor two pointers")
 	}
@@ -483,7 +483,7 @@ func TestModuleKeys(t *testing.T) {
 	wantMsg(t, press(t, m(), "esc"), screens.Back{})
 	wantMsg(t, press(t, m(), "x"), nil)
 	// No URL, no o.
-	bare := rtfm.NewModule(nil, guide.Module{ID: "x", Frequency: -1}, game.Meta{}, nil, nil)
+	bare := rtfm.NewModule(nil, curriculum.Module{ID: "x", Frequency: -1}, game.Meta{}, nil, nil)
 	wantMsg(t, press(t, bare, "o"), nil)
 }
 

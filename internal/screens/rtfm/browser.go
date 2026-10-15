@@ -1,4 +1,4 @@
-package learn
+package rtfm
 
 import (
 	"fmt"
@@ -7,8 +7,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
-	guide "katharsis/internal/learn"
 	"katharsis/internal/screens"
 )
 
@@ -21,7 +21,7 @@ import (
 type Browser struct {
 	divs   []division
 	all    []entry // every module, for column widths and the totals
-	cur    *guide.Curriculum
+	cur    *curriculum.Curriculum
 	caps   map[string]bool
 	lookup Lookup
 
@@ -66,10 +66,10 @@ type row struct {
 }
 
 // NewBrowser builds the index over c, with capability marks from m.
-// judgeable picks each module's trial unit (see learn.TrialFor) and lookup
+// judgeable picks each module's trial unit (see curriculum.TrialFor) and lookup
 // resolves problem titles and ratings for module pages; either may be nil.
 // A nil curriculum shows man's "No manual entry".
-func NewBrowser(c *guide.Curriculum, m game.Meta, judgeable Judgeable, lookup Lookup) *Browser {
+func NewBrowser(c *curriculum.Curriculum, m game.Meta, judgeable Judgeable, lookup Lookup) *Browser {
 	b := &Browser{cur: c, caps: capSet(m), lookup: lookup}
 	if c != nil {
 		for _, d := range c.Divisions {
@@ -603,7 +603,7 @@ func (b *Browser) lines(cols columns, w int) []string {
 		out = append(out, line)
 	}
 	out = append(out, "", bold.Render("COLOPHON"))
-	for _, l := range wrap(guide.Attribution(), modIndent, min(w, 80)) {
+	for _, l := range wrap(curriculum.Attribution(), modIndent, min(w, 80)) {
 		out = append(out, faint.Render(l))
 	}
 	out = append(out, "", spread("katharsis", manName, min(cols.width(), w)))

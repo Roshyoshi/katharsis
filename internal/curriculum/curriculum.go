@@ -1,4 +1,4 @@
-// Package learn turns a snapshot of the USACO Guide repository
+// Package curriculum turns a snapshot of the USACO Guide repository
 // (github.com/cpinitiative/usaco-guide) into learn-mode content: the
 // curriculum tree from content/ordering.ts, each module's MDX converted to
 // terminal-friendly markdown, its problem lists mapped to catalog IDs, and
@@ -9,7 +9,7 @@
 // The guide is CC BY-NC-SA 4.0. Every rendered module ends with its own
 // attribution line, and Attribution gives the notice for the whole
 // collection; screens that show guide content must show one of them.
-package learn
+package curriculum
 
 import (
 	"errors"
@@ -80,7 +80,7 @@ type lazyBody struct {
 // on every call.
 func (m Module) Markdown() (string, error) {
 	if m.body == nil {
-		return "", errors.New("learn: module was not loaded by learn.Load")
+		return "", errors.New("curriculum: module was not loaded by curriculum.Load")
 	}
 	m.body.once.Do(func() { m.body.md, m.body.err = m.body.render() })
 	return m.body.md, m.body.err
@@ -143,7 +143,7 @@ func Load(guideDir string) (*Curriculum, error) {
 	content := filepath.Join(root, "content")
 	if _, err := os.Stat(filepath.Join(content, "ordering.ts")); err != nil {
 		if _, err2 := os.Stat(filepath.Join(guideDir, "ordering.ts")); err2 != nil {
-			return nil, fmt.Errorf("learn: %s has no content/ordering.ts: %w", guideDir, err)
+			return nil, fmt.Errorf("curriculum: %s has no content/ordering.ts: %w", guideDir, err)
 		}
 		content, root = guideDir, filepath.Dir(guideDir)
 	}
@@ -215,7 +215,7 @@ func Load(guideDir string) (*Curriculum, error) {
 			for _, ref := range ch.Modules {
 				f, ok := mdx[ref.ID]
 				if !ok {
-					return nil, fmt.Errorf("learn: ordering.ts lists module %q but no .mdx has that id", ref.ID)
+					return nil, fmt.Errorf("curriculum: ordering.ts lists module %q but no .mdx has that id", ref.ID)
 				}
 				m := Module{
 					ID:            ref.ID,

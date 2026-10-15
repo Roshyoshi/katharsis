@@ -15,9 +15,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
 	"katharsis/internal/hud"
-	"katharsis/internal/learn"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/session"
@@ -79,7 +79,7 @@ type Model struct {
 	// pool is the catalog as the engine draws doors from it; recheck and
 	// every boot start reload it.
 	pool []catalog.Problem
-	cur  *learn.Curriculum // RTFM, loaded on first use
+	cur  *curriculum.Curriculum // RTFM, loaded on first use
 
 	stack   []screens.Screen // top is shown; the bottom is GRUB or a boot screen
 	open    *Door            // the door being played, nil otherwise
