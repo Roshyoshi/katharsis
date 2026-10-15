@@ -74,22 +74,28 @@ var realTale = taleSource{
 
 var tale = realTale
 
-// beatKey reads the story beat waiting at the boot's end (screens.ReadStory).
+// beatKey reads the story beat waiting at the boot's end (story.Read).
 const beatKey = "b"
 
 // beat is the story beat the end of st has waiting, "" for none. At most
 // one per boot end; it waits, unread, for the next boot end otherwise
-// (retention RT6).
+// (retention RT6). It reads the live Meta, so a beat once read (seen)
+// leaves the screen at the next Refresh. The first crash's beat, the
+// Cat, the app plays by itself once the panic has printed (S9 part 2
+// default 2), so it is no teaser.
 func beat(env Env) string {
 	if env.State.Trial != nil {
 		return ""
 	}
 	id, ok := tale.NextBeat(env.State, &env.Meta, flavor.DefaultBeatGap)
-	if !ok {
+	if !ok || id == firstCrash {
 		return ""
 	}
 	return id
 }
+
+// firstCrash is the Cat's beat, which plays on its own (app/story.go).
+const firstCrash = "story.first-crash"
 
 // teaser is the beat's first line, the reason to read it, then its key.
 func teaser(id string, width int) []string {

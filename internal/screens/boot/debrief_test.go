@@ -14,6 +14,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/boot/fixture"
+	"katharsis/internal/screens/story"
 )
 
 // stubTale is story text of realistic length, so the end screens' goldens
@@ -53,6 +54,7 @@ func endCases() []screenCase {
 	return []screenCase{
 		{"crash_end", func() screens.Screen {
 			e := crashEnv(game.OutOfLives)
+			drySpell(&e.Meta)
 			e.End = end()
 			return NewCrash(e)
 		}},
@@ -175,6 +177,7 @@ func TestCrashRebootGuard(t *testing.T) {
 
 func TestEndKeys(t *testing.T) {
 	ce := crashEnv(game.TimedOut)
+	drySpell(&ce.Meta)
 	ce.End = end()
 	cl := clearedEnv()
 	cl.End = end()
@@ -184,9 +187,9 @@ func TestEndKeys(t *testing.T) {
 		key  string
 		want any
 	}{
-		{"crash b", NewCrash(ce), "b", screens.ReadStory{Beat: "story.first-crash"}},
+		{"crash b", NewCrash(ce), "b", story.Read{ID: "milestone.doors.10"}},
 		{"crash g", NewCrash(ce), "g", screens.OpenGrub{}},
-		{"cleared b", NewCleared(cl), "b", screens.ReadStory{Beat: "reveal.prestige.1"}},
+		{"cleared b", NewCleared(cl), "b", story.Read{ID: "reveal.prestige.1"}},
 		{"cleared r", NewCleared(cl), "r", screens.StartBoot{Prestige: 2, Preset: "standard"}},
 		{"cleared s", NewCleared(cl), "s", screens.StartBoot{Prestige: 2, Preset: "short"}},
 		{"cleared p", NewCleared(cl), "p", screens.StartBoot{Prestige: 2, Preset: "patch"}},
@@ -199,9 +202,9 @@ func TestEndKeys(t *testing.T) {
 			t.Errorf("%s: got %#v, want %#v", tc.name, got, tc.want)
 		}
 	}
-	// A beat once read leaves no key behind.
+	// The Cat plays by itself (app/story.go): a crash that owes it teases
+	// nothing, and neither does one whose beat was read.
 	read := crashEnv(game.TimedOut)
-	game.MarkSeen(&read.Meta, "story.first-crash")
 	c := NewCrash(read)
 	if _, cmd := c.Update(press("b")); cmd != nil {
 		t.Errorf("b with no beat waiting emitted %#v", emitted(cmd))
@@ -294,5 +297,26 @@ func TestBudgetLine(t *testing.T) {
 		if tc.want && strings.Contains(strings.ToLower(ansi.Strip(got[0])), "streak") {
 			t.Errorf("budget line %q", got[0])
 		}
+	}
+}
+
+// drySpell makes the end of the fixture's boot 42 owe a milestone: the
+// Cat seen at boot 30, eleven boots without a beat since (RT6's gap).
+func drySpell(m *game.Meta) {
+	m.Seen = append(m.Seen, game.SeenScene{ID: "story.first-crash", Boot: 30})
+}
+
+// A beat read, seen in the boot it ends, leaves no key behind.
+func TestReadBeatLeaves(t *testing.T) {
+	e := crashEnv(game.TimedOut)
+	drySpell(&e.Meta)
+	c := NewCrash(e)
+	if v := ansi.Strip(c.View(120, 40)); !strings.Contains(v, "read on") {
+		t.Fatalf("no teaser before the read:\n%s", v)
+	}
+	e.Meta.Seen = append(e.Meta.Seen, game.SeenScene{ID: "milestone.doors.10", Boot: 42})
+	c.Refresh(e)
+	if v := ansi.Strip(c.View(120, 40)); strings.Contains(v, "read on") || strings.Contains(v, "[b] story") {
+		t.Errorf("the read beat is still teased:\n%s", v)
 	}
 }

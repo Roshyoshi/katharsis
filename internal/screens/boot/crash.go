@@ -10,6 +10,7 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/screens/story"
 	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
@@ -31,7 +32,7 @@ type revealMsg struct{ gen int }
 // one), r screens.StartBoot, and an offered preset's key (s short, p
 // patch) one on that preset; with a live core dump a reboot key asks
 // twice, since the next crash destroys the dump (RT4). b reads the story
-// beat waiting (screens.ReadStory), l opens git log, g and q go to GRUB
+// beat waiting (story.Read), l opens git log, g and q go to GRUB
 // (screens.OpenGrub, UX J12). The editorial is a key, not opened over the
 // panic, so the panic is seen first even after a :q!.
 type Crash struct {
@@ -113,7 +114,7 @@ func (c *Crash) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 			}
 		case beatKey:
 			if id := beat(c.env); id != "" {
-				return c, screens.Emit(screens.ReadStory{Beat: id})
+				return c, screens.Emit(story.Read{ID: id})
 			}
 		case "l":
 			return c, screens.Emit(screens.OpenLog{})

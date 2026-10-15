@@ -2,6 +2,7 @@
 
 
 
+
 [    0.000] boot: prestige 1, preset standard, seed 8f3a
 [  590.000] door_1: AC "Cow Tipping" +48 B
 [  890.000] door_2: retreat from "Haybale Stacking", -1 life
@@ -34,7 +35,6 @@
   kept   rating 1214 → 1180 ▼34 · bank 2.1 KiB · ↺ back as a door Oct 17
          apt strace ▓▓▓▓▓▓░░ 2.1 KiB/2.4 KiB · ≈3 boots
          Gold ▓▓░░░░░░ 22/60 rated doors, then a clear
-         Stub first line of story.first-crash, a question left open. · b read on
   lever  ⏱ 30:00 ran out before a :Submit · ≈66% predicted, curse not counted
   next ▸ u upsolve "Closing the Farm" untimed: +144 B (96 B after the editorial) → strace 2.2 KiB/2.4 KiB
-  [e] editorial  [r] reboot ≈1h41  [s] short ≈1h02  [p] patch  [b] story  [l] git log  [g] GRUB
+  [e] editorial  [r] reboot ≈1h41  [s] short ≈1h02  [p] patch  [l] git log  [g] GRUB

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -12,8 +13,6 @@ import (
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/meta"
-	"katharsis/internal/screens/reader"
-	"katharsis/internal/screens/story"
 	"katharsis/internal/store"
 )
 
@@ -49,32 +48,34 @@ func TestEndToGrub(t *testing.T) {
 }
 
 // The beat waiting at the end of a boot opens with b and, once read, is
-// seen: saved, in /proc/story, and no longer teased.
+// seen: saved, and no longer teased. The Cat is the app's to play, so a
+// boot end that owes it teases nothing.
 func TestEndReadsTheBeat(t *testing.T) {
 	h := newHarness(t)
+	game.MarkSeen(&h.m.meta, "story.first-crash")
+	h.m.meta.Boots, h.m.meta.Rated = 20, 30 // a dry spell: a milestone is due
 	h.crashWithDump()
-	h.send(screens.ReadStory{Beat: "story.first-crash"})
-	if _, ok := h.m.top().(*story.Scene); !ok {
-		t.Fatalf("top is %T, want the beat's scene", h.m.top())
+	h.send(key("x")) // ends the panic's reveal
+	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "read on") {
+		t.Fatalf("no teaser:\n%s", v)
 	}
-	h.send(story.Done{Scene: "story.first-crash"})
+	h.send(key("b"))
+	if got, _ := h.watch(); !slices.Equal(got, []string{"milestone.doors.10"}) {
+		t.Fatalf("b showed %v", got)
+	}
 	if _, ok := h.m.top().(*bootui.Crash); !ok {
 		t.Fatalf("top is %T after the beat, want the crash screen back", h.m.top())
 	}
 	saved, err := h.st.LoadMeta()
-	if err != nil || !game.HasSeen(&saved, "story.first-crash") {
+	if err != nil || !game.HasSeen(&saved, "milestone.doors.10") {
 		t.Fatalf("seen not saved: %+v, %v", saved.Seen, err)
 	}
+	h.send(tickMsg(h.clock.t)) // the next tick hands the screen the new Meta
 	if v := ansi.Strip(h.m.View().Content); strings.Contains(v, "read on") {
 		t.Errorf("a read beat still teased:\n%s", v)
 	}
-	h.send(screens.ReadStory{})
-	r, ok := h.m.top().(*reader.Model)
-	if !ok {
-		t.Fatalf("top is %T, want the reread log", h.m.top())
-	}
-	if v := ansi.Strip(r.View(100, 30)); !strings.Contains(v, "the Cat keeps your grin") || !strings.Contains(v, "a grin without a cat") {
-		t.Errorf("/proc/story lacks the beat:\n%s", v)
+	if got := h.answers(eventBootEndAction, "action"); !slices.Contains(got, "story") {
+		t.Errorf("boot_end_action %v, want a story read", got)
 	}
 }
 

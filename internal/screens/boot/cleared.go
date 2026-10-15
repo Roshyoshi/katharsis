@@ -10,6 +10,7 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/screens/story"
 	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
@@ -23,7 +24,7 @@ import (
 //
 // r or enter emits screens.StartBoot at the highest unlocked prestige, an
 // offered preset's key (s short, p patch) one on that preset (RT7), b
-// reads the story beat waiting (screens.ReadStory), l opens git log, and
+// reads the story beat waiting (story.Read), l opens git log, and
 // g or q goes to GRUB (screens.OpenGrub, UX J12).
 type Cleared struct{ env Env }
 
@@ -48,7 +49,7 @@ func (c *Cleared) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	switch key {
 	case beatKey:
 		if id := beat(c.env); id != "" {
-			return c, screens.Emit(screens.ReadStory{Beat: id})
+			return c, screens.Emit(story.Read{ID: id})
 		}
 	case "l":
 		return c, screens.Emit(screens.OpenLog{})

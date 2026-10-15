@@ -1,3 +1,4 @@
+[ 2642.000] door_4: AC "Moocast" +96 B
 [ 3968.000] Kernel panic - not syncing: out of lives in "The Bovine Shuffle"
 [ 3968.000] CPU: 0 PID: 1 Comm: you Not tainted
 [ 3968.000] Call Trace:
@@ -16,9 +17,8 @@
   kept   rating 1214 → 1180 ▼34 · graphs 1240 → 1210 ▼30 · bank 2.1 KiB
          ↺ back as a door Oct 17
          Gold ▓▓░░░░░░ 22/60 rated doors, then a clear
-         Stub first line of story.first-crash, a question left open. · b read on
   lever  2 failed submits, the best WA 37/52 tests → a case the samples missed;
          an upsolve shows the failing test · ≈74% predicted
   next ▸ u upsolve "The Bovine Shuffle" untimed: +144 B (96 B after the
          editorial)
-  [e] editorial  [r] reboot  [b] story  [l] git log  [g] GRUB
+  [e] editorial  [r] reboot  [l] git log  [g] GRUB

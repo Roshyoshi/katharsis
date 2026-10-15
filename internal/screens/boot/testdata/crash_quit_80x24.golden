@@ -3,6 +3,7 @@
             exitcode=0x00000009 in "Wormhole Sort"
 [ 3524.000] CPU: 0 PID: 1 Comm: you Tainted: M (mystery) B (blind)
 [ 3524.000] Hardware name: katharsis Silver, preset standard, seed 8f3a
+[ 3524.000] Modules linked in: strace(O)
 [ 3524.000] Call Trace:
 [ 3524.000]  do_exit+0x3a/0xc0
 [ 3524.000]  door_5+0xb/0x1e [The Heap]
@@ -17,8 +18,7 @@
   core dumped: 96 B on "Wormhole Sort"
   kept   rating 1214 → 1180 ▼34 · bank 2.1 KiB · ↺ back as a door Oct 17
          Gold ▓▓░░░░░░ 22/60 rated doors, then a clear
-         Stub first line of story.first-crash, a question left open. · b read on
   lever  :q! at 11:14 of 30:00, the best TLE 12/20 tests → the answers held, the
          complexity did not · ≈58% predicted
   next ▸ u upsolve "Wormhole Sort" untimed: +144 B (96 B after the editorial)
-  [e] editorial  [r] reboot  [b] story  [l] git log  [g] GRUB
+  [e] editorial  [r] reboot  [l] git log  [g] GRUB

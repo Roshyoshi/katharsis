@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -12,7 +11,6 @@ import (
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/meta"
-	"katharsis/internal/screens/reader"
 	"katharsis/internal/screens/story"
 	"katharsis/internal/units"
 )
@@ -23,10 +21,10 @@ import (
 // resume (D31).
 
 // Telemetry kinds this file adds (retention RT13): what the player did
-// at the end of a boot, a story beat read, the budget's nudge shown.
+// at the end of a boot and the budget's nudge shown (story.go logs the
+// beats read).
 const (
 	eventBootEndAction = "boot_end_action" // json action: the intent the end screen emitted
-	eventStoryRead     = "story_read"      // json beat: the beat id, "" for the reread log
 	eventNudgeShown    = "nudge_shown"     // json today_ms, budget_ms
 )
 
@@ -149,18 +147,14 @@ func (m *Model) logErr(what string, err error) {
 	}
 }
 
-// debriefIntent handles the end screens' intents and the story's; ok is
+// debriefIntent handles the end screens' own intent, OpenGrub; ok is
 // false for anything else. An intent the end of a boot emits is logged
-// on its way (RT13's boot_end_action), whoever handles it.
+// on its way (RT13's boot_end_action), whoever handles it: a beat's page
+// (story.Read) is story.go's.
 func (m *Model) debriefIntent(msg tea.Msg) (tea.Cmd, bool) {
 	m.endAction(msg)
-	switch msg := msg.(type) {
-	case screens.OpenGrub:
+	if _, ok := msg.(screens.OpenGrub); ok {
 		return m.toGrub(), true
-	case screens.ReadStory:
-		return m.readStory(msg.Beat), true
-	case story.Done:
-		return m.storyDone(msg), true
 	}
 	return nil, false
 }
@@ -182,7 +176,7 @@ func (m *Model) endAction(msg tea.Msg) {
 		action = "git log"
 	case screens.OpenGrub:
 		action = "grub"
-	case screens.ReadStory:
+	case story.Read:
 		action = "story"
 	default:
 		return
@@ -200,62 +194,6 @@ func (m *Model) toGrub() tea.Cmd {
 	m.end = endCache{}
 	m.reset()
 	return m.initTop()
-}
-
-// readStory shows a beat (story.NewBeat), or with id "" the reread log
-// (RT6's /proc/story).
-func (m *Model) readStory(id string) tea.Cmd {
-	m.event(eventStoryRead, "", kv{"beat": id})
-	if id == "" {
-		return m.push(reader.New(storyLog(&m.meta)))
-	}
-	return m.push(story.NewBeat(id))
-}
-
-// storyDone records a scene that finished (story.Done) as seen, saves it,
-// and leaves the scene. A beat read at the end of a boot is seen from
-// then on: the end screen stops teasing it, and the reread log keeps it.
-func (m *Model) storyDone(d story.Done) tea.Cmd {
-	if game.MarkSeen(&m.meta, d.Scene) {
-		if m.inBoot() {
-			m.saved(m.d.Store.Checkpoint(m.meta, m.state))
-		} else {
-			m.saved(m.d.Store.SaveMeta(m.meta))
-		}
-	}
-	if _, ok := m.top().(*story.Scene); ok {
-		m.pop()
-	}
-	m.refresh()
-	return nil
-}
-
-// storyLog is /proc/story: every beat the player has seen, in the order
-// shown, as one page (flavor.StoryLog). Nothing the story says is
-// missable.
-func storyLog(m *game.Meta) reader.Doc {
-	var b strings.Builder
-	b.WriteString("# /proc/story\n\n")
-	log := flavor.StoryLog(m)
-	if len(log) == 0 {
-		b.WriteString("Nothing yet. The story starts with your first boot.\n")
-	}
-	for _, e := range log {
-		when := fmt.Sprintf("boot %d", e.Boot)
-		if e.Boot == 0 {
-			when = "before boot 1"
-		}
-		fmt.Fprintf(&b, "## %s · %s\n\n", e.Title, when)
-		for i, l := range e.Lines {
-			// Markdown's hard break keeps the story's own lines.
-			if i < len(e.Lines)-1 {
-				l += "  "
-			}
-			b.WriteString(l + "\n")
-		}
-		b.WriteString("\n")
-	}
-	return reader.Doc{Title: "/proc/story", Source: "the reread log", Markdown: b.String()}
 }
 
 // quitWarn is D31's warning on quitting with a door open, in the story's

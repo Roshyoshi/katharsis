@@ -7,7 +7,8 @@
 [ 4650.337]  hrtimer_interrupt+0x10f/0x240
 [ 4650.337]  door_5+0x1e/0x1e [The Heap]
 [ 4650.337]  door_4+0xe/0x1e [The Heap]
-[ 4650.337]  ... 3 older doors
+[ 4650.337]  door_3+0xc/0xf [Userland]
+[ 4650.337]  ... 2 older doors
 [ 4650.337]  boot_42+0x4d/0x69
 [ 4650.337] ---[ end Kernel panic ]---
 
@@ -18,7 +19,6 @@
   core dumped: 96 B on "Closing the Farm"
   kept   rating 1214 → 1180 ▼34 · bank 2.1 KiB · ↺ back as a door Oct 17
          Gold ▓▓░░░░░░ 22/60 rated doors, then a clear
-         Stub first line of story.first-crash, a question left open. · b read on
   lever  ⏱ 30:00 ran out before a :Submit · ≈66% predicted, curse not counted
   next ▸ u upsolve "Closing the Farm" untimed: +144 B (96 B after the editorial)
-  [e] editorial  [r] reboot  [b] story  [l] git log  [g] GRUB
+  [e] editorial  [r] reboot  [l] git log  [g] GRUB

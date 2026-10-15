@@ -105,7 +105,8 @@ func TestCredits(t *testing.T) {
 	md := Credits(l, DefaultSettings())
 	for _, want := range []string{"東方Project二次創作", "ZUN", "arranged by a (original: ZUN, Touhou 6)",
 		"[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)", "https://example.org/a",
-		"Silence", "sfx.toml", "ctrl+t", "All 1 tracks are downloaded"} {
+		"Silence", "sfx.toml", "ctrl+t", "All 1 tracks are downloaded",
+		"Lewis Carroll", "public domain", "Abelson and Gerald Jay Sussman", "CC BY-SA 4.0"} {
 		if !strings.Contains(md, want) {
 			t.Errorf("credits lack %q:\n%s", want, md)
 		}

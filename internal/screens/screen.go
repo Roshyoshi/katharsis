@@ -53,7 +53,4 @@ type (
 	UseTheme struct{ Theme string }
 	// OpenGrub leaves a boot that has ended for the GRUB menu (UX J12).
 	OpenGrub struct{}
-	// ReadStory shows the story beat Beat (story.NewBeat), or with Beat ""
-	// the reread log, /proc/story (retention RT6).
-	ReadStory struct{ Beat string }
 )

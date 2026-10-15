@@ -101,6 +101,7 @@ func Credits(l *Library, set Settings) string {
 	b.WriteString("USACO problems, tests and analyses are from usaco.org. The problem index and learn mode " +
 		"use the USACO Guide (CC BY-NC-SA 4.0). Codeforces problems, statements and editorials come from " +
 		"the open-r1/codeforces dataset (CC BY 4.0); statements and editorials are by their Codeforces authors.\n\n")
+	b.WriteString(StoryCredit + "\n\n")
 	b.WriteString("## Software\n\n")
 	b.WriteString("katharsis plays VGS songs through a Go port of SUZUKI PLAN's VGS MML compiler and BGM " +
 		"decoder (https://github.com/suzukiplan/tohovgs-cli), under their license:\n\n")
@@ -163,3 +164,12 @@ func creditEntry(t Track) string {
 	}
 	return b.String()
 }
+
+// StoryCredit is the story's sources, as the README and the RTFM
+// COLOPHON credit them: Carroll is in the public domain, SICP under CC
+// BY-SA 4.0, quoted verbatim and credited.
+const StoryCredit = "The story quotes Lewis Carroll's *Alice's Adventures in Wonderland* (1865) and " +
+	"*Through the Looking-Glass* (1871), which are in the public domain, and short passages of " +
+	"*Structure and Interpretation of Computer Programs*, 2nd ed., by Harold Abelson and Gerald Jay " +
+	"Sussman with Julie Sussman (MIT Press, 1996), licensed under " +
+	"[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Quotes are verbatim and credited."
