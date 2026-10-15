@@ -36,7 +36,8 @@ var (
 	haveCompiler bool
 	sample       judge.Profile
 	probeTook    time.Duration
-	// profiles is every sample-ish profile that runs here, plus Full.
+	// profiles is every sample-ish profile that runs here, plus Full and
+	// GCCFull.
 	profiles []judge.Profile
 	home     string
 )
@@ -94,18 +95,25 @@ func names(ps []judge.Profile) []string {
 	return s
 }
 
-// discoverProfiles returns Full, the chosen sample profile, and every other
+// discoverProfiles returns Full, GCCFull where g++ builds run here (it
+// judges :Submit there), the chosen sample profile, and every other
 // candidate whose hello world runs within 3 s (as probe.go's runs does).
 func discoverProfiles() []judge.Profile {
-	ps := []judge.Profile{judge.Full, sample}
-	for _, p := range []judge.Profile{judge.Samples, judge.AppleSamples, judge.HardenedSamples} {
-		if p.Name == sample.Name {
-			continue
-		}
+	runs := func(p judge.Profile) bool {
 		if helloRuns(p) {
+			return true
+		}
+		fmt.Fprintf(os.Stderr, "judgeqa: profile %q does not run here; skipped\n", p.Name)
+		return false
+	}
+	ps := []judge.Profile{judge.Full}
+	if runs(judge.GCCFull) {
+		ps = append(ps, judge.GCCFull)
+	}
+	ps = append(ps, sample)
+	for _, p := range []judge.Profile{judge.Samples, judge.AppleSamples, judge.HardenedSamples} {
+		if p.Name != sample.Name && runs(p) {
 			ps = append(ps, p)
-		} else {
-			fmt.Fprintf(os.Stderr, "judgeqa: profile %q does not run here; skipped\n", p.Name)
 		}
 	}
 	return ps

@@ -43,7 +43,7 @@ type vcase struct {
 
 func kind(p judge.Profile) string {
 	switch {
-	case p.Name == judge.Full.Name:
+	case p.Name == judge.Full.Name, p.Name == judge.GCCFull.Name:
 		return "full"
 	case sanitizes(p, "address"):
 		return "asan"
@@ -152,10 +152,13 @@ func verdictCases() []vcase {
 		ex(judge.RE).because(sigfpe), ex(judge.RE, "division by zero"), ex(judge.RE, "division by zero")))
 	add(mk("ub_signed_overflow", progOverflow, "2147483647\n", "-2147483648\n",
 		nil, ex(judge.RE, "signed integer overflow", "sol.cpp:5"), ex(judge.RE, "signed integer overflow", "sol.cpp:5")))
+	// Against libstdc++ (_GLIBCXX_ASSERTIONS) the library's bounds check
+	// stops v[i] before ASan sees the access, and is the report.
+	bounds := "|libstdc++: __n < this->size()"
 	add(mk("re_heap_oob", progHeapOOB, "10\n", "1\n",
-		nil, ex(judge.RE, "heap-buffer-overflow", "sol.cpp:7"), ex(judge.RE, "out of bounds", "sol.cpp:7")))
+		nil, ex(judge.RE, "heap-buffer-overflow"+bounds, "sol.cpp:7"), ex(judge.RE, "out of bounds", "sol.cpp:7")))
 	add(mk("re_container_oob", progContainerOOB, "6\n", "1 8\n",
-		nil, ex(judge.RE, "overflow", "sol.cpp:8"), ex(judge.RE, "out of bounds", "sol.cpp:8")))
+		nil, ex(judge.RE, "overflow"+bounds, "sol.cpp:8"), ex(judge.RE, "out of bounds", "sol.cpp:8")))
 	add(mk("re_global_oob", progGlobalOOB, "10\n", "1\n",
 		nil, ex(judge.RE, "sol.cpp:6"), ex(judge.RE, "sol.cpp:6")))
 	add(mk("re_use_after_free", progUAF, "0\n", "3\n",
@@ -165,9 +168,14 @@ func verdictCases() []vcase {
 	f, a, h = all(ex(judge.OLE))
 	add(mk("ole_infinite_print", progSpam, "", "", f, a, h))
 	f, a, h = all(ex(judge.AC).because("stderr is not output"))
-	add(mk("stderr_64MiB_then_answer", progStderr, "64 1 2\n", "3\n", f, a, h))
+	// Writing 64 MiB costs about a second of CPU (1005-1136 ms at -O2
+	// seen), so a 1 s limit would judge its speed; the case is about where
+	// stderr goes.
+	stderr := mk("stderr_64MiB_then_answer", progStderr, "64 1 2\n", "3\n", f, a, h)
+	stderr.lim = judge.Limits{Time: 4 * time.Second}
+	add(stderr)
 	add(mk("re_after_20KB_debug_stderr", progDebugThenOOB, "800 10\n", "1\n",
-		nil, ex(judge.RE, "heap-buffer-overflow", "sol.cpp:8").because("debug prints to cerr are routine; the report must survive them"),
+		nil, ex(judge.RE, "heap-buffer-overflow"+bounds, "sol.cpp:8").because("debug prints to cerr are routine; the report must survive them"),
 		ex(judge.RE, "out of bounds")))
 
 	// ---- processes ---------------------------------------------------------
@@ -367,7 +375,7 @@ func TestQASlowSymbolizer(t *testing.T) {
 	t.Setenv("ASAN_SYMBOLIZER_PATH", filepath.Join(dir, "llvm-symbolizer"))
 	t.Setenv("UBSAN_SYMBOLIZER_PATH", filepath.Join(dir, "llvm-symbolizer"))
 	for _, p := range profiles {
-		if p.Name == judge.Full.Name {
+		if kind(p) == "full" {
 			continue
 		}
 		b := build(t, "re_mod_by_zero", progMod, p)

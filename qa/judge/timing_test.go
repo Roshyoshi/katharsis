@@ -238,11 +238,11 @@ func TestQABenchmarks(t *testing.T) {
 					best = r
 				}
 			}
-			if p.Name == judge.Full.Name {
+			if kind(p) == "full" {
 				fullCPU = best.CPU
 			}
 			ratio := ""
-			if fullCPU > 0 && p.Name != judge.Full.Name {
+			if fullCPU > 0 && kind(p) != "full" {
 				ratio = fmt.Sprintf(" (%.1fx O2, slack %.0f)", float64(best.CPU)/float64(fullCPU), p.Slack)
 			}
 			note("bench/"+bc.name, p.Name, fmt.Sprintf("cpu=%dms wall=%dms rss=%s%s",
