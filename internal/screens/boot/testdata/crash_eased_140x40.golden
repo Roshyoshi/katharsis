@@ -3,7 +3,6 @@
 
 
 
-
 [    0.000] boot: prestige 1, preset standard, seed 8f3a
 [  590.000] door_1: AC "Cow Tipping" +48 B
 [  890.000] door_2: retreat from "Haybale Stacking", -1 life
@@ -36,5 +35,6 @@
          apt strace ▓▓▓▓▓▓░░ 2.1 KiB/2.4 KiB · ≈3 boots
          Gold ▓▓░░░░░░ 22/60 rated doors, then a clear
   lever  2 failed submits, the best WA 37/52 tests → a case the samples missed; an upsolve shows the failing test · ≈74% predicted
+         ≈26% forecast to crash in Userland
   next ▸ u upsolve "The Bovine Shuffle" untimed: +144 B (96 B after the editorial) → strace 2.2 KiB/2.4 KiB
   [e] editorial  [r] reboot ≈1h41  [s] short ≈1h02  [p] patch  [l] git log  [g] GRUB

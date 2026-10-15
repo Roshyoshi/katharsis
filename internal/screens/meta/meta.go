@@ -83,8 +83,20 @@ type Stats struct {
 	LifetimeBytes int64
 	Bank          int64
 
+	// EarlyCrash is the engine's forecast of a crash in the first biome
+	// against what the last boots with one did (D36: the predicted chance,
+	// shown after the doors); zero Boots hides it.
+	EarlyCrash EarlyCrash
+
 	// Retention is the retention panel (retention.go); nil hides it.
 	Retention *Retention
+}
+
+// EarlyCrash is the engine's mean forecast of a crash in the first biome
+// (guardrail G1) over Boots boots, Crashed of which did.
+type EarlyCrash struct {
+	Boots, Crashed int
+	Forecast       float64
 }
 
 // RatingPoint is the player's rating after one rated attempt.

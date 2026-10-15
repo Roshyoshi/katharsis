@@ -27,6 +27,7 @@ func TestDoorsHideClearChance(t *testing.T) {
 		func() *Doors { return NewDoors(env(fixture.Doors())) },
 		func() *Doors { return NewDoors(env(fixture.DoorsFork())) },
 		func() *Doors { return NewDoors(env(fixture.Boss())) },
+		func() *Doors { return NewDoors(env(fixture.Userland())) }, // a forecast and an easing
 	} {
 		for _, sz := range fitSizes {
 			v := ansi.Strip(st().View(sz[0], sz[1]))
@@ -293,5 +294,27 @@ func TestFloorRating(t *testing.T) {
 	}
 	if s := doorStats(st.Doors[1]); strings.Contains(ansi.Strip(s), "≤") {
 		t.Errorf("a door above the floor: %q", ansi.Strip(s))
+	}
+}
+
+// The engine's forecast of a crash in the first biome shows after the
+// doors (D36), on the crash's lever line, never on a door card; a trial
+// and a boot without one show none.
+func TestForecastAfterDoors(t *testing.T) {
+	const line = "≈26% forecast to crash in Userland"
+	e := crashEnv(game.TimedOut)
+	e.State.Forecast = 0.26
+	if v := ansi.Strip(NewCrash(e).View(140, 40)); !strings.Contains(v, line) {
+		t.Errorf("no forecast on the lever line:\n%s", v)
+	}
+	if v := ansi.Strip(NewDoors(env(fixture.Userland())).View(140, 40)); strings.Contains(v, "forecast") {
+		t.Errorf("a forecast before the doors:\n%s", v)
+	}
+	e.State.Trial = &game.TrialState{}
+	if s := forecastItem(e.State); s != "" {
+		t.Errorf("trial: %q", ansi.Strip(s))
+	}
+	if s := forecastItem(fixture.Crash(game.TimedOut)); s != "" {
+		t.Errorf("no forecast: %q", ansi.Strip(s))
 	}
 }

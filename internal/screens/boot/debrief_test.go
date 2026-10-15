@@ -87,10 +87,12 @@ func endCases() []screenCase {
 			e.End.Firsts = []string{"first Heisenbug kill", "fastest clear: 2:29:52"}
 			return NewCleared(e)
 		}},
-		// The easing the boot ran with, in kept with its numbers (RT8).
+		// The easing the boot ran with, in kept with its numbers (RT8), and the
+		// engine's forecast on the lever line (D36).
 		{"crash_eased", func() screens.Screen {
 			e := crashEnv(game.OutOfLives)
 			e.State.Ease = fixture.Userland().Ease
+			e.State.Forecast = fixture.Userland().Forecast
 			e.End = end()
 			return NewCrash(e)
 		}},

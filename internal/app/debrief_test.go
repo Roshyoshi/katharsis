@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -178,5 +179,30 @@ func TestRegressionFixedNote(t *testing.T) {
 	h.send(submitMsg{})
 	if !strings.Contains(h.m.flash, "White Queen forgets it") {
 		t.Errorf("flash %q, want regression.cleared", h.m.flash)
+	}
+}
+
+// A crash shows the engine's forecast of a crash in the first biome on
+// its lever line, and top checks it against the boots (D36), after the
+// doors.
+func TestForecastShownAfter(t *testing.T) {
+	h := newHarness(t)
+	h.crashWithDump()
+	f, early := h.m.state.Forecast, 0
+	if h.m.state.Biome == 0 {
+		early = 1 // it crashed where the forecast looks
+	}
+	if f <= 0 {
+		t.Fatal("the boot has no forecast")
+	}
+	want := fmt.Sprintf("≈%.0f%% forecast to crash in Userland", 100*f)
+	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, want) {
+		t.Errorf("crash screen lacks %q:\n%s", want, v)
+	}
+	h.send(screens.OpenGrub{})
+	h.send(screens.OpenTop{})
+	want = fmt.Sprintf("Userland crash: ≈%.0f%% forecast, %d/1 boots", 100*f, early)
+	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, want) {
+		t.Errorf("top lacks %q:\n%s", want, v)
 	}
 }

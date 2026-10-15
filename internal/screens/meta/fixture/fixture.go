@@ -236,6 +236,8 @@ func Stats() meta.Stats {
 		Uptime:        51*time.Hour + 12*time.Minute + 9*time.Second,
 		LifetimeBytes: 12698,
 		Bank:          1331,
+		// The last 20 boots: the engine forecast 18% early crashes, 3 did.
+		EarlyCrash: meta.EarlyCrash{Boots: 20, Crashed: 3, Forecast: 0.18},
 	}
 }
 

@@ -192,7 +192,7 @@ func (t *Top) meters(w int) []string {
 		}
 	}
 
-	return []string{
+	out := []string{
 		label("Boots") + val(fmt.Sprint(st.Boots)) + ", " + counted(st.FullClears, "full clear") + ", " +
 			counted(crashes, "crash"),
 		label("Crashes") + strings.Join(causes, ", "),
@@ -202,6 +202,13 @@ func (t *Top) meters(w int) []string {
 		label("Bytes") + val(units.Bytes(st.LifetimeBytes)) + " lifetime, " + val(units.Bytes(st.Bank)) + " bank",
 		label("Trend") + ui.Focus.Render(sparkline(t.ratings, max(min(w-20, 30), 0))) + delta + ui.Muted.Render(" last 10"),
 	}
+	// The engine's forecast against the boots, as calibration (D36): it is
+	// never shown before a door.
+	if e := st.EarlyCrash; e.Boots > 0 {
+		out = append(out, label("Userland crash")+ui.G.Approx+val(fmt.Sprintf("%.0f%%", 100*e.Forecast))+" forecast, "+
+			val(fmt.Sprint(e.Crashed))+fmt.Sprintf("/%d boots", e.Boots))
+	}
+	return out
 }
 
 // legend explains the solves bar's colours, indented under the bar when

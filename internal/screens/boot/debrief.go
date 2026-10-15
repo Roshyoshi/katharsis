@@ -428,6 +428,17 @@ func leverText(env Env, l game.Lever) string {
 	return s
 }
 
+// forecastItem is the engine's forecast, as the boot began, of a crash in
+// its first biome (State.Forecast, guardrail G1): the crash's lever names
+// it beside the door's own predicted chance, after the doors as D36 has
+// it. "" for a boot with none (a trial, or one saved before it existed).
+func forecastItem(st *game.State) string {
+	if st.Forecast <= 0 || st.Trial != nil {
+		return ""
+	}
+	return ui.Muted.Render(fmt.Sprintf("%s%.0f%% forecast to crash in %s", ui.G.Approx, 100*st.Forecast, biomeLabel(st, 0)))
+}
+
 // verdictHint is where the verdict points: what was right, and what to
 // look at next. Upsolves show the failing test, which a boot hides.
 func verdictHint(l game.Lever) string {

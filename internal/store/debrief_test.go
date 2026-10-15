@@ -155,3 +155,42 @@ func fileBytes(t *testing.T, path string) []byte {
 	}
 	return b
 }
+
+// The forecast against the boots (D36): finished boots with a forecast,
+// those that crashed in their first biome, and the mean forecast. An
+// abandoned boot and one without a forecast do not count.
+func TestEarlyCrashes(t *testing.T) {
+	t.Parallel()
+	s := openClocked(t, tempPath(t), t0)
+	m := sampleMeta()
+	for i, c := range []struct {
+		forecast float64
+		biome    int
+		end      string
+	}{
+		{0.2, 0, "crashed"}, {0.3, 1, "crashed"}, {0.1, 1, "cleared"}, {0, 0, "crashed"}, {0.4, 0, "abandoned"},
+	} {
+		st := midBoot(i+1, t0.Add(time.Duration(i)*time.Hour))
+		st.Forecast, st.Biome = c.forecast, c.biome
+		switch c.end {
+		case "crashed":
+			crash(st, game.TimedOut)
+		case "cleared":
+			clearBoot(st)
+		}
+		m.Boots = st.Boot
+		checkpoint(t, s, m, st)
+		if c.end == "abandoned" {
+			if err := s.AbandonBoot(st.Boot); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	near := func(a, b float64) bool { return a-b < 1e-9 && b-a < 1e-9 }
+	if e, err := s.EarlyCrashes(20); err != nil || e.Boots != 3 || e.Crashed != 1 || !near(e.Forecast, 0.2) {
+		t.Errorf("EarlyCrashes(20) = %+v, %v; want 3 boots, 1 crashed early, forecast 0.2", e, err)
+	}
+	if e, err := s.EarlyCrashes(2); err != nil || e.Boots != 2 || e.Crashed != 0 || !near(e.Forecast, 0.2) {
+		t.Errorf("EarlyCrashes(2) = %+v, %v; want boots 3 and 2: none early, forecast 0.2", e, err)
+	}
+}

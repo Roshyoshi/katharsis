@@ -152,8 +152,20 @@ func (m *Model) openTop() tea.Cmd {
 	if err != nil {
 		return fail("top: %v", err)
 	}
-	return m.push(meta.NewTop(m.withRetention(m.stats(st, hist))))
+	s := m.stats(st, hist)
+	// The engine's forecast against the last boots (D36); a query that
+	// fails leaves the line out.
+	if e, err := m.d.Store.EarlyCrashes(forecastBoots); err != nil {
+		m.logErr("early crashes", err)
+	} else {
+		s.EarlyCrash = meta.EarlyCrash{Boots: e.Boots, Crashed: e.Crashed, Forecast: e.Forecast}
+	}
+	return m.push(meta.NewTop(m.withRetention(s)))
 }
+
+// forecastBoots is how many recent boots top checks the engine's
+// first-biome forecast against.
+const forecastBoots = 20
 
 // docMsg carries a doc to show; editorial is its problem when it is an
 // editorial.

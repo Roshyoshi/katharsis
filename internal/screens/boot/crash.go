@@ -350,7 +350,7 @@ func (c *Crash) end(cr game.Crash, verdict, title string, seed uint64, width int
 	ps = append(ps,
 		piece{lines: section("kept", kept, width)},
 		piece{lines: teaser(beat(env), width), pri: 1},
-		piece{lines: section("lever", []string{leverText(env, b.Lever)}, width)},
+		piece{lines: section("lever", []string{leverText(env, b.Lever), forecastItem(env.State)}, width)},
 		piece{lines: c.next(b, width)},
 		piece{lines: budgetLine(env.End, width), pri: 3},
 		piece{lines: c.keys(b, width)},

@@ -177,3 +177,38 @@ func (s *Store) Played(seed uint64) (bool, error) {
 	}
 	return err == nil, err
 }
+
+// EarlyCrash is the engine's forecast of a crash in the first biome, the
+// guardrail G1 figure (State.Forecast), against what the boots did: the
+// predicted chance shown after the doors (D36), in `top`.
+type EarlyCrash struct {
+	Boots    int     // finished boots that have a forecast
+	Crashed  int     // of them, crashed in their first biome
+	Forecast float64 // their mean forecast
+}
+
+// EarlyCrashes is EarlyCrash over the last n finished boots with a
+// forecast: trials have none, and boots saved before it existed read 0.
+func (s *Store) EarlyCrashes(n int) (EarlyCrash, error) {
+	var e EarlyCrash
+	err := eachRow(s.db, `
+		SELECT json_extract(state, '$.Forecast'),
+			outcome = 'crashed' AND json_extract(state, '$.Biome') = 0
+		FROM boots WHERE `+ended+` AND json_extract(state, '$.Forecast') > 0
+		ORDER BY id DESC LIMIT ?`,
+		[]any{sqlLimit(n)}, func(rows *sql.Rows) error {
+			var (
+				p     float64
+				early int
+			)
+			err := rows.Scan(&p, &early)
+			e.Boots++
+			e.Crashed += early
+			e.Forecast += p
+			return err
+		})
+	if e.Boots > 0 {
+		e.Forecast /= float64(e.Boots)
+	}
+	return e, err
+}
