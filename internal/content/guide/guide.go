@@ -54,8 +54,18 @@ var (
 
 	retryDelay = 2 * time.Second
 
+	// idleTimeout cancels an attempt that received no bytes for this long:
+	// a connection that stays open and sends nothing never fails by
+	// itself, and the caller's only bound was its whole load (10 min).
+	// The retry loop then starts over.
+	idleTimeout = 30 * time.Second
+
 	mu sync.Mutex // serializes snapshots within the process
 )
+
+// Progress, when set, is told the bytes received so far as a download
+// streams in, for a caller that shows it (the game, before its TUI).
+var Progress func(received int64)
 
 // Snapshot returns the directory holding the pinned snapshot, downloading
 // and extracting it on first use. The directory appears atomically (extract
@@ -139,6 +149,18 @@ func download(ctx context.Context, url, prefix, dst string) error {
 }
 
 func fetchOnce(ctx context.Context, url, prefix, dst string) (retry bool, err error) {
+	// The idle timer runs from the request on and restarts with every read
+	// that gets bytes, so it bounds a stall before the headers too.
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+	idle := time.AfterFunc(idleTimeout, func() { cancel(errStalled) })
+	defer idle.Stop()
+	defer func() {
+		if errors.Is(context.Cause(ctx), errStalled) {
+			retry, err = true, fmt.Errorf("GET %s: %w: no data for %v", url, errStalled, idleTimeout)
+		}
+	}()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return false, err
@@ -153,12 +175,36 @@ func fetchOnce(ctx context.Context, url, prefix, dst string) (retry bool, err er
 		return resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests,
 			fmt.Errorf("GET %s: %s", url, resp.Status)
 	}
-	if err := extract(io.LimitReader(resp.Body, maxDownload), prefix, dst); err != nil {
+	body := &idleReader{r: resp.Body, idle: idle, progress: Progress}
+	if err := extract(io.LimitReader(body, maxDownload), prefix, dst); err != nil {
 		// A cut connection shows up as a gzip or tar error; worth a retry.
 		// A bad archive will be just as bad next time.
 		return !errors.Is(err, errBadArchive), err
 	}
 	return false, nil
+}
+
+var errStalled = errors.New("download stalled")
+
+// idleReader restarts the idle timer on every read that brings bytes and
+// reports the running total to progress.
+type idleReader struct {
+	r        io.Reader
+	idle     *time.Timer
+	progress func(int64)
+	n        int64
+}
+
+func (r *idleReader) Read(p []byte) (int, error) {
+	n, err := r.r.Read(p)
+	if n > 0 {
+		r.idle.Reset(idleTimeout)
+		r.n += int64(n)
+		if r.progress != nil {
+			r.progress(r.n)
+		}
+	}
+	return n, err
 }
 
 var errBadArchive = errors.New("bad archive")

@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"katharsis/internal/app"
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/codeforces"
+	"katharsis/internal/content/guide"
 	"katharsis/internal/content/usaco"
 	"katharsis/internal/flavor"
 	"katharsis/internal/screens"
@@ -105,7 +107,9 @@ func runGame(args []string) error {
 	// indexes, which can take a minute. Later runs read them from the cache.
 	fmt.Fprintln(os.Stderr, "katharsis: loading problems… (the first run downloads the USACO Guide and Codeforces indexes)")
 	loadCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	done := showDownload()
 	us, err := usaco.Open(loadCtx)
+	done()
 	cancel()
 	if err != nil {
 		return fmt.Errorf("USACO catalog: %w", err)
@@ -165,6 +169,25 @@ func runGame(args []string) error {
 
 	_, err = p.Run()
 	return err
+}
+
+// showDownload prints the USACO Guide download as it moves, on one line
+// redrawn per MB, until done is called. A stall the guide then retries
+// shows as the count stopping and starting over.
+func showDownload() (done func()) {
+	var shown atomic.Int64
+	shown.Store(-1)
+	guide.Progress = func(n int64) {
+		if mb := n >> 20; shown.Swap(mb) != mb {
+			fmt.Fprintf(os.Stderr, "\rkatharsis: downloading the USACO Guide… %d MB", mb)
+		}
+	}
+	return func() {
+		guide.Progress = nil
+		if shown.Load() >= 0 {
+			fmt.Fprintln(os.Stderr)
+		}
+	}
 }
 
 // play runs afplay in the background; a missing sound is silence.
