@@ -162,9 +162,9 @@ func (c *Crash) elements(width, height int) [][]string {
 	if cr.Door.Problem != "" {
 		title = c.env.problem(cr.Door.Problem).Title
 	}
-	verdict := cr.Verdict
+	verdict := string(cr.Verdict)
 	if verdict == "" {
-		verdict = c.attempt(cr).LastVerdict
+		verdict = string(c.attempt(cr).LastVerdict)
 	}
 	// One seed per crash, so the quote and the kernel frames stay put
 	// across redraws and differ between crashes.

@@ -166,7 +166,7 @@ func hpBar(att game.Attempt, width int) string {
 			more += "s"
 		}
 		if att.LastVerdict != "" {
-			more += " · " + att.LastVerdict
+			more += " · " + string(att.LastVerdict)
 		}
 	}
 	if judging && att.Total > 0 {

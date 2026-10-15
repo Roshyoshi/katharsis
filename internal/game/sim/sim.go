@@ -484,7 +484,7 @@ func (b *boot) attempt(biome int) {
 }
 
 func (b *boot) fail() game.SubmitResult {
-	v := []string{"WA", "WA", "WA", "TLE", "RE", "CE"}[b.rng.IntN(6)]
+	v := []game.Verdict{"WA", "WA", "WA", "TLE", "RE", "CE"}[b.rng.IntN(6)]
 	return game.SubmitResult{Verdict: v, Passed: b.rng.IntN(20), Total: 20}
 }
 

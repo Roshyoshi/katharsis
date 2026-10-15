@@ -556,7 +556,7 @@ func (m *Model) onJudged(j judgedMsg) tea.Cmd {
 	if m.open != nil && m.open.Upsolve {
 		return tea.Batch(harvest, m.onUpsolveJudged(j))
 	}
-	cmd, err := m.tryAt(game.SubmitResult{Verdict: j.verdict, Passed: j.passed, Total: j.total}, at)
+	cmd, err := m.tryAt(game.SubmitResult{Verdict: game.Verdict(j.verdict), Passed: j.passed, Total: j.total}, at)
 	if err != nil {
 		cmd = func() tea.Msg { return errMsg{err} }
 	}

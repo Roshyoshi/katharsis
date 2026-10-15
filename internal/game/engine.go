@@ -185,7 +185,7 @@ func (e *engine) chooseDoor(i int) error {
 		return invalid("door %d of %d", i, len(s.Doors))
 	}
 	d := s.Doors[i]
-	s.Current = &Attempt{Door: d, Opened: e.now, Deadline: e.now.Add(d.Timer)}
+	s.Current = &Attempt{Door: d, Opened: e.now, Deadline: e.now.Add(d.Timer), Biome: s.Biome}
 	s.Doors = nil
 	s.Phase = PhaseProblem
 	mods := doorMods(d)
@@ -250,12 +250,12 @@ func (e *engine) submit(v SubmitResult) error {
 		a.Total = v.Total
 	}
 	a.BestPass = max(a.BestPass, v.Passed)
-	if v.Verdict == "AC" {
+	if v.Verdict == Accepted {
 		e.clear()
 		return nil
 	}
 	a.Failed++
-	if slices.Contains(s.Rules.FreeVerdicts, v.Verdict) {
+	if slices.Contains(s.Rules.FreeVerdicts, string(v.Verdict)) {
 		e.logf("%s: %s, no charge", e.door(), v.Verdict)
 		return nil
 	}

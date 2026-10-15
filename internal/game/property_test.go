@@ -172,6 +172,23 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	if s.Current != nil && s.Current.Door.Regression {
 		regDoors++
 	}
+	// Each attempt records the biome its door opened in, which is where
+	// walking the clears through the rooms puts it (only a clear moves on
+	// a room), and the open door is in the current biome.
+	biome, room := 0, 0
+	for _, h := range s.History {
+		if h.Biome != biome {
+			fail("attempt %+v in biome %d, the walk says %d", h.Door, h.Biome, biome)
+		}
+		if h.Outcome == game.Cleared {
+			if room++; room >= s.Biomes[biome].Rooms && biome < len(s.Biomes)-1 {
+				biome, room = biome+1, 0
+			}
+		}
+	}
+	if s.Current != nil && s.Current.Biome != s.Biome {
+		fail("open door in biome %d, boot in %d", s.Current.Biome, s.Biome)
+	}
 	cleared, rated := 0, 0
 	for _, h := range s.History {
 		if h.Door.Regression {
@@ -296,7 +313,7 @@ func (f *fuzzer) action(s *game.State) game.Action {
 }
 
 func (f *fuzzer) submit() game.SubmitResult {
-	v := []string{"AC", "AC", "AC", "WA", "TLE", "RE", "MLE", "CE"}[f.rng.IntN(8)]
+	v := []game.Verdict{"AC", "AC", "AC", "WA", "TLE", "RE", "MLE", "CE"}[f.rng.IntN(8)]
 	return game.SubmitResult{Verdict: v, Passed: f.rng.IntN(11), Total: 10}
 }
 

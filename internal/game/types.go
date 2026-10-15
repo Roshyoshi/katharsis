@@ -175,6 +175,14 @@ const (
 	Retreated  Outcome = "retreated" // swapped the door for a life
 )
 
+// Verdict is a full-test judge verdict, with judge.Verdict's values ("AC",
+// "WA", "TLE", "RE", "MLE", "CE", ...). The engine acts on Accepted and on
+// rules.FreeVerdicts; it keeps the rest for the screens and the crash
+// quote.
+type Verdict string
+
+const Accepted Verdict = "AC"
+
 type Attempt struct {
 	Door     Door
 	Opened   time.Time
@@ -182,12 +190,15 @@ type Attempt struct {
 	Closed   time.Time
 	Outcome  Outcome // "" while open
 
+	// Biome is the index into State.Biomes of the biome the door opened in.
+	Biome int
+
 	Submits     int
 	Failed      int // submits that were not AC
 	Quacks      int // ducks used on this door (1: tags, 2: technique)
 	BestPass    int // most tests passed by one submit (the HP bar)
 	Total       int // tests in the full set
-	LastVerdict string
+	LastVerdict Verdict
 
 	// Hint is the highest RevealTags level shown. On a door whose tags are
 	// already visible the first quack goes straight to level 2, so Hint
@@ -227,8 +238,8 @@ const (
 type Crash struct {
 	Cause   Outcome // TimedOut, OutOfLives, GaveUp
 	Door    Door
-	Verdict string // last verdict on the door, for quote matching
-	Lost    int64  // uncommitted bytes moved into the core dump
+	Verdict Verdict // last verdict on the door, for quote matching
+	Lost    int64   // uncommitted bytes moved into the core dump
 	At      time.Time
 	Uptime  time.Duration
 
@@ -331,7 +342,7 @@ type GiveUp struct{}                 // PhaseProblem: :q!
 
 // SubmitResult reports a full-test judge of the open door.
 type SubmitResult struct {
-	Verdict string // judge.Verdict as string
+	Verdict Verdict
 	Passed  int
 	Total   int
 }
