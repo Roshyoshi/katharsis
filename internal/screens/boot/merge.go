@@ -23,6 +23,10 @@ type Merge struct {
 	buy int // cursor within the items on sale
 	dmn int // cursor within the daemon offers
 	cur int // index into rows()
+	// at is the row under the cursor when it last moved. The engine changes
+	// the State this screen shares in place, so by Refresh the rows have
+	// changed under cur already, and only at still names the row it was.
+	at mergeRow
 
 	// intro is the White Knight's block (daemon.intro) over the daemon
 	// offers, for the first window that offers any; drawn records that the
@@ -48,13 +52,14 @@ func NewMerge(env Env) *Merge {
 	m := &Merge{env: env}
 	m.intro = len(env.State.DaemonOffers) > 0 && !game.HasSeen(&env.Meta, introHook)
 	m.up.set(env.State)
+	m.at = m.row()
 	return m
 }
 
 // Refresh swaps in new state and clock. When the row under the cursor is
 // gone (its pick was taken), the cursor moves to the next section.
 func (m *Merge) Refresh(env Env) {
-	old := m.row()
+	old := m.at
 	m.env = env
 	m.up.set(env.State)
 	rs := m.rows()
@@ -97,7 +102,9 @@ func (m *Merge) row() mergeRow {
 // sync points the section cursors at the selected row so each list draws
 // its own cursor.
 func (m *Merge) sync() {
-	switch r := m.row(); r.kind {
+	r := m.row()
+	m.at = r
+	switch r.kind {
 	case rowUpgrade:
 		m.up.cursor = r.i
 	case rowSpend:

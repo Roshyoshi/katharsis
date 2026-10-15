@@ -482,6 +482,25 @@ func TestMergeKeys(t *testing.T) {
 	}
 }
 
+// When the engine takes the pick under the cursor, the cursor moves to the
+// next section's first row. The app refreshes the screen with the State the
+// engine changed in place, so the rows have already changed by then: the
+// cursor kept its index and landed on the second item on sale, where the
+// next enter bought it.
+func TestMergeCursorLeavesATakenPick(t *testing.T) {
+	st := fixture.Merge()
+	e := env(st)
+	m := NewMerge(e)
+	m.Update(press("down")) // the second upgrade, ECC
+	st.Upgrades = append(st.Upgrades, game.ECC)
+	st.PendingUpgrade, st.UpgradePicks, st.UpgradeOffers = false, 0, nil
+	m.Refresh(e)
+	_, c := m.Update(press("enter"))
+	if got, want := emitted(c), (game.Spend{Item: onSale(st)[0]}); got != want {
+		t.Errorf("enter after the last pick: got %#v, want %#v", got, want)
+	}
+}
+
 // The merge window prices every item on sale, says which the bytes don't
 // cover, and sells nothing in a trial.
 func TestMergeSpendRows(t *testing.T) {
