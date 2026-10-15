@@ -264,3 +264,16 @@ func TestPackageLadder(t *testing.T) {
 		t.Errorf("the catalog costs %d B, under 40 boots of the stronger player (%d B)", sum, 40*strong)
 	}
 }
+
+// presets/short.toml is the built-in Short() as a file to copy: the same
+// biomes, and Standard plays them as boot #1 (FirstBiomes, RT11).
+func TestShortPreset(t *testing.T) {
+	t.Parallel()
+	r, err := rules.Load(filepath.Join("..", "..", "presets", "short.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(r.Biomes, rules.Short().Biomes) || !reflect.DeepEqual(rules.Standard().FirstBiomes, rules.Short().Biomes) {
+		t.Errorf("short.toml biomes %+v, Short %+v, Standard's first %+v", r.Biomes, rules.Short().Biomes, rules.Standard().FirstBiomes)
+	}
+}

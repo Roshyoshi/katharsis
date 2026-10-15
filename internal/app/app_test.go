@@ -145,14 +145,15 @@ type harness struct {
 	path string
 }
 
-// steady is the standard preset without its easing (game.EaseFloor) and
-// Userland's timeout rule (D44): these tests crash on Userland timeouts,
+// steady is the standard preset without its easing (game.EaseFloor), boot
+// #1's rules (RT11) and Userland's timeout rule (D44): these tests crash on Userland timeouts,
 // which the rule turns into lost lives, and a cold-start player on the
 // fake catalog is aimed under its floor. "eased" plays the standard
 // preset as shipped.
 func steady() rules.Rules {
 	r := rules.Standard()
 	r.EaseAbove, r.BuybackTimers, r.GovernorAfter = 0, nil, 0
+	r.FirstBiomes, r.FirstDoor, r.FirstEditorial = nil, false, false
 	r.Biomes = slices.Clone(r.Biomes)
 	r.Biomes[0].TimeoutLife = false
 	return r

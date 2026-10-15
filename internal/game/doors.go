@@ -82,12 +82,18 @@ type cand struct {
 func (e *engine) candidates(topic string, i int, ex map[catalog.ID]bool) []cand {
 	rb := e.s.Rules.Biomes[i]
 	off := e.aimOffset(rb)
+	// Boot #1 offers only problems with an editorial, while the pool has
+	// some (RT11): its first death should teach.
+	editorial := false
+	if es := e.s.active(EaseFirst); es != nil && es.Editorial {
+		editorial = slices.ContainsFunc(e.pool, func(p catalog.Problem) bool { return p.Judgeable && p.HasEditorial && !ex[p.ID] })
+	}
 	type aim struct{ target, rating float64 }
 	aims := map[string]aim{}
 	var cs []cand
 	for j := range e.pool {
 		p := &e.pool[j]
-		if !p.Judgeable || ex[p.ID] {
+		if !p.Judgeable || ex[p.ID] || editorial && !p.HasEditorial {
 			continue
 		}
 		t := topicOf(p)
@@ -281,7 +287,11 @@ func (e *engine) drawDoors(skip []Door) []Door {
 				}
 			}
 			e.setProp = 1
-			ps = e.pick(e.candidates(b.Topic, s.Biome, ex), n)
+			cs := e.candidates(b.Topic, s.Biome, ex)
+			if s.firstRoom() {
+				cs = e.floorOf(cs)
+			}
+			ps = e.pick(cs, n)
 			if len(ps) > 0 {
 				break
 			}
@@ -394,6 +404,27 @@ func (e *engine) dress(d *Door, i int) {
 	d.Bytes = e.doorBytes(*d)
 }
 
+// floorOf is the easiest of cs, those within the first rating window of
+// the lowest difficulty: boot #1's first doors (RT11).
+func (e *engine) floorOf(cs []cand) []cand {
+	if len(cs) == 0 {
+		return cs
+	}
+	r := &e.s.Rules
+	low := difficulty(r, cs[0].p)
+	for _, c := range cs {
+		low = min(low, difficulty(r, c.p))
+	}
+	var out []cand
+	for _, c := range cs {
+		if difficulty(r, c.p) <= low+float64(r.RatingWindows[0]) {
+			c.in = true
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 // plainDoors takes the risk modifiers (blind, mystery, cursed) off the
 // biome's Plain easiest doors on offer, regressions aside, so a safe door
 // is always there (ml-pipeline M4: Userland's easy slot). Their modifiers
@@ -401,6 +432,10 @@ func (e *engine) dress(d *Door, i int) {
 func (e *engine) plainDoors(doors []Door) {
 	s := e.s
 	n := s.Rules.Biomes[s.Biome].Plain
+	first := s.firstRoom()
+	if first {
+		n = len(doors) // boot #1's first room: every door plain, tags shown
+	}
 	if n <= 0 || s.Trial != nil {
 		return
 	}
@@ -414,9 +449,12 @@ func (e *engine) plainDoors(doors []Door) {
 	slices.SortStableFunc(idx, func(a, b int) int { return cmp.Compare(doors[b].SolveP, doors[a].SolveP) })
 	for _, i := range idx[:min(n, len(idx))] {
 		d := &doors[i]
-		if d.Cursed || d.Mystery || d.Blind && !s.Rules.BlindAll {
+		if d.Cursed || d.Mystery || d.Blind && !s.Rules.BlindAll || first && d.Mastered {
 			d.Blind, d.Mystery, d.Cursed = s.Rules.BlindAll, false, false
 			e.dress(d, s.Biome)
+			if first {
+				d.Mastered = false
+			}
 		}
 	}
 }

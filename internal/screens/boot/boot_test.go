@@ -742,10 +742,11 @@ func engineCrash(t *testing.T, cause game.Outcome, cursed bool) Env {
 	t.Helper()
 	r := rules.Standard()
 	r.BlindChance, r.MysteryChance, r.CursedChance, r.Ascensions = 0, 0, 0, nil
-	// A cold start is eased (more lives), a Userland timeout costs a life
-	// (D44), and Userland's easiest door is never cursed: none of that is
-	// the crash this plays into.
+	// A cold start is eased (more lives) and plays boot #1's shape, a
+	// Userland timeout costs a life (D44), and Userland's easiest door is
+	// never cursed: none of that is the crash this plays into.
 	r.EaseAbove, r.BuybackTimers, r.GovernorAfter = 0, nil, 0
+	r.FirstBiomes, r.FirstDoor, r.FirstEditorial = nil, false, false
 	r.Biomes[0].TimeoutLife, r.Biomes[0].Plain = false, 0
 	if cursed {
 		r.CursedChance = 1

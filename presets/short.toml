@@ -1,6 +1,8 @@
 # short: a boot of about an hour. Four doors instead of five, on shorter
 # timers: the door timers add up to 65 minutes (standard's to 140) before
 # upgrades, daemons and fitting to your solve times stretch or shrink them.
+# It is also rules.Short() built in, and the shape a new player's first
+# boot plays (standard's first_biome).
 #
 # Try it:   katharsis --preset presets/short.toml
 # Keep it:  cp presets/short.toml ~/.config/katharsis/presets/

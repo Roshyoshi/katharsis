@@ -320,6 +320,21 @@ type Rules struct {
 	// it off.
 	GovernorAfter int `toml:"governor_after"`
 	GovernorLives int `toml:"governor_lives"`
+	// ComebackDays is how many days away make the next boot a comeback:
+	// its first biome aims at its EaseClear (retention RT8). 0 turns it
+	// off.
+	ComebackDays int `toml:"comeback_days"`
+
+	// ---- boot #1 (retention RT11) -------------------------------------------
+
+	// A new player's first boot closes one whole loop in about an hour: it
+	// plays FirstBiomes (empty: the preset's own), its first room offers
+	// the pool's easiest doors with tags shown and no risk modifier
+	// (FirstDoor), and its doors all have an editorial while the pool has
+	// such (FirstEditorial), so the first death teaches.
+	FirstBiomes    []Biome `toml:"first_biome"`
+	FirstDoor      bool    `toml:"first_door"`
+	FirstEditorial bool    `toml:"first_editorial"`
 }
 
 // Ascension is the extra difficulty of one prestige level. Levels stack like
@@ -618,6 +633,12 @@ func Standard() Rules {
 		BuybackMargin: 0.02,
 		GovernorAfter: 2,
 		GovernorLives: 1,
+		ComebackDays:  3,
+
+		// Boot #1 plays the short shape (RT7, RT11), the floor's doors first.
+		FirstBiomes:    shortBiomes(),
+		FirstDoor:      true,
+		FirstEditorial: true,
 
 		// What the bank buys at GRUB (D25, retention RT3): mostly options
 		// (a daemon, an item or an upgrade joins its pool; one more route,
@@ -646,22 +667,41 @@ func Standard() Rules {
 			{Name: "rng-tools", Price: 448, Daemon: "dev-random"},
 			{Name: "at", Price: 512, Item: "at"},
 			{Name: "cron", Price: 528, Daemon: "cron"},
-			{Name: "strace", Price: 528, Daemon: "strace"},
-			{Name: "coreutils", Price: 528, Upgrade: "shuf"},
-			{Name: "aptitude", Price: 528, UpgradeOffers: 1, Requires: []string{"coreutils"}},
-			{Name: "rubber-duck", Price: 528, Ducks: 1},
-			{Name: "git", Price: 528, RouteOffers: 1},
-			{Name: "neofetch", Price: 528, Theme: "neofetch"},
-			{Name: "util-linux", Price: 528, Daemon: "chrt"},
-			{Name: "figlet", Price: 528, Theme: "figlet"},
-			{Name: "tmux", Price: 528, Doors: 1},
-			{Name: "cmatrix", Price: 528, Theme: "cmatrix"},
-			{Name: "bastet", Price: 528, Theme: "bastet"},
+			{Name: "strace", Price: 544, Daemon: "strace"},
+			{Name: "coreutils", Price: 544, Upgrade: "shuf"},
+			{Name: "aptitude", Price: 544, UpgradeOffers: 1, Requires: []string{"coreutils"}},
+			{Name: "rubber-duck", Price: 544, Ducks: 1},
+			{Name: "git", Price: 544, RouteOffers: 1},
+			{Name: "neofetch", Price: 544, Theme: "neofetch"},
+			{Name: "util-linux", Price: 544, Daemon: "chrt"},
+			{Name: "figlet", Price: 544, Theme: "figlet"},
+			{Name: "tmux", Price: 544, Doors: 1},
+			{Name: "cmatrix", Price: 544, Theme: "cmatrix"},
+			{Name: "bastet", Price: 544, Theme: "bastet"},
 			// A fourth daemon on offer means nothing while the pool holds
 			// three, so procps waits on two of the locked ones.
-			{Name: "procps", Price: 528, DaemonOffers: 1, Requires: []string{"rng-tools", "strace"}},
+			{Name: "procps", Price: 544, DaemonOffers: 1, Requires: []string{"rng-tools", "strace"}},
 			{Name: "binutils", Price: 4096, LinkSlots: 1},
 		},
+	}
+}
+
+// Short is the built-in short preset (retention RT7): a boot of about an
+// hour, four doors on shorter timers. presets/short.toml is the same as a
+// file to copy and edit.
+func Short() Rules {
+	r := Standard()
+	r.Name = "short"
+	r.Biomes = shortBiomes()
+	return r
+}
+
+// shortBiomes is the short preset's shape.
+func shortBiomes() []Biome {
+	return []Biome{
+		{Kind: Fixed, Name: "Userland", Rooms: 2, TargetClear: 0.9, Timer: Duration{10 * time.Minute}, EaseClear: 0.95, Plain: 1, TimeoutLife: true},
+		{Kind: Choice, Rooms: 1, Choices: 2, TargetClear: 0.7, MinClear: 0.6, Timer: Duration{20 * time.Minute}, EaseClear: 0.78},
+		{Kind: Boss, Rooms: 1, TargetClear: 0.5, Timer: Duration{25 * time.Minute}, EaseClear: 0.55},
 	}
 }
 
@@ -690,8 +730,9 @@ func Trial() Rules {
 	r.MasteryAttempts = 0 // the unit shows tags and the integration hides them
 	r.OnExpire = ExpireOvertime
 	r.ShowFailingInput = true
-	// A trial is not aimed, so it has nothing to ease.
-	r.EaseAbove, r.GovernorAfter = 0, 0
+	// A trial is not aimed, so it has nothing to ease, and it is no boot.
+	r.EaseAbove, r.GovernorAfter, r.ComebackDays = 0, 0, 0
+	r.FirstBiomes, r.FirstDoor, r.FirstEditorial = nil, false, false
 	return r
 }
 
@@ -719,6 +760,9 @@ func Load(path string) (Rules, error) {
 	}
 	if _, ok := keys["package"]; ok {
 		r.Packages = nil
+	}
+	if _, ok := keys["first_biome"]; ok {
+		r.FirstBiomes = nil
 	}
 	md, err := toml.Decode(string(b), &r)
 	if err != nil {
@@ -771,6 +815,16 @@ func (r Rules) Validate() error {
 		// The negated test also catches NaN.
 		if !(k >= 1 && k <= MaxBuyback) {
 			return fmt.Errorf("rules %q: buyback_timers %v not in 1..%d", r.Name, k, MaxBuyback)
+		}
+	}
+	if r.ComebackDays < 0 {
+		return fmt.Errorf("rules %q: need comeback_days >= 0", r.Name)
+	}
+	if len(r.FirstBiomes) > 0 {
+		first := r
+		first.Biomes, first.FirstBiomes = r.FirstBiomes, nil
+		if err := first.Validate(); err != nil {
+			return fmt.Errorf("first_biome: %w", err)
 		}
 	}
 	if r.TimerFitLo > r.TimerFitHi {

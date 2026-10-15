@@ -125,6 +125,10 @@ type Meta struct {
 	// easing (rules.GovernorAfter) and GRUB's prestige hint. Trials and
 	// abandoned boots do not count.
 	Governor Governor `json:",omitzero"`
+
+	// LastPlayed is when the player last started or ended a boot or trial,
+	// or upsolved: what a comeback (rules.ComebackDays) counts from.
+	LastPlayed time.Time `json:",omitzero"`
 }
 
 // Governor is Meta's count of recent boot endings (ml-pipeline M4's streak
@@ -434,6 +438,15 @@ const (
 	// EaseGovernor: the last rules.GovernorAfter boots crashed in their
 	// first biome, so every biome aims at its EaseClear.
 	EaseGovernor EaseKind = "governor"
+	// EaseComeback: the player is back after rules.ComebackDays or more
+	// away, so the first biome aims at its EaseClear (retention RT8: a
+	// return gets an easier first door, never guilt, GR8).
+	EaseComeback EaseKind = "comeback"
+	// EaseFirst: boot #1 (retention RT11) plays rules.FirstBiomes, and its
+	// first room offers the pool's easiest doors with tags shown and no
+	// curse, blind or mystery (FirstDoor), all with an editorial
+	// (Editorial), so the first death teaches.
+	EaseFirst EaseKind = "first"
 )
 
 // Ease is one easing a boot runs with. It is announced in task terms and
@@ -456,6 +469,9 @@ type Ease struct {
 	// Buyback gives the first biome's doors longer timers where the pool
 	// has none near the aim (Door.TimerBuy).
 	Buyback bool `json:",omitempty"`
+	// FirstDoor and Editorial are boot #1's rules (EaseFirst).
+	FirstDoor bool `json:",omitempty"`
+	Editorial bool `json:",omitempty"`
 }
 
 // TrialSpec is a learn-mode trial as the curriculum builds it

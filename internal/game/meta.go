@@ -22,6 +22,9 @@ import (
 // the point is to re-solve from a blank file days later. An Editorial
 // upsolve never advances the schedule: reading the answer is not recall.
 func Upsolve(m *Meta, id catalog.ID, kind SolveKind, elapsed time.Duration, now time.Time) (recovered int64) {
+	if now.After(m.LastPlayed) {
+		m.LastPlayed = now
+	}
 	m.Solves = append(m.Solves, Solve{
 		Problem: id,
 		Kind:    kind,

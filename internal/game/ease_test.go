@@ -2,6 +2,7 @@ package game_test
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"slices"
 	"strings"
@@ -13,10 +14,10 @@ import (
 	"katharsis/internal/rules"
 )
 
-// noRisk is Standard() with its easing on but no door modifiers, so a test
-// can follow a door's timer and the lives.
+// noRisk is Standard() with its easing on but no door modifiers and no
+// boot #1 rules, so a test can follow a door's timer and the lives.
 func noRisk() rules.Rules {
-	r := rules.Standard()
+	r := noFirst(rules.Standard())
 	r.BlindChance, r.MysteryChance, r.CursedChance = 0, 0, 0
 	r.Ascensions = nil
 	return r
@@ -332,5 +333,115 @@ func TestFloorReading(t *testing.T) {
 		if d.Floor || d.Tier != "" || d.SolveP != game.Expected(1000, float64(d.Rating)) {
 			t.Errorf("door %+v read as a floor door", d)
 		}
+	}
+}
+
+// A player back after rules.ComebackDays or more aims the first biome at
+// its EaseClear and says why in days (RT8); a shorter gap, a first boot
+// or a decline leaves the aim alone. A save from before Meta.LastPlayed
+// counts from its latest solve.
+func TestComeback(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 400, 3000, 10)
+	r := noRisk()
+	day := 24 * time.Hour
+	for _, tc := range []struct {
+		name string
+		meta game.Meta
+		days int // 0: no comeback
+	}{
+		{"four days away", game.Meta{Boots: 5, Rating: 1600, LastPlayed: t0.Add(-4*day - time.Hour)}, 4},
+		{"two days away", game.Meta{Boots: 5, Rating: 1600, LastPlayed: t0.Add(-2 * day)}, 0},
+		{"first boot", game.Meta{Rating: 1600, LastPlayed: t0.Add(-9 * day)}, 0},
+		{"old save", game.Meta{Boots: 5, Rating: 1600, Solves: []game.Solve{{Problem: "x", At: t0.Add(-6 * day)}}}, 6},
+	} {
+		m := tc.meta
+		h := newHarness(t, r, &m, ps, 0, 1)
+		es, ok := easeOf(h.s, game.EaseComeback)
+		if ok != (tc.days > 0) {
+			t.Errorf("%s: easings %+v", tc.name, h.s.Ease)
+			continue
+		}
+		if !m.LastPlayed.Equal(t0) {
+			t.Errorf("%s: last played %v, want the boot's start", tc.name, m.LastPlayed)
+		}
+		if !ok {
+			if h.s.AimClear(0) != r.Biomes[0].TargetClear {
+				t.Errorf("%s: aim %.2f", tc.name, h.s.AimClear(0))
+			}
+			continue
+		}
+		if es.Why != fmt.Sprintf("first boot in %d days", tc.days) || h.s.AimClear(0) != r.Biomes[0].EaseClear ||
+			h.s.AimClear(1) != r.Biomes[1].TargetClear || es.Lives != 0 {
+			t.Errorf("%s: easing %+v, aims %.2f %.2f", tc.name, es, h.s.AimClear(0), h.s.AimClear(1))
+		}
+		h.do(game.DeclineEase{})
+		if h.s.AimClear(0) != r.Biomes[0].TargetClear {
+			t.Errorf("%s: declined, aim %.2f", tc.name, h.s.AimClear(0))
+		}
+	}
+	// Upsolving and ending a boot both count as playing.
+	m := game.Meta{Boots: 5, Rating: 1600, LastPlayed: t0.Add(-9 * day)}
+	game.Upsolve(&m, "x", game.Independent, time.Hour, t0.Add(-day))
+	if !m.LastPlayed.Equal(t0.Add(-day)) {
+		t.Errorf("upsolve: last played %v", m.LastPlayed)
+	}
+	h := newHarness(t, r, &m, ps, 0, 1)
+	h.open(0)
+	h.do(game.GiveUp{})
+	if !m.LastPlayed.Equal(h.now) {
+		t.Errorf("crash: last played %v, want %v", m.LastPlayed, h.now)
+	}
+}
+
+// A new player's first boot (RT11) plays the short shape, its first room
+// offers the pool's easiest doors with tags shown and no risk modifier,
+// every door it offers has an editorial, and all of it is said as boot
+// #1's; the next room and the next boot are as usual.
+func TestFirstBoot(t *testing.T) {
+	t.Parallel()
+	ps := cfPool(800, 2600, 20)
+	for i := range ps {
+		ps[i].HasEditorial = i%3 != 0
+	}
+	r := rules.Standard()
+	r.BlindChance, r.MysteryChance, r.CursedChance = 1, 0.5, 1 // every door would be risky
+	r.MasteryAttempts = 0
+	m := &game.Meta{}
+	h := newHarness(t, r, m, ps, 0, 1)
+	s := h.s
+	es, ok := easeOf(s, game.EaseFirst)
+	if !ok || !es.FirstDoor || !es.Editorial || es.Why != "boot #1" {
+		t.Fatalf("easings %+v", s.Ease)
+	}
+	if mustJSON(t, s.Rules.Biomes) != mustJSON(t, rules.Short().Biomes) {
+		t.Errorf("boot #1 plays %+v, want the short shape", s.Rules.Biomes)
+	}
+	editorial := map[catalog.ID]bool{}
+	for _, p := range ps {
+		editorial[p.ID] = p.HasEditorial
+	}
+	for _, d := range s.Doors {
+		if d.Blind || d.Mystery || d.Cursed || d.Mastered || d.Rating != 800 || !editorial[d.Problem] {
+			t.Errorf("first door %+v: want a plain floor door with tags and an editorial", d)
+		}
+	}
+	h.clearDoor(0, time.Minute)
+	h.pick()
+	risky := 0
+	for _, d := range h.s.Doors {
+		if !editorial[d.Problem] {
+			t.Errorf("boot #1 door %+v has no editorial", d)
+		}
+		if d.Cursed || d.Blind {
+			risky++
+		}
+	}
+	if risky < len(h.s.Doors)-1 {
+		t.Errorf("second room %+v: only the safe door should be plain", h.s.Doors)
+	}
+	h2 := newHarness(t, r, m, ps, 0, 2)
+	if _, ok := easeOf(h2.s, game.EaseFirst); ok || len(h2.s.Rules.Biomes[1:2]) != 1 || h2.s.Rules.Biomes[0].Timer.Duration != 15*time.Minute {
+		t.Errorf("boot #2: easings %+v, biomes %+v", h2.s.Ease, h2.s.Rules.Biomes)
 	}
 }

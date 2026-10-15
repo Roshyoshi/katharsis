@@ -23,13 +23,15 @@ func plain() rules.Rules {
 	return r
 }
 
-// calm turns r's easing off (the floor easing, the governor), its safe
-// doors (Biome.Plain) and Userland's timeout rule (Biome.TimeoutLife):
-// most tests start a cold-start player on a pool whose floor sits above
-// its Userland aim, which the floor easing answers with lives and longer
-// timers, some roll every door cursed, and some crash on a timeout.
+// calm turns r's easing off (the floor easing, the governor, the
+// comeback), boot #1's rules, its safe doors (Biome.Plain) and Userland's
+// timeout rule (Biome.TimeoutLife): most tests start a new player (boot
+// #1) on a pool whose floor sits above its Userland aim, which the floor
+// easing answers with lives and longer timers, some roll every door
+// cursed, and some crash on a timeout.
 func calm(r rules.Rules) rules.Rules {
-	r.EaseAbove, r.BuybackTimers, r.GovernorAfter = 0, nil, 0
+	r = noFirst(r)
+	r.EaseAbove, r.BuybackTimers, r.GovernorAfter, r.ComebackDays = 0, nil, 0, 0
 	r.Biomes = slices.Clone(r.Biomes)
 	for i := range r.Biomes {
 		r.Biomes[i].Plain, r.Biomes[i].TimeoutLife = 0, false
@@ -154,4 +156,11 @@ func mustJSON(t testing.TB, v any) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+// noFirst turns boot #1's rules off (rules.FirstBiomes, FirstDoor,
+// FirstEditorial), so a new player's first boot plays like any other.
+func noFirst(r rules.Rules) rules.Rules {
+	r.FirstBiomes, r.FirstDoor, r.FirstEditorial = nil, false, false
+	return r
 }

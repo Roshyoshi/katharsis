@@ -98,6 +98,13 @@ func (c *checker) start(s *game.State, m *game.Meta) {
 		t.Fatalf("boot starts with %d lives, %d ducks (declined %v), want %d and %d from the rules and %+v",
 			s.Lives, s.Ducks, s.Declined, lives, ducks, s.Ease)
 	}
+	if first := s.Boot == 1 && (len(r.FirstBiomes) > 0 || r.FirstDoor || r.FirstEditorial); first != kinds[game.EaseFirst] ||
+		first && kinds[game.EaseComeback] {
+		t.Fatalf("boot %d with easings %+v", s.Boot, s.Ease)
+	}
+	if first := s.Boot == 1; first && len(r.FirstBiomes) > 0 && mustJSON(t, r.Biomes) != mustJSON(t, r.FirstBiomes) {
+		t.Fatalf("boot #1 plays %+v, not its first biomes", r.Biomes)
+	}
 	if gov := r.GovernorAfter > 0 && m.Governor.EarlyCrashes >= r.GovernorAfter; gov != kinds[game.EaseGovernor] {
 		t.Fatalf("governor eased %v after %d early crashes (rules %d)", kinds[game.EaseGovernor], m.Governor.EarlyCrashes, r.GovernorAfter)
 	}

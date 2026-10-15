@@ -38,6 +38,11 @@ type engine struct {
 	rng  *rand.Rand
 	fx   []Effect
 
+	// first is set in NewBoot for a new player's first boot, and away is
+	// the time since Meta.LastPlayed then (0 when never).
+	first bool
+	away  time.Duration
+
 	// draws are the doors drawDoors drew last, by problem, and setProp the
 	// chance of that set: what the next offer logs (logOffer).
 	draws   map[catalog.ID]drawn
@@ -75,8 +80,18 @@ func NewBoot(r rules.Rules, meta *Meta, pool []catalog.Problem, prestige int, se
 		return nil, nil, errors.New("game: no judgeable problems in the pool")
 	}
 
+	// Boot #1 plays its own shape (rules.FirstBiomes, RT11); the snapshot
+	// records it as played.
+	first := meta.Boots == 0
+	if first && len(r.FirstBiomes) > 0 {
+		r.Biomes = slices.Clone(r.FirstBiomes)
+	}
 	s := &State{Seed: seed, RNG: seed, Rules: r, Prestige: prestige, Started: now}
 	e := newEngine(s, meta, pool, now)
+	e.first = first
+	if last := lastPlayed(meta); !last.IsZero() {
+		e.away = now.Sub(last)
+	}
 	e.begin()
 	e.logf("boot #%d: prestige %d, rules %s, seed %#x, rating %.0f", s.Boot, prestige, r.Name, seed, meta.Rating)
 	e.planAim()
@@ -95,6 +110,7 @@ func (e *engine) begin() {
 	if m.Rating <= 0 {
 		m.Rating = r.ColdStartRating
 	}
+	m.LastPlayed = e.now
 	s.Boot = m.Boots
 	s.AtStart = startOf(s, m) // debrief.go
 	s.Lives = max(1, r.Lives+r.Ascend(s.Prestige).Lives)
@@ -531,6 +547,7 @@ func (e *engine) crash(cause Outcome, cursed bool) {
 	}
 
 	e.countEnd(true)
+	m.LastPlayed = e.now
 	c := Crash{
 		Cause:    cause,
 		Door:     d,
@@ -740,6 +757,7 @@ func (e *engine) finish() {
 	}
 	s.Phase = PhaseCleared
 	e.countEnd(false)
+	m.LastPlayed = e.now
 	switch {
 	case s.Trial != nil:
 		e.passTrial()

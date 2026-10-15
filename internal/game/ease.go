@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"time"
 
 	"katharsis/internal/catalog"
 )
@@ -35,6 +36,16 @@ func (e *engine) planAim() {
 	first := r.Biomes[0].Name
 	if first == "" {
 		first = "the first biome"
+	}
+	if e.first && (len(r.FirstBiomes) > 0 || r.FirstDoor || r.FirstEditorial) {
+		s.Ease = append(s.Ease, Ease{Kind: EaseFirst, Why: "boot #1", FirstDoor: r.FirstDoor, Editorial: r.FirstEditorial})
+	}
+	if days := int(e.away / (24 * time.Hour)); !e.first && r.ComebackDays > 0 && days >= r.ComebackDays {
+		if c := r.Biomes[0].EaseClear; c > 0 {
+			clear := make([]float64, len(r.Biomes))
+			clear[0] = c
+			s.Ease = append(s.Ease, Ease{Kind: EaseComeback, Why: fmt.Sprintf("first boot in %d days", days), Clear: clear})
+		}
 	}
 	if n := m.Governor.EarlyCrashes; r.GovernorAfter > 0 && n >= r.GovernorAfter {
 		clear := make([]float64, len(r.Biomes))
@@ -89,6 +100,12 @@ func (e *engine) planFloor() {
 // easeTerms lists what es changes, for dmesg.
 func easeTerms(es Ease) string {
 	var t string
+	if es.FirstDoor {
+		t += ", first doors at the pool's floor, tags shown"
+	}
+	if es.Editorial {
+		t += ", every door has an editorial"
+	}
 	if es.Lives > 0 {
 		t += fmt.Sprintf(", +%d lives", es.Lives)
 	}
@@ -125,6 +142,28 @@ func (s *State) active(k EaseKind) *Ease {
 		}
 	}
 	return nil
+}
+
+// lastPlayed is when m last played: Meta.LastPlayed, or for a save from
+// before it the latest solve or core dump.
+func lastPlayed(m *Meta) time.Time {
+	last := m.LastPlayed
+	for _, s := range m.Solves {
+		if s.At.After(last) {
+			last = s.At
+		}
+	}
+	if d := m.CoreDump; d != nil && d.At.After(last) {
+		last = d.At
+	}
+	return last
+}
+
+// firstRoom reports whether boot #1's first room is on offer under its
+// rule (Ease.FirstDoor): no door opened yet.
+func (s *State) firstRoom() bool {
+	es := s.active(EaseFirst)
+	return es != nil && es.FirstDoor && s.Biome == 0 && s.Room == 0 && len(s.History) == 0 && s.Current == nil
 }
 
 // AimClear is the clear chance biome i's doors are aimed at: its
