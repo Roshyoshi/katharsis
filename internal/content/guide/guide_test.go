@@ -14,6 +14,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"katharsis/internal/content/web"
 )
 
 const testCommit = "0123456789abcdef0123456789abcdef01234567"
@@ -77,6 +79,11 @@ var good = []entry{
 	{name: pfx + "src/components/markdown/ProblemsList/DivisionList/scripts/x.json", body: "{}"},
 }
 
+// fast is the guide's client with test-sized waits.
+func fast(srv *httptest.Server) *web.Client {
+	return &web.Client{HTTP: srv.Client(), Retries: 2, Backoff: time.Millisecond, Idle: 100 * time.Millisecond}
+}
+
 func serve(t *testing.T, body []byte, fail int) (*httptest.Server, *atomic.Int32) {
 	t.Helper()
 	var hits atomic.Int32
@@ -92,10 +99,9 @@ func serve(t *testing.T, body []byte, fail int) (*httptest.Server, *atomic.Int32
 }
 
 func TestSnapshotLayout(t *testing.T) {
-	retryDelay = time.Millisecond
 	root := t.TempDir()
 	srv, hits := serve(t, tarball(t, good), 1) // first try is a 502
-	dir, err := snapshot(context.Background(), root, srv.URL, testCommit)
+	dir, err := snapshot(context.Background(), fast(srv), root, srv.URL, testCommit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +136,7 @@ func TestSnapshotLayout(t *testing.T) {
 
 	// Idempotent: the published dir is reused without the network.
 	srv.Close()
-	again, err := snapshot(context.Background(), root, srv.URL, testCommit)
+	again, err := snapshot(context.Background(), fast(srv), root, srv.URL, testCommit)
 	if err != nil || again != dir {
 		t.Fatalf("second snapshot = %q, %v; want %q", again, err, dir)
 	}
@@ -148,7 +154,7 @@ func TestSnapshotConcurrent(t *testing.T) {
 	errs := make([]error, 8)
 	for i := range dirs {
 		wg.Go(func() {
-			dirs[i], errs[i] = snapshot(context.Background(), root, srv.URL, testCommit)
+			dirs[i], errs[i] = snapshot(context.Background(), fast(srv), root, srv.URL, testCommit)
 		})
 	}
 	wg.Wait()
@@ -190,7 +196,7 @@ func TestSnapshotRejects(t *testing.T) {
 				ents = append(append([]entry{}, tables...), ents...)
 			}
 			srv, _ := serve(t, tarball(t, ents), 0)
-			_, err := snapshot(context.Background(), root, srv.URL, testCommit)
+			_, err := snapshot(context.Background(), fast(srv), root, srv.URL, testCommit)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err = %v, want it to mention %q", err, tc.want)
 			}
@@ -232,5 +238,37 @@ func TestSnapshotNetwork(t *testing.T) {
 	mdx, _ := filepath.Glob(filepath.Join(dir, "content", "*", "*.mdx"))
 	if len(mdx) < 100 {
 		t.Errorf("only %d module .mdx files", len(mdx))
+	}
+}
+
+// A download killed part way leaves its temp dir; a later Snapshot removes
+// it once it is old, even when the snapshot itself is already there.
+func TestSnapshotCleansDebris(t *testing.T) {
+	root := t.TempDir()
+	srv, hits := serve(t, tarball(t, good), 0)
+	if _, err := snapshot(context.Background(), fast(srv), root, srv.URL, testCommit); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-web.DebrisAge - time.Hour)
+	for _, name := range []string{".tmp-" + testCommit + "-killed", ".tmp-" + testCommit + "-running"} {
+		p := filepath.Join(root, name, "content")
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if strings.HasSuffix(name, "killed") {
+			if err := os.Chtimes(filepath.Dir(p), old, old); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if _, err := snapshot(context.Background(), fast(srv), root, srv.URL, testCommit); err != nil {
+		t.Fatal(err)
+	}
+	left, _ := filepath.Glob(filepath.Join(root, ".tmp-*"))
+	if len(left) != 1 || !strings.HasSuffix(left[0], "running") {
+		t.Errorf("temp dirs left: %v, want only the young one", left)
+	}
+	if n := hits.Load(); n != 1 {
+		t.Errorf("requests = %d, want 1", n)
 	}
 }

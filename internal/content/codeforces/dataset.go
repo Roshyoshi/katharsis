@@ -171,13 +171,13 @@ func (c *Catalog) genSizes(ctx context.Context) (map[int]int64, error) {
 		if pages > 100 {
 			return nil, fmt.Errorf("generated_tests listing: over %d pages", pages)
 		}
-		body, hdr, err := c.client.getBytes(ctx, next, 16<<20)
+		body, hdr, err := c.client.Bytes(ctx, next, 16<<20)
 		if err != nil {
 			return nil, err
 		}
 		var es []treeEntry
 		if err := json.Unmarshal(body, &es); err != nil {
-			return nil, permanentError{fmt.Errorf("generated_tests listing: %w", err)}
+			return nil, fmt.Errorf("generated_tests listing: %w", err)
 		}
 		for _, e := range es {
 			name, ok := strings.CutPrefix(e.Path, "generated_tests/test_cases_")
@@ -188,7 +188,7 @@ func (c *Catalog) genSizes(ctx context.Context) (map[int]int64, error) {
 		}
 		// The link is absolute; follow it only back to the same server.
 		if next = nextLink(hdr); next != "" && !strings.HasPrefix(next, c.base+"/") {
-			return nil, permanentError{fmt.Errorf("generated_tests listing: next page %q is off-site", next)}
+			return nil, fmt.Errorf("generated_tests listing: next page %q is off-site", next)
 		}
 	}
 	return out, nil

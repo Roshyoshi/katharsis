@@ -19,6 +19,7 @@ import (
 	"golang.org/x/net/html/atom"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/content/web"
 	"katharsis/internal/problem"
 )
 
@@ -66,7 +67,7 @@ func rerender(dir string, cpid int, m *meta) error {
 	if err != nil {
 		return err
 	}
-	if err := writeAtomic(filepath.Join(dir, "statement.md"), []byte(st.Markdown)); err != nil {
+	if err := web.WriteFile(filepath.Join(dir, "statement.md"), []byte(st.Markdown)); err != nil {
 		return err
 	}
 	if m.HasEditorial {
@@ -78,7 +79,7 @@ func rerender(dir string, cpid int, m *meta) error {
 		if err != nil {
 			return err
 		}
-		if err := writeAtomic(filepath.Join(dir, "editorial.md"), []byte(md)); err != nil {
+		if err := web.WriteFile(filepath.Join(dir, "editorial.md"), []byte(md)); err != nil {
 			return err
 		}
 	}
@@ -87,7 +88,7 @@ func rerender(dir string, cpid int, m *meta) error {
 	if err != nil {
 		return err
 	}
-	return writeAtomic(filepath.Join(dir, "meta.json"), mb)
+	return web.WriteFile(filepath.Join(dir, "meta.json"), mb)
 }
 
 func loadAssets(dir string) (catalog.Assets, meta, bool) {
@@ -128,7 +129,7 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 	defer func() { _ = os.RemoveAll(tmp) }()
 
 	m := meta{CPID: e.CPID, Stem: e.Stem, Fetched: time.Now().UTC(), Render: renderVersion}
-	page, err := c.client.getBytes(ctx, c.base+statementPath(e.CPID), maxPage)
+	page, _, err := c.client.Bytes(ctx, c.base+statementPath(e.CPID), maxPage)
 	if err != nil {
 		return catalog.Assets{}, fmt.Errorf("%s statement: %w", e.ID, err)
 	}
@@ -155,7 +156,7 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 	if e.Stem != "" && !st.Interactive && e.HasZip {
 		n, err := c.fetchTests(ctx, e.Stem, filepath.Join(tmp, "tests"))
 		switch {
-		case errors.Is(err, errNotFound):
+		case errors.Is(err, web.ErrNotFound):
 		case err != nil:
 			return catalog.Assets{}, fmt.Errorf("%s tests: %w", e.ID, err)
 		default:
@@ -164,9 +165,9 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 	}
 	if e.Stem != "" {
 		solPath := "/current/data/sol_" + e.Stem + ".html"
-		sol, err := c.client.getBytes(ctx, c.base+solPath, maxPage)
+		sol, _, err := c.client.Bytes(ctx, c.base+solPath, maxPage)
 		switch {
-		case errors.Is(err, errNotFound):
+		case errors.Is(err, web.ErrNotFound):
 		case err != nil:
 			return catalog.Assets{}, fmt.Errorf("%s analysis: %w", e.ID, err)
 		default:
@@ -250,27 +251,7 @@ func (c *Catalog) fetchTests(ctx context.Context, stem, dst string) (int, error)
 		_ = zf.Close()
 		_ = os.Remove(zf.Name()) // keep it out of the published dir
 	}()
-	err = c.client.get(ctx, c.base+"/current/data/"+stem+".zip", func(r io.Reader) error {
-		// A retry after a cut connection starts the spool over.
-		if _, err := zf.Seek(0, io.SeekStart); err != nil {
-			return err
-		}
-		if err := zf.Truncate(0); err != nil {
-			return err
-		}
-		n, err := io.Copy(zf, io.LimitReader(r, maxZip+1))
-		if err != nil {
-			return err
-		}
-		if n > maxZip {
-			return permanentError{fmt.Errorf("%s.zip is over %d bytes", stem, maxZip)}
-		}
-		return nil
-	})
-	if err != nil {
-		return 0, err
-	}
-	size, err := zf.Seek(0, io.SeekEnd)
+	size, err := c.client.Spool(ctx, c.base+"/current/data/"+stem+".zip", zf, maxZip)
 	if err != nil {
 		return 0, err
 	}
@@ -289,7 +270,7 @@ var testNameRE = regexp.MustCompile(`^(?:(\d+)\.(in|out)|([IO])\.(\d+))$`)
 func unzipTests(r io.ReaderAt, size int64, dst string) (int, error) {
 	zr, err := zip.NewReader(r, size)
 	if err != nil {
-		return 0, permanentError{err}
+		return 0, err
 	}
 	seen := map[string]bool{}
 	var total int64
@@ -317,7 +298,7 @@ func unzipTests(r io.ReaderAt, size int64, dst string) (int, error) {
 		}
 		norm := num + ext
 		if seen[norm] {
-			return 0, permanentError{fmt.Errorf("zip has two entries for %s", norm)}
+			return 0, fmt.Errorf("zip has two entries for %s", norm)
 		}
 		seen[norm] = true
 		n, err := copyEntry(f, filepath.Join(dst, norm), min(maxTestFile, maxTestTotal-total))
@@ -330,16 +311,16 @@ func unzipTests(r io.ReaderAt, size int64, dst string) (int, error) {
 	for name := range seen {
 		if base, ok := strings.CutSuffix(name, ".in"); ok {
 			if !seen[base+".out"] {
-				return 0, permanentError{fmt.Errorf("zip has %s without %s.out", name, base)}
+				return 0, fmt.Errorf("zip has %s without %s.out", name, base)
 			}
 			count++
 		}
 	}
 	if count == 0 {
-		return 0, permanentError{errors.New("zip has no tests")}
+		return 0, errors.New("zip has no tests")
 	}
 	if count*2 != len(seen) {
-		return 0, permanentError{errors.New("zip has outputs without inputs")}
+		return 0, errors.New("zip has outputs without inputs")
 	}
 	return count, nil
 }
@@ -347,7 +328,7 @@ func unzipTests(r io.ReaderAt, size int64, dst string) (int, error) {
 func copyEntry(f *zip.File, dst string, limit int64) (int64, error) {
 	rc, err := f.Open()
 	if err != nil {
-		return 0, permanentError{err}
+		return 0, err
 	}
 	defer func() { _ = rc.Close() }()
 	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
@@ -359,10 +340,10 @@ func copyEntry(f *zip.File, dst string, limit int64) (int64, error) {
 		err = cerr
 	}
 	if err != nil {
-		return n, permanentError{err}
+		return n, err
 	}
 	if n > limit {
-		return n, permanentError{fmt.Errorf("%s unpacks to over %d bytes", f.Name, limit)}
+		return n, fmt.Errorf("%s unpacks to over %d bytes", f.Name, limit)
 	}
 	return n, nil
 }

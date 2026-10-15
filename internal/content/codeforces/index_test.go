@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/content/web"
 )
 
 func TestOpenBuildsIndex(t *testing.T) {
@@ -161,7 +162,7 @@ func TestOpenRebuildsStaleCache(t *testing.T) {
 		break_ func(t *testing.T)
 	}{
 		{"text.bin truncated", func(t *testing.T) {
-			if err := writeAtomic(c.root+"/text.bin", []byte("x")); err != nil {
+			if err := web.WriteFile(c.root+"/text.bin", []byte("x")); err != nil {
 				t.Fatal(err)
 			}
 		}},
@@ -172,7 +173,7 @@ func TestOpenRebuildsStaleCache(t *testing.T) {
 				idx.Entries = append(idx.Entries, *c.entries[id])
 			}
 			b := mustJSON(t, idx)
-			if err := writeAtomic(c.root+"/index.json", b); err != nil {
+			if err := web.WriteFile(c.root+"/index.json", b); err != nil {
 				t.Fatal(err)
 			}
 		}},

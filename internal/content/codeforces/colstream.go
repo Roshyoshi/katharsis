@@ -188,9 +188,13 @@ func (s *colStream) dataPage(h format.PageHeader, body int64) error {
 				}
 			}
 		}
-		rest, err := readCapped(r, 1<<30, "dictionary indexes")
+		const maxIndexes = 1 << 30
+		rest, err := io.ReadAll(io.LimitReader(r, maxIndexes+1))
 		if err != nil {
 			return err
+		}
+		if len(rest) > maxIndexes {
+			return fmt.Errorf("dictionary indexes over %d bytes", maxIndexes)
 		}
 		if nonNull > 0 {
 			if len(rest) == 0 {
@@ -294,7 +298,7 @@ func plainValue(r io.Reader, keep bool) ([]byte, error) {
 		return nil, err
 	}
 	if n > maxTestFile {
-		return nil, permanentError{fmt.Errorf("a %d byte value, over the %d cap", n, maxTestFile)}
+		return nil, fmt.Errorf("a %d byte value, over the %d cap", n, maxTestFile)
 	}
 	v := make([]byte, n)
 	_, err := io.ReadFull(r, v)

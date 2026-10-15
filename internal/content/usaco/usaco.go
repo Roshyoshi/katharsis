@@ -18,22 +18,23 @@ package usaco
 import (
 	"context"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/guide"
+	"katharsis/internal/content/web"
 )
 
 type Catalog struct {
 	root   string // <cache>/katharsis/usaco
 	base   string // site; a test server in tests
-	client *politeClient
+	client *web.Client
 
 	mu      sync.RWMutex // guards entries (fetches refine them)
 	saveMu  sync.Mutex
@@ -46,6 +47,15 @@ type Catalog struct {
 
 var _ catalog.Catalog = (*Catalog)(nil)
 
+// client is the process's one client for usaco.org, a volunteer-run site,
+// so requests are half a second apart.
+var client = &web.Client{
+	HTTP:    &http.Client{Timeout: 5 * time.Minute},
+	Gap:     500 * time.Millisecond,
+	Retries: 4,
+	Backoff: time.Second,
+}
+
 // Open loads the cached index, or builds it from the guide snapshot
 // (downloading the snapshot on first run) and caches it.
 func Open(ctx context.Context) (*Catalog, error) {
@@ -57,7 +67,9 @@ func Open(ctx context.Context) (*Catalog, error) {
 }
 
 func open(ctx context.Context, root string, snapshot func(context.Context) (string, error)) (*Catalog, error) {
-	cleanDebris(root, time.Now().Add(-debrisAge))
+	// A temp dir from materialize can hold a half-downloaded zip and its
+	// tests, hundreds of MB.
+	web.CleanDebris(root, web.TempPrefix)
 	idxPath := filepath.Join(root, "index.json")
 	idx, ok := loadIndex(idxPath)
 	if !ok {
@@ -89,27 +101,6 @@ func open(ctx context.Context, root string, snapshot func(context.Context) (stri
 		c.order = append(c.order, e.ID)
 	}
 	return c, nil
-}
-
-// debrisAge is how old a .tmp-* entry must be before Open deletes it:
-// older than any fetch still running, so another process's work in
-// progress is left alone.
-const debrisAge = 6 * time.Hour
-
-// cleanDebris removes what a killed process leaves behind: materialize's
-// temp dirs (a half-downloaded zip and its tests can be hundreds of MB)
-// and writeAtomic's temp files. The game quits without waiting for door
-// prefetches, so this is the normal case, not just a crash.
-func cleanDebris(root string, before time.Time) {
-	des, _ := os.ReadDir(root) // a missing root has nothing to clean
-	for _, d := range des {
-		if !strings.HasPrefix(d.Name(), ".tmp-") {
-			continue
-		}
-		if fi, err := d.Info(); err == nil && fi.ModTime().Before(before) {
-			_ = os.RemoveAll(filepath.Join(root, d.Name()))
-		}
-	}
 }
 
 // All lists every problem in cpid order, judgeable or not.

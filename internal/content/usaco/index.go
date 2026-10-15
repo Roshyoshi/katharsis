@@ -20,6 +20,7 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/guide"
+	"katharsis/internal/content/web"
 )
 
 // entry is one problem in the cached index: the catalog view plus what
@@ -495,29 +496,5 @@ func saveIndex(p string, idx *index) error {
 	if err := enc.Encode(idx); err != nil {
 		return err
 	}
-	return writeAtomic(p, buf.Bytes())
-}
-
-// writeAtomic writes via a temp file in the same dir and a rename, so a
-// reader (or a crash) never sees half a file.
-func writeAtomic(p string, data []byte) error {
-	dir := filepath.Dir(p)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	f, err := os.CreateTemp(dir, ".tmp-"+filepath.Base(p)+"-")
-	if err != nil {
-		return err
-	}
-	_, err = f.Write(data)
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	if err == nil {
-		err = os.Rename(f.Name(), p)
-	}
-	if err != nil {
-		_ = os.Remove(f.Name())
-	}
-	return err
+	return web.WriteFile(p, buf.Bytes())
 }

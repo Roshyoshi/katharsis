@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/content/web"
 	"katharsis/internal/problem"
 )
 
@@ -307,10 +308,12 @@ func TestFetchGeneratedOnly(t *testing.T) {
 	}
 }
 
-func TestCleanDebris(t *testing.T) {
+// A fetch killed mid-download leaves its temp and download dirs behind;
+// Open removes the old ones and nothing else.
+func TestOpenCleansDebris(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	old := time.Now().Add(-2 * debrisAge)
+	old := time.Now().Add(-web.DebrisAge - time.Hour)
 	for _, name := range []string{".dl-1", ".tmp-1899C-2", ".tmp-text.bin-3", "4A", ".dl-new"} {
 		p := filepath.Join(root, name)
 		if err := os.Mkdir(p, 0o755); err != nil {
@@ -322,10 +325,16 @@ func TestCleanDebris(t *testing.T) {
 			}
 		}
 	}
-	cleanDebris(root, time.Now().Add(-debrisAge))
+	h := newFakeHF(t, newFixture(t))
+	if _, err := open(t.Context(), root, h.srv.URL, fixtureLayout, testClient(h)); err != nil {
+		t.Fatal(err)
+	}
 	des, _ := os.ReadDir(root)
 	var left []string
 	for _, d := range des {
+		if !d.IsDir() {
+			continue // index.json, text.bin
+		}
 		left = append(left, d.Name())
 	}
 	if want := []string{".dl-new", "4A"}; !slices.Equal(left, want) {

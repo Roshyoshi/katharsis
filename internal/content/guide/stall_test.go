@@ -2,7 +2,6 @@ package guide
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -33,22 +32,16 @@ func stallServer(t *testing.T, body []byte, stalls int) (*httptest.Server, *atom
 	return srv, &hits
 }
 
-func shortTimers(t *testing.T) {
-	idle, delay := idleTimeout, retryDelay
-	idleTimeout, retryDelay = 100*time.Millisecond, time.Millisecond
-	t.Cleanup(func() { idleTimeout, retryDelay = idle, delay })
-}
-
-// A download that stalls is cut after idleTimeout without bytes and
-// retried; it used to hang until the caller's 10-minute load timeout.
+// A download that stalls half way through the archive is cut and retried,
+// and the retry starts over in an emptied temp dir: the files the first
+// attempt extracted would otherwise collide (writeFile is O_EXCL).
 func TestSnapshotStallRetries(t *testing.T) {
-	shortTimers(t)
 	var got atomic.Int64
 	Progress = func(n int64) { got.Store(n) }
 	t.Cleanup(func() { Progress = nil })
 	srv, hits := stallServer(t, tarball(t, good), 1)
 	start := time.Now()
-	if _, err := snapshot(context.Background(), t.TempDir(), srv.URL, testCommit); err != nil {
+	if _, err := snapshot(context.Background(), fast(srv), t.TempDir(), srv.URL, testCommit); err != nil {
 		t.Fatal(err)
 	}
 	if d := time.Since(start); d > 5*time.Second {
@@ -59,19 +52,5 @@ func TestSnapshotStallRetries(t *testing.T) {
 	}
 	if got.Load() == 0 {
 		t.Error("Progress never heard of a byte")
-	}
-}
-
-// A download that stalls on every try fails, saying so, once the retries
-// are spent.
-func TestSnapshotStallGivesUp(t *testing.T) {
-	shortTimers(t)
-	srv, hits := stallServer(t, tarball(t, good), 100)
-	_, err := snapshot(context.Background(), t.TempDir(), srv.URL, testCommit)
-	if !errors.Is(err, errStalled) {
-		t.Fatalf("snapshot = %v, want errStalled", err)
-	}
-	if n := hits.Load(); n != 3 {
-		t.Errorf("requests = %d, want 3", n)
 	}
 }

@@ -30,21 +30,22 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/content/web"
 )
 
 type Catalog struct {
 	root   string // <cache>/katharsis/codeforces
 	base   string // "https://huggingface.co"; a test server in tests
 	lay    layout
-	client *politeClient
+	client *web.Client
 
 	mu      sync.RWMutex // guards entries (a fetch can mark one unjudgeable)
 	saveMu  sync.Mutex
@@ -58,6 +59,15 @@ type Catalog struct {
 
 var _ catalog.Catalog = (*Catalog)(nil)
 
+// client is the process's one client for Hugging Face, which rate-limits
+// anonymous resolves (3000 per 5 minutes when written).
+var client = &web.Client{
+	HTTP:    &http.Client{Timeout: 15 * time.Minute},
+	Gap:     100 * time.Millisecond,
+	Retries: 4,
+	Backoff: time.Second,
+}
+
 // Open loads the cached index (about 0.1 s), or builds it from the dataset
 // and caches it: about 17 MB in 38 requests, 20 s when measured.
 // Afterwards All and Get need no network.
@@ -69,13 +79,14 @@ func Open(ctx context.Context) (*Catalog, error) {
 	return open(ctx, filepath.Join(c, "katharsis", "codeforces"), "https://huggingface.co", pinned, client)
 }
 
-func open(ctx context.Context, root, base string, l layout, pc *politeClient) (*Catalog, error) {
+func open(ctx context.Context, root, base string, l layout, pc *web.Client) (*Catalog, error) {
 	c := &Catalog{
 		root: root, base: base, lay: l, client: pc,
 		entries: map[catalog.ID]*entry{},
 		flights: map[catalog.ID]*flight{},
 	}
-	cleanDebris(root, time.Now().Add(-debrisAge))
+	// A contest download (.dl-) can be hundreds of MB.
+	web.CleanDebris(root, web.TempPrefix, ".dl-")
 	idx, ok := loadIndex(root, l)
 	if !ok {
 		var err error
@@ -195,7 +206,7 @@ func (c *Catalog) persist() error {
 	if err != nil {
 		return err
 	}
-	return writeAtomic(filepath.Join(c.root, "index.json"), b)
+	return web.WriteFile(filepath.Join(c.root, "index.json"), b)
 }
 
 // flight is one in-progress Fetch that later callers for the same id wait
@@ -258,27 +269,4 @@ func dirName(e entry) string { return e.ID.Native() }
 
 func isCtxErr(err error) bool {
 	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
-}
-
-// debrisAge is how old a temp or download dir must be before Open deletes
-// it: older than any fetch still running, so another process's work in
-// progress is left alone.
-const debrisAge = 6 * time.Hour
-
-// cleanDebris removes the .tmp-* and .dl-* dirs a crashed fetch leaves
-// behind; a contest download can be hundreds of MB.
-func cleanDebris(root string, before time.Time) {
-	des, err := os.ReadDir(root)
-	if err != nil {
-		return
-	}
-	for _, d := range des {
-		name := d.Name()
-		if !strings.HasPrefix(name, ".tmp-") && !strings.HasPrefix(name, ".dl-") {
-			continue
-		}
-		if fi, err := d.Info(); err == nil && fi.ModTime().Before(before) {
-			_ = os.RemoveAll(filepath.Join(root, name))
-		}
-	}
 }

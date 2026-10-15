@@ -25,6 +25,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"katharsis/internal/content/web"
 )
 
 // Commit is the usaco-guide master commit the game is built against
@@ -44,21 +46,14 @@ const (
 	maxDownload  = 1 << 30
 	maxFile      = 16 << 20
 	maxExtracted = 256 << 20
-
-	userAgent = "katharsis/0.1 (terminal competitive-programming trainer)"
 )
 
+const tarballURL = "https://codeload.github.com/cpinitiative/usaco-guide/tar.gz/" + Commit
+
 var (
-	// tarballURL is a var so tests can point it at an httptest server.
-	tarballURL = "https://codeload.github.com/cpinitiative/usaco-guide/tar.gz/" + Commit
-
-	retryDelay = 2 * time.Second
-
-	// idleTimeout cancels an attempt that received no bytes for this long:
-	// a connection that stays open and sends nothing never fails by
-	// itself, and the caller's only bound was its whole load (10 min).
-	// The retry loop then starts over.
-	idleTimeout = 30 * time.Second
+	// client has no overall timeout: the tarball takes minutes on a slow
+	// line, and web's idle cut ends an attempt that stalls.
+	client = &web.Client{Retries: 2, Backoff: 2 * time.Second}
 
 	mu sync.Mutex // serializes snapshots within the process
 )
@@ -76,7 +71,7 @@ func Snapshot(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return snapshot(ctx, root, tarballURL, Commit)
+	return snapshot(ctx, client, root, tarballURL, Commit)
 }
 
 func cacheRoot() (string, error) {
@@ -87,7 +82,12 @@ func cacheRoot() (string, error) {
 	return filepath.Join(c, "katharsis", "guide"), nil
 }
 
-func snapshot(ctx context.Context, root, url, commit string) (string, error) {
+func snapshot(ctx context.Context, c *web.Client, root, url, commit string) (string, error) {
+	// A download killed part way leaves a temp dir of up to maxExtracted.
+	// Cleaned on every call, not just before a download: after a kill the
+	// next start usually downloads again at once, while the debris is too
+	// young to remove, and from then on the snapshot is there.
+	web.CleanDebris(root, web.TempPrefix)
 	dir := filepath.Join(root, commit)
 	if isDir(dir) {
 		return dir, nil
@@ -100,13 +100,28 @@ func snapshot(ctx context.Context, root, url, commit string) (string, error) {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return "", err
 	}
-	tmp, err := os.MkdirTemp(root, ".tmp-"+commit+"-")
+	tmp, err := os.MkdirTemp(root, web.TempPrefix+commit+"-")
 	if err != nil {
 		return "", err
 	}
 	defer os.RemoveAll(tmp) // no-op after a successful rename
 
-	if err := download(ctx, url, "usaco-guide-"+commit+"/", tmp); err != nil {
+	prefix := "usaco-guide-" + commit + "/"
+	err = c.Do(ctx, web.Request{URL: url, Progress: Progress, Read: func(resp *http.Response) error {
+		// The archive is streamed, so there is nothing to resume: each
+		// attempt starts over in an emptied dir.
+		if err := emptyDir(tmp); err != nil {
+			return web.Permanent(err)
+		}
+		// A cut connection shows up as a gzip or tar error, worth a
+		// retry; a bad archive will be just as bad next time.
+		err := extract(io.LimitReader(resp.Body, maxDownload), prefix, tmp)
+		if errors.Is(err, errBadArchive) {
+			return web.Permanent(err)
+		}
+		return err
+	}})
+	if err != nil {
 		return "", fmt.Errorf("usaco guide snapshot %.12s: %w", commit, err)
 	}
 	if err := os.Rename(tmp, dir); err != nil {
@@ -122,89 +137,6 @@ func snapshot(ctx context.Context, root, url, commit string) (string, error) {
 func isDir(p string) bool {
 	fi, err := os.Stat(p)
 	return err == nil && fi.IsDir()
-}
-
-// download fetches the tarball with a few retries. Each attempt starts over
-// in an emptied dst: the archive is streamed, so there is nothing to resume.
-func download(ctx context.Context, url, prefix, dst string) error {
-	var err error
-	for attempt := range 3 {
-		if attempt > 0 {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(time.Duration(attempt) * retryDelay):
-			}
-			if err := emptyDir(dst); err != nil {
-				return err
-			}
-		}
-		var retry bool
-		retry, err = fetchOnce(ctx, url, prefix, dst)
-		if err == nil || !retry || ctx.Err() != nil {
-			return err
-		}
-	}
-	return err
-}
-
-func fetchOnce(ctx context.Context, url, prefix, dst string) (retry bool, err error) {
-	// The idle timer runs from the request on and restarts with every read
-	// that gets bytes, so it bounds a stall before the headers too.
-	ctx, cancel := context.WithCancelCause(ctx)
-	defer cancel(nil)
-	idle := time.AfterFunc(idleTimeout, func() { cancel(errStalled) })
-	defer idle.Stop()
-	defer func() {
-		if errors.Is(context.Cause(ctx), errStalled) {
-			retry, err = true, fmt.Errorf("GET %s: %w: no data for %v", url, errStalled, idleTimeout)
-		}
-	}()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return false, err
-	}
-	req.Header.Set("User-Agent", userAgent)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return true, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests,
-			fmt.Errorf("GET %s: %s", url, resp.Status)
-	}
-	body := &idleReader{r: resp.Body, idle: idle, progress: Progress}
-	if err := extract(io.LimitReader(body, maxDownload), prefix, dst); err != nil {
-		// A cut connection shows up as a gzip or tar error; worth a retry.
-		// A bad archive will be just as bad next time.
-		return !errors.Is(err, errBadArchive), err
-	}
-	return false, nil
-}
-
-var errStalled = errors.New("download stalled")
-
-// idleReader restarts the idle timer on every read that brings bytes and
-// reports the running total to progress.
-type idleReader struct {
-	r        io.Reader
-	idle     *time.Timer
-	progress func(int64)
-	n        int64
-}
-
-func (r *idleReader) Read(p []byte) (int, error) {
-	n, err := r.r.Read(p)
-	if n > 0 {
-		r.idle.Reset(idleTimeout)
-		r.n += int64(n)
-		if r.progress != nil {
-			r.progress(r.n)
-		}
-	}
-	return n, err
 }
 
 var errBadArchive = errors.New("bad archive")

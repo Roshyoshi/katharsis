@@ -18,6 +18,7 @@ import (
 	"github.com/parquet-go/parquet-go"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/content/web"
 	"katharsis/internal/problem"
 )
 
@@ -233,10 +234,10 @@ type testWriter struct {
 func (w *testWriter) write(name string, v []byte) error {
 	d := dataBytes(v)
 	if len(d) > maxTestFile {
-		return permanentError{fmt.Errorf("test %s is over %d bytes", name, maxTestFile)}
+		return fmt.Errorf("test %s is over %d bytes", name, maxTestFile)
 	}
 	if w.budget -= int64(len(d)); w.budget < 0 {
-		return permanentError{fmt.Errorf("tests over %d bytes", maxTestTotal)}
+		return fmt.Errorf("tests over %d bytes", maxTestTotal)
 	}
 	return os.WriteFile(filepath.Join(w.dir, name), d, 0o644)
 }
@@ -279,7 +280,7 @@ var officialCols = map[string][]string{
 func (c *Catalog) officialTests(ctx context.Context, e entry, w *testWriter) (int, error) {
 	u := c.fileURL(e.VFile)
 	f, sf, err := c.openRemote(ctx, u, officialColumn)
-	if errors.Is(err, errNotFound) {
+	if errors.Is(err, web.ErrNotFound) {
 		return 0, fmt.Errorf("%s: %w", u, errTestsMissing)
 	}
 	if err != nil {
@@ -287,7 +288,7 @@ func (c *Catalog) officialTests(ctx context.Context, e entry, w *testWriter) (in
 	}
 	ids, err := readAll[idRow](f)
 	if err != nil {
-		return 0, permanentError{fmt.Errorf("%s: %w", u, err)}
+		return 0, fmt.Errorf("%s: %w", u, err)
 	}
 	row := e.VRow
 	if row >= len(ids) || ids[row].ID != e.Key {
@@ -308,11 +309,11 @@ func (c *Catalog) officialTests(ctx context.Context, e entry, w *testWriter) (in
 			return c.officialFallback(f, row, w, u)
 		}
 		if err != nil {
-			return 0, permanentError{fmt.Errorf("%s: %w", u, err)}
+			return 0, fmt.Errorf("%s: %w", u, err)
 		}
 	}
 	if seen[".in"] != seen[".out"] {
-		return 0, permanentError{fmt.Errorf("%s: %d inputs, %d outputs", u, seen[".in"], seen[".out"])}
+		return 0, fmt.Errorf("%s: %d inputs, %d outputs", u, seen[".in"], seen[".out"])
 	}
 	return w.count(1, seen[".in"])
 }
@@ -323,7 +324,7 @@ func (c *Catalog) officialTests(ctx context.Context, e entry, w *testWriter) (in
 func (c *Catalog) officialFallback(f *parquet.File, row int, w *testWriter, u string) (int, error) {
 	rows, err := readAll[officialRow](f)
 	if err != nil {
-		return 0, permanentError{fmt.Errorf("%s: %w", u, err)}
+		return 0, fmt.Errorf("%s: %w", u, err)
 	}
 	if err := w.reset(); err != nil {
 		return 0, err
@@ -375,32 +376,23 @@ func (c *Catalog) generatedTests(ctx context.Context, e entry, w *testWriter, fi
 	}
 	defer func() { _ = f.Close() }()
 	u := c.fileURL(genFile(e.ContestID))
-	err = c.client.download(ctx, u, maxGenFile, func() (io.Writer, error) {
-		if _, err := f.Seek(0, io.SeekStart); err != nil {
-			return nil, err
-		}
-		return f, f.Truncate(0)
-	})
-	if errors.Is(err, errNotFound) {
+	size, err := c.client.Spool(ctx, u, f, maxGenFile)
+	if errors.Is(err, web.ErrNotFound) {
 		return 0, fmt.Errorf("%s: %w", u, errTestsMissing)
 	}
 	if err != nil {
 		return 0, err
 	}
-	size, err := f.Seek(0, io.SeekEnd)
-	if err != nil {
-		return 0, err
-	}
 	pf, err := parquet.OpenFile(f, size, parquet.SkipPageIndex(true), parquet.SkipBloomFilters(true))
 	if err != nil {
-		return 0, permanentError{fmt.Errorf("%s: %w", u, err)}
+		return 0, fmt.Errorf("%s: %w", u, err)
 	}
 
 	// The key columns are a few hundred bytes; parquet-go reads them and
 	// nothing else.
 	keys, err := readAll[genKey](pf)
 	if err != nil {
-		return 0, permanentError{fmt.Errorf("%s: %w", u, err)}
+		return 0, fmt.Errorf("%s: %w", u, err)
 	}
 	var rows []int64
 	for i, k := range keys {
@@ -433,7 +425,7 @@ func (c *Catalog) generatedTests(ctx context.Context, e entry, w *testWriter, fi
 				return c.generatedFallback(pf, name, w, u, first)
 			}
 			if err != nil {
-				return 0, permanentError{fmt.Errorf("%s: %w", u, err)}
+				return 0, fmt.Errorf("%s: %w", u, err)
 			}
 		}
 	}
@@ -462,7 +454,7 @@ func (c *Catalog) generatedFallback(pf *parquet.File, name map[int64]string, w *
 			break
 		}
 		if err != nil {
-			return 0, permanentError{fmt.Errorf("%s: %w", u, err)}
+			return 0, fmt.Errorf("%s: %w", u, err)
 		}
 	}
 	return w.count(first, len(name))

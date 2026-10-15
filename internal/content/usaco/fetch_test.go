@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/content/web"
 )
 
 // fakeUSACO serves saved pages and zips the way usaco.org lays them out and
@@ -82,7 +83,7 @@ func testCatalog(t *testing.T, root string, srv *httptest.Server) *Catalog {
 	t.Helper()
 	c, _ := openTest(t, root)
 	c.base = srv.URL
-	c.client = &politeClient{http: srv.Client(), gap: time.Millisecond, retries: 2, backoff: time.Millisecond}
+	c.client = &web.Client{HTTP: srv.Client(), Gap: time.Millisecond, Retries: 2, Backoff: time.Millisecond}
 	return c
 }
 
@@ -266,7 +267,7 @@ func TestFetchRefinesIndexFromCache(t *testing.T) {
 func TestOpenCleansDebris(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	old := time.Now().Add(-debrisAge - time.Hour)
+	old := time.Now().Add(-web.DebrisAge - time.Hour)
 	for _, name := range []string{".tmp-84-1", ".tmp-index.json-2", ".tmp-85-3", "84"} {
 		p := filepath.Join(root, name)
 		if err := os.MkdirAll(filepath.Join(p, "tests"), 0o755); err != nil {

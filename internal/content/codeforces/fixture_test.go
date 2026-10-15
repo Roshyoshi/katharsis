@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/parquet-go/parquet-go"
+
+	"katharsis/internal/content/web"
 )
 
 // The fixture is a small copy of the dataset's layout, served by a fake
@@ -404,8 +406,8 @@ func (h *fakeHF) setFail(v bool) {
 	h.mu.Unlock()
 }
 
-func testClient(h *fakeHF) *politeClient {
-	return &politeClient{http: h.srv.Client(), gap: time.Millisecond, retries: 1, backoff: time.Millisecond}
+func testClient(h *fakeHF) *web.Client {
+	return &web.Client{HTTP: h.srv.Client(), Gap: time.Millisecond, Retries: 1, Backoff: time.Millisecond}
 }
 
 // openFixture builds a catalog over a fresh fixture in a temp cache.

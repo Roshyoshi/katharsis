@@ -84,23 +84,23 @@ func (f *spanFile) ReadAt(p []byte, off int64) (int, error) {
 // column chunks for which want(path) is true, and opens the result.
 // Column paths are dotted, e.g. "official_tests.list.element.output".
 func (c *Catalog) openRemote(ctx context.Context, rawURL string, want func(path string) bool) (*parquet.File, *spanFile, error) {
-	tail, size, err := c.client.getTail(ctx, rawURL, tailGuess)
+	tail, size, err := c.client.Tail(ctx, rawURL, tailGuess)
 	if err != nil {
 		return nil, nil, err
 	}
 	if len(tail) < 12 || string(tail[len(tail)-4:]) != "PAR1" {
-		return nil, nil, permanentError{fmt.Errorf("%s: not a parquet file", rawURL)}
+		return nil, nil, fmt.Errorf("%s: not a parquet file", rawURL)
 	}
 	sf := &spanFile{size: size}
 	sf.add(size-int64(len(tail)), tail)
 	footer := int64(binary.LittleEndian.Uint32(tail[len(tail)-8:])) + 8
 	if footer > size-4 {
-		return nil, nil, permanentError{fmt.Errorf("%s: footer of %d bytes in a %d byte file", rawURL, footer, size)}
+		return nil, nil, fmt.Errorf("%s: footer of %d bytes in a %d byte file", rawURL, footer, size)
 	}
 	if footer > int64(len(tail)) {
 		// A footer bigger than the guess: fetch the rest of it.
 		off := size - footer
-		b, err := c.client.getRange(ctx, rawURL, off, footer-int64(len(tail)))
+		b, err := c.client.Range(ctx, rawURL, off, footer-int64(len(tail)))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -112,18 +112,18 @@ func (c *Catalog) openRemote(ctx context.Context, rawURL string, want func(path 
 		parquet.SkipBloomFilters(true),
 	)
 	if err != nil {
-		return nil, nil, permanentError{fmt.Errorf("%s: %w", rawURL, err)}
+		return nil, nil, fmt.Errorf("%s: %w", rawURL, err)
 	}
 
 	ranges, err := columnRanges(f, want)
 	if err != nil {
-		return nil, nil, permanentError{fmt.Errorf("%s: %w", rawURL, err)}
+		return nil, nil, fmt.Errorf("%s: %w", rawURL, err)
 	}
 	for _, r := range ranges {
 		if covered(sf, r) {
 			continue // inside the tail already
 		}
-		b, err := c.client.getRange(ctx, rawURL, r.off, r.end-r.off)
+		b, err := c.client.Range(ctx, rawURL, r.off, r.end-r.off)
 		if err != nil {
 			return nil, nil, err
 		}

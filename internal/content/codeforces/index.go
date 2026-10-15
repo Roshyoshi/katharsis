@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/content/web"
 )
 
 // entry is one problem in the cached index: the catalog view plus what
@@ -352,33 +353,12 @@ func loadIndex(root string, l layout) (*index, bool) {
 // and index.json carries text.bin's size and hash, so a reader never pairs
 // an index with another build's text.
 func saveIndex(root string, idx *index, blob []byte) error {
-	if err := writeAtomic(filepath.Join(root, "text.bin"), blob); err != nil {
+	if err := web.WriteFile(filepath.Join(root, "text.bin"), blob); err != nil {
 		return err
 	}
 	b, err := json.Marshal(idx)
 	if err != nil {
 		return err
 	}
-	return writeAtomic(filepath.Join(root, "index.json"), b)
-}
-
-// writeAtomic writes via a temp file in the same dir and a rename, so a
-// reader (or a crash) never sees half a file.
-func writeAtomic(p string, data []byte) error {
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-		return err
-	}
-	f, err := os.CreateTemp(filepath.Dir(p), ".tmp-"+filepath.Base(p)+"-")
-	if err != nil {
-		return err
-	}
-	defer func() { _ = os.Remove(f.Name()) }() // no-op after the rename
-	_, err = f.Write(data)
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	if err != nil {
-		return err
-	}
-	return os.Rename(f.Name(), p)
+	return web.WriteFile(filepath.Join(root, "index.json"), b)
 }

@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"katharsis/internal/content/guide"
+	"katharsis/internal/content/web"
 )
 
 // TestRegenFacts rebuilds facts.json from the live statement pages of every
@@ -63,7 +64,8 @@ func TestRegenFacts(t *testing.T) {
 	samples := map[int][]sample{}
 	for _, id := range ids {
 		page, err := cached(ctx, filepath.Join(dir, "statements", strconv.Itoa(id)+".html"), func() ([]byte, error) {
-			return client.getBytes(ctx, statementURL(id), maxPage)
+			b, _, err := client.Bytes(ctx, statementURL(id), maxPage)
+			return b, err
 		})
 		if err != nil {
 			t.Errorf("cpid %d: %v", id, err)
@@ -78,9 +80,10 @@ func TestRegenFacts(t *testing.T) {
 			t.Errorf("cpid %d: no samples in a non-interactive statement", id)
 		}
 		code, err := cached(ctx, filepath.Join(dir, "heads", strconv.Itoa(id)+".code"), func() ([]byte, error) {
-			err := client.head(ctx, site+"/current/data/"+stems[id]+".zip")
+			// A HEAD tells whether the zip exists without downloading it.
+			err := client.Do(ctx, web.Request{Method: http.MethodHead, URL: site + "/current/data/" + stems[id] + ".zip"})
 			switch {
-			case errors.Is(err, errNotFound):
+			case errors.Is(err, web.ErrNotFound):
 				return []byte("404\n"), nil
 			case err != nil:
 				return nil, err
@@ -149,7 +152,8 @@ func sharedStemData(ctx context.Context, t *testing.T, dir string, stems map[int
 		}
 		slices.Sort(ids)
 		zb, err := cached(ctx, filepath.Join(dir, "zips", stem+".zip"), func() ([]byte, error) {
-			return client.getBytes(ctx, site+"/current/data/"+stem+".zip", maxZip)
+			b, _, err := client.Bytes(ctx, site+"/current/data/"+stem+".zip", maxZip)
+			return b, err
 		})
 		if err != nil {
 			t.Errorf("stem %s: %v", stem, err)
@@ -218,10 +222,4 @@ func cached(ctx context.Context, p string, get func() ([]byte, error)) ([]byte, 
 		return nil, err
 	}
 	return b, os.WriteFile(p, b, 0o644)
-}
-
-// head checks that rawURL exists without downloading it (errNotFound if
-// not); facts.json records which problems have test zips this way.
-func (c *politeClient) head(ctx context.Context, rawURL string) error {
-	return c.do(ctx, http.MethodHead, rawURL, func(io.Reader) error { return nil })
 }
