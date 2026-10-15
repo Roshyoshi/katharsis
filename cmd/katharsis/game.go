@@ -19,6 +19,7 @@ import (
 	"katharsis/internal/content/codeforces"
 	"katharsis/internal/content/usaco"
 	"katharsis/internal/flavor"
+	"katharsis/internal/screens"
 	"katharsis/internal/session"
 	"katharsis/internal/store"
 )
@@ -146,6 +147,11 @@ func runGame(args []string) error {
 	defer runner.Shutdown()
 	go func() {
 		<-ctx.Done() // a hangup, or stop on the way out
+		// Quit through the app, so it cancels its fetches and closes the
+		// editor; Send is a no-op once the program has exited. Force it if
+		// that stalls.
+		p.Send(screens.Quit{})
+		time.Sleep(3 * time.Second)
 		p.Quit()
 	}()
 

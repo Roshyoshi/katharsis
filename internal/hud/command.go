@@ -2,6 +2,7 @@ package hud
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -51,6 +52,7 @@ type DebugTarget struct {
 }
 
 type debugReadyMsg struct {
+	hud   *Model // the HUD that asked; a closed door's result must not attach
 	req   session.Request
 	test  string
 	dir   string
@@ -63,6 +65,17 @@ func (m *Model) updateCommand(msg tea.Msg) (tea.Cmd, bool) {
 	case session.Request:
 		return m.command(msg), true
 	case debugReadyMsg:
+		if msg.hud != m {
+			// Its door closed while lldb started: tear it down, not adopt it.
+			if msg.close != nil {
+				msg.close()
+			}
+			if msg.dir != "" {
+				_ = os.RemoveAll(msg.dir)
+			}
+			msg.req.Answer(fail("debug: the door closed"))
+			return nil, true
+		}
 		m.debugReady(msg)
 		return nil, true
 	}
@@ -88,8 +101,9 @@ func (m *Model) command(req session.Request) tea.Cmd {
 // submit judges the full tests at -O2, replacing any submit still running.
 func (m *Model) submit(req session.Request) tea.Cmd {
 	if m.prob == nil {
-		req.Answer(fail(fmt.Sprintf("cannot submit: %v", m.loadErr)))
-		return nil
+		err := fmt.Errorf("cannot submit: %v", m.loadErr)
+		req.Answer(fail(err.Error()))
+		return func() tea.Msg { return SubmittedMsg{Err: err} }
 	}
 	if m.sub.cancel != nil {
 		m.sub.cancel()
@@ -129,6 +143,13 @@ func (m *Model) applySubmit(ev judge.Event) tea.Cmd {
 			s := *ev.Summary
 			return func() tea.Msg { return SubmittedMsg{Summary: s} }
 		}
+		// A pass that ended without a verdict still ends the submit, so the
+		// host stops waiting on it.
+		err := ev.Err
+		if err == nil {
+			err = errors.New("judge stopped")
+		}
+		return func() tea.Msg { return SubmittedMsg{Err: err} }
 	}
 	return nil
 }
@@ -246,10 +267,10 @@ func (m *Model) startDebug(req session.Request) tea.Cmd {
 		req.Answer(fail(err.Error()))
 		return nil
 	}
-	src, open := m.prob.Source, m.opt.Debug
+	src, open, hud := m.prob.Source, m.opt.Debug, m
 	return func() tea.Msg {
 		dir, closePane, err := openDebugger(src, t, open)
-		return debugReadyMsg{req: req, test: t.Name, dir: dir, close: closePane, err: err}
+		return debugReadyMsg{hud: hud, req: req, test: t.Name, dir: dir, close: closePane, err: err}
 	}
 }
 

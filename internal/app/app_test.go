@@ -427,8 +427,14 @@ func TestLostJudgeCannotStopTheClock(t *testing.T) {
 // the HUD without marking the door as judging, so a submit just before the
 // deadline was crashed by the next tick instead of getting the grace.
 func TestEditorSubmitGetsTheGrace(t *testing.T) {
+	// The HUD needs a loadable problem, so its submit really runs: a
+	// refused submit ends at once and rightly holds no clock.
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "sol.cpp"), []byte("int main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	h := newHarnessWith(t, func(f *fakeRunner) Runner {
-		return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: t.TempDir()}}
+		return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: dir}}
 	})
 	h.send(screens.StartBoot{Preset: "standard"})
 	cur := h.enterDoor()
@@ -948,5 +954,20 @@ func TestProblemScreenFillsThePane(t *testing.T) {
 		if !strings.HasPrefix(vim, "vim ") || !strings.HasPrefix(keys, "s submit") {
 			t.Fatalf("footer at height %d is %q / %q, want the vim and key help", size[1], vim, keys)
 		}
+	}
+}
+
+// A submit the HUD refuses (no problem loaded) ends the judging at once,
+// so it cannot hold the door's clock until the grace runs out.
+func TestRefusedSubmitReleasesTheClock(t *testing.T) {
+	h := newHarnessWith(t, func(f *fakeRunner) Runner {
+		return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: t.TempDir()}}
+	})
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.enterDoor()
+	req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	h.send(req)
+	if h.m.judging {
+		t.Fatal("a refused submit left the clock held")
 	}
 }

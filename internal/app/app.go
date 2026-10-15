@@ -202,6 +202,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case judgedMsg:
 		return m, m.onJudged(msg)
 	case hud.SubmittedMsg:
+		if msg.Err != nil {
+			return m, m.onJudged(judgedMsg{err: msg.Err})
+		}
 		s := msg.Summary
 		return m, m.onJudged(judgedMsg{verdict: string(s.Verdict), passed: s.Passed, total: s.Total})
 	case session.Request:
