@@ -126,10 +126,10 @@ func (l *Log) View(width, height int) string {
 	}
 	head := ui.Spread(
 		ui.Strong.Render("git log --graph --oneline")+
-			ui.Muted.Render(fmt.Sprintf("  %d boots · %d cleared · %d crashed", len(l.all), cleared, crashed)),
+			ui.Muted.Render(fmt.Sprintf("  %s%s%d cleared%s%d crashed", units.Plural(len(l.all), "boot"), ui.G.Sep, cleared, ui.G.Sep, crashed)),
 		"filter: "+ui.Focus.Render(logFilters[l.filter].name),
 		w)
-	keys := ui.Muted.Render("j/k move · enter expand · f filter · g/G ends · q back")
+	keys := ui.Footer(w, "j/k", "move", "enter", "expand", "f", "filter", "g/G", "ends", "q", "back")
 
 	rows := max(h-2, 0)
 	l.h = rows
@@ -189,6 +189,8 @@ func (l *Log) lines(w int) (out []string, selAt, selEnd int) {
 // bootLine is one boot in at most w cells. Below 100 columns the date drops
 // its time so "crashed in <biome> (<cause>)" keeps room to be read.
 func (l *Log) bootLine(b BootRow, w, numW int, wide bool) string {
+	// git's graph star carries the outcome; the words stay plain except a
+	// crash, which red may paint (R2).
 	star := ui.Warn.Render("*")
 	switch {
 	case b.Cleared:
@@ -196,7 +198,7 @@ func (l *Log) bootLine(b BootRow, w, numW int, wide bool) string {
 	case b.Cause != "":
 		star = ui.Danger.Render("*")
 	}
-	hash := ui.Warn.Render(shortHash(b))
+	hash := ui.Warn.Render(shortHash(b)) // git's yellow hash: the parody keeps it (R8)
 	date := b.Started.Format("Jan 02")
 	if wide {
 		date = b.Started.Format("2006-01-02 15:04")
@@ -229,9 +231,9 @@ func shortHash(b BootRow) string {
 func outcomeText(b BootRow, room int) string {
 	switch {
 	case b.Cleared:
-		return ui.OK.Render("cleared")
+		return "cleared"
 	case b.Cause == "":
-		return ui.Warn.Render("abandoned")
+		return "abandoned"
 	}
 	cause := " (" + causeText(b.Cause) + ")"
 	if b.Biome == "" {
@@ -289,18 +291,21 @@ var (
 )
 
 func attemptLine(a AttemptRow, lay attemptLayout) string {
-	mark := ui.Danger.Render("✗")
+	mark := ui.Danger.Render(ui.G.Fail)
 	switch a.Outcome {
 	case game.Cleared:
-		mark = ui.OK.Render("✓")
+		mark = ui.OK.Render(ui.G.Pass)
 	case game.Retreated:
-		mark = ui.Warn.Render("↩")
-	case "":
-		mark = ui.Warn.Render("…")
+		mark = ui.Warn.Render(ui.G.Retreat)
+	case "": // still open
+		mark = ui.Focus.Render(ui.G.Here)
 	}
+	// The door's difficulty follows its topic (D27). When both do not fit
+	// the column, the topic is cut, never the numeral (§2.6).
 	topic := a.Topic
 	if a.Rating > 0 {
-		topic += " " + ui.Rank(float64(a.Rating)).Render(fmt.Sprint(a.Rating))
+		r := ui.Rating(a.Rating)
+		topic = ui.Clip(a.Topic, lay.topic-1-ansi.StringWidth(r)) + " " + r
 	}
 	t := ui.AlignRight(units.Clock(a.Elapsed), 5)
 	if lay.timer {
@@ -312,7 +317,7 @@ func attemptLine(a AttemptRow, lay attemptLayout) string {
 	}
 	subs := fmt.Sprintf("%d sub", a.Submits)
 	if a.Failed > 0 {
-		subs += fmt.Sprintf(" %d✗", a.Failed)
+		subs += fmt.Sprintf(" %d%s", a.Failed, ui.G.Fail)
 	}
 	end := string(a.Kind)
 	if a.Outcome != game.Cleared {
@@ -333,6 +338,6 @@ func attemptLine(a AttemptRow, lay attemptLayout) string {
 	if len(tags) > 0 {
 		end += ui.Muted.Render(" [" + strings.Join(tags, ", ") + "]")
 	}
-	return fmt.Sprintf("%s %s %s %s %s 🦆%d %s", mark, ui.Fit(a.Title, lay.title), ui.Fit(topic, lay.topic),
-		t, ui.Fit(subs, 8), a.Quacks, end)
+	return fmt.Sprintf("%s %s %s %s %s %s%d %s", mark, ui.Fit(a.Title, lay.title), ui.Fit(topic, lay.topic),
+		t, ui.Fit(subs, 8), ui.G.Duck, a.Quacks, end)
 }
