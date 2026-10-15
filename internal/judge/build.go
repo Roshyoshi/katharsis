@@ -370,12 +370,20 @@ func compileEnv(p Profile) []string {
 	return append(os.Environ(), "NIX_HARDENING_ENABLE=")
 }
 
-func cacheDir() (string, error) {
+// buildDir is the build cache; cacheDir makes it and sweeps it once.
+func buildDir() (string, error) {
 	base, err := os.UserCacheDir()
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(base, "katharsis", "build")
+	return filepath.Join(base, "katharsis", "build"), nil
+}
+
+func cacheDir() (string, error) {
+	dir, err := buildDir()
+	if err != nil {
+		return "", err
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
@@ -388,16 +396,39 @@ func cacheDir() (string, error) {
 
 var sweepOnce sync.Once
 
-// Sweep removes what killed processes leave behind, older than an hour:
-// katharsis-run-* and katharsis-probe-* dirs in the temp dir (a run's
-// working dir holds a copy of a hidden test's input) and build-* dirs in
-// the build cache (SIGKILL skips a compile's deferred cleanup), and trims
-// the build cache, builds and PCHs, to BuildCacheCap. A process's first
-// build sweeps the cache by itself; a command calls Sweep at startup to
-// cover the temp dir too. Other processes judging meanwhile are safe:
-// nothing they use is that old.
+// Sweep cleans up after killed processes (SIGKILL skips every deferred
+// cleanup). It kills the runs a killed game left running, launchd's now,
+// whose binary is in the build cache or a judge temp dir (killOrphans;
+// darwin only): a run's own CPU limit (limitCPU) ends one that computes,
+// not one that blocks or catches SIGXCPU. It removes what such processes
+// leave behind, older than an hour: katharsis-run-* and katharsis-probe-*
+// dirs in the temp dir (a run's working dir holds a copy of a hidden
+// test's input) and build-* dirs in the build cache, and trims the build
+// cache, builds and PCHs, to BuildCacheCap. A process's first build
+// sweeps the cache by itself; a command calls Sweep at startup to cover
+// the rest. Other processes judging meanwhile are safe: their runs have a
+// live parent, and nothing they use is that old.
 func Sweep() {
-	cleanDebris(os.TempDir(), time.Now().Add(-debrisAge), "katharsis-run-", "katharsis-probe-")
+	tmp, tempPrefixes := os.TempDir(), []string{"katharsis-run-", "katharsis-probe-"}
+	// The kernel reports an executable's path with symlinks resolved
+	// (/private/var/folders for $TMPDIR), and none once it is deleted:
+	// orphans go before the files they run.
+	realDir := func(dir string) string {
+		if r, err := filepath.EvalSymlinks(dir); err == nil {
+			return r
+		}
+		return dir // missing: nothing runs from it
+	}
+	var under []string
+	if dir, err := buildDir(); err == nil {
+		under = append(under, realDir(dir)+string(filepath.Separator))
+	}
+	for _, p := range tempPrefixes {
+		under = append(under, filepath.Join(realDir(tmp), p))
+	}
+	killOrphans(under)
+
+	cleanDebris(tmp, time.Now().Add(-debrisAge), tempPrefixes...)
 	_, _ = cacheDir()
 }
 

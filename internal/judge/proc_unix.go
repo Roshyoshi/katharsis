@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -39,8 +41,9 @@ func killGroup(pid int) error {
 // judge's CPU check (watch is): a kill -9 of the game, or a panic off the
 // main goroutine, skips the watchdog and every deferred kill, and the run
 // it leaves would spin on as launchd's child until reboot. At the limit
-// the kernel sends SIGXCPU, which ends a program that does not catch it;
-// macOS sends nothing more at the hard limit (Linux sends SIGKILL).
+// the kernel sends SIGXCPU, which ends a program that does not catch it.
+// macOS sends nothing more at the hard limit (Linux sends SIGKILL), and
+// Sweep kills what is left at the next start.
 //
 // Go sets no limits between fork and exec, so a shell sets this one and
 // execs the program in its own place, under the same pid. The run's CPU
@@ -62,3 +65,20 @@ var limitShell = sync.OnceValue(func() string {
 	}
 	return "/bin/sh"
 })
+
+// killOrphans SIGKILLs the runs dead judges left: processes launchd (pid
+// 1) adopted, as it does every dead parent's children, whose executable
+// path starts with one of prefixes, each the judge's own dir. The path is
+// what marks a run: a name says nothing, and a live judge's runs have it
+// as their parent. A run leads its process group (inGroup), killed with
+// it, so whatever it forked dies too.
+func killOrphans(prefixes []string) {
+	for _, pid := range children(1) {
+		exe := exePath(pid)
+		if !slices.ContainsFunc(prefixes, func(p string) bool { return strings.HasPrefix(exe, p) }) {
+			continue
+		}
+		_ = killGroup(pid)
+		_ = syscall.Kill(pid, syscall.SIGKILL) // should it not lead a group
+	}
+}

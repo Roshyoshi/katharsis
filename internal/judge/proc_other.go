@@ -13,5 +13,8 @@ func inGroup(cmd *exec.Cmd) {}
 
 func killGroup(pid int) error { return nil }
 
-// limitCPU does nothing here: there are no rlimits.
+// limitCPU and killOrphans do nothing here: there are no rlimits, and
+// children finds no processes.
 func limitCPU(cmd *exec.Cmd, limit time.Duration) {}
+
+func killOrphans(prefixes []string) {}

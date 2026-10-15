@@ -2,7 +2,13 @@ package judge
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
+	"slices"
+	"strconv"
+	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -113,6 +119,98 @@ func TestSweep(t *testing.T) {
 			t.Errorf("%s was swept", p)
 		}
 	}
+}
+
+// Sweep kills the runs a killed game left behind: processes launchd
+// adopted that run an executable in the build cache or a judge temp dir.
+// It goes by that path alone: the same program elsewhere, or a run whose
+// judge lives, is not its to kill.
+func TestSweepKillsOrphans(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("children lists processes on darwin only")
+	}
+	tmp := t.TempDir()
+	t.Setenv("TMPDIR", tmp) // unresolved: /var/folders, not /private/var/folders
+	cache, err := cacheDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Copies of sleep(1): one name, so only a path tells them apart.
+	inCache := copyExe(t, "/bin/sleep", filepath.Join(cache, "0123456789abcdef01234567"))
+	inRun := copyExe(t, "/bin/sleep", filepath.Join(tmp, "katharsis-run-1", "sleep"))
+	inTmp := copyExe(t, "/bin/sleep", filepath.Join(tmp, "other", "sleep"))
+	gone := map[int]string{orphan(t, inCache): inCache, orphan(t, inRun): inRun}
+	kept := map[int]string{orphan(t, "/bin/sleep"): "/bin/sleep", orphan(t, inTmp): inTmp}
+	live := exec.Command(inCache, "60") // a run whose judge, this test, lives
+	if err := live.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = live.Process.Kill(); _ = live.Wait() })
+
+	Sweep()
+	// Dead, or a zombie launchd has yet to reap: no path either way.
+	for pid, exe := range gone {
+		for start := time.Now(); exePath(pid) != ""; time.Sleep(10 * time.Millisecond) {
+			if time.Since(start) > 5*time.Second {
+				t.Errorf("%s (pid %d) survived the sweep", exe, pid)
+				break
+			}
+		}
+	}
+	for pid, exe := range kept {
+		if got, want := exePath(pid), resolved(t, exe); got != want {
+			t.Errorf("%s (pid %d) runs %q after the sweep, want it alive", exe, pid, got)
+		}
+	}
+	// Ended by this test's SIGTERM, not the sweep's SIGKILL.
+	_ = live.Process.Signal(syscall.SIGTERM)
+	_ = live.Wait()
+	if ws, _ := live.ProcessState.Sys().(syscall.WaitStatus); ws.Signal() != syscall.SIGTERM {
+		t.Errorf("the live judge's run ended with %v, want this test's SIGTERM", live.ProcessState)
+	}
+}
+
+// orphan starts exe as a dead judge's run is: a child of launchd, which
+// adopts it when the shell that started it exits. Cleanup kills it.
+func orphan(t *testing.T, exe string) int {
+	t.Helper()
+	out, err := exec.Command("/bin/sh", "-c", `"$0" 60 </dev/null >/dev/null 2>&1 & echo $!`, exe).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
+	if !slices.Contains(children(1), pid) {
+		t.Fatalf("%s (pid %d) is not launchd's child", exe, pid)
+	}
+	return pid
+}
+
+func copyExe(t *testing.T, src, dst string) string {
+	t.Helper()
+	b, err := os.ReadFile(src)
+	if err == nil {
+		err = os.MkdirAll(filepath.Dir(dst), 0o755)
+	}
+	if err == nil {
+		err = os.WriteFile(dst, b, 0o755)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dst
+}
+
+func resolved(t *testing.T, path string) string {
+	t.Helper()
+	r, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r
 }
 
 // crashReason on reports this machine's toolchains do not produce.
