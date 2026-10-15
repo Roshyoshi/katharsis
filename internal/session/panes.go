@@ -236,3 +236,19 @@ func SweepOrphans(wait time.Duration) (int, error) {
 	}
 	return found, nil
 }
+
+// Zoom zooms pane to fill its window, or unzooms it, as `resize-pane -Z`
+// does, for a pager opened in a pane too narrow to read in (ui-system.md
+// §2.6). It is idempotent: tmux's zoom is a toggle, so the window's
+// zoomed flag decides whether to send it.
+func Zoom(pane string, on bool) error {
+	flag, err := tmux("display-message", "-p", "-t", pane, "#{window_zoomed_flag}")
+	if err != nil {
+		return err
+	}
+	if (flag == "1") == on {
+		return nil
+	}
+	_, err = tmux("resize-pane", "-Z", "-t", pane)
+	return err
+}

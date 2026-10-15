@@ -62,7 +62,9 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 	case reader.OpenURL:
 		return openURL(msg.URL), true
 	case docMsg:
-		return m.push(m.docShown(msg)), true
+		s := m.docShown(msg)
+		m.zoomFor(s)
+		return m.push(s), true
 	case submitMsg:
 		return m.submit(), true
 	}

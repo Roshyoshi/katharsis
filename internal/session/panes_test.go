@@ -287,3 +287,28 @@ func TestSaveAndCloseEditor(t *testing.T) {
 		t.Fatal("swap file left behind")
 	}
 }
+
+func TestZoom(t *testing.T) {
+	orig := privateTmux(t)
+	if _, err := SplitEditor(t.TempDir(), "sol.cpp", []string{"sh", "-c", "sleep 30"}, 60); err != nil {
+		t.Fatal(err)
+	}
+	zoomed := func() string {
+		out, err := tmux("display-message", "-p", "-t", orig, "#{window_zoomed_flag}")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	for _, step := range []struct {
+		on   bool
+		want string
+	}{{true, "1"}, {true, "1"}, {false, "0"}, {false, "0"}} {
+		if err := Zoom(orig, step.on); err != nil {
+			t.Fatal(err)
+		}
+		if got := zoomed(); got != step.want {
+			t.Errorf("after Zoom(%v): zoomed %q, want %q", step.on, got, step.want)
+		}
+	}
+}

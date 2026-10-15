@@ -143,6 +143,9 @@ type Model struct {
 	toast       string
 	toastUntil  time.Time
 	toastSerial uint64
+
+	// zoomed is the reader the game's pane was zoomed for (zoom.go).
+	zoomed screens.Screen
 }
 
 func New(d Deps) (*Model, error) {
@@ -255,6 +258,7 @@ func (m *Model) initTop() tea.Cmd {
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	defer m.syncAudio()
+	defer m.syncZoom()
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height

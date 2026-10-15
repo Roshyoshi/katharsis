@@ -1247,3 +1247,37 @@ func TestBorderClock(t *testing.T) {
 		t.Errorf("Best = %d/%d, want the attempt's %d/%d", p, n, cur.BestPass, cur.Total)
 	}
 }
+
+// zoomRunner records the zooms the app asks for.
+type zoomRunner struct {
+	*fakeRunner
+	zooms []bool
+}
+
+func (r *zoomRunner) Zoom(on bool) error { r.zooms = append(r.zooms, on); return nil }
+
+// A statement opened in a pane too narrow to read in zooms the pane, and
+// unzooms it when the reader goes, by q or with the door (E14).
+func TestReaderZoomsANarrowPane(t *testing.T) {
+	var zr *zoomRunner
+	h := newHarnessWith(t, func(f *fakeRunner) Runner { zr = &zoomRunner{fakeRunner: f}; return zr })
+	doc := docMsg{doc: reader.Doc{Title: "Favorite Sequence", Markdown: "Given an array."}}
+
+	h.send(tea.WindowSizeMsg{Width: 80, Height: 24})
+	h.send(doc)
+	h.send(screens.Back{})
+	if len(zr.zooms) != 0 {
+		t.Fatalf("an 80-column pane zoomed: %v", zr.zooms)
+	}
+
+	h.send(tea.WindowSizeMsg{Width: 41, Height: 24})
+	h.send(doc)
+	if !slices.Equal(zr.zooms, []bool{true}) {
+		t.Fatalf("a 41-column pane: zooms %v, want one zoom", zr.zooms)
+	}
+	h.send(tea.WindowSizeMsg{Width: 120, Height: 24}) // zoomed: the pane is the window
+	h.send(screens.Back{})
+	if !slices.Equal(zr.zooms, []bool{true, false}) {
+		t.Errorf("after q: zooms %v, want zoom then unzoom", zr.zooms)
+	}
+}
