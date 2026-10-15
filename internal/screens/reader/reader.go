@@ -25,6 +25,10 @@ type Doc struct {
 	Source   string // a label for where it came from, e.g. "USACO 2024 December, Silver P2"
 	URL      string // the page online; "" disables `o`
 	Markdown string
+	// Converted marks markdown whose math is Unicode already (the
+	// curriculum converts its own pages), which the reader leaves as it is:
+	// converting twice read an escaped bracket as math.
+	Converted bool
 }
 
 // OpenURL asks the app to open URL in the browser. The reader emits it on
@@ -57,18 +61,21 @@ type Model struct {
 // New builds a reader for doc. Rendering waits for the first View, which is
 // when the width is known.
 func New(doc Doc) *Model {
-	return &Model{doc: doc, md: prepare(doc.Markdown), vp: viewport.New()}
+	return &Model{doc: doc, md: prepare(doc.Markdown, !doc.Converted), vp: viewport.New()}
 }
 
-// prepare converts math, labels bare code fences as plain text, and expands
-// tabs in code. Without a language Chroma guesses one from the content, and
-// a sample grid of #s and .s can come out coloured as some unrelated
-// language. Tabs must go because nothing downstream agrees on their width:
+// prepare converts math (when tex), labels bare code fences as plain text,
+// and expands tabs in code. Without a language Chroma guesses one from
+// the content, and a sample grid of #s and .s can come out coloured as
+// some unrelated language. Tabs must go because nothing downstream agrees on their width:
 // Glamour pads lines counting a tab as zero cells, Lip Gloss turns it into
 // four spaces, and the terminal jumps to the next multiple of eight.
-func prepare(md string) string {
+func prepare(md string, tex bool) string {
+	if tex {
+		md = TeXToUnicode(md)
+	}
 	var b strings.Builder
-	for _, seg := range splitFences(TeXToUnicode(md)) {
+	for _, seg := range splitFences(md) {
 		if !seg.code {
 			b.WriteString(seg.text)
 			continue

@@ -78,7 +78,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.stack = append(m.stack, reader.New(reader.Doc{
-			Title: mod.Title, Source: "USACO Guide · " + mod.DivisionTitle, URL: mod.URL, Markdown: md,
+			Title: mod.Title, Source: "USACO Guide · " + mod.DivisionTitle, URL: mod.URL, Markdown: md, Converted: true,
 		}))
 		return m, nil
 	case screens.StartTrial, reader.OpenURL:

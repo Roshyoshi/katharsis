@@ -69,10 +69,11 @@ func (m *Model) openModule(id string) tea.Cmd {
 		return fail("module %s: %v", id, err)
 	}
 	return m.push(reader.New(reader.Doc{
-		Title:    mod.Title,
-		Source:   "USACO Guide · " + mod.DivisionTitle,
-		URL:      mod.URL,
-		Markdown: md,
+		Title:     mod.Title,
+		Source:    "USACO Guide · " + mod.DivisionTitle,
+		URL:       mod.URL,
+		Markdown:  md,
+		Converted: true, // the curriculum did its math
 	}))
 }
 

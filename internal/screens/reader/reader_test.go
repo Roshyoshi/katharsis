@@ -269,7 +269,7 @@ func TestResizeRerenders(t *testing.T) {
 func TestPrepareTagsBareFences(t *testing.T) {
 	in := "```\n1 2\n```\n\n```cpp\nint x;\n```\n\n~~~\n$a$\n~~~\n"
 	want := "```text\n1 2\n```\n\n```cpp\nint x;\n```\n\n~~~text\n$a$\n~~~\n"
-	if got := prepare(in); got != want {
+	if got := prepare(in, true); got != want {
 		t.Errorf("prepare:\n got %q\nwant %q", got, want)
 	}
 }
@@ -280,7 +280,19 @@ func TestExpandTabs(t *testing.T) {
 	if got := expandTabs(in, 4); got != want {
 		t.Errorf("expandTabs:\n got %q\nwant %q", got, want)
 	}
-	if got := prepare("```\n1\t2\n```\nprose\tstays\n"); got != "```text\n1   2\n```\nprose\tstays\n" {
+	if got := prepare("```\n1\t2\n```\nprose\tstays\n", true); got != "```text\n1   2\n```\nprose\tstays\n" {
 		t.Errorf("prepare should expand tabs in code only, got %q", got)
+	}
+}
+
+// A page the curriculum converted keeps its text as it is: a second
+// conversion read an escaped bracket as math.
+func TestConvertedSkipsTeX(t *testing.T) {
+	in := "an array \\[1, 2\\] and $x^2$\n"
+	if got := New(Doc{Markdown: in, Converted: true}).md; got != in {
+		t.Errorf("converted doc prepared as %q, want it as it was", got)
+	}
+	if got := New(Doc{Markdown: in}).md; got == in {
+		t.Errorf("a statement's math was left as TeX: %q", got)
 	}
 }
