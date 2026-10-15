@@ -213,8 +213,14 @@ and merge.full SPONGEs resolved; dead hooks cut or given a home; text.md
 pointers fixed). g-engine (sim panic on presets shorter than boot #1; cron/chrt pay multipliers
 bounded; fork not offered once tmux applies (full clears +3 to +10); a trial
 before the first boot no longer cost boot #1's rules; LifetimeBytes never falls).
-story-wire2 (reveal.prestige first lines fit the 59-column teaser).
-Cleanup wave 2 running: g-app; story-wire (screen wiring of the new lines); wave 1 done.
+story-wire2 (reveal.prestige first lines fit the 59-column teaser). g-app (app tests 30 s -> 5.8 s in synctest bubbles, -race clean; vim :Submit reply
+names the cost; timer.warn on the vim border; music fades out on every exit;
+reader skips TeX on RTFM pages; katharsis.log -> XDG state dir; RT1 RTFM next
+step after 2 crashes on a topic in 14 days; r after a trial retries it; bugs: a
+new room kept the downloading choice, upsolves paid the editorial rate without
+one shown; story.first-rtfm and rtfm.trial.start wired).
+Cleanup wave 2 done except story-wire (screen wiring of the new lines). Core-loop
+QA running (qa-loop); wave 1 done.
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
 retired milestone); cleanup wave 1: g-store, g-qa
