@@ -861,28 +861,69 @@ func TestUnsavedUpsolveClosesTheDoor(t *testing.T) {
 	})
 }
 
-// The editorial a :q! offers counts against the upsolve that follows, even
-// after the game restarts and the core dump is upsolved from GRUB.
-func TestUpsolveAfterGiveUpIsEditorial(t *testing.T) {
+// The editorial a :q! offers on the crash screen, never opened, costs the
+// upsolve nothing: it pays the 1.5x the debrief promised (O2), in the same
+// session and after a restart. Offered once counted as seen.
+func TestUpsolveAfterGiveUpUnreadIsIndependent(t *testing.T) {
+	for _, restart := range []bool{false, true} {
+		t.Run("restart="+strconv.FormatBool(restart), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				h := newHarness(t)
+				h.send(screens.StartBoot{Preset: "standard"})
+				h.acFirst = 1 // bytes on door 1, so :q! on door 2 leaves a core dump
+				h.enterDoor()
+				h.send(submitMsg{})
+				id := h.enterDoor().Door.Problem
+				hasEditorial(h, id)
+				h.send(game.GiveUp{})
+				dump := h.m.meta.CoreDump
+				if dump == nil || dump.Problem != id {
+					t.Fatalf("core dump %+v, want one on %s", dump, id)
+				}
+				if restart {
+					h.restart()
+				}
+				bank := h.m.meta.Bank
+				h.send(screens.Upsolve{Problem: id})
+				h.send(submitMsg{})
+				last := h.m.meta.Solves[len(h.m.meta.Solves)-1]
+				if last.Problem != id || !last.Upsolve || last.Kind != game.Independent {
+					t.Fatalf("last solve %+v, want an independent upsolve of %s", last, id)
+				}
+				if got := dump.Recovers(game.Independent); h.m.meta.Bank != bank+got {
+					t.Errorf("bank %d, want %d + %d, the independent rate", h.m.meta.Bank, bank, got)
+				}
+			})
+		})
+	}
+}
+
+// An editorial read after a crash counts against the upsolve that
+// follows, even after the game restarts and the core dump is upsolved
+// from GRUB: the store's editorial_open says so, whatever ended the boot.
+// Once a solve has used the read, it no longer counts.
+func TestUpsolveAfterReadingIsEditorial(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
-		h.send(screens.StartBoot{Preset: "standard"})
-		h.acFirst = 1 // bytes on door 1, so :q! on door 2 leaves a core dump
-		h.enterDoor()
-		h.send(submitMsg{})
-		id := h.enterDoor().Door.Problem
+		h.crashWithDump() // out of lives: no :q! involved
+		id := h.m.state.Crash.Door.Problem
 		hasEditorial(h, id)
-		h.send(game.GiveUp{})
-		if h.m.meta.CoreDump == nil || h.m.meta.CoreDump.Problem != id {
-			t.Fatalf("core dump %+v, want one on %s", h.m.meta.CoreDump, id)
-		}
+		h.m.d.Catalog = editorialCatalog{h.m.d.Catalog.(*fakeCatalog)}
+		h.send(screens.OpenEditorial{Problem: id})
+		h.send(screens.Back{})
+		h.events() // quitting flushes the queue
 
 		h.restart()
+		h.clock.t = h.clock.t.Add(time.Minute)
 		h.send(screens.Upsolve{Problem: id})
 		h.send(submitMsg{})
 		last := h.m.meta.Solves[len(h.m.meta.Solves)-1]
 		if last.Problem != id || !last.Upsolve || last.Kind != game.Editorial {
 			t.Fatalf("last solve %+v, want an editorial upsolve of %s", last, id)
+		}
+		h.restart()
+		if h.m.sawEditorial(id) {
+			t.Error("the read still counts after the solve it was used for")
 		}
 	})
 }

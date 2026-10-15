@@ -255,35 +255,52 @@ func (m *Model) startUpsolve(id catalog.ID) tea.Cmd {
 }
 
 // readEditorial notes that id's editorial is on screen: an upsolve of it
-// this session, the one open included, is editorial-assisted. Only a shown
+// that follows, the one open included, is editorial-assisted. Only a shown
 // one counts: marked when asked for, an editorial that was not there (or
 // did not download) made the solve pay as assisted.
 func (m *Model) readEditorial(id catalog.ID) {
-	m.editorials[id] = true
+	m.editorials[id] = m.d.Now()
 	if m.open != nil && m.open.Door.Problem == id {
 		m.open.ReadEditorial = true
 	}
 }
 
-// sawEditorial reports whether the player has had id's editorial in front
-// of them: opened this session, or offered by a :q! on it (the crash screen
-// offers it after a :q! when the problem has one) that no solve has come
-// after. The second survives a restart, so a core dump upsolved from GRUB
-// the next day still counts.
+// sawEditorial reports whether the player has read id's editorial since
+// they last met the problem: since its last attempt closed and its last
+// solve, which an earlier read already counted for. Offered is not read
+// (O2): a :q! offers the editorial, and an upsolve without it pays the
+// 1.5x the debrief promised. The store's editorial_open events say so
+// across restarts, so a core dump upsolved from GRUB the next day still
+// counts a read; this session's reads count too, as their events may
+// still be queued (telemetry.go). A query that fails counts no read.
 func (m *Model) sawEditorial(id catalog.ID) bool {
-	if m.editorials[id] {
+	since := m.lastMet(id)
+	if at, ok := m.editorials[id]; ok && !at.Before(since) {
 		return true
 	}
-	if p, _ := m.d.Catalog.Get(id); !p.HasEditorial {
-		return false // nothing was offered
-	}
-	atts, err := m.d.Store.Attempts(store.AttemptFilter{Problem: id, Limit: 1})
-	if err != nil || len(atts) == 0 || atts[0].Outcome != game.GaveUp {
+	evs, err := m.d.Store.Events(store.EventFilter{Kinds: []string{store.EventEditorialOpen}, Since: since})
+	if err != nil {
+		m.logErr("editorial reads", err)
 		return false
 	}
-	return !slices.ContainsFunc(m.meta.Solves, func(s game.Solve) bool {
-		return s.Problem == id && s.At.After(atts[0].Closed)
-	})
+	return slices.ContainsFunc(evs, func(e store.Event) bool { return e.Problem == id })
+}
+
+// lastMet is when the player last met id: the later of its last attempt's
+// close and its last solve; zero for never.
+func (m *Model) lastMet(id catalog.ID) time.Time {
+	var at time.Time
+	if atts, err := m.d.Store.Attempts(store.AttemptFilter{Problem: id, Limit: 1}); err != nil {
+		m.logErr("last attempt", err)
+	} else if len(atts) > 0 {
+		at = atts[0].Closed
+	}
+	for _, s := range m.meta.Solves {
+		if s.Problem == id && s.At.After(at) {
+			at = s.At
+		}
+	}
+	return at
 }
 
 // upsolveFiles picks where an upsolve of id is kept and what a new one

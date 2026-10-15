@@ -125,9 +125,9 @@ type Model struct {
 	// door open; the next key clears it, and a second ctrl+c quits.
 	quitArmed bool
 
-	// editorials are the problems whose editorial was opened this session,
-	// such as from the crash screen before any upsolve exists.
-	editorials map[catalog.ID]bool
+	// editorials are when each problem's editorial was last opened this
+	// session, such as from the crash screen before any upsolve exists.
+	editorials map[catalog.ID]time.Time
 	// prefetching cancels the prefetch of each door on offer.
 	prefetching map[catalog.ID]context.CancelFunc
 
@@ -188,7 +188,7 @@ func New(d Deps) (*Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := &Model{d: d, meta: meta, state: st, pool: d.Catalog.All(), editorials: map[catalog.ID]bool{}}
+	m := &Model{d: d, meta: meta, state: st, pool: d.Catalog.All(), editorials: map[catalog.ID]time.Time{}}
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 	m.reset()
 	m.startTelemetry()
