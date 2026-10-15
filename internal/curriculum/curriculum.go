@@ -17,6 +17,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -64,6 +65,11 @@ type Module struct {
 	// with none (see TopicFor).
 	Topic    string
 	Problems []ProblemList
+
+	// Meta marks a page about the guide itself, not about the contests:
+	// using the guide and writing for it (see markMeta). Learn mode leaves
+	// it out of its index.
+	Meta bool
 
 	body *lazyBody
 }
@@ -172,7 +178,38 @@ func Load(guideDir string) (*Curriculum, error) {
 			}
 		}
 	}
+	c.markMeta()
 	return c, nil
+}
+
+// guideHome is the guide's page about itself, the first module of its
+// first chapter: how to use the guide.
+const guideHome = "using-this-guide"
+
+// markMeta sets Module.Meta from the guide's own prerequisites: guideHome
+// is meta, and so is every module whose prerequisites are all meta. In the
+// guide that is the whole Contributing chapter: Introducing Modules needs
+// Using This Guide, Contributing and Working With MDX need Introducing
+// Modules, and Adding Solutions needs Contributing. A module that needs a
+// real one too stays. It runs to a fixed point, so the order modules are
+// listed in does not matter.
+func (c *Curriculum) markMeta() {
+	meta := map[string]bool{guideHome: true}
+	for grew := true; grew; {
+		grew = false
+		for _, id := range c.order {
+			ps := c.modules[id].Prerequisites
+			if !meta[id] && len(ps) > 0 && !slices.ContainsFunc(ps, func(p string) bool { return !meta[p] }) {
+				meta[id], grew = true, true
+			}
+		}
+	}
+	for id := range meta {
+		if m, ok := c.modules[id]; ok {
+			m.Meta = true
+			c.modules[id] = m
+		}
+	}
 }
 
 // mdxFile is a module's source and its frontmatter.

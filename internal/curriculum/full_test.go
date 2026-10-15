@@ -75,6 +75,17 @@ func TestFullGuide(t *testing.T) {
 	if lostCode > 0 {
 		t.Errorf("%d C++ code blocks missing from the output", lostCode)
 	}
+	// The pages about the guide itself, as its prerequisites mark them
+	// (markMeta): Using This Guide and the Contributing chapter, no more.
+	var meta []string
+	for _, m := range c.Modules() {
+		if m.Meta {
+			meta = append(meta, m.ID)
+		}
+	}
+	if got, want := strings.Join(meta, ","), "using-this-guide,contributing,adding-solution,modules,working-mdx"; got != want {
+		t.Errorf("meta modules = %s, want %s", got, want)
+	}
 	if len(unknown) > 0 {
 		keys := make([]string, 0, len(unknown))
 		for k := range unknown {

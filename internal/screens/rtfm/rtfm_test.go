@@ -657,3 +657,55 @@ func TestBrowserScrollsTail(t *testing.T) {
 		t.Errorf("k on screen should select the chapter, and enter fold it:\n%s", v)
 	}
 }
+
+// The index leaves out the guide's pages about itself (UX J21): Using
+// This Guide and the Contributing chapter, which would be a chapter of
+// nothing. The cursor starts on the first module left.
+func TestBrowserHidesMetaModules(t *testing.T) {
+	dir := t.TempDir()
+	mod := func(id, title string, prereqs ...string) string {
+		s := "---\nid: " + id + "\ntitle: " + title + "\nauthor: A\ndescription: d\n"
+		if len(prereqs) > 0 {
+			s += "prerequisites:\n  - " + strings.Join(prereqs, "\n  - ") + "\n"
+		}
+		return s + "---\n\nHi.\n"
+	}
+	for name, body := range map[string]string{
+		"content/ordering.ts": `const MODULE_ORDERING = {
+  general: [
+    { name: 'Getting Started', items: ['using-this-guide', 'intro-cp'] },
+    { name: 'Contributing', items: ['modules', 'working-mdx'] },
+  ],
+  bronze: [{ name: 'Simulation', items: ['intro-sim'] }],
+};
+`,
+		"content/1_General/Using_This_Guide.mdx": mod("using-this-guide", "Using This Guide"),
+		"content/1_General/Intro_CP.mdx":         mod("intro-cp", "Introduction to Competitive Programming"),
+		"content/1_General/Modules.mdx":          mod("modules", "Introducing Modules", "using-this-guide"),
+		"content/1_General/Working_MDX.mdx":      mod("working-mdx", "Working With MDX", "modules"),
+		"content/2_Bronze/Intro_Sim.mdx":         mod("intro-sim", "Simulation", "intro-cp"),
+	} {
+		p := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c, err := curriculum.Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := rtfm.NewBrowser(c, game.Meta{}, nil, nil)
+	v := plain(b.View(80, 24))
+	for _, hidden := range []string{"Using This Guide", "Contributing", "Introducing Modules", "Working With MDX"} {
+		if strings.Contains(v, hidden) {
+			t.Errorf("index shows %q:\n%s", hidden, v)
+		}
+	}
+	if !strings.Contains(v, "GENERAL") || !strings.Contains(v, "1 module") || !strings.Contains(v, "Simulation") {
+		t.Errorf("index lacks the modules left:\n%s", v)
+	}
+	wantMsg(t, press(t, b, "enter", "r"), screens.OpenModule{Module: "intro-cp"})
+}

@@ -210,3 +210,55 @@ func TestMarkdownConcurrent(t *testing.T) {
 		}
 	}
 }
+
+// metaGuide is a guide whose General section opens on the guide's page
+// about itself and a chapter on writing for it, as the real one does:
+// Introducing Modules needs Using This Guide, and the contributor pages
+// need it in turn. Expected Knowledge needs a meta page and a real one.
+func metaGuide(t *testing.T) string {
+	t.Helper()
+	mod := func(id, title string, prereqs ...string) string {
+		s := "---\nid: " + id + "\ntitle: " + title + "\nauthor: A\ndescription: d\n"
+		if len(prereqs) > 0 {
+			s += "prerequisites:\n  - " + strings.Join(prereqs, "\n  - ") + "\n"
+		}
+		return s + "---\n\nHi.\n"
+	}
+	return writeGuide(t, map[string]string{
+		"content/ordering.ts": `const MODULE_ORDERING = {
+  general: [
+    { name: 'Getting Started', items: ['using-this-guide', 'intro-cp', 'expected-knowledge'] },
+    { name: 'Contributing', items: ['contributing', 'modules', 'working-mdx'] },
+  ],
+  bronze: [{ name: 'Simulation', items: ['intro-sim'] }],
+};
+`,
+		"content/1_General/Using_This_Guide.mdx":   mod("using-this-guide", "Using This Guide"),
+		"content/1_General/Intro_CP.mdx":           mod("intro-cp", "Introduction to Competitive Programming"),
+		"content/1_General/Expected_Knowledge.mdx": mod("expected-knowledge", "Expected Knowledge", "using-this-guide", "intro-cp"),
+		"content/1_General/Contributing.mdx":       mod("contributing", "Contributing", "modules"),
+		"content/1_General/Modules.mdx":            mod("modules", "Introducing Modules", "using-this-guide"),
+		"content/1_General/Working_MDX.mdx":        mod("working-mdx", "Working With MDX", "modules"),
+		"content/2_Bronze/Intro_Sim.mdx":           mod("intro-sim", "Simulation", "intro-cp"),
+	})
+}
+
+// The guide's pages about itself are Meta, as the guide's own
+// prerequisites say: Using This Guide and every page that needs only
+// meta pages. Nothing else is, even with a meta page among its
+// prerequisites.
+func TestMetaModules(t *testing.T) {
+	c, err := Load(metaGuide(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var meta []string
+	for _, m := range c.Modules() {
+		if m.Meta {
+			meta = append(meta, m.ID)
+		}
+	}
+	if got, want := strings.Join(meta, ","), "using-this-guide,contributing,modules,working-mdx"; got != want {
+		t.Errorf("meta modules = %s, want %s", got, want)
+	}
+}

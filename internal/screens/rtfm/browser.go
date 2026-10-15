@@ -75,7 +75,9 @@ type row struct {
 // judgeable picks each module's trial unit (see curriculum.TrialFor) and
 // lookup resolves problem titles and ratings for module pages, which show
 // the guide's own name for a problem it misses; either may be nil. A nil
-// curriculum shows man's "No manual entry".
+// curriculum shows man's "No manual entry". The guide's pages about
+// itself (curriculum.Module.Meta) are left out, and with them a chapter
+// or division they would leave empty (UX J21).
 func NewBrowser(c *curriculum.Curriculum, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Browser {
 	b := &Browser{cur: c, caps: capSet(m), lookup: lookup}
 	if c != nil {
@@ -85,16 +87,20 @@ func NewBrowser(c *curriculum.Curriculum, m game.Meta, judgeable Judgeable, look
 				cv := chapter{title: ch.Title}
 				for _, ref := range ch.Modules {
 					mod, ok := c.Module(ref.ID)
-					if !ok {
+					if !ok || mod.Meta {
 						continue
 					}
 					e := newEntry(mod, judgeable)
 					cv.mods = append(cv.mods, e)
 					b.all = append(b.all, e)
 				}
-				dv.chaps = append(dv.chaps, cv)
+				if len(cv.mods) > 0 {
+					dv.chaps = append(dv.chaps, cv)
+				}
 			}
-			b.divs = append(b.divs, dv)
+			if len(dv.chaps) > 0 {
+				b.divs = append(b.divs, dv)
+			}
 		}
 	}
 	b.build()
