@@ -95,7 +95,9 @@ runs it for :Submit, :Debug and the rest.
 Custom rules presets are $XDG_CONFIG_HOME/katharsis/presets/*.toml
 (default ~/.config/katharsis/presets): each lists only what it changes
 from the standard rules, and is named by its name key or file name.
-standard, short and patch are built in; their names are taken.
+standard, short and patch are built in; their names are taken. What goes
+wrong out of sight is logged to $XDG_STATE_HOME/katharsis/katharsis.log
+(default ~/.local/state/katharsis).
 
 `+fs.Name()+` flags:
 `)

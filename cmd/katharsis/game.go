@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"os/signal"
@@ -124,7 +126,7 @@ func runGame(args []string) error {
 		return err
 	}
 	defer st.Close() // every write already committed
-	logger, closeLog := openLog(path)
+	logger, closeLog := openLog(filepath.Join(filepath.Dir(path), "katharsis.log"))
 	defer closeLog()
 
 	// Before the TUI: the first run downloads the USACO Guide snapshot
@@ -243,12 +245,38 @@ func showDownload() (done func()) {
 	}
 }
 
-// openLog appends to katharsis.log beside the store: what goes wrong where
-// the player cannot see it, such as an event the store could not write.
-// The game plays without it.
-func openLog(db string) (*log.Logger, func()) {
-	f, err := os.OpenFile(filepath.Join(filepath.Dir(db), "katharsis.log"),
-		os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600)
+// logPath is katharsis.log in the XDG state dir, $XDG_STATE_HOME/katharsis
+// (else ~/.local/state/katharsis), which the spec keeps for logs: they are
+// not data to back up or move between machines, as the store is. XDG on
+// macOS too, as the store and the presets are, not ~/Library/Logs.
+func logPath() (string, error) {
+	if d := os.Getenv("XDG_STATE_HOME"); d != "" && filepath.IsAbs(d) {
+		return filepath.Join(d, "katharsis", "katharsis.log"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".local", "state", "katharsis", "katharsis.log"), nil
+}
+
+// openLog appends to katharsis.log (logPath): what goes wrong where the
+// player cannot see it, such as an event the store could not write. A log
+// at old, beside the store where it used to be, moves there first, so
+// what it holds stays in one file. The game plays without a log.
+func openLog(old string) (*log.Logger, func()) {
+	path, err := logPath()
+	if err != nil {
+		return nil, func() {}
+	}
+	// 0700, as the XDG spec asks of a dir it has to create.
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, func() {}
+	}
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+		_ = os.Rename(old, path) // best effort: one left behind still reads where it is
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600)
 	if err != nil {
 		return nil, func() {}
 	}
