@@ -387,6 +387,9 @@ func (c *checker) checkEase(s *game.State, m *game.Meta, a game.Action, err erro
 		doors = append(doors, h.Door)
 	}
 	for _, d := range doors {
+		if d.Floor && (d.Rating > s.Rules.FloorRating || s.Rules.FloorDrop <= 0) {
+			fail("door %+v at the floor of rules with floor %d, drop %v", d, s.Rules.FloorRating, s.Rules.FloorDrop)
+		}
 		if d.TimerBuy != 0 && (!slices.Contains(s.Rules.BuybackTimers, d.TimerBuy) || d.Tier != "" ||
 			d.Regression || d.Boss != "" || len(s.Ease) == 0) {
 			fail("door %+v bought back without a floor easing %+v", d, s.Ease)

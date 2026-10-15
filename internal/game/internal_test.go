@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/rules"
 )
 
@@ -129,5 +130,37 @@ func TestRateBoughtBack(t *testing.T) {
 		if want := 1000 + r.RatingK*(score-p); math.Abs(eased.Rating-want) > 1e-9 || eased.Rating >= plain.Rating {
 			t.Errorf("score %v: bought-back door rated %.2f (plain %.2f), want %.2f", score, eased.Rating, plain.Rating, want)
 		}
+	}
+}
+
+// A floor-rated door is read as easier than its rating: its clear chance
+// is the logistic averaged over an exponential drop under the floor, so it
+// lies between the chance at the rating and the chance at the mean drop,
+// and is the plain chance when the rules read floors as they are.
+func TestClearChanceAtTheFloor(t *testing.T) {
+	t.Parallel()
+	r := rules.Standard()
+	for _, R := range []float64{700, 900, 1000, 1300, 2000} {
+		at, mean := Expected(R, 800), Expected(R, 800-r.FloorDrop)
+		got := clearChance(&r, R, 800, 0, true)
+		if got <= at || got >= mean {
+			t.Errorf("player %.0f: floor door %.4f, want between %.4f and %.4f", R, got, at, mean)
+		}
+		if plain := clearChance(&r, R, 800, 0, false); plain != at {
+			t.Errorf("player %.0f: plain door %.4f, want %.4f", R, plain, at)
+		}
+	}
+	if got := clearChance(&r, 1000, 800, 0, true); math.Abs(got-0.891) > 0.001 {
+		t.Errorf("1000 on a floor door: %.4f, want 0.891", got)
+	}
+	cf := catalog.Problem{Rating: 800, RatingSource: "cf"}
+	usaco := catalog.Problem{Rating: 800, RatingSource: "division"}
+	above := catalog.Problem{Rating: 900, RatingSource: "cf"}
+	if !floored(&r, &cf) || floored(&r, &usaco) || floored(&r, &above) {
+		t.Error("only a Codeforces 800 is at the floor")
+	}
+	r.FloorDrop = 0
+	if floored(&r, &cf) {
+		t.Error("FloorDrop 0 still reads the floor")
 	}
 }

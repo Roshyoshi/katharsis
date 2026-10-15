@@ -441,7 +441,7 @@ func (e *engine) clear() {
 		Elapsed: elapsed,
 		Boot:    s.Boot,
 		Rating:  d.Rating,
-		Gap:     float64(d.Rating) - PlayerRating(r, m, d.Topic),
+		Gap:     d.Difficulty(r) - PlayerRating(r, m, d.Topic),
 		Trial:   s.Trial != nil,
 	})
 	paid := s.Paid(*a)
@@ -700,6 +700,9 @@ func (e *engine) enterBiome(i int) {
 	aim := fmt.Sprintf(", aim %.0f%%", s.AimClear(i)*100)
 	if s.Trial != nil {
 		aim = "" // trial doors are not aimed
+	}
+	if s.Trial == nil && s.Rules.Biomes[i].TimeoutLife {
+		aim += ", a timeout costs a life, not the boot" // D44, announced
 	}
 	e.logf("biome_%d: %s, %d rooms%s", i, label, b.Rooms, aim)
 	if b.Kind == rules.Choice && b.Topic == "" {

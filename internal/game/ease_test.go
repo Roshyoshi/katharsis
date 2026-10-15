@@ -30,15 +30,19 @@ func easeOf(s *game.State, k game.EaseKind) (game.Ease, bool) {
 	return s.Ease[i], true
 }
 
-// A cold-start player is aimed at 576 in Userland, under the pool's 800
-// floor: the engine forecasts a crash there on its own numbers, and eases
-// the boot with D34's lives (two, as the forecast is over 0.4), a duck
-// and longer timers on the floor doors. A player the pool can reach gets
+// A cold-start player is aimed at 576 in Userland, under a pool whose
+// easiest doors are 800s (rated by no source with a censored floor): the
+// engine forecasts a crash there on its own numbers, and eases the boot
+// with D34's lives (two, as the forecast is over 0.4), a duck and longer
+// timers on the floor doors. A player the pool can reach gets
 // none of it.
 func TestFloorEase(t *testing.T) {
 	t.Parallel()
 	ps := dense(catalog.Topics, 800, 2600, 20)
-	h := newHarness(t, noRisk(), nil, ps, 0, 1)
+	// Every lever on, D34's second life, the duck and the buy-back too.
+	rr := noRisk()
+	rr.EaseLives, rr.EaseDucks, rr.BuybackTimers = 2, 1, []float64{1.25, 1.5, 2}
+	h := newHarness(t, rr, nil, ps, 0, 1)
 	s, r := h.s, h.s.Rules
 	es, ok := easeOf(s, game.EaseFloor)
 	// Userland's first window holds the 800 and 820 doors of every topic.
@@ -291,6 +295,42 @@ func TestEaseCopy(t *testing.T) {
 			if strings.Contains(why, bad) {
 				t.Errorf("%s: %q says %q", es.Kind, es.Why, bad)
 			}
+		}
+	}
+}
+
+// cfPool is dense's pool rated by Codeforces, which rates nothing under
+// 800: its 800s are the floor.
+func cfPool(lo, hi, step int) []catalog.Problem {
+	ps := dense(catalog.Topics, lo, hi, step)
+	for i := range ps {
+		ps[i].RatingSource = "cf"
+	}
+	return ps
+}
+
+// A Codeforces 800 is read as easier than 800 (rules.FloorDrop): for a
+// cold-start 1000 player Userland's aim (576) meets the floor's mean, so
+// its doors are the floor's, on target and teaching the calibration, at
+// the censored clear chance.
+func TestFloorReading(t *testing.T) {
+	t.Parallel()
+	ps := cfPool(800, 2600, 20)
+	r := calm(noRisk())
+	h := newHarness(t, r, nil, ps, 0, 1)
+	for _, d := range h.s.Doors {
+		if !d.Floor || d.Rating != 800 || d.Tier == "" || d.Difficulty(&r) != 800-r.FloorDrop {
+			t.Errorf("door %+v: want a floor door on target", d)
+		}
+		if lo, hi := game.Expected(1000, 800), game.Expected(1000, 800-r.FloorDrop); d.SolveP <= lo || d.SolveP >= hi {
+			t.Errorf("door %+v: SolveP %.3f outside %.3f..%.3f", d, d.SolveP, lo, hi)
+		}
+	}
+	// The same pool rated by anyone else is read at its ratings.
+	h = newHarness(t, r, nil, dense(catalog.Topics, 800, 2600, 20), 0, 1)
+	for _, d := range h.s.Doors {
+		if d.Floor || d.Tier != "" || d.SolveP != game.Expected(1000, float64(d.Rating)) {
+			t.Errorf("door %+v read as a floor door", d)
 		}
 	}
 }

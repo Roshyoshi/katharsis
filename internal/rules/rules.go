@@ -136,6 +136,15 @@ type Rules struct {
 
 	// ---- door selection ----------------------------------------------------
 
+	// FloorRating is the lowest rating the sources in FloorSources give (a
+	// problem's RatingSource): Codeforces rates nothing under 800, so a
+	// problem rated there is that hard or less. The engine reads one at
+	// that floor as FloorDrop easier on average, spread as an exponential
+	// under it (game.Door.Difficulty). FloorDrop 0 reads floor ratings as
+	// they are.
+	FloorRating  int      `toml:"floor_rating"`
+	FloorDrop    float64  `toml:"floor_drop"`
+	FloorSources []string `toml:"floor_sources"`
 	// RatingWindows are the ± bands around a door's target rating tried in
 	// order; when none holds enough problems the engine takes any rating.
 	RatingWindows []int `toml:"rating_windows"`
@@ -525,6 +534,10 @@ func Standard() Rules {
 		// editorial recovers half as much again.
 		DumpIndependentMult: 1.5,
 
+		FloorRating:  800,
+		FloorDrop:    250,
+		FloorSources: []string{"cf"},
+
 		RatingWindows:  []int{100, 250, 500},
 		TopicRatingMin: 5,
 		TopicFollow:    1,
@@ -588,17 +601,19 @@ func Standard() Rules {
 			{Level: 4, Lives: -1, CursedChance: 0.04, TimerMult: 0.9},
 		},
 
-		// Easing (RT0): G1's 0.2 as the threshold; D34's life and a second
-		// past a 0.4 forecast, with a duck; the ml-pipeline M4 buy-back
-		// multipliers at half its timer prior (at 1, the floor players' Elo
-		// ran 20 to 60 points low in the simulator); and neuro P1.3's
-		// governor after two early crashes, aiming at 0.95 / 0.78 / 0.55 (the
-		// biomes' EaseClear) with a life. TestBalanceReport/guardrails has
-		// G1 for the model players from 900 to 1600.
+		// Easing (RT0). With the floor read as censored (FloorDrop) and
+		// Userland's timeout rule (D44), the model players from 900 to 1600
+		// crash in Userland 6 to 17% of the time without any of it
+		// (TestBalanceReport/guardrails), so only the settled pieces are on:
+		// D34's life past G1's 0.2 forecast, and neuro P1.3's governor after
+		// two early crashes (G2), aiming at 0.95 / 0.78 / 0.55 (the biomes'
+		// EaseClear) with a life. The second life, the duck and the timer
+		// buy-back (ml-pipeline M4, at half its timer prior) are built and
+		// off: in the simulator they moved G1 by 1 to 3 points.
 		EaseAbove:     0.2,
-		EaseLives:     2,
-		EaseDucks:     1,
-		BuybackTimers: []float64{1.25, 1.5, 2},
+		EaseLives:     1,
+		EaseDucks:     0,
+		BuybackTimers: nil,
 		BuybackBeta:   0.5,
 		BuybackMargin: 0.02,
 		GovernorAfter: 2,
@@ -608,13 +623,13 @@ func Standard() Rules {
 		// (a daemon, an item or an upgrade joins its pool; one more route,
 		// daemon or upgrade is on offer, one more door per room), banner
 		// themes, a starting duck, and one capstone. Over its first 40
-		// boots at prestige 0 the 1000-rated sim player banks about 190 B a
-		// boot (commits and upsolved core dumps; 140 B before RT0's easing
-		// and D44 let most of its boots past Userland), so bought cheapest
-		// first the first package is one cleared door and every next one is
-		// at most three boots away until binutils, about 45 boots in; the
-		// catalog is about 67 boots of that player's bank and 48 of the
-		// 1600-rated one's (260 B a boot). The measured rate moves by a tenth
+		// boots at prestige 0 the 1000-rated sim player banks about 200 B a
+		// boot (commits and upsolved core dumps; 140 B before RT0's floor
+		// reading and D44 let most of its boots past Userland), so bought
+		// cheapest first the first package is one cleared door and every next
+		// one is at most three boots away until binutils, about 42 boots in;
+		// the catalog is about 62 boots of that player's bank and 51 of the
+		// 1600-rated one's (249 B a boot). The measured rate moves by a tenth
 		// with the prices themselves (when a package lands changes the
 		// boots), so the ladder holds for 176 to 212 B. rules_test.go checks the ladder at those
 		// rates and sim TestAptLadder against the players; prices are
@@ -748,9 +763,9 @@ func (r Rules) Validate() error {
 			return fmt.Errorf("rules %q: biome %d needs ease_clear 0 or in target_clear..1, plain >= 0", r.Name, i)
 		}
 	}
-	if !(r.EaseAbove >= 0 && r.EaseAbove < 1) || r.EaseLives < 0 || r.EaseDucks < 0 || r.GovernorAfter < 0 || r.GovernorLives < 0 ||
+	if !(r.FloorDrop >= 0 && r.FloorDrop <= 1000) || !(r.EaseAbove >= 0 && r.EaseAbove < 1) || r.EaseLives < 0 || r.EaseDucks < 0 || r.GovernorAfter < 0 || r.GovernorLives < 0 ||
 		!(r.BuybackBeta >= 0) || !(r.BuybackMargin >= 0 && r.BuybackMargin < 1) {
-		return fmt.Errorf("rules %q: need 0 <= ease_above < 1, ease_lives, ease_ducks, governor_after, governor_lives, buyback_beta >= 0, 0 <= buyback_margin < 1", r.Name)
+		return fmt.Errorf("rules %q: need 0 <= floor_drop <= 1000, 0 <= ease_above < 1, ease_lives, ease_ducks, governor_after, governor_lives, buyback_beta >= 0, 0 <= buyback_margin < 1", r.Name)
 	}
 	for _, k := range r.BuybackTimers {
 		// The negated test also catches NaN.

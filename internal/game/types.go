@@ -193,6 +193,11 @@ type Door struct {
 	// engine bought the clear chance back with time (Ease, EaseFloor).
 	// SolveP and Bytes are the door's without it.
 	TimerBuy float64 `json:",omitempty"`
+
+	// Floor is set when Rating is its source's floor (Codeforces rates
+	// nothing under 800): the problem is that hard or less, and the engine
+	// reads it as rules.FloorDrop easier on average (Difficulty).
+	Floor bool `json:",omitempty"`
 }
 
 // TagsHidden reports whether the door hides its tags until a duck reveals

@@ -71,7 +71,7 @@ func (e *engine) planFloor() {
 			es.Ducks = r.EaseDucks
 		}
 		if es.Buyback || es.Lives > 0 || es.Ducks > 0 {
-			es.Why = fmt.Sprintf("no %s door in the pool is rated under %d", first, f.low)
+			es.Why = fmt.Sprintf("%s's easiest doors in the pool are rated %d", first, f.low)
 			s.Ease = append(s.Ease, es)
 		}
 	}

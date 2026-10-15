@@ -96,8 +96,9 @@ func (e *engine) candidates(topic string, i int, ex map[catalog.ID]bool) []cand 
 			a = aim{e.target(t, i), PlayerRating(&e.s.Rules, e.meta, t)}
 			aims[t] = a
 		}
-		sp := Expected(a.rating, float64(p.Rating)-off)
-		cs = append(cs, cand{p, math.Abs(float64(p.Rating) - a.target), topic == Mixed || t == topic, sp, rb.MinClear > 0 && sp < rb.MinClear})
+		floor := floored(&e.s.Rules, p)
+		sp := clearChance(&e.s.Rules, a.rating, float64(p.Rating), off, floor)
+		cs = append(cs, cand{p, math.Abs(difficulty(&e.s.Rules, p) - a.target), topic == Mixed || t == topic, sp, rb.MinClear > 0 && sp < rb.MinClear})
 	}
 	slices.SortFunc(cs, func(a, b cand) int { return cmp.Compare(a.p.ID, b.p.ID) })
 	return cs
@@ -311,10 +312,11 @@ func (e *engine) makeDoor(p *catalog.Problem, i int, boss string, regression boo
 		Problem:    p.ID,
 		Topic:      topic,
 		Rating:     p.Rating,
-		SolveP:     Expected(R, float64(p.Rating)-e.aimOffset(rb)),
+		Floor:      floored(r, p),
 		Regression: regression,
 		Boss:       boss,
 	}
+	d.SolveP = clearChance(r, R, float64(p.Rating), e.aimOffset(rb), d.Floor)
 	blind, mystery, cursed := e.rng.Float64(), e.rng.Float64(), e.rng.Float64()
 	d.Mystery = mystery < r.MysteryChance+asc.MysteryChance
 	d.Blind = r.BlindAll || d.Mystery || blind < r.BlindChance+asc.BlindChance
@@ -323,7 +325,7 @@ func (e *engine) makeDoor(p *catalog.Problem, i int, boss string, regression boo
 		// The unit shows tags; the integration doors are blind.
 		d.Blind, d.Mystery, d.Cursed = e.s.Biome > 0 || r.BlindAll, false, false
 	}
-	d.Timer = e.doorTimer(rb, boss != "", float64(p.Rating)-R)
+	d.Timer = e.doorTimer(rb, boss != "", d.Difficulty(r)-R)
 	e.dress(&d, i)
 	return d
 }
@@ -335,10 +337,10 @@ func (e *engine) dress(d *Door, i int) {
 	// A mastered door teaches the calibration like any plain door: once most
 	// doors of the known topics hide their tags, they are most of what the
 	// aim can learn from.
-	d.Mastered = e.s.Trial == nil && !d.Blind && mastered(r, e.meta, d.Topic, d.Rating)
+	d.Mastered = e.s.Trial == nil && !d.Blind && mastered(r, e.meta, d.Topic, d.Difficulty(r))
 	plain := !d.Blind && !d.Cursed && !d.Regression && e.s.Trial == nil && d.TimerBuy == 0
 	d.Tier = ""
-	if plain && math.Abs(float64(d.Rating)-e.target(d.Topic, i)) <= float64(r.RatingWindows[0]) {
+	if plain && math.Abs(d.Difficulty(r)-e.target(d.Topic, i)) <= float64(r.RatingWindows[0]) {
 		d.Tier = CalibrationTier(r.Biomes[i])
 	}
 	d.Bytes = e.doorBytes(*d)
@@ -375,12 +377,12 @@ func (e *engine) plainDoors(doors []Door) {
 // m: the topic has r.MasteryAttempts rated attempts behind it and a rating
 // at least r.MasteryMargin above the door's. Mixed has no rating of its
 // own, so its doors keep their tags.
-func mastered(r *rules.Rules, m *Meta, topic string, rating int) bool {
+func mastered(r *rules.Rules, m *Meta, topic string, rating float64) bool {
 	if r.MasteryAttempts <= 0 || topic == Mixed || m.TopicAttempts[topic] < r.MasteryAttempts {
 		return false
 	}
 	tr, ok := m.TopicRating[topic]
-	return ok && tr-float64(rating) >= r.MasteryMargin
+	return ok && tr-rating >= r.MasteryMargin
 }
 
 // doorBytes prices a door. The difficulty factor 0.5/SolveP makes a door's
@@ -439,7 +441,7 @@ func (e *engine) routeOffers(i, k int, used map[string]bool) []string {
 			tg = e.target(t, i)
 			targets[t] = tg
 		}
-		if math.Abs(float64(p.Rating)-tg) <= widest {
+		if math.Abs(difficulty(r, p)-tg) <= widest {
 			count[t]++
 		}
 	}

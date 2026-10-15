@@ -12,6 +12,7 @@ package sim
 import (
 	"cmp"
 	"fmt"
+	"hash/fnv"
 	"maps"
 	"math"
 	"math/rand/v2"
@@ -40,6 +41,13 @@ type Player struct {
 	BlindCost   float64       // effective rating lost when tags are hidden
 	UpsolveProb float64       // chance it upsolves the crash between boots
 	Overhead    time.Duration // clock time per choice outside a door
+
+	// FloorDrop is how far under its rating, on average, a door at the
+	// pool's floor (Door.Floor: Codeforces rates nothing under 800) really
+	// is: each such problem's difficulty is its rating less an exponential
+	// draw of this mean, fixed per problem (a hash of its ID). 0 plays it
+	// at its rating.
+	FloorDrop float64
 
 	// Stake is how much of what a crash forfeits the model weighs when it
 	// picks a door: it takes the door with the best P × (bytes + Stake ×
@@ -84,6 +92,7 @@ func DefaultPlayer(rating float64) Player {
 		UpsolveProb: 0.6,
 		Overhead:    time.Minute,
 		Stake:       1,
+		FloorDrop:   250,
 
 		Spend:        true,
 		RerollMargin: 0.2,
@@ -146,10 +155,14 @@ type Report struct {
 	ClearRate         float64
 
 	CrashBiome []int // crashes per biome
-	Causes     map[game.Outcome]int
-	Attempts   []int // doors opened per biome
-	Clears     []int // doors cleared per biome
-	MeanTimer  []time.Duration
+	// CrashTimeouts and CrashLives split CrashBiome by cause: the timer ran
+	// out, or the lives (or a curse) did; the rest gave up.
+	CrashTimeouts, CrashLives []int
+
+	Causes    map[game.Outcome]int
+	Attempts  []int // doors opened per biome
+	Clears    []int // doors cleared per biome
+	MeanTimer []time.Duration
 	// OffTarget counts opened doors more than the first rating window from
 	// their target (regressions aside): where the pool had nothing near.
 	OffTarget []int
@@ -169,6 +182,8 @@ type Report struct {
 	OfferedP []float64
 
 	MeanUptime, MeanClearUptime, MeanCrashUptime time.Duration
+	// MedianCrashUptime is the median boot length at a crash.
+	MedianCrashUptime time.Duration
 
 	MeanEarned, MeanCommitted, MeanSpent, MeanLost float64 // bytes per boot
 	Rerolls                                        int     // shufs used
@@ -274,6 +289,13 @@ func Run(c Config) Report {
 			sm.upClear += b.clock.Sub(s.Started)
 		case game.PhaseCrashed:
 			rep.CrashBiome[s.Biome]++
+			switch s.Crash.Cause {
+			case game.TimedOut:
+				rep.CrashTimeouts[s.Biome]++
+			case game.OutOfLives:
+				rep.CrashLives[s.Biome]++
+			}
+			sm.crashUps = append(sm.crashUps, s.Crash.Uptime)
 			rep.Causes[s.Crash.Cause]++
 			sm.upCrash += s.Crash.Uptime
 			sm.lost += s.Crash.Lost
@@ -339,26 +361,29 @@ type sums struct {
 	rep                            Report
 	timerSum                       []time.Duration
 	upClear, upCrash               time.Duration
+	crashUps                       []time.Duration
 	earned, committed, spent, lost int64
 }
 
 func newSums(nb int) *sums {
 	return &sums{
 		rep: Report{
-			CrashBiome:   make([]int, nb),
-			Causes:       map[game.Outcome]int{},
-			Eased:        map[game.EaseKind]int{},
-			Attempts:     make([]int, nb),
-			Clears:       make([]int, nb),
-			MeanTimer:    make([]time.Duration, nb),
-			OffTarget:    make([]int, nb),
-			Taught:       make([]int, nb),
-			TaughtClears: make([]int, nb),
-			TaughtP:      make([]float64, nb),
-			Offered:      make([]int, nb),
-			OfferedP:     make([]float64, nb),
-			PrestigeAt:   make([]int, game.MaxPrestige),
-			ByPrestige:   make([]Tally, game.MaxPrestige+1),
+			CrashBiome:    make([]int, nb),
+			CrashTimeouts: make([]int, nb),
+			CrashLives:    make([]int, nb),
+			Causes:        map[game.Outcome]int{},
+			Eased:         map[game.EaseKind]int{},
+			Attempts:      make([]int, nb),
+			Clears:        make([]int, nb),
+			MeanTimer:     make([]time.Duration, nb),
+			OffTarget:     make([]int, nb),
+			Taught:        make([]int, nb),
+			TaughtClears:  make([]int, nb),
+			TaughtP:       make([]float64, nb),
+			Offered:       make([]int, nb),
+			OfferedP:      make([]float64, nb),
+			PrestigeAt:    make([]int, game.MaxPrestige),
+			ByPrestige:    make([]Tally, game.MaxPrestige+1),
 		},
 		timerSum: make([]time.Duration, nb),
 	}
@@ -379,6 +404,11 @@ func (sm *sums) finish() Report {
 	}
 	if n := rep.Boots - rep.FullClears; n > 0 {
 		rep.MeanCrashUptime = sm.upCrash / time.Duration(n)
+	}
+	if len(sm.crashUps) > 0 {
+		ups := slices.Clone(sm.crashUps)
+		slices.Sort(ups)
+		rep.MedianCrashUptime = ups[len(ups)/2]
 	}
 	for i := range rep.Attempts {
 		if rep.Attempts[i] > 0 {
@@ -429,7 +459,7 @@ func (b *boot) play() {
 		b.clock = b.clock.Add(b.p.Overhead)
 		if s.Phase == game.PhaseDoors && !s.PendingUpgrade {
 			for _, d := range s.Doors {
-				if !d.Regression && math.Abs(float64(d.Rating)-s.Target(b.m, d.Topic)) <= float64(s.Rules.RatingWindows[0]) {
+				if !d.Regression && math.Abs(d.Difficulty(&s.Rules)-s.Target(b.m, d.Topic)) <= float64(s.Rules.RatingWindows[0]) {
 					b.sums.rep.Offered[s.Biome]++
 					b.sums.rep.OfferedP[s.Biome] += d.SolveP
 				}
@@ -449,7 +479,7 @@ func (b *boot) play() {
 			b.sums.rep.Attempts[s.Biome]++
 			b.sums.timerSum[s.Biome] += d.Timer
 			b.opened++
-			if !d.Regression && math.Abs(float64(d.Rating)-s.Target(b.m, d.Topic)) > float64(s.Rules.RatingWindows[0]) {
+			if !d.Regression && math.Abs(d.Difficulty(&s.Rules)-s.Target(b.m, d.Topic)) > float64(s.Rules.RatingWindows[0]) {
 				b.sums.rep.OffTarget[s.Biome]++
 				b.off++
 			}
@@ -482,6 +512,18 @@ func (b *boot) play() {
 	}
 }
 
+// difficulty is d's true difficulty to the model: its rating, or under
+// the floor by a draw fixed per problem (Player.FloorDrop).
+func (b *boot) difficulty(d game.Door) float64 {
+	if !d.Floor || b.p.FloorDrop <= 0 {
+		return float64(d.Rating)
+	}
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(d.Problem))
+	u := (float64(h.Sum64()>>11) + 0.5) / (1 << 53)
+	return float64(d.Rating) + b.p.FloorDrop*math.Log(1-u)
+}
+
 // solveP is the model's own chance on d, which the engine only estimates.
 func (b *boot) solveP(d game.Door) float64 {
 	eff := b.p.Rating
@@ -491,14 +533,14 @@ func (b *boot) solveP(d game.Door) float64 {
 	if d.Mystery {
 		eff -= b.p.BlindCost
 	}
-	return game.Expected(eff, float64(d.Rating))
+	return game.Expected(eff, b.difficulty(d))
 }
 
 // clearP is the model's own chance of clearing d: solving it at all (with
 // the duck it holds, which a cursed door refuses), within the timer, and
 // (cursed) without a single wrong submit.
 func (b *boot) clearP(d game.Door) float64 {
-	median := float64(b.p.Median) * math.Exp2((float64(d.Rating)-b.p.Rating)/b.p.GapScale)
+	median := float64(b.p.Median) * math.Exp2((b.difficulty(d)-b.p.Rating)/b.p.GapScale)
 	inTime := 0.5 * (1 + math.Erf(math.Log(float64(d.Timer)/median)/(b.p.Sigma*math.Sqrt2)))
 	solve := b.solveP(d)
 	if d.Cursed {
@@ -648,7 +690,7 @@ func (b *boot) attempt(biome int) {
 	a := s.Current
 	d, opened, timer := a.Door, a.Opened, a.Door.Timer
 	capable := b.rng.Float64() < b.solveP(d)
-	median := float64(b.p.Median) * math.Exp2((float64(d.Rating)-b.p.Rating)/b.p.GapScale)
+	median := float64(b.p.Median) * math.Exp2((b.difficulty(d)-b.p.Rating)/b.p.GapScale)
 	t := b.lognormal(median)
 
 	// Stuck with a free swap: take it early.
@@ -707,20 +749,23 @@ func (b *boot) lognormal(median float64) time.Duration {
 	return time.Duration(median * math.Exp(b.p.Sigma*b.rng.NormFloat64()))
 }
 
-// SyntheticPool is n problems with ratings uniform in 800..2600 (rounded to
-// 10), topics cycling through catalog.Topics, and every 20th problem
+// SyntheticPool is n problems with ratings uniform in 600..2600 (rounded to
+// 10) and clamped at 800, as Codeforces rates them (RatingSource "cf"):
+// about a tenth sit at the floor, as in the real pool (687 of 6,445).
+// Topics cycle through catalog.Topics, and every 20th problem is
 // unjudgeable so filters get exercised.
 func SyntheticPool(n int, seed uint64) []catalog.Problem {
 	rng := rand.New(rand.NewPCG(seed, 0x9e3779b97f4a7c15))
 	ps := make([]catalog.Problem, n)
 	for i := range ps {
 		ps[i] = catalog.Problem{
-			ID:        catalog.ID(fmt.Sprintf("sim:%04d", i)),
-			Source:    "sim",
-			Title:     fmt.Sprintf("Problem %d", i),
-			Topic:     catalog.Topics[i%len(catalog.Topics)],
-			Rating:    800 + 10*rng.IntN(181),
-			Judgeable: i%20 != 19,
+			ID:           catalog.ID(fmt.Sprintf("sim:%04d", i)),
+			Source:       "sim",
+			Title:        fmt.Sprintf("Problem %d", i),
+			Topic:        catalog.Topics[i%len(catalog.Topics)],
+			Rating:       max(800, 600+10*rng.IntN(201)),
+			RatingSource: "cf",
+			Judgeable:    i%20 != 19,
 		}
 	}
 	return ps
@@ -740,6 +785,12 @@ func (r Report) String() string {
 	fmt.Fprintf(&w, "crash biome:")
 	for i, n := range r.CrashBiome {
 		fmt.Fprintf(&w, " b%d=%d (%.1f%%)", i, n, pct(n, r.Boots))
+	}
+	fmt.Fprintf(&w, "\nhazard (crashed in | reached; timeouts/lives of those crashes):")
+	reached := r.Boots
+	for i, n := range r.CrashBiome {
+		fmt.Fprintf(&w, " b%d=%.1f%% (%.0f/%.0f)", i, pct(n, reached), pct(r.CrashTimeouts[i], n), pct(r.CrashLives[i], n))
+		reached -= n
 	}
 	fmt.Fprintf(&w, "\ncauses:")
 	for _, o := range []game.Outcome{game.TimedOut, game.OutOfLives, game.GaveUp} {
@@ -769,8 +820,8 @@ func (r Report) String() string {
 			fmt.Fprintf(&w, " [%s] %+.0f (%d doors, %.0f%% vs %.0f%%)", k, c.Offset, c.Doors, 100*c.Observed, 100*c.Expected)
 		}
 	}
-	fmt.Fprintf(&w, "\nuptime: mean %s, clear %s, crash %s\n", r.MeanUptime.Round(time.Minute),
-		r.MeanClearUptime.Round(time.Minute), r.MeanCrashUptime.Round(time.Minute))
+	fmt.Fprintf(&w, "\nuptime: mean %s, clear %s, crash %s (median %s)\n", r.MeanUptime.Round(time.Minute),
+		r.MeanClearUptime.Round(time.Minute), r.MeanCrashUptime.Round(time.Minute), r.MedianCrashUptime.Round(time.Minute))
 	fmt.Fprintf(&w, "bytes/boot: earned %.0f, committed %.0f, spent %.0f, lost %.0f; recovered %d, dumps lost %d; %d shufs used\n",
 		r.MeanEarned, r.MeanCommitted, r.MeanSpent, r.MeanLost, r.Recovered, r.DumpsLost, r.Rerolls)
 	if len(r.InstalledAt) > 0 {
