@@ -189,10 +189,12 @@ offers t only when a trial grants a capability; parseFrontmatter 73 -> 18,
 parseOrdering, Load split; TeX conversion kept: cutting it put raw TeX on 16
 pages), g-content (USACO tags aligned, schema 3, 8 problems move; web.Flights
 single-flight closes a codeforces double-download window; old guide snapshots
-swept; fsync before publish; Codeforces retries once after 10 min).
+swept; fsync before publish; Codeforces retries once after 10 min). g-judge (30 s compile timeout across every compiler run, compilers in their own
+process group so a cancel kills cc1plus too, compiler TMPDIR = build dir, timing
+tests hold at load 37-67, problem.Load and FileIO "%s.in" fixes).
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
-retired milestone); cleanup wave 1: g-judge, g-store, g-qa
+retired milestone); cleanup wave 1: g-store, g-qa
 (brief: ~/.claude/jobs/e2124f03/tmp/cleanup-brief.md). After f-hooks merges:
 cleanup wave 2 g-engine (game, sim, rules), g-flavor (flavor, anim, story), g-ui
 (ui, units, screens/boot, screens/meta), g-app (app, cmd, demos; -race in the
@@ -276,8 +278,6 @@ Run with the unslop pass (package by package), then core-loop QA, then alpha.
 - Load robustness: session tmux/lldb tests and remaining judge wall-clock
   tests flake at load >= 30; -race finds data races in the robust_test.go
   harness (h.stall).
-- judge.Compile has no timeout: a hung compile now locks resubmits until the
-  grace (submit-busy); add ~30 s.
 - USACO tag table still maps Sliding Window, Sweep Line, Merging, Bitset the
   old way: align with guide.ModuleTopic (moves 227 266 943 -> geometry, 600
   767 1021 -> data-structures, 862 -> math, 923 -> prefix-sums; usaco schema
