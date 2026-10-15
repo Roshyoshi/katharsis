@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"katharsis/internal/catalog"
@@ -147,6 +148,11 @@ func TestBalanceReport(t *testing.T) {
 			}
 		}
 	})
+	t.Run("guardrails", func(t *testing.T) {
+		for _, pool := range pools {
+			t.Logf("%s, P0, boots 51-%d of seeds 7 and 8:\n%s", pool.name, boots+50, guardTable(r, pool.ps, boots))
+		}
+	})
 	t.Run("prestige", func(t *testing.T) {
 		for _, pool := range pools {
 			for _, rating := range []float64{1000, 1600} {
@@ -157,15 +163,78 @@ func TestBalanceReport(t *testing.T) {
 	})
 }
 
+// guardTable is guardrail G1 (P(crash before the first merge window) <=
+// 0.2, ml-pipeline §1.2) for the model players from 900 to 1600 at
+// prestige 0: with the rules' easing, with the easing off (no forecast
+// easing, buy-back or governor), and with the easing but the myopic
+// bytes × P chooser (Player.Stake 0). Each cell is G1 and the full-clear
+// rate over two seeds; the eased run also shows the engine's mean
+// forecast and the share of boots the floor easing took.
+func guardTable(r rules.Rules, pool []catalog.Problem, boots int) string {
+	off := r
+	off.EaseAbove, off.BuybackTimers, off.GovernorAfter = 0, nil, 0
+	ratings := []float64{900, 1000, 1100, 1300, 1600}
+	type cell struct{ g1, full, forecast, floor float64 }
+	configs := []struct {
+		name  string
+		rules rules.Rules
+		stake float64
+	}{{"eased", r, 1}, {"easing off", off, 1}, {"eased, myopic", r, 0}}
+	cells := make([][]cell, len(configs))
+	var wg sync.WaitGroup
+	for ci, c := range configs {
+		cells[ci] = make([]cell, len(ratings))
+		for ri, rating := range ratings {
+			wg.Go(func() {
+				var n, crash, full, floor int
+				var fc float64
+				for _, seed := range []uint64{7, 8} {
+					p := sim.DefaultPlayer(rating)
+					p.Stake = c.stake
+					rep := sim.Run(sim.Config{Rules: c.rules, Pool: pool, Player: p, Boots: boots, Warmup: 50, Seed: seed})
+					n += rep.Boots
+					crash += rep.CrashBiome[0]
+					full += rep.FullClears
+					floor += rep.Eased[game.EaseFloor]
+					fc += rep.Forecast
+				}
+				cells[ci][ri] = cell{float64(crash) / float64(n), float64(full) / float64(n), fc / float64(n), float64(floor) / float64(n)}
+			})
+		}
+	}
+	wg.Wait()
+	var w strings.Builder
+	fmt.Fprintf(&w, "  %-14s", "G1 / full")
+	for _, rt := range ratings {
+		fmt.Fprintf(&w, " %13.0f", rt)
+	}
+	for ci, c := range configs {
+		fmt.Fprintf(&w, "\n  %-14s", c.name)
+		for _, x := range cells[ci] {
+			fmt.Fprintf(&w, "   %4.1f / %4.1f", 100*x.g1, 100*x.full)
+		}
+	}
+	fmt.Fprintf(&w, "\n  %-14s", "forecast")
+	for _, x := range cells[0] {
+		fmt.Fprintf(&w, " %12.1f%%", 100*x.forecast)
+	}
+	fmt.Fprintf(&w, "\n  %-14s", "floor-eased")
+	for _, x := range cells[0] {
+		fmt.Fprintf(&w, " %12.0f%%", 100*x.floor)
+	}
+	return w.String() + "\n"
+}
+
 // prestigeTable plays each prestige level from a fresh player and
 // tabulates what the level does to a boot: full clears, where boots crash,
 // every door's clear rate per biome, the mid biome's plain doors (the ones
-// the aim controls) cleared against what the engine expected, and the aim
-// correction the calibration ended on for the mid biome, which shows how
-// much of a level's difficulty it learned away.
+// the aim controls) cleared against what the engine expected, the clear
+// chance it aimed every plain mid door on offer at (D22 holds it at 0.6),
+// and the aim correction the calibration ended on for the mid biome, which
+// shows how much of a level's difficulty it learned away.
 func prestigeTable(r rules.Rules, pool []catalog.Problem, rating float64, boots int) string {
 	var w strings.Builder
-	fmt.Fprintf(&w, "  p  full   crash b0/b1/b2  doors b0/b1/b2  mid plain obs/exp (n)  mid calib\n")
+	fmt.Fprintf(&w, "  p  full   crash b0/b1/b2  doors b0/b1/b2  mid plain obs/exp (n)  mid offered  mid calib\n")
 	for p := range game.MaxPrestige + 1 {
 		rep := sim.Run(sim.Config{
 			Rules:    r,
@@ -186,9 +255,10 @@ func prestigeTable(r rules.Rules, pool []catalog.Problem, rating float64, boots 
 		exp := rep.TaughtP[mid] / float64(max(rep.Taught[mid], 1))
 		cal := rep.Meta.Calibration
 		off := cal[game.CalibrationAll].Offset + cal[game.CalibrationTier(r.Biomes[mid])].Offset
-		fmt.Fprintf(&w, "  %d  %4.1f%%  %-14s  %-14s  %4.1f%% / %4.1f%% (%4d)  %+4.0f\n", p, 100*rep.ClearRate,
+		offered := rep.OfferedP[mid] / float64(max(rep.Offered[mid], 1))
+		fmt.Fprintf(&w, "  %d  %4.1f%%  %-14s  %-14s  %4.1f%% / %4.1f%% (%4d)  %4.1f%% (%4d)  %+4.0f\n", p, 100*rep.ClearRate,
 			strings.Join(crash, "/"), strings.Join(doors, "/"),
-			pct(rep.TaughtClears[mid], rep.Taught[mid]), 100*exp, rep.Taught[mid], off)
+			pct(rep.TaughtClears[mid], rep.Taught[mid]), 100*exp, rep.Taught[mid], 100*offered, rep.Offered[mid], off)
 	}
 	return w.String()
 }

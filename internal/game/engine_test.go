@@ -16,7 +16,7 @@ import (
 func TestNewBootLayout(t *testing.T) {
 	t.Parallel()
 	ps := dense(catalog.Topics, 800, 2600, 20)
-	h := newHarness(t, rules.Standard(), nil, ps, 0, 1)
+	h := newHarness(t, calm(rules.Standard()), nil, ps, 0, 1)
 	s, m := h.s, h.m
 
 	if m.Boots != 1 || s.Boot != 1 || m.Rating != 1000 {
@@ -226,7 +226,8 @@ func TestDoorTargets(t *testing.T) {
 
 // The prestige offset raises a biome's doors until they reach its
 // MinClear and no further (D22); a biome without a floor keeps rising.
-// Doors and their SolveP follow the clamped aim.
+// Doors and their SolveP follow the clamped aim, and none is under the
+// floor: its window keeps only the half above it.
 func TestPrestigeFloor(t *testing.T) {
 	t.Parallel()
 	ps := dense(catalog.Topics, 400, 3000, 10)
@@ -251,6 +252,10 @@ func TestPrestigeFloor(t *testing.T) {
 			for _, d := range h.s.Doors {
 				if math.Abs(float64(d.Rating)-want) > 100 || math.Abs(d.SolveP-game.Expected(rating, float64(d.Rating))) > 1e-12 {
 					t.Errorf("floor %v prestige %d: door %d (SolveP %.3f) for target %.0f", floor, p, d.Rating, d.SolveP, want)
+				}
+				// No door under the floor while the pool has doors above it.
+				if d.SolveP < floor-1e-12 {
+					t.Errorf("floor %v prestige %d: door %d clears %.3f, under the floor", floor, p, d.Rating, d.SolveP)
 				}
 			}
 		}
@@ -1046,7 +1051,7 @@ func TestFullClear(t *testing.T) {
 func TestPrestigeAscension(t *testing.T) {
 	t.Parallel()
 	ps := dense(catalog.Topics, 800, 2600, 20)
-	r := rules.Standard()
+	r := calm(rules.Standard()) // the floor easing adds a life
 	tests := []struct {
 		prestige, lives, ducks int
 	}{

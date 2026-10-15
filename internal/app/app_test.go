@@ -22,6 +22,7 @@ import (
 	"katharsis/internal/game/sim"
 	"katharsis/internal/hud"
 	"katharsis/internal/judge"
+	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/reader"
@@ -144,6 +145,19 @@ type harness struct {
 	path string
 }
 
+// steady is the standard preset without its easing (game.EaseFloor) and
+// Userland's timeout rule (D44): these tests crash on Userland timeouts,
+// which the rule turns into lost lives, and a cold-start player on the
+// fake catalog is aimed under its floor. "eased" plays the standard
+// preset as shipped.
+func steady() rules.Rules {
+	r := rules.Standard()
+	r.EaseAbove, r.BuybackTimers, r.GovernorAfter = 0, nil, 0
+	r.Biomes = slices.Clone(r.Biomes)
+	r.Biomes[0].TimeoutLife = false
+	return r
+}
+
 func newHarness(t *testing.T) *harness { return newHarnessWith(t, nil) }
 
 // newHarnessWith runs the app with the runner wrap makes around the
@@ -181,8 +195,9 @@ func newHarnessWith(t *testing.T, wrap func(*fakeRunner) Runner) *harness {
 			}
 			return h.verdict, 3, 10, nil
 		},
-		Now:  h.clock.now,
-		Seed: func() uint64 { return 42 },
+		Now:     h.clock.now,
+		Seed:    func() uint64 { return 42 },
+		Presets: map[string]rules.Rules{"standard": steady(), "eased": rules.Standard()},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -198,7 +213,7 @@ func newHarnessWith(t *testing.T, wrap func(*fakeRunner) Runner) *harness {
 func (h *harness) restart() {
 	h.t.Helper()
 	d := h.m.d
-	m, err := New(Deps{Store: d.Store, Catalog: d.Catalog, Runner: d.Runner, Judge: d.Judge, Now: d.Now})
+	m, err := New(Deps{Store: d.Store, Catalog: d.Catalog, Runner: d.Runner, Judge: d.Judge, Now: d.Now, Presets: d.Presets})
 	if err != nil {
 		h.t.Fatal(err)
 	}
@@ -435,6 +450,29 @@ func TestTimerExpiryCrashes(t *testing.T) {
 	h.send(tickMsg(h.clock.t))
 	if h.m.state.Phase != game.PhaseCrashed || h.m.state.Crash.Cause != game.TimedOut {
 		t.Fatalf("phase %q crash %+v, want a timeout crash", h.m.state.Phase, h.m.state.Crash)
+	}
+}
+
+// A Userland timeout costs a life instead of the boot (D44): the app
+// closes the door as a retreat does and offers the room again, and the
+// boot is saved that way.
+func TestUserlandTimeoutCostsALife(t *testing.T) {
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "eased"})
+	if len(h.m.state.Ease) == 0 {
+		t.Fatalf("a cold start on the fake catalog is not eased: forecast %.2f", h.m.state.Forecast)
+	}
+	lives, closed := h.m.state.Lives, h.runner.closed
+	h.clock.t = h.enterDoor().Deadline.Add(time.Second)
+	h.send(tickMsg(h.clock.t))
+	s := h.m.state
+	if s.Phase != game.PhaseDoors || s.Crash != nil || s.Lives != lives-1 || len(s.Doors) == 0 || h.m.open != nil || h.runner.closed != closed+1 {
+		t.Fatalf("phase %q crash %+v lives %d (was %d), %d doors, open %v, closed %d (was %d)",
+			s.Phase, s.Crash, s.Lives, lives, len(s.Doors), h.m.open != nil, h.runner.closed, closed)
+	}
+	h.restart()
+	if h.m.state.Phase != game.PhaseDoors || h.m.state.Lives != lives-1 {
+		t.Errorf("resumed in phase %q with %d lives", h.m.state.Phase, h.m.state.Lives)
 	}
 }
 

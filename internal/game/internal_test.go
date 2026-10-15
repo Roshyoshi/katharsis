@@ -110,3 +110,24 @@ func TestFitTimer(t *testing.T) {
 		}
 	}
 }
+
+// A door the floor easing gave a longer timer is rated against the clear
+// chance the timer bought (rules.BuybackBeta), not the plain door's: its
+// clear lifts the rating less and its failure drops it more.
+func TestRateBoughtBack(t *testing.T) {
+	t.Parallel()
+	r := rules.Standard()
+	r.RatingColdAttempts = 0
+	d := Door{Problem: "t:800", Topic: Mixed, Rating: 800}
+	bought := d
+	bought.TimerBuy = 2
+	for _, score := range []float64{0, 1} {
+		plain, eased := &Meta{Rating: 1000}, &Meta{Rating: 1000}
+		rate(&r, plain, d, score)
+		rate(&r, eased, bought, score)
+		p := lift(Expected(1000, 800), r.BuybackBeta*math.Log(2))
+		if want := 1000 + r.RatingK*(score-p); math.Abs(eased.Rating-want) > 1e-9 || eased.Rating >= plain.Rating {
+			t.Errorf("score %v: bought-back door rated %.2f (plain %.2f), want %.2f", score, eased.Rating, plain.Rating, want)
+		}
+	}
+}

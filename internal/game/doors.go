@@ -18,15 +18,17 @@ func topicOf(p *catalog.Problem) string {
 	return p.Topic
 }
 
-// target is the door rating at which the player clears rb's topic doors
-// with probability rb.TargetClear, raised by the prestige offset but never
-// past where they would clear rb.MinClear, and corrected by the tier's
-// calibration. The floor applies before the calibration, which corrects
-// the logistic's shape at whatever rating the floor leaves.
-func (e *engine) target(topic string, rb rules.Biome) float64 {
+// target is the door rating at which the player clears biome i's topic
+// doors with probability AimClear(i) (its TargetClear unless an easing
+// raised it), raised by the prestige offset but never past where they
+// would clear rb.MinClear, and corrected by the tier's calibration. The
+// floor applies before the calibration, which corrects the logistic's
+// shape at whatever rating the floor leaves.
+func (e *engine) target(topic string, i int) float64 {
 	r := &e.s.Rules
+	rb := r.Biomes[i]
 	R := PlayerRating(r, e.meta, topic)
-	aim := Aim(R, rb.TargetClear) + float64(e.s.Prestige)*r.PrestigeOffset
+	aim := Aim(R, e.s.AimClear(i)) + float64(e.s.Prestige)*r.PrestigeOffset
 	if rb.MinClear > 0 {
 		aim = min(aim, Aim(R, rb.MinClear))
 	}
@@ -37,7 +39,7 @@ func (e *engine) target(topic string, rb rules.Biome) float64 {
 // what the engine is trying to offer, before the pool decides what it can.
 func (s *State) Target(m *Meta, topic string) float64 {
 	e := &engine{s: s, meta: m}
-	return e.target(topic, s.Rules.Biomes[s.Biome])
+	return e.target(topic, s.Biome)
 }
 
 // attempted is every problem opened this boot.
@@ -69,28 +71,73 @@ type cand struct {
 	p    *catalog.Problem
 	dist float64 // from the target of the problem's own topic
 	in   bool    // in the biome's topic
+	// sp is its SolveP as a door of the biome; low is set when that is
+	// under the biome's MinClear, which the rating windows pass over (D22).
+	sp  float64
+	low bool
 }
 
-// candidates lists eligible problems, sorted by ID so the pick depends on the
-// seed and not on the order the catalog listed them in.
-func (e *engine) candidates(topic string, rb rules.Biome, ex map[catalog.ID]bool) []cand {
-	targets := map[string]float64{}
+// candidates lists eligible problems for biome i, sorted by ID so the pick
+// depends on the seed and not on the order the catalog listed them in.
+func (e *engine) candidates(topic string, i int, ex map[catalog.ID]bool) []cand {
+	rb := e.s.Rules.Biomes[i]
+	off := e.aimOffset(rb)
+	type aim struct{ target, rating float64 }
+	aims := map[string]aim{}
 	var cs []cand
-	for i := range e.pool {
-		p := &e.pool[i]
+	for j := range e.pool {
+		p := &e.pool[j]
 		if !p.Judgeable || ex[p.ID] {
 			continue
 		}
 		t := topicOf(p)
-		tg, ok := targets[t]
+		a, ok := aims[t]
 		if !ok {
-			tg = e.target(t, rb)
-			targets[t] = tg
+			a = aim{e.target(t, i), PlayerRating(&e.s.Rules, e.meta, t)}
+			aims[t] = a
 		}
-		cs = append(cs, cand{p, math.Abs(float64(p.Rating) - tg), topic == Mixed || t == topic})
+		sp := Expected(a.rating, float64(p.Rating)-off)
+		cs = append(cs, cand{p, math.Abs(float64(p.Rating) - a.target), topic == Mixed || t == topic, sp, rb.MinClear > 0 && sp < rb.MinClear})
 	}
 	slices.SortFunc(cs, func(a, b cand) int { return cmp.Compare(a.p.ID, b.p.ID) })
 	return cs
+}
+
+// tier is one step of pick: candidates in the biome's topic only (in) or
+// any, within w rating points of their target.
+type tier struct {
+	in bool
+	w  float64
+}
+
+// tiers are pick's steps in order: the biome's topic at each rating
+// window, then every topic at each window, then the nearest left.
+func (e *engine) tiers() []tier {
+	var ts []tier
+	for _, in := range []bool{true, false} {
+		for _, w := range e.s.Rules.RatingWindows {
+			ts = append(ts, tier{in, float64(w)})
+		}
+	}
+	return append(ts, tier{true, math.Inf(1)}, tier{false, math.Inf(1)})
+}
+
+// fit is what tier t draws need doors from: every candidate of cs not
+// chosen that fits a window (and is not under the biome's floor), or the
+// 2·need nearest past the windows.
+func (t tier) fit(cs []cand, chosen map[catalog.ID]bool, need int) []cand {
+	var fit []cand
+	window := !math.IsInf(t.w, 1)
+	for _, c := range cs {
+		if !chosen[c.p.ID] && (c.in || !t.in) && c.dist <= t.w && (!window || !c.low) {
+			fit = append(fit, c)
+		}
+	}
+	if !window {
+		slices.SortStableFunc(fit, func(a, b cand) int { return cmp.Compare(a.dist, b.dist) })
+		fit = fit[:min(len(fit), 2*need)]
+	}
+	return fit
 }
 
 // pick fills n doors from cs, tier by tier: the biome's topic at each rating
@@ -104,35 +151,19 @@ func (e *engine) candidates(topic string, rb rules.Biome, ex map[catalog.ID]bool
 // USACO), a uniform pick over the whole rating range would offer 2600s to a
 // 1600 player; the nearest 2n leftovers keep doors as close as the pool
 // allows while still varying.
+//
+// The windows also pass over doors below the biome's MinClear (D22): the
+// prestige offset stops at the floor, but a ±100 window around it would
+// still put half its doors under. Only the nearest leftovers may be that
+// hard, once nothing above the floor is left.
 func (e *engine) pick(cs []cand, n int) []*catalog.Problem {
-	type tier struct {
-		in bool
-		w  float64
-	}
-	var tiers []tier
-	for _, in := range []bool{true, false} {
-		for _, w := range e.s.Rules.RatingWindows {
-			tiers = append(tiers, tier{in, float64(w)})
-		}
-	}
-	tiers = append(tiers, tier{true, math.Inf(1)}, tier{false, math.Inf(1)})
-
 	chosen := map[catalog.ID]bool{}
 	var out []*catalog.Problem
-	for _, t := range tiers {
+	for _, t := range e.tiers() {
 		if len(out) >= n {
 			break
 		}
-		var fit []cand
-		for _, c := range cs {
-			if !chosen[c.p.ID] && (c.in || !t.in) && c.dist <= t.w {
-				fit = append(fit, c)
-			}
-		}
-		if math.IsInf(t.w, 1) {
-			slices.SortStableFunc(fit, func(a, b cand) int { return cmp.Compare(a.dist, b.dist) })
-			fit = fit[:min(len(fit), 2*(n-len(out)))]
-		}
+		fit := t.fit(cs, chosen, n-len(out))
 		for _, c := range sample(e.rng, fit, n-len(out)) {
 			if !chosen[c.p.ID] { // a Union catalog can list an ID twice
 				chosen[c.p.ID] = true
@@ -176,7 +207,7 @@ func (e *engine) rollRoom(fresh bool) {
 	// A regression door needs a judgeable problem, so the room has a door
 	// for it to replace.
 	if fresh && e.s.Trial == nil {
-		if d, ok := e.regressionDoor(e.s.Rules.Biomes[e.s.Biome], doors); ok {
+		if d, ok := e.regressionDoor(doors); ok {
 			doors[len(doors)-1] = d
 		}
 	}
@@ -192,7 +223,6 @@ func (e *engine) rollRoom(fresh bool) {
 func (e *engine) drawDoors(skip []Door) []Door {
 	s := e.s
 	b := &s.Biomes[s.Biome]
-	rb := s.Rules.Biomes[s.Biome]
 	n := e.roomSize(b)
 
 	var ps []*catalog.Problem
@@ -205,7 +235,7 @@ func (e *engine) drawDoors(skip []Door) []Door {
 					ex[d.Problem] = true
 				}
 			}
-			ps = e.pick(e.candidates(b.Topic, rb, ex), n)
+			ps = e.pick(e.candidates(b.Topic, s.Biome, ex), n)
 			if len(ps) > 0 {
 				break
 			}
@@ -213,15 +243,18 @@ func (e *engine) drawDoors(skip []Door) []Door {
 	}
 	doors := make([]Door, 0, n)
 	for _, p := range ps {
-		doors = append(doors, e.makeDoor(p, rb, b.Boss, false))
+		doors = append(doors, e.makeDoor(p, s.Biome, b.Boss, false))
 	}
 	return doors
 }
 
 // offer puts doors on offer in the current room, logs them and has the app
-// fetch them ahead.
+// fetch them ahead. The room's safe doors (Biome.Plain) and the floor
+// easing's timers are settled here, after any regression door joined.
 func (e *engine) offer(doors []Door) {
 	s := e.s
+	e.plainDoors(doors)
+	e.buyTimers(doors)
 	s.Doors = doors
 	ids := make([]catalog.ID, len(doors))
 	desc := make([]string, len(doors))
@@ -239,9 +272,9 @@ func (e *engine) offer(doors []Door) {
 // regressionDoor is the boot's one due regression, offered in the first room
 // of a non-boss biome after the first. Its problem must still be in the pool
 // (for rating and topic) and not opened this boot.
-func (e *engine) regressionDoor(rb rules.Biome, offered []Door) (Door, bool) {
+func (e *engine) regressionDoor(offered []Door) (Door, bool) {
 	s := e.s
-	if s.RegressionOffered || s.Biome < 1 || s.Room != 0 || rb.Kind == rules.Boss {
+	if s.RegressionOffered || s.Biome < 1 || s.Room != 0 || s.Rules.Biomes[s.Biome].Kind == rules.Boss {
 		return Door{}, false
 	}
 	seen := e.attempted()
@@ -255,7 +288,7 @@ func (e *engine) regressionDoor(rb rules.Biome, offered []Door) (Door, bool) {
 		}
 		s.RegressionOffered = true
 		e.logf("regression: %s is back (stage %d)", g.Problem, g.Stage)
-		return e.makeDoor(&e.pool[i], rb, "", true), true
+		return e.makeDoor(&e.pool[i], s.Biome, "", true), true
 	}
 	return Door{}, false
 }
@@ -268,8 +301,9 @@ func (e *engine) regressionDoor(rb rules.Biome, offered []Door) (Door, bool) {
 // rate, so the logistic at the uncorrected rating is the better estimate,
 // and pricing by it keeps a door's expected payout at BaseBytes/2 whatever
 // the calibration has learned.
-func (e *engine) makeDoor(p *catalog.Problem, rb rules.Biome, boss string, regression bool) Door {
+func (e *engine) makeDoor(p *catalog.Problem, i int, boss string, regression bool) Door {
 	r := &e.s.Rules
+	rb := r.Biomes[i]
 	asc := r.Ascend(e.s.Prestige)
 	topic := topicOf(p)
 	R := PlayerRating(r, e.meta, topic)
@@ -289,17 +323,52 @@ func (e *engine) makeDoor(p *catalog.Problem, rb rules.Biome, boss string, regre
 		// The unit shows tags; the integration doors are blind.
 		d.Blind, d.Mystery, d.Cursed = e.s.Biome > 0 || r.BlindAll, false, false
 	}
+	d.Timer = e.doorTimer(rb, boss != "", float64(p.Rating)-R)
+	e.dress(&d, i)
+	return d
+}
+
+// dress sets what follows from a door's modifiers: whether mastery hides
+// its tags, the calibration tier it teaches, and its bytes.
+func (e *engine) dress(d *Door, i int) {
+	r := &e.s.Rules
 	// A mastered door teaches the calibration like any plain door: once most
 	// doors of the known topics hide their tags, they are most of what the
 	// aim can learn from.
-	d.Mastered = e.s.Trial == nil && !d.Blind && mastered(r, e.meta, topic, p.Rating)
-	plain := !d.Blind && !d.Cursed && !regression && e.s.Trial == nil
-	if plain && math.Abs(float64(p.Rating)-e.target(topic, rb)) <= float64(r.RatingWindows[0]) {
-		d.Tier = CalibrationTier(rb)
+	d.Mastered = e.s.Trial == nil && !d.Blind && mastered(r, e.meta, d.Topic, d.Rating)
+	plain := !d.Blind && !d.Cursed && !d.Regression && e.s.Trial == nil && d.TimerBuy == 0
+	d.Tier = ""
+	if plain && math.Abs(float64(d.Rating)-e.target(d.Topic, i)) <= float64(r.RatingWindows[0]) {
+		d.Tier = CalibrationTier(r.Biomes[i])
 	}
-	d.Timer = e.doorTimer(rb, boss != "", float64(p.Rating)-R)
-	d.Bytes = e.doorBytes(d)
-	return d
+	d.Bytes = e.doorBytes(*d)
+}
+
+// plainDoors takes the risk modifiers (blind, mystery, cursed) off the
+// biome's Plain easiest doors on offer, regressions aside, so a safe door
+// is always there (ml-pipeline M4: Userland's easy slot). Their modifiers
+// were rolled already, which keeps the draws per door fixed.
+func (e *engine) plainDoors(doors []Door) {
+	s := e.s
+	n := s.Rules.Biomes[s.Biome].Plain
+	if n <= 0 || s.Trial != nil {
+		return
+	}
+	idx := make([]int, 0, len(doors))
+	for i, d := range doors {
+		if !d.Regression {
+			idx = append(idx, i)
+		}
+	}
+	// Easiest first; ties keep the display order.
+	slices.SortStableFunc(idx, func(a, b int) int { return cmp.Compare(doors[b].SolveP, doors[a].SolveP) })
+	for _, i := range idx[:min(n, len(idx))] {
+		d := &doors[i]
+		if d.Cursed || d.Mystery || d.Blind && !s.Rules.BlindAll {
+			d.Blind, d.Mystery, d.Cursed = s.Rules.BlindAll, false, false
+			e.dress(d, s.Biome)
+		}
+	}
 }
 
 // mastered reports whether a door rated rating on topic hides its tags for
@@ -352,21 +421,22 @@ func (e *engine) doorBytes(d Door) int64 {
 // Rooms·RouteMinPool eligible problems within the widest rating window.
 // Topics not yet offered this boot go first. Mixed is the fallback, so a
 // route is never empty.
-func (e *engine) routeOffers(rb rules.Biome, k int, used map[string]bool) []string {
+func (e *engine) routeOffers(i, k int, used map[string]bool) []string {
 	r := &e.s.Rules
+	rb := r.Biomes[i]
 	widest := float64(slices.Max(r.RatingWindows))
 	ex := e.excluded()
 	targets := map[string]float64{}
 	count := map[string]int{}
-	for i := range e.pool {
-		p := &e.pool[i]
+	for j := range e.pool {
+		p := &e.pool[j]
 		t := topicOf(p)
 		if !p.Judgeable || ex[p.ID] || t == Mixed {
 			continue
 		}
 		tg, ok := targets[t]
 		if !ok {
-			tg = e.target(t, rb)
+			tg = e.target(t, i)
 			targets[t] = tg
 		}
 		if math.Abs(float64(p.Rating)-tg) <= widest {
@@ -412,14 +482,14 @@ func (e *engine) layout() {
 				b.Boss = FinalBoss
 			}
 		case rules.Choice:
-			b.Offers = e.routeOffers(rb, rb.Choices+r.Grants(s.Packages).RouteOffers, used)
+			b.Offers = e.routeOffers(i, rb.Choices+r.Grants(s.Packages).RouteOffers, used)
 			for _, t := range b.Offers {
 				used[t] = true
 			}
 		default:
 			b.Topic = Mixed
 			if i > 0 {
-				b.Topic = e.routeOffers(rb, 1, used)[0]
+				b.Topic = e.routeOffers(i, 1, used)[0]
 				used[b.Topic] = true
 			}
 		}

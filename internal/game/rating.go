@@ -49,11 +49,21 @@ func PlayerRating(r *rules.Rules, m *Meta, topic string) float64 {
 // third of a door per boot, and at K 40 its own doors take a hundred boots
 // to close a 200-point gap, all the while aiming its doors at a player who
 // is no longer there.
+//
+// A door the floor easing gave a longer timer (Door.TimerBuy) is expected
+// to clear that much more often (rules.BuybackBeta), so the time it bought
+// does not read as skill: rated as a plain door, its clears would lift the
+// rating until the easing stopped and the floor crashed the player again.
 func rate(r *rules.Rules, m *Meta, d Door, score float64) {
 	overall := m.Rating // NewBoot and NewTrial set a cold start
 	k := ratingK(r, m)
+	bought := 0.0
+	if d.TimerBuy > 1 {
+		bought = r.BuybackBeta * math.Log(d.TimerBuy)
+	}
+	expect := func(player float64) float64 { return lift(Expected(player, float64(d.Rating)), bought) }
 	m.Rated++
-	m.Rating = overall + k*(score-Expected(overall, float64(d.Rating)))
+	m.Rating = overall + k*(score-expect(overall))
 	tr, seen := m.TopicRating[d.Topic]
 	follow := r.TopicFollow * (m.Rating - overall)
 	if follow != 0 {
@@ -76,7 +86,7 @@ func rate(r *rules.Rules, m *Meta, d Door, score float64) {
 		// overall: following as well would count the door twice.
 		tr, base = overall, overall
 	}
-	m.TopicRating[d.Topic] = base + k*(score-Expected(tr, float64(d.Rating)))
+	m.TopicRating[d.Topic] = base + k*(score-expect(tr))
 	m.TopicAttempts[d.Topic]++
 }
 

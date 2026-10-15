@@ -116,6 +116,23 @@ type Meta struct {
 	// in use, "" for the default.
 	Installed []string
 	Theme     string
+
+	// Governor counts finished boots in a row by how they ended, for the
+	// easing (rules.GovernorAfter) and GRUB's prestige hint. Trials and
+	// abandoned boots do not count.
+	Governor Governor `json:",omitzero"`
+}
+
+// Governor is Meta's count of recent boot endings (ml-pipeline M4's streak
+// governor; guardrail G2). The screens never show it as a count to keep
+// up (retention GR1).
+type Governor struct {
+	// EarlyCrashes is how many boots in a row crashed in their first
+	// biome, before any merge window; reaching one starts it over.
+	EarlyCrashes int `json:",omitempty"`
+	// FullClears is how many boots in a row were cleared; a crash starts it
+	// over.
+	FullClears int `json:",omitempty"`
 }
 
 // Calibration is what one tier of biomes (see CalibrationTier) has learned
@@ -170,6 +187,12 @@ type Door struct {
 	// regression, a trial door, or one the pool could not place near its
 	// target. SolveP already includes the tier's offset.
 	Tier string
+
+	// TimerBuy is the multiplier the timer buy-back put on Timer (already
+	// in it), 0 when none: the pool had no door near the aim, so the
+	// engine bought the clear chance back with time (Ease, EaseFloor).
+	// SolveP and Bytes are the door's without it.
+	TimerBuy float64 `json:",omitempty"`
 }
 
 // TagsHidden reports whether the door hides its tags until a duck reveals
@@ -352,6 +375,18 @@ type State struct {
 	// AtStart is the player as the boot began, for the end screens'
 	// before and after (Debrief); nil in a boot saved before it existed.
 	AtStart *Start `json:",omitempty"`
+
+	// Forecast is the engine's chance, at NewBoot, that this boot crashes
+	// in its first biome (before the first merge window) as it is aimed,
+	// before any lives an easing adds: the number guardrail G1 holds at
+	// rules.EaseAbove. 0 for a trial.
+	Forecast float64 `json:",omitempty"`
+	// Ease lists the easings this boot runs with, in the order NewBoot
+	// found them (retention RT8, GR9). The screens announce each; Declined
+	// is set once the player turned them down (DeclineEase), which keeps
+	// them listed for the record but turns them all off.
+	Ease     []Ease `json:",omitempty"`
+	Declined bool   `json:",omitempty"`
 }
 
 // Start is what the player had when a boot began (State.AtStart).
@@ -363,6 +398,42 @@ type Start struct {
 	// a crash in this one destroys. nil for none, and in a trial, whose
 	// crash leaves the dump alone.
 	Dump *CoreDump `json:",omitempty"`
+}
+
+// EaseKind is why a boot eases off.
+type EaseKind string
+
+const (
+	// EaseFloor: the pool has no first-biome door near the aim (its floor
+	// sits above a low-rated player's), so doors there get longer timers
+	// and, when the forecast crash chance there is above rules.EaseAbove,
+	// the boot gets lives (D34) and a duck.
+	EaseFloor EaseKind = "floor"
+	// EaseGovernor: the last rules.GovernorAfter boots crashed in their
+	// first biome, so every biome aims at its EaseClear.
+	EaseGovernor EaseKind = "governor"
+)
+
+// Ease is one easing a boot runs with. It is announced in task terms and
+// can be declined (retention GR9): DeclineEase turns every easing of the
+// boot off until the first door opens.
+type Ease struct {
+	Kind EaseKind
+	// Why names the doors, boots or days behind it, never the player:
+	// "no Userland door in the pool is rated under 800", "the last 2 boots
+	// ended in Userland".
+	Why string
+
+	// Lives is how many lives it added at the boot's start.
+	Lives int `json:",omitempty"`
+	// Ducks is how many ducks it added at the boot's start.
+	Ducks int `json:",omitempty"`
+	// Clear is, per biome, the clear chance its doors are aimed at instead
+	// of the biome's TargetClear; 0 leaves that biome's aim alone.
+	Clear []float64 `json:",omitempty"`
+	// Buyback gives the first biome's doors longer timers where the pool
+	// has none near the aim (Door.TimerBuy).
+	Buyback bool `json:",omitempty"`
 }
 
 // TrialSpec is a learn-mode trial as the curriculum builds it
@@ -436,6 +507,11 @@ type Reroll struct{}
 // templates. Allowed until the first door opens, up to State.LinkSlots.
 type Link struct{ Libs []string }
 
+// DeclineEase turns the boot's easing (State.Ease) off: the lives and ducks
+// it added go, and the room on offer is drawn again without it. Allowed
+// once, until the first door opens.
+type DeclineEase struct{}
+
 func (ChooseRoute) isAction()  {}
 func (ChooseDoor) isAction()   {}
 func (Retreat) isAction()      {}
@@ -451,6 +527,7 @@ func (LeaveMerge) isAction()   {}
 func (Link) isAction()         {}
 func (Spend) isAction()        {}
 func (Reroll) isAction()       {}
+func (DeclineEase) isAction()  {}
 
 // ---- outputs -----------------------------------------------------------------
 

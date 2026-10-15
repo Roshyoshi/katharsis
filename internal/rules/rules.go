@@ -55,8 +55,25 @@ type Biome struct {
 	Timer       Duration `toml:"timer"` // default timer before fitting
 	// MinClear is the lowest solve probability the prestige offset may push
 	// this biome's doors to: past it, a higher prestige stops raising them
-	// and is harder only through its ascensions. 0 sets no floor.
+	// and is harder only through its ascensions. It is also a floor for
+	// each door: while the pool has a door the player clears with at least
+	// MinClear, the biome offers none below it (D22). 0 sets no floor.
 	MinClear float64 `toml:"min_clear"`
+
+	// EaseClear is the solve probability an eased boot (game.State.Ease:
+	// the governor after early crashes, a comeback after days away) aims
+	// this biome's doors at instead of TargetClear. 0 leaves the aim alone.
+	EaseClear float64 `toml:"ease_clear"`
+	// Plain is how many doors of each room roll no risk modifier (blind,
+	// mystery, cursed), the easiest on offer first: a safe door is always
+	// there, so risk stays the player's choice. A run modifier
+	// (blind_all) still applies.
+	Plain int `toml:"plain"`
+	// TimeoutLife makes a door whose timer runs out in this biome cost a
+	// life instead of the boot while a spare life is left, as a retreat
+	// would: the door closes, rated as failed, and the room is drawn again
+	// (D44, Userland only by default; elsewhere a timeout ends the boot).
+	TimeoutLife bool `toml:"timeout_life"`
 }
 
 type Rules struct {
@@ -255,6 +272,45 @@ type Rules struct {
 
 	// Packages are what the bank buys at GRUB (see Package).
 	Packages []Package `toml:"package"`
+
+	// ---- easing (retention RT0, RT8; ml-pipeline M4, slice ML7) -----------
+
+	// A boot eases off when its first biome would crash it too often: the
+	// guardrail is P(crash before the first merge window) <= 0.2 (G1 in
+	// docs/research/ml-pipeline.md). Every easing is announced in
+	// game.State.Ease and can be declined before the first door opens
+	// (retention GR9).
+
+	// EaseAbove is the forecast chance of crashing in the first biome above
+	// which a boot eases off there. The forecast is the engine's own: the
+	// best clear chance the pool allows in each room of the biome. It binds
+	// for a low-rated player, whose aim sits below the pool's floor (no
+	// local problem is rated under 800). An eased boot gets lives (D34),
+	// which a timeout there costs instead of the boot (Biome.TimeoutLife).
+	// EaseLives is the most lives it adds: D34's one, and one more for
+	// each further EaseAbove of forecast crashes; and EaseDucks more ducks
+	// (neuro P1.2 buys the clear chance back with lives, time or ducks). 0
+	// turns it off.
+	EaseAbove float64 `toml:"ease_above"`
+	EaseLives int     `toml:"ease_lives"`
+	EaseDucks int     `toml:"ease_ducks"`
+	// BuybackTimers are the timer multipliers that buy a floor door's
+	// clear chance back: when the pool has no first-biome door near the
+	// aim, each door gets the smallest multiplier that lifts its clear
+	// chance to within BuybackMargin of the aim, or the largest.
+	// BuybackBeta is what a longer timer is taken to be worth, in log-odds
+	// per unit of ln(multiplier) (the ml-pipeline M1 prior). Empty turns the
+	// buy-back off.
+	BuybackTimers []float64 `toml:"buyback_timers"`
+	BuybackBeta   float64   `toml:"buyback_beta"`
+	BuybackMargin float64   `toml:"buyback_margin"`
+	// GovernorAfter is how many boots in a row that crashed in the first
+	// biome make the next aim every biome at its EaseClear, with
+	// GovernorLives more lives (the aim cannot move below the pool's floor;
+	// a life can); reaching a merge window starts the count over. 0 turns
+	// it off.
+	GovernorAfter int `toml:"governor_after"`
+	GovernorLives int `toml:"governor_lives"`
 }
 
 // Ascension is the extra difficulty of one prestige level. Levels stack like
@@ -441,11 +497,11 @@ func Standard() Rules {
 		Ducks:        1,
 		DoorsPerRoom: 3,
 		Biomes: []Biome{
-			{Kind: Fixed, Name: "Userland", Rooms: 2, TargetClear: 0.92, Timer: Duration{15 * time.Minute}},
+			{Kind: Fixed, Name: "Userland", Rooms: 2, TargetClear: 0.92, Timer: Duration{15 * time.Minute}, EaseClear: 0.95, Plain: 1, TimeoutLife: true},
 			// The mid biome is where learning happens, so prestige holds it at
 			// 0.6 or above (D22) and adds risk instead.
-			{Kind: Choice, Rooms: 2, Choices: 2, TargetClear: 0.7, MinClear: 0.6, Timer: Duration{30 * time.Minute}},
-			{Kind: Boss, Rooms: 1, TargetClear: 0.5, Timer: Duration{50 * time.Minute}},
+			{Kind: Choice, Rooms: 2, Choices: 2, TargetClear: 0.7, MinClear: 0.6, Timer: Duration{30 * time.Minute}, EaseClear: 0.78},
+			{Kind: Boss, Rooms: 1, TargetClear: 0.5, Timer: Duration{50 * time.Minute}, EaseClear: 0.55},
 		},
 		BlindChance:     0.25,
 		MysteryChance:   0.08,
@@ -532,18 +588,37 @@ func Standard() Rules {
 			{Level: 4, Lives: -1, CursedChance: 0.04, TimerMult: 0.9},
 		},
 
+		// Easing (RT0): G1's 0.2 as the threshold; D34's life and a second
+		// past a 0.4 forecast, with a duck; the ml-pipeline M4 buy-back
+		// multipliers at half its timer prior (at 1, the floor players' Elo
+		// ran 20 to 60 points low in the simulator); and neuro P1.3's
+		// governor after two early crashes, aiming at 0.95 / 0.78 / 0.55 (the
+		// biomes' EaseClear) with a life. TestBalanceReport/guardrails has
+		// G1 for the model players from 900 to 1600.
+		EaseAbove:     0.2,
+		EaseLives:     2,
+		EaseDucks:     1,
+		BuybackTimers: []float64{1.25, 1.5, 2},
+		BuybackBeta:   0.5,
+		BuybackMargin: 0.02,
+		GovernorAfter: 2,
+		GovernorLives: 1,
+
 		// What the bank buys at GRUB (D25, retention RT3): mostly options
 		// (a daemon, an item or an upgrade joins its pool; one more route,
 		// daemon or upgrade is on offer, one more door per room), banner
 		// themes, a starting duck, and one capstone. Over its first 40
-		// boots at prestige 0 the 1000-rated sim player banks about 140 B a
-		// boot (commits and upsolved core dumps), so bought cheapest first
-		// the first package is one cleared door and every next one is at
-		// most three boots away until binutils, about 44 boots in; the
-		// catalog is about 72 boots of that player's bank and 45 of the
-		// 1600-rated one's (230 B a boot). rules_test.go checks the ladder
-		// at those rates and sim TestAptLadder against the players; prices
-		// are settings like any other (D2).
+		// boots at prestige 0 the 1000-rated sim player banks about 190 B a
+		// boot (commits and upsolved core dumps; 140 B before RT0's easing
+		// and D44 let most of its boots past Userland), so bought cheapest
+		// first the first package is one cleared door and every next one is
+		// at most three boots away until binutils, about 45 boots in; the
+		// catalog is about 67 boots of that player's bank and 48 of the
+		// 1600-rated one's (260 B a boot). The measured rate moves by a tenth
+		// with the prices themselves (when a package lands changes the
+		// boots), so the ladder holds for 176 to 212 B. rules_test.go checks the ladder at those
+		// rates and sim TestAptLadder against the players; prices are
+		// settings like any other (D2).
 		//
 		// binutils is the one package of raw power: a lib slot pastes more
 		// of the player's own code, which the door model does not see
@@ -551,25 +626,25 @@ func Standard() Rules {
 		// the capstone, after the ladder, and the only one of its kind.
 		Packages: []Package{
 			{Name: "cowsay", Price: 32, Theme: "cowsay"},
-			{Name: "tux", Price: 128, Theme: "tux"},
-			{Name: "sl", Price: 256, Theme: "sl"},
-			{Name: "rng-tools", Price: 256, Daemon: "dev-random"},
-			{Name: "at", Price: 320, Item: "at"},
-			{Name: "cron", Price: 384, Daemon: "cron"},
-			{Name: "strace", Price: 400, Daemon: "strace"},
-			{Name: "coreutils", Price: 400, Upgrade: "shuf"},
-			{Name: "aptitude", Price: 400, UpgradeOffers: 1, Requires: []string{"coreutils"}},
-			{Name: "rubber-duck", Price: 400, Ducks: 1},
-			{Name: "git", Price: 400, RouteOffers: 1},
-			{Name: "neofetch", Price: 400, Theme: "neofetch"},
-			{Name: "util-linux", Price: 400, Daemon: "chrt"},
-			{Name: "figlet", Price: 400, Theme: "figlet"},
-			{Name: "tmux", Price: 400, Doors: 1},
-			{Name: "cmatrix", Price: 400, Theme: "cmatrix"},
-			{Name: "bastet", Price: 400, Theme: "bastet"},
+			{Name: "tux", Price: 256, Theme: "tux"},
+			{Name: "sl", Price: 384, Theme: "sl"},
+			{Name: "rng-tools", Price: 448, Daemon: "dev-random"},
+			{Name: "at", Price: 512, Item: "at"},
+			{Name: "cron", Price: 528, Daemon: "cron"},
+			{Name: "strace", Price: 528, Daemon: "strace"},
+			{Name: "coreutils", Price: 528, Upgrade: "shuf"},
+			{Name: "aptitude", Price: 528, UpgradeOffers: 1, Requires: []string{"coreutils"}},
+			{Name: "rubber-duck", Price: 528, Ducks: 1},
+			{Name: "git", Price: 528, RouteOffers: 1},
+			{Name: "neofetch", Price: 528, Theme: "neofetch"},
+			{Name: "util-linux", Price: 528, Daemon: "chrt"},
+			{Name: "figlet", Price: 528, Theme: "figlet"},
+			{Name: "tmux", Price: 528, Doors: 1},
+			{Name: "cmatrix", Price: 528, Theme: "cmatrix"},
+			{Name: "bastet", Price: 528, Theme: "bastet"},
 			// A fourth daemon on offer means nothing while the pool holds
 			// three, so procps waits on two of the locked ones.
-			{Name: "procps", Price: 400, DaemonOffers: 1, Requires: []string{"rng-tools", "strace"}},
+			{Name: "procps", Price: 528, DaemonOffers: 1, Requires: []string{"rng-tools", "strace"}},
 			{Name: "binutils", Price: 4096, LinkSlots: 1},
 		},
 	}
@@ -600,6 +675,8 @@ func Trial() Rules {
 	r.MasteryAttempts = 0 // the unit shows tags and the integration hides them
 	r.OnExpire = ExpireOvertime
 	r.ShowFailingInput = true
+	// A trial is not aimed, so it has nothing to ease.
+	r.EaseAbove, r.GovernorAfter = 0, 0
 	return r
 }
 
@@ -667,6 +744,19 @@ func (r Rules) Validate() error {
 		if b.Kind != Fixed && b.Kind != Choice && b.Kind != Boss {
 			return fmt.Errorf("rules %q: biome %d kind %q is not fixed, choice or boss", r.Name, i, b.Kind)
 		}
+		if b.EaseClear != 0 && (b.EaseClear < b.TargetClear || b.EaseClear >= 1) || b.Plain < 0 {
+			return fmt.Errorf("rules %q: biome %d needs ease_clear 0 or in target_clear..1, plain >= 0", r.Name, i)
+		}
+	}
+	if !(r.EaseAbove >= 0 && r.EaseAbove < 1) || r.EaseLives < 0 || r.EaseDucks < 0 || r.GovernorAfter < 0 || r.GovernorLives < 0 ||
+		!(r.BuybackBeta >= 0) || !(r.BuybackMargin >= 0 && r.BuybackMargin < 1) {
+		return fmt.Errorf("rules %q: need 0 <= ease_above < 1, ease_lives, ease_ducks, governor_after, governor_lives, buyback_beta >= 0, 0 <= buyback_margin < 1", r.Name)
+	}
+	for _, k := range r.BuybackTimers {
+		// The negated test also catches NaN.
+		if !(k >= 1 && k <= MaxBuyback) {
+			return fmt.Errorf("rules %q: buyback_timers %v not in 1..%d", r.Name, k, MaxBuyback)
+		}
 	}
 	if r.TimerFitLo > r.TimerFitHi {
 		return fmt.Errorf("rules %q: timer_fit_lo above timer_fit_hi", r.Name)
@@ -714,6 +804,10 @@ const (
 	MaxBytesMultiplier = 1000
 	MaxDoorBytes       = 1 << 40
 )
+
+// MaxBuyback bounds a timer buy-back multiplier: past it a door's timer is
+// hours, which no clear chance needs.
+const MaxBuyback = 10
 
 func (r Rules) validateBytes() error {
 	if r.BaseBytes < 0 || r.BaseBytes > MaxBaseBytes {

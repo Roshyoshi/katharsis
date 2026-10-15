@@ -232,13 +232,14 @@ func TestLoadStrictKeysAndFileName(t *testing.T) {
 // boots may come only once the ladder under it has lasted 40 boots of the
 // weaker player. Boots are counted at what the sim's model players bank
 // per boot over their first 40 boots at prestige 0 (commits and upsolved
-// core dumps): sim TestAptLadder measures them (142 and 229 B when these
-// were set) and holds the catalog to the same rules at the real rates.
+// core dumps): sim TestAptLadder measures them (187 and 260 B when these
+// were set, with RT0's easing and D44) and holds the catalog to the
+// same rules at the real rates.
 func TestPackageLadder(t *testing.T) {
 	t.Parallel()
 	const (
-		weak   = 140 // B a boot, the 1000-rated model
-		strong = 230 // B a boot, the 1600-rated model
+		weak   = 187 // B a boot, the 1000-rated model
+		strong = 260 // B a boot, the 1600-rated model
 	)
 	ps := rules.Standard().Packages
 	if len(ps) < 14 {

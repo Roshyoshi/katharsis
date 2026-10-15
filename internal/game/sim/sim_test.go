@@ -12,10 +12,14 @@ import (
 
 // ideal follows the engine's own model exactly: it clears a door with the
 // logistic chance of its rating and nothing else (no wrong submits, no
-// ducks, near-constant solve times well inside any timer).
+// ducks, near-constant solve times well inside any timer). It picks doors
+// by bytes × P alone (Stake 0), which every plain door ties on when the
+// aim is right, so the doors it takes are the doors on offer; weighing the
+// stake, it would take the easiest.
 func ideal(rating float64) sim.Player {
 	p := sim.DefaultPlayer(rating)
 	p.WAProb, p.StuckWAs, p.DuckBoost, p.BlindCost, p.Sigma = 0, 0, 0, 0, 0.01
+	p.Stake = 0
 	p.Median = 10 * time.Minute
 	return p
 }
@@ -30,14 +34,20 @@ func taught(rep sim.Report, i int) (observed, expected float64) {
 // TestIdealPlayerHitsTargets is the engine's end-to-end aiming check: for
 // a player who behaves like the logistic model, Elo must find the true
 // rating, the plain doors of each biome (the ones the aim controls; blind
-// and cursed doors are the player's risk) must clear at its TargetClear,
+// and cursed doors are the player's risk) must clear at its TargetClear
+// (its doors' mean, where MinClear leaves only the window above the floor),
 // and the calibration must stay near zero, since there is no shape to fix.
 //
 // It plays without packages: which daemons and upgrades a boot meets is
 // beside the aim, and the default model's test plays with them. The
 // rating is the mean over the last 200 boots: Elo at K 40 wanders by more
 // than 100 points from boot to boot (seeds 1 to 8 end between 1516 and
-// 1776 with packages, 1561 and 1739 without), and the mean does not.
+// 1776 with packages, 1561 and 1739 without), and the mean does not. So
+// are the calibration offsets: one tier's offset learns from a few doors a
+// boot and ends anywhere in about ±100 (the mid tier's, over seeds 1 to 8:
+// -104 to +63, mean -52; kexec's unrated swaps leave Elo a little high,
+// which the offsets take back).
+
 func TestIdealPlayerHitsTargets(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -51,16 +61,21 @@ func TestIdealPlayerHitsTargets(t *testing.T) {
 		Rules:  r,
 		Pool:   sim.SyntheticPool(20000, 1),
 		Player: p,
-		Boots:  500, Warmup: 100, Seed: 3,
+		Boots:  500, Warmup: 100, Seed: 3, Block: 50,
 	})
 	t.Logf("ideal 1600:\n%s", rep)
 	for i, b := range r.Biomes {
-		if got, _ := taught(rep, i); math.Abs(got-b.TargetClear) > 0.05 {
-			t.Errorf("biome %d: plain doors clear %.3f, target %.2f", i, got, b.TargetClear)
+		want := windowMean(game.Aim(0, b.TargetClear), b.MinClear)
+		if got, _ := taught(rep, i); math.Abs(got-want) > 0.05 {
+			t.Errorf("biome %d: plain doors clear %.3f, aimed at %.3f", i, got, want)
 		}
-		cal := rep.Meta.Calibration
-		if off := cal[game.CalibrationAll].Offset + cal[game.CalibrationTier(b)].Offset; math.Abs(off) > 100 {
-			t.Errorf("biome %d: calibrated by %+.0f for a logistic player", i, off)
+		off := 0.0
+		tail := rep.Blocks[len(rep.Blocks)-4:] // the last 200 boots
+		for _, bl := range tail {
+			off += (bl.Offsets[game.CalibrationAll] + bl.Offsets[game.CalibrationTier(b)]) / float64(len(tail))
+		}
+		if math.Abs(off) > 100 {
+			t.Errorf("biome %d: calibrated by %+.0f for a logistic player over the last 200 boots", i, off)
 		}
 	}
 	tail := rep.Ratings[len(rep.Ratings)-200:]
@@ -80,10 +95,12 @@ func TestIdealPlayerHitsTargets(t *testing.T) {
 // errors, plus 2 points of calibration lag), and the aim must be
 // TargetClear at prestige 0 and, at prestige 2, the logistic chance
 // 2·PrestigeOffset above it (or the biome's MinClear, where that binds): a
-// higher prestige stays harder by exactly what the offset says. The aim is
-// read off every plain door on offer, not the ones the model took: with
-// fork's fourth door and shufs to spend, the model's pick leans to the
-// easier doors by a few points, which is its choice, not the aim.
+// higher prestige stays harder by exactly what the offset says. A biome
+// with a MinClear offers no door under it (D22), so its doors are the ±100
+// window's above the floor, and the aim is their mean (windowMean). The
+// aim is read off every plain door on offer, not the ones the model took:
+// with fork's fourth door and shufs to spend, the model's pick leans to
+// the easier doors by a few points, which is its choice, not the aim.
 func TestCalibrationHitsTargets(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -108,7 +125,7 @@ func TestCalibrationHitsTargets(t *testing.T) {
 			if b.MinClear > 0 {
 				aim = min(aim, game.Aim(0, b.MinClear))
 			}
-			want := game.Expected(0, aim)
+			want := windowMean(aim, b.MinClear)
 			tol := 3*math.Sqrt(exp*(1-exp)/float64(max(rep.Taught[i], 1))) + 0.02
 			aimed := rep.OfferedP[i] / float64(max(rep.Offered[i], 1))
 			if math.Abs(got-exp) > tol || math.Abs(aimed-want) > 0.03 {
@@ -159,4 +176,18 @@ func TestSyntheticPool(t *testing.T) {
 	if len(sim.Simulate(rules.Standard(), ps, 1200, 1, 1).Meta.Capabilities) != len(game.TopicCapabilities) {
 		t.Error("the model player should hold every capability")
 	}
+}
+
+// windowMean is the mean clear chance of doors spread evenly over the ±100
+// rating window around aim (a player rated 0), leaving out those under
+// floor, as the engine's first window does.
+func windowMean(aim, floor float64) float64 {
+	sum, n := 0.0, 0
+	for x := aim - 100; x <= aim+100; x++ {
+		if p := game.Expected(0, x); p >= floor {
+			sum += p
+			n++
+		}
+	}
+	return sum / float64(n)
 }

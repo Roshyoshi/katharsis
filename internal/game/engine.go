@@ -74,7 +74,9 @@ func NewBoot(r rules.Rules, meta *Meta, pool []catalog.Problem, prestige int, se
 	e := newEngine(s, meta, pool, now)
 	e.begin()
 	e.logf("boot #%d: prestige %d, rules %s, seed %#x, rating %.0f", s.Boot, prestige, r.Name, seed, meta.Rating)
+	e.planAim()
 	e.layout()
+	e.planFloor()
 	e.enterBiome(0)
 	return s, e.fx, nil
 }
@@ -145,6 +147,8 @@ func Step(s *State, meta *Meta, pool []catalog.Problem, a Action, now time.Time)
 		err = e.spend(a.Item)
 	case Reroll:
 		err = e.reroll()
+	case DeclineEase:
+		err = e.declineEase()
 	default:
 		err = invalid("unknown action %T", a)
 	}
@@ -224,12 +228,15 @@ func (e *engine) tick() error {
 // can't be outrun by a retreat or a quack. A soft timer never crashes; the
 // deadline only marks the attempt overtime, which Tick and the judge
 // result do (they cannot fail, so the mark never sticks to a refused
-// action).
+// action). Under the floor easing a timeout in the first biome may cost a
+// life instead (saveTimeout); the door is closed either way.
 func (e *engine) expired() bool {
 	if e.now.Before(e.s.Current.Deadline) || e.s.Rules.OnExpire == rules.ExpireOvertime {
 		return false
 	}
-	e.crash(TimedOut, false)
+	if !e.saveTimeout() {
+		e.crash(TimedOut, false)
+	}
 	return true
 }
 
@@ -253,7 +260,9 @@ func (e *engine) submit(v SubmitResult) error {
 	a.SubmitAt = time.Time{}
 	late := a.Deadline.Add(s.Rules.SubmitGrace.Duration)
 	if !e.now.Before(late) && s.Rules.OnExpire != rules.ExpireOvertime {
-		e.crash(TimedOut, false)
+		if !e.saveTimeout() {
+			e.crash(TimedOut, false)
+		}
 		return nil
 	}
 	e.overtime(late)
@@ -509,6 +518,7 @@ func (e *engine) crash(cause Outcome, cursed bool) {
 		}
 	}
 
+	e.countEnd(true)
 	c := Crash{
 		Cause:    cause,
 		Door:     d,
@@ -605,6 +615,7 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 func (e *engine) enterMerge() {
 	s, r := e.s, &e.s.Rules
 	s.Phase = PhaseMerge
+	e.reachMerge()
 	refill := e.baseDucks()
 	for _, u := range s.Upgrades {
 		if u == Duck {
@@ -682,12 +693,11 @@ func (e *engine) enterBiome(i int) {
 	s := e.s
 	s.Biome, s.Room, s.KexecUsed = i, 0, false
 	b := &s.Biomes[i]
-	rb := s.Rules.Biomes[i]
 	label := b.Name
 	if label == "" {
 		label = string(b.Kind)
 	}
-	aim := fmt.Sprintf(", aim %.0f%%", rb.TargetClear*100)
+	aim := fmt.Sprintf(", aim %.0f%%", s.AimClear(i)*100)
 	if s.Trial != nil {
 		aim = "" // trial doors are not aimed
 	}
@@ -714,6 +724,7 @@ func (e *engine) finish() {
 		e.bank()
 	}
 	s.Phase = PhaseCleared
+	e.countEnd(false)
 	switch {
 	case s.Trial != nil:
 		e.passTrial()

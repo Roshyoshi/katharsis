@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -42,7 +43,9 @@ type checker struct {
 	spent     int64
 	installed []string // meta.Installed when the boot began
 	theme     string
-	prestige0 int // meta.Prestige when the boot began
+	prestige0 int           // meta.Prestige when the boot began
+	gov0      game.Governor // meta.Governor when the boot began
+	ended     bool          // the boot's end was checked
 }
 
 // newChecker is called right after NewBoot or NewTrial, before the first
@@ -58,7 +61,61 @@ func newChecker(t testing.TB, s *game.State, m *game.Meta) *checker {
 	if m.CoreDump != nil {
 		c.dumpLost = m.CoreDump.Bytes
 	}
+	c.gov0 = m.Governor
+	c.start(s, m)
 	return c
+}
+
+// start checks a boot as NewBoot dealt it: its lives are the rules' (and
+// the ascensions') plus what each easing added, and it has the easings
+// Meta and the forecast call for.
+func (c *checker) start(s *game.State, m *game.Meta) {
+	t := c.t
+	t.Helper()
+	r := s.Rules
+	if s.Trial != nil {
+		if len(s.Ease) != 0 || s.Forecast != 0 {
+			t.Fatalf("trial with easing %+v, forecast %v", s.Ease, s.Forecast)
+		}
+		return
+	}
+	lives, kinds := max(1, r.Lives+r.Ascend(s.Prestige).Lives), map[game.EaseKind]bool{}
+	ducks := max(0, r.Ducks+r.Ascend(s.Prestige).Ducks) + r.Grants(s.Packages).Ducks
+	for _, es := range s.Ease {
+		if kinds[es.Kind] || es.Lives < 0 || es.Ducks < 0 || es.Why == "" {
+			t.Fatalf("easing %+v in %+v", es, s.Ease)
+		}
+		kinds[es.Kind] = true
+		lives += es.Lives
+		ducks += es.Ducks
+		for _, bad := range []string{"easy", "assist", "mercy"} {
+			if strings.Contains(strings.ToLower(es.Why), bad) {
+				t.Fatalf("easing %+v says %q (retention GR9)", es, bad)
+			}
+		}
+	}
+	if s.Lives != lives || s.Ducks != ducks || s.Declined {
+		t.Fatalf("boot starts with %d lives, %d ducks (declined %v), want %d and %d from the rules and %+v",
+			s.Lives, s.Ducks, s.Declined, lives, ducks, s.Ease)
+	}
+	if gov := r.GovernorAfter > 0 && m.Governor.EarlyCrashes >= r.GovernorAfter; gov != kinds[game.EaseGovernor] {
+		t.Fatalf("governor eased %v after %d early crashes (rules %d)", kinds[game.EaseGovernor], m.Governor.EarlyCrashes, r.GovernorAfter)
+	}
+	if s.Forecast < 0 || s.Forecast > 1 || kinds[game.EaseFloor] && s.Forecast <= 1-math.Pow(s.AimClear(0)-r.BuybackMargin, float64(s.Biomes[0].Rooms))-1e-9 {
+		t.Fatalf("forecast %v with easings %+v", s.Forecast, s.Ease)
+	}
+}
+
+// active is whether s runs an easing of kind k (not declined), and it.
+func active(s *game.State, k game.EaseKind) (game.Ease, bool) {
+	if s.Declined {
+		return game.Ease{}, false
+	}
+	i := slices.IndexFunc(s.Ease, func(es game.Ease) bool { return es.Kind == k })
+	if i < 0 {
+		return game.Ease{}, false
+	}
+	return s.Ease[i], true
 }
 
 // check asserts the invariants that hold after every Step.
@@ -313,6 +370,55 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	if s.Phase == game.PhaseCleared && s.Uncommitted != 0 {
 		fail("cleared with %d uncommitted", s.Uncommitted)
 	}
+	c.checkEase(s, m, a, err, fail)
+}
+
+// checkEase asserts what the easing allows: only the floor easing's doors
+// carry a timer buy-back, a timeout leaves the boot running only in a
+// biome whose rule says so (D44), a decline takes what it added, and
+// Meta.Governor counts how the boot ended.
+func (c *checker) checkEase(s *game.State, m *game.Meta, a game.Action, err error, fail func(string, ...any)) {
+	floor, eased := active(s, game.EaseFloor)
+	doors := slices.Clone(s.Doors)
+	if s.Current != nil {
+		doors = append(doors, s.Current.Door)
+	}
+	for _, h := range s.History {
+		doors = append(doors, h.Door)
+	}
+	for _, d := range doors {
+		if d.TimerBuy != 0 && (!slices.Contains(s.Rules.BuybackTimers, d.TimerBuy) || d.Tier != "" ||
+			d.Regression || d.Boss != "" || len(s.Ease) == 0) {
+			fail("door %+v bought back without a floor easing %+v", d, s.Ease)
+		}
+	}
+	for i, h := range s.History {
+		last := i == len(s.History)-1 && s.Crash != nil
+		if h.Outcome == game.TimedOut && !last && !s.Rules.Biomes[h.Biome].TimeoutLife {
+			fail("door %+v timed out in biome %d, which has no timeout rule, and the boot went on", h.Door, h.Biome)
+		}
+	}
+	if _, ok := a.(game.DeclineEase); ok && err == nil {
+		if !s.Declined || eased || len(s.History) > 0 {
+			fail("declined %v, floor %+v, %d doors closed", s.Declined, floor, len(s.History))
+		}
+	}
+	if done := s.Phase == game.PhaseCrashed || s.Phase == game.PhaseCleared; done && !c.ended {
+		c.ended = true
+		want := c.gov0
+		switch {
+		case s.Trial != nil:
+		case s.Phase == game.PhaseCleared:
+			want = game.Governor{FullClears: want.FullClears + 1}
+		case s.Biome == 0:
+			want = game.Governor{EarlyCrashes: want.EarlyCrashes + 1}
+		default:
+			want = game.Governor{}
+		}
+		if m.Governor != want {
+			fail("governor %+v after the boot, want %+v (from %+v)", m.Governor, want, c.gov0)
+		}
+	}
 }
 
 // fuzzer plays a boot with mostly sensible and some nonsense actions, on a
@@ -325,7 +431,7 @@ type fuzzer struct {
 func (f *fuzzer) action(s *game.State) game.Action {
 	r := f.rng
 	if r.IntN(4) == 0 { // nonsense: any action, any index
-		switch r.IntN(14) {
+		switch r.IntN(15) {
 		case 0:
 			return game.ChooseRoute{Index: r.IntN(5) - 1}
 		case 1:
@@ -355,6 +461,8 @@ func (f *fuzzer) action(s *game.State) game.Action {
 			return game.Spend{Item: []game.Item{game.Fsck, game.Dup, game.Shuf, "bogus"}[r.IntN(4)]}
 		case 12:
 			return game.Reroll{}
+		case 13:
+			return game.DeclineEase{}
 		}
 		return nil
 	}
@@ -364,6 +472,9 @@ func (f *fuzzer) action(s *game.State) game.Action {
 	case s.Phase == game.PhaseRoute:
 		return game.ChooseRoute{Index: r.IntN(len(s.Biomes[s.Biome].Offers))}
 	case s.Phase == game.PhaseDoors:
+		if len(s.Ease) > 0 && !s.Declined && len(s.History) == 0 && r.IntN(4) == 0 {
+			return game.DeclineEase{}
+		}
 		if s.Rerolls > 0 && r.IntN(4) == 0 {
 			return game.Reroll{}
 		}
@@ -530,6 +641,7 @@ func TestFuzzBoots(t *testing.T) {
 			ends := map[game.Phase]int{}
 			bought := map[string]int{} // accepted actions by type
 			installs := 0
+			eases := map[string]int{} // boots by easing, and saved timeouts
 			boots := 3000
 			if testing.Short() {
 				boots = 300
@@ -537,6 +649,14 @@ func TestFuzzBoots(t *testing.T) {
 			for i := range boots {
 				s, moves := fuzzBoot(t, r, m, ps, f, i%10 == 0)
 				ends[s.Phase]++
+				for _, es := range s.Ease {
+					eases[string(es.Kind)]++
+				}
+				for j, h := range s.History {
+					if h.Outcome == game.TimedOut && (s.Crash == nil || j < len(s.History)-1) {
+						eases["saved"]++
+					}
+				}
 				for _, mv := range moves {
 					if !mv.Err {
 						bought[fmt.Sprintf("%T", mv.A)]++
@@ -548,8 +668,13 @@ func TestFuzzBoots(t *testing.T) {
 				installs += fuzzInstall(t, r, m, f)
 				f.now = f.now.Add(time.Duration(f.rng.IntN(int(72 * time.Hour))))
 			}
-			t.Logf("%s: boot ends %v, meta rating %.0f, %d solves, %d regressions, %d spends, %d shufs, installed %v",
-				name, ends, m.Rating, len(m.Solves), len(m.Regressions), bought["game.Spend"], bought["game.Reroll"], m.Installed)
+			t.Logf("%s: boot ends %v, meta rating %.0f, %d solves, %d regressions, %d spends, %d shufs, installed %v, easings %v, %d declined",
+				name, ends, m.Rating, len(m.Solves), len(m.Regressions), bought["game.Spend"], bought["game.Reroll"], m.Installed,
+				eases, bought["game.DeclineEase"])
+			if name == "synthetic" && (eases["floor"] == 0 || eases["governor"] == 0 || eases["saved"] == 0 || bought["game.DeclineEase"] == 0) {
+				t.Errorf("easings %v, %d declined: the fuzzer should meet the floor easing, the governor, a saved timeout and a decline",
+					eases, bought["game.DeclineEase"])
+			}
 			if ends[game.PhaseCleared] == 0 || ends[game.PhaseCrashed] == 0 {
 				t.Errorf("ends %v: the fuzzer should reach both", ends)
 			}

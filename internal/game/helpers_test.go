@@ -3,6 +3,7 @@ package game_test
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -13,12 +14,26 @@ import (
 
 var t0 = time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
 
-// plain is Standard() without randomness in the doors or ascensions, so a
-// test can predict every door's modifiers.
+// plain is Standard() without randomness in the doors or ascensions, and
+// without easing, so a test can predict every door's modifiers and timer.
 func plain() rules.Rules {
-	r := rules.Standard()
+	r := calm(rules.Standard())
 	r.BlindChance, r.MysteryChance, r.CursedChance = 0, 0, 0
 	r.Ascensions = nil
+	return r
+}
+
+// calm turns r's easing off (the floor easing, the governor), its safe
+// doors (Biome.Plain) and Userland's timeout rule (Biome.TimeoutLife):
+// most tests start a cold-start player on a pool whose floor sits above
+// its Userland aim, which the floor easing answers with lives and longer
+// timers, some roll every door cursed, and some crash on a timeout.
+func calm(r rules.Rules) rules.Rules {
+	r.EaseAbove, r.BuybackTimers, r.GovernorAfter = 0, nil, 0
+	r.Biomes = slices.Clone(r.Biomes)
+	for i := range r.Biomes {
+		r.Biomes[i].Plain, r.Biomes[i].TimeoutLife = 0, false
+	}
 	return r
 }
 

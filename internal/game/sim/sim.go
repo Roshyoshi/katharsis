@@ -41,6 +41,15 @@ type Player struct {
 	UpsolveProb float64       // chance it upsolves the crash between boots
 	Overhead    time.Duration // clock time per choice outside a door
 
+	// Stake is how much of what a crash forfeits the model weighs when it
+	// picks a door: it takes the door with the best P × (bytes + Stake ×
+	// at stake), where at stake is the uncommitted bytes and what the
+	// rest of the boot pays on average (BaseBytes/2 a door, a boss
+	// BossMult of that). 0 is the myopic bytes × P pick, which takes a
+	// cursed Userland door for its double pay although losing it loses
+	// the boot.
+	Stake float64
+
 	// Spend has the model buy in merge windows before it commits, by what
 	// the boot needs: an fsck for each life lost below the boot's start, a
 	// dup when out of ducks, a shuf to hold while rooms are left before the
@@ -74,6 +83,7 @@ func DefaultPlayer(rating float64) Player {
 		BlindCost:   25,
 		UpsolveProb: 0.6,
 		Overhead:    time.Minute,
+		Stake:       1,
 
 		Spend:        true,
 		RerollMargin: 0.2,
@@ -149,9 +159,12 @@ type Report struct {
 	// TaughtP/Taught is the calibration's observed against expected.
 	Taught, TaughtClears []int
 	TaughtP              []float64
-	// Offered counts the plain, aimed doors on offer when the model chose
-	// (or re-rolled), and OfferedP sums their SolveP: OfferedP/Offered is
-	// where the engine aimed, before the model's choice among them.
+	// Offered counts the doors on offer within the first rating window of
+	// their target (regressions aside, modifiers or not) when the model
+	// chose (or re-rolled), and OfferedP sums their SolveP:
+	// OfferedP/Offered is where the engine aimed, before the model's choice
+	// among them. Plain doors alone would lean easy, since each Userland
+	// room's easiest door is plain (Biome.Plain).
 	Offered  []int
 	OfferedP []float64
 
@@ -173,6 +186,15 @@ type Report struct {
 	FinalRating float64 // the engine's estimate of the player at the end
 	Errors      int     // engine calls the model made that failed
 	Meta        *game.Meta
+
+	// Eased counts boots by the easings they ran with (State.Ease, not
+	// declined: the model never declines), Saved the timeouts the floor
+	// easing turned into a lost life, and Forecast sums State.Forecast,
+	// the engine's own chance of a crash in the first biome, so
+	// Forecast/Boots can be set against CrashBiome[0]/Boots (G1).
+	Eased    map[game.EaseKind]int
+	Saved    int
+	Forecast float64
 
 	// Ratings is the engine's rating after each boot, warm-up included.
 	Ratings []float64
@@ -232,6 +254,15 @@ func Run(c Config) Report {
 
 		rep.Boots++
 		rep.ByPrestige[p].Boots++
+		rep.Forecast += s.Forecast
+		for _, es := range s.Ease {
+			rep.Eased[es.Kind]++
+		}
+		for j, h := range s.History {
+			if h.Outcome == game.TimedOut && (s.Crash == nil || j < len(s.History)-1) {
+				rep.Saved++
+			}
+		}
 		sm.earned += s.Earned()
 		sm.committed += s.Committed
 		sm.spent += s.Spent
@@ -316,6 +347,7 @@ func newSums(nb int) *sums {
 		rep: Report{
 			CrashBiome:   make([]int, nb),
 			Causes:       map[game.Outcome]int{},
+			Eased:        map[game.EaseKind]int{},
 			Attempts:     make([]int, nb),
 			Clears:       make([]int, nb),
 			MeanTimer:    make([]time.Duration, nb),
@@ -397,7 +429,7 @@ func (b *boot) play() {
 		b.clock = b.clock.Add(b.p.Overhead)
 		if s.Phase == game.PhaseDoors && !s.PendingUpgrade {
 			for _, d := range s.Doors {
-				if d.Tier != "" {
+				if !d.Regression && math.Abs(float64(d.Rating)-s.Target(b.m, d.Topic)) <= float64(s.Rules.RatingWindows[0]) {
 					b.sums.rep.Offered[s.Biome]++
 					b.sums.rep.OfferedP[s.Biome] += d.SolveP
 				}
@@ -462,27 +494,53 @@ func (b *boot) solveP(d game.Door) float64 {
 	return game.Expected(eff, float64(d.Rating))
 }
 
-// clearP is the model's own chance of clearing d: solving it at all, within
-// the timer, and (cursed) without a single wrong submit.
+// clearP is the model's own chance of clearing d: solving it at all (with
+// the duck it holds, which a cursed door refuses), within the timer, and
+// (cursed) without a single wrong submit.
 func (b *boot) clearP(d game.Door) float64 {
 	median := float64(b.p.Median) * math.Exp2((float64(d.Rating)-b.p.Rating)/b.p.GapScale)
 	inTime := 0.5 * (1 + math.Erf(math.Log(float64(d.Timer)/median)/(b.p.Sigma*math.Sqrt2)))
-	p := b.solveP(d) * inTime
+	solve := b.solveP(d)
 	if d.Cursed {
-		p *= 1 - b.p.WAProb
+		solve *= 1 - b.p.WAProb
+	} else if b.s.Ducks > 0 {
+		solve += (1 - solve) * b.p.DuckBoost
 	}
-	return p
+	return solve * inTime
 }
 
-// door is the best bytes×P on offer; the first wins ties.
+// door is the best P × (bytes + Stake × at stake) on offer (Player.Stake);
+// the first wins ties.
 func (b *boot) door() int {
+	stake := b.p.Stake * b.atStake()
 	best, bi := -1.0, 0
 	for i, d := range b.s.Doors {
-		if v := float64(d.Bytes) * b.clearP(d); v > best {
+		if v := (float64(d.Bytes) + stake) * b.clearP(d); v > best {
 			best, bi = v, i
 		}
 	}
 	return bi
+}
+
+// atStake is what crashing on the door about to open forfeits, as the
+// model reckons it: the uncommitted bytes, and BaseBytes/2 for each door
+// left after this one (a boss's BossMult of that), what a door pays on
+// average (retention GR5).
+func (b *boot) atStake() float64 {
+	s := b.s
+	left := 0.0
+	for i := s.Biome; i < len(s.Biomes); i++ {
+		rooms := s.Biomes[i].Rooms
+		if i == s.Biome {
+			rooms -= s.Room + 1
+		}
+		w := 1.0
+		if s.Biomes[i].Kind == rules.Boss {
+			w = s.Rules.BossMult
+		}
+		left += w * float64(max(rooms, 0))
+	}
+	return float64(s.Uncommitted) + left*float64(s.Rules.BaseBytes)/2
 }
 
 // buy is what the model buys next in a merge window, "" for nothing.
@@ -686,6 +744,10 @@ func (r Report) String() string {
 	fmt.Fprintf(&w, "\ncauses:")
 	for _, o := range []game.Outcome{game.TimedOut, game.OutOfLives, game.GaveUp} {
 		fmt.Fprintf(&w, " %s=%d", o, r.Causes[o])
+	}
+	if r.Boots > 0 {
+		fmt.Fprintf(&w, "\neasing: floor %d, governor %d boots; %d timeouts saved; forecast %.1f%% crashes in b0, %.1f%% did",
+			r.Eased[game.EaseFloor], r.Eased[game.EaseGovernor], r.Saved, 100*r.Forecast/float64(r.Boots), pct(r.CrashBiome[0], r.Boots))
 	}
 	fmt.Fprintf(&w, "\ndoor clear rate:")
 	for i := range r.Attempts {

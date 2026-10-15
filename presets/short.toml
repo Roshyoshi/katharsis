@@ -19,6 +19,9 @@ name = "Userland"
 rooms = 2
 target_clear = 0.9
 timer = "10m"
+ease_clear = 0.95
+plain = 1
+timeout_life = true
 
 [[biome]]
 kind = "choice"
@@ -27,9 +30,11 @@ choices = 2
 target_clear = 0.7
 min_clear = 0.6
 timer = "20m"
+ease_clear = 0.78
 
 [[biome]]
 kind = "boss"
 rooms = 1
 target_clear = 0.5
 timer = "25m"
+ease_clear = 0.55
