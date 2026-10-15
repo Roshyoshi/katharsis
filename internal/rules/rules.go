@@ -351,7 +351,7 @@ func Standard() Rules {
 		TimerGapScale:   200,
 		TimerHeadroom:   1.25,
 		TimerFitLo:      0.5,
-		TimerFitHi:      2,
+		TimerFitHi:      1.5, // 2 made calibrated bosses ~3 h; 1.5 keeps clears ~2 h
 		TimerFitHistory: 200,
 		BossTimerMult:   1,
 

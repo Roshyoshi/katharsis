@@ -947,13 +947,16 @@ func TestForkAndDevRandom(t *testing.T) {
 func TestFullClear(t *testing.T) {
 	t.Parallel()
 	ps := dense(allTopics(), 800, 2600, 20)
+	// rated is the player's rated attempts before the boot: no prestige
+	// unlocks until calibration has CalibAfter of them.
 	tests := []struct {
-		unlocked, prestige, want int
+		unlocked, prestige, rated, want int
 	}{
-		{0, 0, 1}, {1, 0, 1}, {1, 1, 2}, {4, 4, 4},
+		{0, 0, 100, 1}, {1, 0, 100, 1}, {1, 1, 100, 2}, {4, 4, 100, 4},
+		{0, 0, 0, 0}, // a newcomer clears but stays at prestige 0
 	}
 	for _, tc := range tests {
-		m := &game.Meta{Prestige: tc.unlocked}
+		m := &game.Meta{Prestige: tc.unlocked, Rated: tc.rated}
 		h := newHarness(t, plain(), m, ps, tc.prestige, 1)
 		fullClear(h)
 		s := h.s
