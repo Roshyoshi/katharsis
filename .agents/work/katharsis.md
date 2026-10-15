@@ -171,7 +171,12 @@ S8 consolidation (after all code QA lands; from the cross-package report):
      (qa/chaos/oracle.sh); single-player honor system, not fixed
 
 ## Now
-Merged since last: audio (oto v3 in-process engine, procedural SFX, Go port of SUZUKI PLAN's
+Merged since last: B-judge (PCH of each source's leading includes for g++ and clang
+samples: warm :w 1.4 s -> 0.77 s, :Submit 0.93 s -> 0.49 s on the template;
+-include bits rejected; qa/judge accepts libstdc++ wording + a g++ O2 profile;
+CPU-time TLE check; libc++ hardening on the fallback; BuildCacheCap 256 -> 512
+MiB), app tests under a scratch HOME (they wrote the real build cache, and a warm
+cache broke two submit tests), audio (oto v3 in-process engine, procedural SFX, Go port of SUZUKI PLAN's
 VGS MML compiler + decoder; 175 Touhou VGS songs + SwapXFO Misty Lake (CC BY) in
 per-biome pools; fetched from pinned sources with SHA-256, never bundled; ZUN
 fan-work notice; binary 29.6 MB; conflicts with A2/R1/S9 resolved by hand; GRUB
@@ -188,7 +193,7 @@ and :Debug; samples clang ASan on libstdc++ + _GLIBCXX_ASSERTIONS; cin 1e6 ints
 38 ms vs 967 ms on libc++; clang 21 out; package closure 2013 -> 1989 MiB;
 binary 28.4 MB). Main tests green (judge TLE timing flaked at load 23; passed
 alone); nix build ok.
-Running (workspaces): s10-engine, s10-store, c-part2, b-judge, b-content (content/web, one topic
+Running (workspaces): s10-engine, s10-store, c-part2, b-content (content/web, one topic
 table, DivisionBand, CF cache-only start, deps tidy), submit-busy (a :Submit while
 one judges is refused, so a failing pass is always charged; chaos r01/r04/r05/
 r09/r13b scripts)
