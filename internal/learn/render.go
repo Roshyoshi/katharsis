@@ -191,9 +191,6 @@ func fenceBlock(body, info string, indent int) string {
 }
 
 func quote(body string) string {
-	if body == "" {
-		return ""
-	}
 	lines := strings.Split(body, "\n")
 	for i, l := range lines {
 		if l == "" {
@@ -400,10 +397,6 @@ func codeSpan(s string) string {
 	return fence + s + fence
 }
 
-func problemLine(p ProblemRef) string {
-	return link(p.Name, p.URL)
-}
-
 func (r *renderer) list(n *node, attr string) (ProblemList, error) {
 	key, ok := n.attr(attr)
 	if !ok || key == "" {
@@ -425,7 +418,7 @@ func (r *renderer) focusProblem(n *node) (string, bool, error) {
 		return "", false, r.errf(n, "focus problem list %q has %d problems, want 1", l.Key, len(l.Problems))
 	}
 	p := l.Problems[0]
-	line := problemLine(p)
+	line := link(p.Name, p.URL)
 	for _, s := range []string{p.Source, p.Difficulty} {
 		if s != "" {
 			line += " · " + escapeMarkdown(s)
@@ -487,7 +480,7 @@ func (r *renderer) problems(n *node) (string, bool, error) {
 	}
 	rows := [][]string{{"Problem", "Source", "Difficulty"}}
 	for _, p := range l.Problems {
-		name := problemLine(p)
+		name := link(p.Name, p.URL)
 		if p.Starred {
 			name = "★ " + name
 		}

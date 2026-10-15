@@ -52,13 +52,13 @@ func TestParseProblems(t *testing.T) {
 	}
 	p := lists[1].Problems[0]
 	if p.ID != "usaco:572" || p.Name != "Breed Counting" || p.Source != "Silver" ||
-		p.Difficulty != "Very Easy" || !p.Starred || p.SolutionKind != "internal" || !p.Playable() {
+		p.Difficulty != "Very Easy" || !p.Starred || p.SolutionKind != "internal" {
 		t.Errorf("usaco entry = %+v", p)
 	}
 	if q := lists[1].Problems[1]; q.ID != "cses:1662" {
 		t.Errorf("cses entry = %+v", q)
 	}
-	if s := lists[0].Problems[0]; s.ID != "" || s.Playable() || s.SolutionKind != "in-module" || s.URL == "" {
+	if s := lists[0].Problems[0]; s.ID != "" || s.SolutionKind != "in-module" || s.URL == "" {
 		t.Errorf("external entry = %+v", s)
 	}
 }

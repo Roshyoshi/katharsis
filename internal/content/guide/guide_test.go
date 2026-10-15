@@ -85,7 +85,7 @@ func serve(t *testing.T, body []byte, fail int) (*httptest.Server, *atomic.Int32
 			http.Error(w, "busy", http.StatusBadGateway)
 			return
 		}
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	t.Cleanup(srv.Close)
 	return srv, &hits

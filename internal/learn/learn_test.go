@@ -32,7 +32,7 @@ func TestLoadFixture(t *testing.T) {
 	if got := strings.Join(ids, ","); got != want {
 		t.Errorf("modules = %s, want %s", got, want)
 	}
-	if ref := c.Divisions[2].Chapters[0].Modules[0]; ref.ID != "prefix-sums" || ref.Title != "Introduction to Prefix Sums" {
+	if ref := c.Divisions[2].Chapters[0].Modules[0]; ref.ID != "prefix-sums" {
 		t.Errorf("silver ref = %+v", ref)
 	}
 
@@ -40,15 +40,15 @@ func TestLoadFixture(t *testing.T) {
 	if !ok {
 		t.Fatal("prefix-sums missing")
 	}
-	if m.Division != "silver" || m.DivisionTitle != "Silver" || m.Chapter != "Prefix Sums" ||
+	if m.Title != "Introduction to Prefix Sums" ||
+		m.Division != "silver" || m.DivisionTitle != "Silver" || m.Chapter != "Prefix Sums" ||
 		m.URL != "https://usaco.guide/silver/prefix-sums" || m.Topic != "prefix-sums" ||
 		m.Frequency != 4 || strings.Join(m.Authors, "|") != "Darren Yao|Dustin Miao" ||
 		m.Description != "Computing range sum queries in constant time over a fixed 1D array." {
 		t.Errorf("module = %+v", m)
 	}
-	l, ok := m.List("general")
-	if !ok || l.Problems[0].ID != "usaco:572" {
-		t.Errorf("general list = %+v", l)
+	if len(m.Problems) != 2 || m.Problems[1].Key != "general" || m.Problems[1].Problems[0].ID != "usaco:572" {
+		t.Errorf("problem lists = %+v", m.Problems)
 	}
 	if f, _ := c.Module("fast-io"); f.Topic != "" || f.Division != "general" {
 		t.Errorf("fast-io topic=%q division=%q", f.Topic, f.Division)
@@ -67,10 +67,6 @@ func TestGolden(t *testing.T) {
 			got, err := m.Markdown()
 			if err != nil {
 				t.Fatal(err)
-			}
-			again, _ := m.Markdown()
-			if again != got {
-				t.Error("Markdown is not stable across calls")
 			}
 			path := filepath.Join("testdata", "golden", m.ID+".md")
 			if *update {

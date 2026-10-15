@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"net/http"
 	"os"
 	"path"
@@ -95,7 +94,7 @@ func snapshot(ctx context.Context, root, url, commit string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer os.RemoveAll(tmp) // no-op after a successful rename
+	defer func() { _ = os.RemoveAll(tmp) }() // no-op after a successful rename
 
 	if err := download(ctx, url, "usaco-guide-"+commit+"/", tmp); err != nil {
 		return "", fmt.Errorf("usaco guide snapshot %.12s: %w", commit, err)
@@ -149,7 +148,7 @@ func fetchOnce(ctx context.Context, url, prefix, dst string) (retry bool, err er
 	if err != nil {
 		return true, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests,
 			fmt.Errorf("GET %s: %s", url, resp.Status)
@@ -261,7 +260,7 @@ func writeFile(p string, r io.Reader, size int64) error {
 
 func emptyDir(dir string) error {
 	ents, err := os.ReadDir(dir)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+	if err != nil {
 		return err
 	}
 	for _, e := range ents {

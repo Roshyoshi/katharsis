@@ -39,6 +39,16 @@ func TestParseFrontmatter(t *testing.T) {
 			lists: map[string][]string{"prerequisites": {"intro-sorting", "binary-search-sorted-array"}, "redirects": {"/silver/2P", "/silver/two-pointers"}},
 		},
 		{
+			name:    "dash without a blank starts a scalar, not a list",
+			src:     "description:\n  -1 means unset\n",
+			scalars: map[string]string{"description": "-1 means unset"},
+		},
+		{
+			name:  "comment lines inside a block list",
+			src:   "prerequisites:\n  - a\n  # - b\n  - c\n",
+			lists: map[string][]string{"prerequisites": {"a", "c"}},
+		},
+		{
 			name:    "flow list, empty value, comment",
 			src:     "# note\nprerequisites: [a, 'b, c']\ncontributors:\nwide: true # layout\n",
 			scalars: map[string]string{"contributors": "", "wide": "true"},
@@ -104,6 +114,10 @@ func TestSplitFrontmatter(t *testing.T) {
 	fm, body, line, err := splitFrontmatter("---\nid: x\ntitle: y\n---\n\n# Body\n")
 	if err != nil || fm != "id: x\ntitle: y\n" || body != "\n# Body\n" || line != 5 {
 		t.Errorf("got fm=%q body=%q line=%d err=%v", fm, body, line, err)
+	}
+	fm, body, line, err = splitFrontmatter("\ufeff---\r\nid: x\r\n--- \r")
+	if err != nil || fm != "id: x\r\n" || body != "" || line != 4 {
+		t.Errorf("BOM, CRLF, closing at EOF: got fm=%q body=%q line=%d err=%v", fm, body, line, err)
 	}
 	if _, _, _, err := splitFrontmatter("# no frontmatter\n"); err == nil {
 		t.Error("want error without frontmatter")

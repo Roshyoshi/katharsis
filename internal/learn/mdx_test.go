@@ -113,8 +113,13 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name: "expressions and comments",
-			src:  "a{' '}b{/* gone */}c <!-- hidden <b>x</b> -->d\n",
-			want: "a bc d",
+			src:  "a{' '}b{/* gone */}c <!-- hidden <b>x</b> -->d{// line\n'\\u00e9'}\n",
+			want: "a bc dé",
+		},
+		{
+			name: "non-ASCII prose is kept byte for byte",
+			src:  "Maksim’s blog — naïve “quotes” …\n",
+			want: "Maksim’s blog — naïve “quotes” …",
 		},
 		{
 			name: "inline code is not parsed",
@@ -238,6 +243,8 @@ func TestSimplifyTeX(t *testing.T) {
 		{`\{1, 2\} \cup \{3\}`, "{1, 2} ∪ {3}"},
 		{`\unknowncmd{x}`, `\unknowncmdx`},
 		{`\sqrt{n} + \sqrt x`, "√n + √x"},
+		{`\sqrt[3]{\log n} \sqrt[k]{x}`, "∛(log n) x^(1/k)"},
+		{`\é`, `\é`},
 	} {
 		if got := simplifyTeX(tc.in); got != tc.want {
 			t.Errorf("simplifyTeX(%q) = %q, want %q", tc.in, got, tc.want)
@@ -252,6 +259,7 @@ func TestDisplayTeX(t *testing.T) {
 		{"\\begin{pmatrix}\n  a & b \\\\\n  c & d\n\\end{pmatrix}", "(a b; c d)"},
 		{`f(x) = \begin{cases} 1 & x > 0 \\ 0 & \text{otherwise} \end{cases}`, "f(x) = {1, x > 0; 0, otherwise}"},
 		{"a\n+ b", "a + b"},
+		{`d = \begin{cases} 1 & \text{if $x \in S$} \end{cases}`, "d = {1, if x ∈ S}"},
 	} {
 		if got := displayTeX(tc.in); got != tc.want {
 			t.Errorf("displayTeX(%q) = %q, want %q", tc.in, got, tc.want)

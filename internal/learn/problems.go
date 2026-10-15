@@ -36,10 +36,6 @@ type ProblemRef struct {
 	SolutionKind string
 }
 
-// Playable reports whether the problem maps to a catalog source the game
-// can serve. Whether it is actually judgeable is the catalog's call.
-func (p ProblemRef) Playable() bool { return p.ID != "" }
-
 var numericID = regexp.MustCompile(`^[0-9]+$`)
 
 // CatalogID maps a guide uniqueId to a catalog ID: "usaco-615" ->
@@ -136,8 +132,8 @@ func parseProblems(file string, data []byte) (string, []ProblemList, error) {
 	return moduleID, lists, nil
 }
 
-// difficultyRank orders the guide's labels (ProblemDifficulty in the guide's
-// src/models/problem.ts); "N/A" and unknown labels sort last.
+// difficultyRank follows ProblemDifficulty in the guide's
+// src/models/problem.ts.
 var difficultyRank = map[string]int{
 	"Very Easy": 0,
 	"Easy":      1,

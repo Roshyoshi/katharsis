@@ -1,6 +1,7 @@
 package learn
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,7 +17,6 @@ import (
 type frontmatter struct {
 	scalars map[string]string
 	lists   map[string][]string
-	keys    []string
 }
 
 func (f frontmatter) str(k string) string { return f.scalars[k] }
@@ -43,34 +43,20 @@ func (f frontmatter) list(k string) []string {
 // splitFrontmatter separates a leading `---` block from the body. It returns
 // the frontmatter source, the body, and the 1-based line the body starts on.
 func splitFrontmatter(src string) (fm, body string, bodyLine int, err error) {
-	src = strings.TrimPrefix(src, "\ufeff")
-	if !strings.HasPrefix(src, "---\n") && !strings.HasPrefix(src, "---\r\n") {
-		return "", src, 1, fmt.Errorf("no frontmatter")
+	first, rest, _ := strings.Cut(strings.TrimPrefix(src, "\ufeff"), "\n")
+	if strings.TrimSuffix(first, "\r") != "---" {
+		return "", "", 0, errors.New("no frontmatter")
 	}
-	rest := src[strings.IndexByte(src, '\n')+1:]
-	line := 2
-	for off := 0; off <= len(rest); {
-		end := strings.IndexByte(rest[off:], '\n')
-		var l string
-		if end < 0 {
-			l = rest[off:]
-		} else {
-			l = rest[off : off+end]
-		}
+	for off, line := 0, 2; ; line++ {
+		l, _, more := strings.Cut(rest[off:], "\n")
 		if strings.TrimRight(l, " \t\r") == "---" {
-			fm = rest[:off]
-			if end < 0 {
-				return fm, "", line + 1, nil
-			}
-			return fm, rest[off+end+1:], line + 1, nil
+			return rest[:off], rest[min(off+len(l)+1, len(rest)):], line + 1, nil
 		}
-		if end < 0 {
-			break
+		if !more {
+			return "", "", 0, errors.New("unterminated frontmatter")
 		}
-		off += end + 1
-		line++
+		off += len(l) + 1
 	}
-	return "", "", 0, fmt.Errorf("unterminated frontmatter")
 }
 
 func parseFrontmatter(src string) (frontmatter, error) {
@@ -101,7 +87,6 @@ func parseFrontmatter(src string) (frontmatter, error) {
 		if _, dup := f.lists[key]; dup {
 			return f, errAt(i, "duplicate key %q", key)
 		}
-		f.keys = append(f.keys, key)
 		val := strings.TrimSpace(l[colon+1:])
 		i++
 		// A quoted scalar may continue on lines at any indentation
@@ -113,31 +98,29 @@ func parseFrontmatter(src string) (frontmatter, error) {
 			val += " " + strings.TrimSpace(lines[i])
 			i++
 		}
-		// Collect indented continuation lines. YAML also lets a block list
-		// sit at its key's own indentation (Matroid.mdx does).
+		// Collect indented continuation lines, dropping comment lines. YAML
+		// also lets a block list sit at its key's own indentation
+		// (Matroid.mdx does).
 		var cont []string
-		isItem := func(l string) bool { return l == "-" || strings.HasPrefix(l, "- ") }
 		for i < len(lines) && (lines[i] == "" || lines[i][0] == ' ' || lines[i][0] == '\t' ||
 			val == "" && isItem(lines[i])) {
-			if strings.TrimSpace(lines[i]) == "" {
-				// A blank line inside a folded scalar is a newline; the
-				// guide never relies on that, so treat it as a space.
-				cont = append(cont, "")
-			} else {
-				cont = append(cont, strings.TrimSpace(lines[i]))
+			// A blank line inside a folded scalar is a newline; the guide
+			// never relies on that, so it joins as a space.
+			if t := strings.TrimSpace(lines[i]); !strings.HasPrefix(t, "#") {
+				cont = append(cont, t)
 			}
 			i++
 		}
 		for len(cont) > 0 && cont[len(cont)-1] == "" {
 			cont = cont[:len(cont)-1]
 		}
-		if val == "" && len(cont) > 0 && strings.HasPrefix(cont[0], "-") {
+		if val == "" && len(cont) > 0 && isItem(cont[0]) {
 			var items []string
 			for _, c := range cont {
 				if c == "" {
 					continue
 				}
-				if !strings.HasPrefix(c, "-") {
+				if !isItem(c) {
 					return f, errAt(i-1, "mixed list and scalar under %q", key)
 				}
 				v, err := yamlScalar(strings.TrimSpace(c[1:]))
@@ -251,3 +234,7 @@ func yamlScalar(s string) (string, error) {
 	}
 	return s, nil
 }
+
+// isItem reports whether a trimmed line is a block list item. The dash
+// needs a blank after it: "-1 means none" is a scalar.
+func isItem(l string) bool { return l == "-" || strings.HasPrefix(l, "- ") }

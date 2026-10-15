@@ -39,8 +39,7 @@ type Chapter struct {
 
 // ModuleRef names a module inside the tree; Curriculum.Module resolves it.
 type ModuleRef struct {
-	ID    string
-	Title string // from the module's frontmatter
+	ID string
 }
 
 // Module is one guide module. It is a value, but copies share their slices
@@ -87,16 +86,6 @@ func (m Module) Markdown() (string, error) {
 	return m.body.md, m.body.err
 }
 
-// List returns the module's problem list with the given key.
-func (m Module) List(key string) (ProblemList, bool) {
-	for _, l := range m.Problems {
-		if l.Key == key {
-			return l, true
-		}
-	}
-	return ProblemList{}, false
-}
-
 // Attribution credits a single module, as CC BY-NC-SA asks: title, authors,
 // source link, license, and that it was modified.
 func (m Module) Attribution() string {
@@ -123,8 +112,8 @@ func Attribution() string {
 // Curriculum is a loaded guide snapshot. It is read-only after Load and
 // safe for concurrent use.
 type Curriculum struct {
-	Dir       string // the guide repository root
 	Divisions []Division
+	dir       string // the guide repository root, for file names in errors
 	modules   map[string]Module
 	order     []string
 }
@@ -220,13 +209,10 @@ func Load(guideDir string) (*Curriculum, error) {
 		return nil, err
 	}
 
-	c := &Curriculum{Dir: root, modules: map[string]Module{}}
-	for di := range divs {
-		d := &divs[di]
-		for ci := range d.Chapters {
-			ch := &d.Chapters[ci]
-			for mi := range ch.Modules {
-				ref := &ch.Modules[mi]
+	c := &Curriculum{Divisions: divs, dir: root, modules: map[string]Module{}}
+	for _, d := range divs {
+		for _, ch := range d.Chapters {
+			for _, ref := range ch.Modules {
 				f, ok := mdx[ref.ID]
 				if !ok {
 					return nil, fmt.Errorf("learn: ordering.ts lists module %q but no .mdx has that id", ref.ID)
@@ -252,17 +238,14 @@ func Load(guideDir string) (*Curriculum, error) {
 					}
 				}
 				m.Topic = TopicFor(m.ID, m.Title, m.Division)
-				ref.Title = m.Title
+				m.body = &lazyBody{render: func() (string, error) {
+					md, _, err := c.convert(m)
+					return md, err
+				}}
 				c.modules[m.ID] = m
 				c.order = append(c.order, m.ID)
 			}
 		}
-	}
-	c.Divisions = divs
-	for _, id := range c.order {
-		m := c.modules[id]
-		m.body = &lazyBody{render: func() (string, error) { return c.render(m) }}
-		c.modules[id] = m
 	}
 	return c, nil
 }
@@ -274,11 +257,6 @@ type convertStats struct {
 	dropped []string
 }
 
-func (c *Curriculum) render(m Module) (string, error) {
-	md, _, err := c.convert(m)
-	return md, err
-}
-
 func (c *Curriculum) convert(m Module) (string, convertStats, error) {
 	b, err := os.ReadFile(m.Path)
 	if err != nil {
@@ -288,7 +266,7 @@ func (c *Curriculum) convert(m Module) (string, convertStats, error) {
 	if err != nil {
 		return "", convertStats{}, fmt.Errorf("%s: %w", m.Path, err)
 	}
-	rel, err := filepath.Rel(c.Dir, m.Path)
+	rel, err := filepath.Rel(c.dir, m.Path)
 	if err != nil {
 		rel = m.Path
 	}

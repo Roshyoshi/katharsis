@@ -129,6 +129,8 @@ func (p *texParser) seq(inBrace bool) string {
 		case '~':
 			p.i++
 			b.WriteByte(' ')
+		case '$': // math shift, as in \text{if $x$ is odd}; prints nothing
+			p.i++
 		case '&': // column separator
 			p.i++
 			if p.env() == "cases" {
@@ -239,7 +241,8 @@ func (p *texParser) command() string {
 		case '|':
 			return "‖"
 		}
-		return "\\" + string(c)
+		// The byte, not string(c), which would mangle a UTF-8 lead byte.
+		return p.s[p.i-2 : p.i]
 	}
 	start := p.i
 	for p.i < len(p.s) && isLetter(p.s[p.i]) {
@@ -261,12 +264,23 @@ func (p *texParser) command() string {
 		a, b := p.arg(), p.arg()
 		return "C(" + a + ", " + b + ")"
 	case name == "sqrt":
+		index := ""
 		if p.i < len(p.s) && p.s[p.i] == '[' {
 			if j := strings.IndexByte(p.s[p.i:], ']'); j >= 0 {
+				index = strings.TrimSpace(simplifyTeX(p.s[p.i+1 : p.i+j]))
 				p.i += j + 1
 			}
 		}
-		return "√" + wrapAtom(p.arg())
+		x := wrapAtom(p.arg())
+		switch index {
+		case "", "2":
+			return "√" + x
+		case "3":
+			return "∛" + x
+		case "4":
+			return "∜" + x
+		}
+		return x + "^(1/" + wrapAtom(index) + ")"
 	case name == "tag": // equation number
 		return " (" + p.arg() + ")"
 	case name == "pmod":

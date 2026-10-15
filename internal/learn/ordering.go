@@ -20,44 +20,25 @@ type tokKind int
 const (
 	tokEOF tokKind = iota
 	tokIdent
-	tokString // '...', "..." and `...` without substitutions
+	tokString // '...', "..." and `...`
 	tokNumber
 	tokPunct
 )
-
-func (k tokKind) String() string {
-	switch k {
-	case tokEOF:
-		return "end of file"
-	case tokIdent:
-		return "identifier"
-	case tokString:
-		return "string"
-	case tokNumber:
-		return "number"
-	default:
-		return "punctuation"
-	}
-}
 
 type token struct {
 	kind tokKind
 	text string // identifier name, decoded string, number or punctuation
 	line int
-	// tmpl marks a template literal with ${} substitutions; its text is
-	// the raw source and it is not a usable string value.
+	// tmpl marks a template literal with ${} substitutions, which is not a
+	// constant; its text leaves the substitutions out.
 	tmpl bool
 }
 
 func (t token) String() string {
-	switch t.kind {
-	case tokEOF:
+	if t.kind == tokEOF {
 		return "end of file"
-	case tokString:
-		return strconv.Quote(t.text)
-	default:
-		return fmt.Sprintf("%q", t.text)
 	}
+	return strconv.Quote(t.text)
 }
 
 // tsLexer produces tokens on demand, so a construct it cannot read after the
@@ -159,53 +140,21 @@ func (l *tsLexer) skipSpace() error {
 	return nil
 }
 
-// quoted reads a '...' or "..." literal and decodes the escapes ordering.ts
-// could plausibly contain.
+// quoted reads a '...' or "..." literal.
 func (l *tsLexer) quoted(q byte) (string, error) {
 	line := l.line
 	l.pos++ // opening quote
 	var b strings.Builder
 	for l.pos < len(l.src) {
-		c := l.src[l.pos]
-		switch {
-		case c == q:
+		switch c := l.src[l.pos]; c {
+		case q:
 			l.pos++
 			return b.String(), nil
-		case c == '\n':
+		case '\n':
 			return "", l.errf(line, "unterminated string literal")
-		case c == '\\':
-			if l.pos+1 >= len(l.src) {
-				return "", l.errf(line, "unterminated string literal")
-			}
-			e := l.src[l.pos+1]
-			l.pos += 2
-			switch e {
-			case 'n':
-				b.WriteByte('\n')
-			case 't':
-				b.WriteByte('\t')
-			case 'r':
-				b.WriteByte('\r')
-			case '0':
-				b.WriteByte(0)
-			case '\n': // line continuation
-				l.line++
-			case 'u', 'x':
-				n := 4
-				if e == 'x' {
-					n = 2
-				}
-				if l.pos+n > len(l.src) {
-					return "", l.errf(l.line, "bad \\%c escape", e)
-				}
-				v, err := strconv.ParseUint(l.src[l.pos:l.pos+n], 16, 32)
-				if err != nil {
-					return "", l.errf(l.line, "bad \\%c escape", e)
-				}
-				b.WriteRune(rune(v))
-				l.pos += n
-			default:
-				b.WriteByte(e)
+		case '\\':
+			if err := l.escape(&b, line); err != nil {
+				return "", err
 			}
 		default:
 			b.WriteByte(c)
@@ -215,27 +164,66 @@ func (l *tsLexer) quoted(q byte) (string, error) {
 	return "", l.errf(line, "unterminated string literal")
 }
 
+// escape decodes the backslash escape at l.pos into b, covering the ones a
+// guide string could plausibly contain. line is where the literal starts.
+func (l *tsLexer) escape(b *strings.Builder, line int) error {
+	if l.pos+1 >= len(l.src) {
+		return l.errf(line, "unterminated string literal")
+	}
+	e := l.src[l.pos+1]
+	l.pos += 2
+	switch e {
+	case 'n':
+		b.WriteByte('\n')
+	case 't':
+		b.WriteByte('\t')
+	case 'r':
+		b.WriteByte('\r')
+	case '0':
+		b.WriteByte(0)
+	case '\n': // line continuation
+		l.line++
+	case 'u', 'x':
+		n := 4
+		if e == 'x' {
+			n = 2
+		}
+		if l.pos+n > len(l.src) {
+			return l.errf(l.line, "bad \\%c escape", e)
+		}
+		v, err := strconv.ParseUint(l.src[l.pos:l.pos+n], 16, 32)
+		if err != nil {
+			return l.errf(l.line, "bad \\%c escape", e)
+		}
+		b.WriteRune(rune(v))
+		l.pos += n
+	default:
+		b.WriteByte(e)
+	}
+	return nil
+}
+
 // template reads a `...` literal. Substitutions are skipped with brace
-// matching; such a literal is reported as tmpl and is not a constant.
+// matching and make the literal tmpl.
 func (l *tsLexer) template() (string, bool, error) {
 	line := l.line
-	start := l.pos
 	l.pos++
+	var b strings.Builder
 	tmpl := false
 	for l.pos < len(l.src) {
 		c := l.src[l.pos]
 		switch {
 		case c == '`':
 			l.pos++
-			raw := l.src[start+1 : l.pos-1]
-			return raw, tmpl, nil
+			return b.String(), tmpl, nil
 		case c == '\\':
-			l.pos += 2
+			if err := l.escape(&b, line); err != nil {
+				return "", false, err
+			}
 		case c == '$' && l.pos+1 < len(l.src) && l.src[l.pos+1] == '{':
 			tmpl = true
 			l.pos += 2
-			depth := 1
-			for depth > 0 {
+			for depth := 1; depth > 0; {
 				t, err := l.next()
 				if err != nil {
 					return "", false, err
@@ -253,6 +241,7 @@ func (l *tsLexer) template() (string, bool, error) {
 			if c == '\n' {
 				l.line++
 			}
+			b.WriteByte(c)
 			l.pos++
 		}
 	}
@@ -261,30 +250,14 @@ func (l *tsLexer) template() (string, bool, error) {
 
 // tsParser parses constant object/array literals out of the token stream.
 type tsParser struct {
-	lx   *tsLexer
-	tok  token
-	peek *token
+	lx  *tsLexer
+	tok token
 }
 
 func (p *tsParser) advance() error {
-	if p.peek != nil {
-		p.tok, p.peek = *p.peek, nil
-		return nil
-	}
 	t, err := p.lx.next()
 	p.tok = t
 	return err
-}
-
-func (p *tsParser) lookahead() (token, error) {
-	if p.peek == nil {
-		t, err := p.lx.next()
-		if err != nil {
-			return token{}, err
-		}
-		p.peek = &t
-	}
-	return *p.peek, nil
 }
 
 func (p *tsParser) is(text string) bool {
@@ -308,32 +281,32 @@ type tsObject struct {
 	line map[string]int
 }
 
-func (p *tsParser) value() (tsValue, int, error) {
+func (p *tsParser) value() (tsValue, error) {
 	t := p.tok
 	switch {
 	case p.is("{"):
 		o, err := p.object()
-		return o, t.line, err
+		return o, err
 	case p.is("["):
 		a, err := p.array()
-		return a, t.line, err
+		return a, err
 	case t.kind == tokString:
 		if t.tmpl {
-			return nil, t.line, p.lx.errf(t.line, "template literal with substitutions is not a constant")
+			return nil, p.lx.errf(t.line, "template literal with substitutions is not a constant")
 		}
-		return t.text, t.line, p.advance()
+		return t.text, p.advance()
 	case t.kind == tokNumber:
 		f, err := strconv.ParseFloat(t.text, 64)
 		if err != nil {
-			return nil, t.line, p.lx.errf(t.line, "bad number %s", t)
+			return nil, p.lx.errf(t.line, "bad number %s", t)
 		}
-		return f, t.line, p.advance()
+		return f, p.advance()
 	case t.kind == tokIdent && (t.text == "true" || t.text == "false"):
-		return t.text == "true", t.line, p.advance()
+		return t.text == "true", p.advance()
 	case t.kind == tokIdent && t.text == "null":
-		return nil, t.line, p.advance()
+		return nil, p.advance()
 	}
-	return nil, t.line, p.lx.errf(t.line, "unexpected %s, want a constant literal", t)
+	return nil, p.lx.errf(t.line, "unexpected %s, want a constant literal", t)
 }
 
 func (p *tsParser) object() (*tsObject, error) {
@@ -364,7 +337,7 @@ func (p *tsParser) object() (*tsObject, error) {
 		if err := p.expect(":"); err != nil {
 			return nil, err
 		}
-		v, _, err := p.value()
+		v, err := p.value()
 		if err != nil {
 			return nil, err
 		}
@@ -388,7 +361,7 @@ func (p *tsParser) array() ([]tsValue, error) {
 	}
 	var a []tsValue
 	for !p.is("]") {
-		v, _, err := p.value()
+		v, err := p.value()
 		if err != nil {
 			return nil, err
 		}
@@ -438,7 +411,7 @@ func findConsts(file, src string, names ...string) (map[string]tsValue, map[stri
 			if err := p.expect("="); err != nil {
 				return nil, nil, err
 			}
-			v, _, err := p.value()
+			v, err := p.value()
 			if err != nil {
 				return nil, nil, fmt.Errorf("parsing %s: %w", t.text, err)
 			}
@@ -495,8 +468,7 @@ var defaultDivisionTitles = map[string]string{
 	"adv":     "Advanced",
 }
 
-// ParseOrdering parses the guide's content/ordering.ts into the curriculum
-// tree. Module titles are left empty; Load fills them from frontmatter.
+// ParseOrdering parses the guide's content/ordering.ts into the curriculum.
 func ParseOrdering(path string) ([]Division, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {

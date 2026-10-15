@@ -45,11 +45,12 @@ type node struct {
 	inline   bool // element shares its line with text
 }
 
+// jsxAttr is one attribute. value is "" for a bare one (`<Quiz.Answer
+// correct>`), the decoded literal for a string, or the source of any other
+// {expression}.
 type jsxAttr struct {
 	name  string
-	value string // decoded string literal, or expression source if expr
-	expr  bool
-	bare  bool // `<Problems hideSuggestProblemButton />`
+	value string
 }
 
 func (n *node) attr(name string) (string, bool) {
@@ -69,7 +70,7 @@ type mdxScanner struct {
 	firstLine int   // source line of src[0]
 	buf       strings.Builder
 	bufBOL    bool
-	// dropped counts MDX expressions that were not plain strings or
+	// dropped collects MDX expressions that were not plain strings or
 	// comments; they carry no prose in the guide but are worth knowing.
 	dropped []string
 }
@@ -116,7 +117,7 @@ func (s *mdxScanner) lineEnd(pos int) int {
 
 func (s *mdxScanner) write(str string) {
 	if s.buf.Len() == 0 {
-		s.bufBOL = s.atLineStart() || s.onlySpaceBefore(s.pos)
+		s.bufBOL = s.onlySpaceBefore(s.pos)
 	}
 	s.buf.WriteString(str)
 }
@@ -185,7 +186,9 @@ func (s *mdxScanner) parseChildren(parent string, openPos, depth int) ([]*node, 
 			}
 			continue
 		}
-		s.write(string(c))
+		// A slice, not string(c): that would re-encode each byte of a UTF-8
+		// sequence as its own rune.
+		s.write(s.src[s.pos : s.pos+1])
 		s.pos++
 	}
 	if parent != "" {
@@ -543,7 +546,7 @@ func (s *mdxScanner) angle(out *[]*node, parent string, depth int) (done bool, e
 		s.pos += len(m)
 		return false, nil
 	}
-	if len(rest) < 2 || !(isJSXNameStart(rest[1]) || rest[1] == '>' || rest[1] == '/') {
+	if len(rest) < 2 || !isJSXNameStart(rest[1]) && rest[1] != '>' && rest[1] != '/' {
 		s.write("<")
 		s.pos++
 		return false, nil
@@ -568,7 +571,7 @@ func (s *mdxScanner) angle(out *[]*node, parent string, depth int) (done bool, e
 	s.flush(out)
 	n := &node{kind: nodeElem, name: t.name, attrs: t.attrs, line: s.lineOf(tagPos), indent: -1}
 	if s.onlySpaceBefore(tagPos) {
-		n.indent = indentCols(s.src[s.lineStart[s.lineOf(tagPos)-s.firstLine]:tagPos])
+		n.indent = indentCols(s.src[strings.LastIndexByte(s.src[:tagPos], '\n')+1 : tagPos])
 		// A tag followed by text on its own line is inline in MDX.
 		after := strings.TrimSpace(s.src[s.pos:s.lineEnd(s.pos)])
 		n.inline = after != "" && !strings.HasPrefix(after, "<") && !strings.HasPrefix(after, "{")
@@ -646,13 +649,10 @@ func (s *mdxScanner) tag() (jsxTag, error) {
 			return t, nil
 		case t.closing:
 			return t, s.errf(s.pos, "unexpected %q in closing tag </%s>", c, t.name)
-		case c == '{':
-			// {...spread} attribute: no prose to keep.
-			src, err := s.exprSource()
-			if err != nil {
+		case c == '{': // {...spread}: no prose to keep
+			if _, err := s.exprSource(); err != nil {
 				return t, err
 			}
-			t.attrs = append(t.attrs, jsxAttr{name: "...", value: src, expr: true})
 		case isJSXNameStart(c):
 			a := jsxAttr{name: s.jsxName()}
 			s.skipBlanks()
@@ -675,16 +675,13 @@ func (s *mdxScanner) tag() (jsxTag, error) {
 					if err != nil {
 						return t, err
 					}
-					a.expr = true
 					a.value = src
 					if v, ok := jsString(src); ok {
-						a.value, a.expr = v, false
+						a.value = v
 					}
 				default:
 					return t, s.errf(s.pos, "attribute %s: unexpected %q", a.name, q)
 				}
-			} else {
-				a.bare = true
 			}
 			t.attrs = append(t.attrs, a)
 		default:
@@ -694,78 +691,45 @@ func (s *mdxScanner) tag() (jsxTag, error) {
 }
 
 // exprSource reads a balanced {...} JS expression starting at "{" and
-// returns its inside, skipping strings, template literals and comments.
+// returns its inside. It runs the ordering.ts tokenizer over the source, so
+// braces inside strings, template literals and comments do not count.
 func (s *mdxScanner) exprSource() (string, error) {
 	open := s.pos
-	depth := 0
-	for s.pos < len(s.src) {
-		c := s.src[s.pos]
+	lx := &tsLexer{file: s.file, src: s.src, pos: open + 1, line: s.lineOf(open)}
+	for depth := 1; ; {
+		t, err := lx.next()
+		if err != nil {
+			return "", err
+		}
 		switch {
-		case c == '{':
+		case t.kind == tokEOF:
+			return "", s.errf(open, "{expression} is never closed")
+		case t.kind == tokPunct && t.text == "{":
 			depth++
-		case c == '}':
-			depth--
-			if depth == 0 {
-				s.pos++
+		case t.kind == tokPunct && t.text == "}":
+			if depth--; depth == 0 {
+				s.pos = lx.pos
 				return s.src[open+1 : s.pos-1], nil
 			}
-		case c == '"' || c == '\'' || c == '`':
-			for s.pos++; s.pos < len(s.src) && s.src[s.pos] != c; s.pos++ {
-				if s.src[s.pos] == '\\' {
-					s.pos++
-				}
-			}
-		case strings.HasPrefix(s.src[s.pos:], "/*"):
-			end := strings.Index(s.src[s.pos+2:], "*/")
-			if end < 0 {
-				return "", s.errf(open, "comment in {expression} is never closed")
-			}
-			s.pos += 2 + end + 1
-		case strings.HasPrefix(s.src[s.pos:], "//"):
-			s.pos = s.lineEnd(s.pos) - 1
 		}
-		s.pos++
 	}
-	return "", s.errf(open, "{expression} is never closed")
 }
 
-var blockComment = regexp.MustCompile(`(?s)/\*.*?\*/`)
-
-// jsString evaluates an expression that is just a string literal.
+// jsString evaluates an expression that is at most one string literal
+// among comments; comments alone evaluate to "".
 func jsString(src string) (string, bool) {
-	t := strings.TrimSpace(blockComment.ReplaceAllString(src, ""))
-	if len(t) < 2 {
+	lx := newTSLexer("", src)
+	t, err := lx.next()
+	if err != nil || t.kind == tokEOF {
+		return "", err == nil
+	}
+	if t.kind != tokString || t.tmpl {
 		return "", false
 	}
-	q := t[0]
-	if (q != '"' && q != '\'' && q != '`') || t[len(t)-1] != q {
+	if end, err := lx.next(); err != nil || end.kind != tokEOF {
 		return "", false
 	}
-	inner := t[1 : len(t)-1]
-	if q == '`' && strings.Contains(inner, "${") {
-		return "", false
-	}
-	var b strings.Builder
-	for i := 0; i < len(inner); i++ {
-		c := inner[i]
-		if c == q {
-			return "", false // two literals concatenated, or similar
-		}
-		if c == '\\' && i+1 < len(inner) {
-			i++
-			switch inner[i] {
-			case 'n':
-				b.WriteByte('\n')
-			case 't':
-				b.WriteByte('\t')
-			default:
-				b.WriteByte(inner[i])
-			}
-			continue
-		}
-		b.WriteByte(c)
-	}
-	return b.String(), true
+	return t.text, true
 }
 
 // expression handles a {...} in prose: comments vanish, string literals
@@ -775,14 +739,11 @@ func (s *mdxScanner) expression() error {
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(blockComment.ReplaceAllString(src, "")) == "" {
-		return nil
-	}
 	if v, ok := jsString(src); ok {
 		s.write(v)
-		return nil
+	} else {
+		s.dropped = append(s.dropped, src)
 	}
-	s.dropped = append(s.dropped, src)
 	return nil
 }
 

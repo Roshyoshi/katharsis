@@ -74,6 +74,11 @@ const f = (x) => ` + "`/${x}/${`nested ${x}`}`" + `;
 const re = a / b;`,
 			want: "adv:Advanced:C=",
 		},
+		{
+			name: "escapes in quoted and template strings",
+			src:  "const MODULE_ORDERING = { gold: [{ name: `T\\u00e9 \\x41`, items: ['a\\'b'] }] };",
+			want: "gold:Gold:Té A=a'b",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			divs, err := parseOrdering("x.ts", tc.src)
@@ -116,6 +121,8 @@ func TestParseOrderingErrors(t *testing.T) {
 		{"empty", "const MODULE_ORDERING = {};", "x.ts:1: MODULE_ORDERING is empty"},
 		{"no initializer", "let MODULE_ORDERING: Foo;", "x.ts:1: declaration has no initializer"},
 		{"bad label", "const MODULE_ORDERING = { b: [] };\nconst SECTION_LABELS = {\n  b: 3 };", "x.ts:3: SECTION_LABELS.b is not a string"},
+		// An escaped newline in a template literal is still a line.
+		{"line after template continuation", "const A = `a\\\nb`;\nconst MODULE_ORDERING = {\n  bronze: [oops],\n};", `x.ts:4: unexpected "oops"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := parseOrdering("x.ts", tc.src)
