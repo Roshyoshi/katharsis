@@ -164,6 +164,7 @@ func runGame(args []string) error {
 		Log:           logger,
 		Prompts:       !*noPrompts,
 		Story:         true,
+		Title:         true,
 		Sources:       cfNote,
 		Budget:        prefs.SessionBudget.Duration,
 	})

@@ -91,6 +91,9 @@ type Deps struct {
 	// Story plays the story's scenes at their moments (story.go). The game
 	// sets it; headless tests leave it off.
 	Story bool
+	// Title shows the title screen at launch, before GRUB (title.go). The
+	// game sets it; headless tests leave it off.
+	Title bool
 	// Sources, when set, is a note on content sources not serving yet
 	// ("Codeforces indexing… 40%"), which GRUB shows as it changes.
 	Sources func() string
@@ -223,7 +226,7 @@ func (m *Model) Init() tea.Cmd {
 		m.resumeFlash = m.flash
 		return tea.Batch(tick(), m.initTop(), m.openDoor(c.Door, false))
 	}
-	return tea.Batch(tick(), m.initTop(), m.storyResume())
+	return tea.Batch(tick(), m.initTop(), m.storyResume(), m.titleAtLaunch())
 }
 
 // doorLeft is the time left on the boot's open door, ok false when no
