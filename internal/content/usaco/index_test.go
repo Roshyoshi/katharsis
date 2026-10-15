@@ -233,6 +233,7 @@ func TestTopicFor(t *testing.T) {
 		{[]string{"Convex"}, nil, "geometry"},
 		{[]string{"Casework"}, []string{"ad-hoc"}, "mixed"},
 		{nil, []string{"conclusion", "knapsack"}, "dp"},
+		{nil, []string{"merging"}, "trees"}, // the guide files it under Trees
 		{nil, nil, "mixed"},
 	}
 	for _, tc := range tests {
@@ -242,14 +243,13 @@ func TestTopicFor(t *testing.T) {
 	}
 }
 
-// Every topic the tables produce must be one the engine knows.
+// Every topic the tag table produces must be one the engine knows
+// (guide tests its module table).
 func TestTopicsAreCatalogTopics(t *testing.T) {
 	t.Parallel()
-	for _, table := range []map[string]string{tagTopic, moduleTopic} {
-		for k, v := range table {
-			if !slices.Contains(catalog.Topics, v) {
-				t.Errorf("%s maps to %q, not in catalog.Topics", k, v)
-			}
+	for k, v := range tagTopic {
+		if !slices.Contains(catalog.Topics, v) {
+			t.Errorf("%s maps to %q, not in catalog.Topics", k, v)
 		}
 	}
 	for _, v := range topicRank {

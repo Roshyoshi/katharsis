@@ -1,7 +1,8 @@
 // Package guide keeps a pinned, read-only snapshot of the USACO Guide
 // repository (github.com/cpinitiative/usaco-guide, CC BY-NC-SA 4.0) in the
 // user cache. The USACO catalog reads its problem lists from it and learn
-// mode reads its modules, so both see the same commit.
+// mode reads its modules, so both see the same commit. Both also read
+// ModuleTopic, the one table of which topic each module teaches.
 //
 // Layout under Snapshot's dir mirrors the repository:
 //

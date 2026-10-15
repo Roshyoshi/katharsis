@@ -1,11 +1,11 @@
 package curriculum
 
 import (
-	"slices"
 	"strings"
 	"testing"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/content/guide"
 	"katharsis/internal/game"
 )
 
@@ -43,7 +43,7 @@ func TestCapabilityFor(t *testing.T) {
 // A passed trial must open the biomes of the topic it taught: the bug this
 // guards is the curriculum naming a capability the engine's gate never checks.
 func TestTrialUnlocksItsBiome(t *testing.T) {
-	for id, topic := range ModuleTopics() {
+	for id, topic := range guide.ModuleTopics() {
 		m := &game.Meta{}
 		game.GrantCapability(m, CapabilityFor(topic))
 		if !game.Unlocked(m, topic) {
@@ -52,15 +52,10 @@ func TestTrialUnlocksItsBiome(t *testing.T) {
 	}
 }
 
-// The table must cover every module the pinned ordering.ts teaches and use
-// only catalog topics; a guide bump that adds a module fails here so the
-// table gets a deliberate entry instead of a keyword guess.
+// guide.ModuleTopic must cover every module the pinned ordering.ts teaches;
+// a guide bump that adds a module fails here so the table gets a
+// deliberate entry instead of a keyword guess.
 func TestModuleTopicsCoverOrdering(t *testing.T) {
-	for id, topic := range ModuleTopics() {
-		if !slices.Contains(catalog.Topics, topic) {
-			t.Errorf("module %s maps to %q, not a catalog topic", id, topic)
-		}
-	}
 	divs, err := ParseOrdering("testdata/ordering_full.ts")
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +63,7 @@ func TestModuleTopicsCoverOrdering(t *testing.T) {
 	for _, d := range divs {
 		for _, c := range d.Chapters {
 			for _, m := range c.Modules {
-				_, ok := moduleTopics[m.ID]
+				_, ok := guide.ModuleTopic(m.ID)
 				none := d.ID == "general" || strings.HasSuffix(m.ID, "-conclusion")
 				if ok == none {
 					t.Errorf("module %s (%s): in table = %v", m.ID, d.ID, ok)
