@@ -182,6 +182,12 @@ are five words or fewer, as homage.
 
 ## Boot and GRUB
 
+### title.tagline
+where: the title screen, under the logo, `story.NewTitle` (`./internal/screens/story/title.go`), shown at launch over GRUB (`./internal/app/title.go`) · when: every launch · pick: fixed · uses: none; the line is also in the boot.motd pool, the game's premise in one line
+```text
+Every boot is a fall. Some falls end. That's the whole question.
+```
+
 ### boot.splash.dmesg
 where: the boot splash, `story.NewBootSplash` (`./internal/screens/story/scenes.go:291`), queued at every boot start (`./internal/app/story.go:95`): `Banner("boot")`, then this block a line at a time · when: every boot, while door 1 fetches · pick: block · uses: A19 (allusion)
 ```text

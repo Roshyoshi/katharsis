@@ -51,6 +51,9 @@ type Scene struct {
 	auto  time.Duration
 	// motion is the setting the scene was built under (anim.CurrentMotion).
 	motion anim.Motion
+	// bare draws the page over the whole screen, with no footer: the
+	// title, whose art says its own "press any key".
+	bare bool
 
 	i    int // the page showing
 	p    *anim.Player
@@ -145,9 +148,16 @@ func (s *Scene) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 
 func (s *Scene) View(width, height int) string {
 	bw, bh := width, max(height-1, 1)
+	if s.bare {
+		bh = max(height, 1)
+	}
 	if s.size != [2]int{bw, bh} {
 		s.size = [2]int{bw, bh}
 		s.p.Swap(s.pages[s.i](bw, bh))
+	}
+	body := strings.Join(place(s.p.Frame(), bw, bh), "\n")
+	if s.bare {
+		return body
 	}
 	var f string
 	switch {
@@ -160,7 +170,7 @@ func (s *Scene) View(width, height int) string {
 	default:
 		f = ui.Footer(width, "any key", "continue")
 	}
-	return strings.Join(place(s.p.Frame(), bw, bh), "\n") + "\n" + f
+	return body + "\n" + f
 }
 
 // place centers a block in w×h: the block keeps its own left edge, so

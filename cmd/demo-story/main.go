@@ -3,10 +3,12 @@
 // replays one, every other key goes to the scene, and what the scene emits
 // is shown in the bottom line instead of being acted on. ctrl+c quits.
 //
-//	go run ./cmd/demo-story                  # every scene, from the prologue
+//	go run ./cmd/demo-story                  # every scene, from the title
+//	go run ./cmd/demo-story title            # the title screen
 //	go run ./cmd/demo-story boss             # every scene whose name has "boss"
 //	go run ./cmd/demo-story -list            # the scene names
 //	go run ./cmd/demo-story -reduced crash   # reduced motion: last frames at once
+//	LC_ALL=C go run ./cmd/demo-story title   # ASCII glyphs; NO_COLOR=1: Mono
 //	go run ./cmd/demo-story -print -at 0,300ms,end accepted
 //	                                         # frames to stdout, no terminal
 package main
@@ -26,6 +28,7 @@ import (
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 	"katharsis/internal/screens/story"
+	"katharsis/internal/ui"
 )
 
 // scene is one entry of the demo, built fresh each time it is shown.
@@ -36,6 +39,7 @@ type scene struct {
 
 func scenes() []scene {
 	out := []scene{
+		{"title", story.NewTitle},
 		{"prologue", story.NewPrologue},
 		{"boot splash", func() *story.Scene { return story.NewBootSplash(42, 0) }},
 		{"boot splash, ring -1", func() *story.Scene { return story.NewBootSplash(318, game.MaxPrestige) }},
@@ -77,6 +81,12 @@ func main() {
 	h := flag.Int("h", 24, "with -print: height")
 	flag.Parse()
 	anim.SetMotion(anim.Motion{Reduced: *reduced, FPS: *fps})
+	// The glyph set and palette as the game picks them: ASCII under a
+	// non-UTF-8 locale (LC_ALL=C), Mono under NO_COLOR.
+	ui.SetGlyphs(ui.AutoGlyphs(os.Getenv))
+	if os.Getenv("NO_COLOR") != "" {
+		ui.SetPalette(ui.Mono)
+	}
 
 	all := scenes()
 	if *list {

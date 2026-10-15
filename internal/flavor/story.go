@@ -81,6 +81,7 @@ func textLines(s string) []string { return strings.Split(strings.Trim(s, "\n"), 
 // lines.
 var story = map[string]storyHook{
 	// ---- Boot and GRUB ----
+	"title.tagline": fixedOf("Every boot is a fall. Some falls end. That's the whole question."),
 	"boot.splash.dmesg": blockOf(`
 [    0.000] katharsis boot #{boot} (k&r@bell-labs) (cc, 1978)
 [    0.000] Command line: ro quiet rabbit=late cat=grinning

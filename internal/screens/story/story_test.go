@@ -41,6 +41,7 @@ func all() []built {
 		{"boot splash", "", []string{"katharsis boot #42 (k&r@bell-labs)", "cpu: entering ring 1: the nameless wood"},
 			func() *Scene { return NewBootSplash(42, 2) }},
 		{"beat", "reveal.prestige.3", flavor.StoryBlock("reveal.prestige.3"), func() *Scene { return NewBeat("reveal.prestige.3") }},
+		{"title", "", []string{flavor.Story("title.tagline", 0), "press any key"}, NewTitle},
 	}
 	for _, k := range append(append([]string{}, game.BossKeys...), game.FinalBoss) {
 		enter := flavor.Story("boss.enter."+k, 5)
