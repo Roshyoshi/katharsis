@@ -1,0 +1,40 @@
+MAP · boot #42 · Silver · The ALU room 1/1                                                                   ♥ 23/30 cycles  0 B uncommitted
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+─ act I ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Userland ✓✗     Brute Force Bunker     ⚔ Off-by-One ✓
+                   The Emulator           ⚔ OOM Killer  
+                   The Scheduler ✓                      
+                   The Accumulator                      
+─ act II ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Bisect Bridge          ⚔ Heisenbug         
+   The Sliding Window     ⚔ Race Condition    
+   The ALU ●              ⚔ Undefined Behavior
+   The Heap                                   
+   The Lexer                                  
+─ act III ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Routing Table □ CAP_GRAPH +1       ⚔ The Halting Problem one shot
+   The Cache □ CAP_DP +1                                            
+   Union Hall □ CAP_DSU +1                                          
+   Dijkstra's Reach □ CAP_SSSP +1                                   
+   The Filesystem                                                   
+   The Framebuffer                                                  
+   Kernel Space                                                     
+   skip +2                                                          
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ core dump: 312 B on "The Bovine Shuffle" (boot #41), lost if #42 is abandoned
+enter resume · n new boot · u upsolve · t RTFM · q quit

@@ -1,0 +1,24 @@
+MAP · boot #42 · Silver · merge window         ♥ 23/30 cycles  464 B uncommitted
+────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+ act I   Userland ✓✗ ─ The Scheduler ✓ ─ ⚔ Off-by-One ✓
+           not taken: Brute Force Bunker · The Emulator · The Accumulator
+            · ⚔ OOM Killer
+ act II  ● merge window ─ ▸ Bisect Bridge □ CAP_BSEARCH +1
+          · The Sliding Window □ CAP_TWOPTR +1 · The ALU ─ ⚔ Heisenbug
+          | ⚔ Race Condition
+ act III 1 of 5 biomes, or skip +2 ─ ⚔ The Halting Problem one shot
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+ core dump: 312 B on "The Bovine Shuffle" (boot #41), lost if #42 is abandoned
+enter resume · n new boot · u upsolve · t RTFM · q quit

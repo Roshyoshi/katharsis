@@ -1,0 +1,40 @@
+Boot #42 · Silver · route · act III                                                                                           uptime 2:01:45
+♥ 8/50  🦆1  0 B uncommitted · 1.2 KiB committed                                                                              daemons strace
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+                                        Pick an exit. It sets the next door and the boss behind it.
+
+ ┏━ ▸ 1 ━━━━━━━━━━━━━━━━━━━━━━━━━┓  ╭─ 2 ───────────────────────────╮  ╭─ 3 ───────────────────────────╮  ╭─ 4 ───────────────────────────╮
+ ┃ Routing Table                 ┃  │ The Cache                     │  │ Kernel Space                  │  │ skip                          │
+ ┃ graphs                        ┃  │ dp                            │  │ any topic                     │  │ no room                       │
+ ┃ Stub blurb for graphs, long   ┃  │ Stub blurb for dp, long       │  │ Stub blurb for kernel, long   │  │                               │
+ ┃ enough to wrap onto a second  ┃  │ enough to wrap onto a second  │  │ enough to wrap onto a second  │  │                               │
+ ┃ line of a card.               ┃  │ line of a card.               │  │ line of a card.               │  │                               │
+ ┃                               ┃  │                               │  │                               │  │                               │
+ ┃ 1 room · ⏱ ~31:00             ┃  │ 1 room · ⏱ ~31:00             │  │ 1 room · ⏱ ~31:00             │  │ no room, no bytes             │
+ ┃ □ locked: CAP_GRAPH           ┃  │ ◆950–1150 · aim 65% clear     │  │ ◆1000–1200 · aim 65% clear    │  │ +2 upgrade picks              │
+ ┃ Stub line for route.locked.   ┃  │ your dp rating 1120           │  │ a fail −15 ♥ ends the boot    │  │ → ⚔ The Halting Problem       │
+ ┃ +1 upgrade pick               ┃  │ a fail −15 ♥ ends the boot    │  │ → ⚔ The Halting Problem       │  │                               │
+ ┃ → ⚔ The Halting Problem       ┃  │ +1 upgrade pick               │  │                               │  │                               │
+ ┃                               ┃  │ → ⚔ The Halting Problem       │  │                               │  │                               │
+ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ╰───────────────────────────────╯  ╰───────────────────────────────╯  ╰───────────────────────────────╯
+
+                                                              the boot so far
+           ╭─ Userland ─╮   ╭─ The Scheduler ─╮   ╭─ Off-by-One ─╮   ╭─ The ALU ─╮   ╭─ Heisenbug ─╮   ╭─ act III ─╮   ╭─ boss ─╮
+           │    ✓ ✗     │───│        ✓        │───│      ✓       │───│     ✓     │───│      ✓      │───│     ○     │───│   ⚔    │
+           ╰────────────╯   ╰─────────────────╯   ╰──────────────╯   ╰───────────╯   ╰─────────────╯   ╰───────────╯   ╰────────╯
+
+
+
+
+
+
+
+
+←/→ choose · t RTFM · m map

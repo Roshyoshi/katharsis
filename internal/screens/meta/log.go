@@ -40,7 +40,7 @@ var logFilters = []logFilter{
 	{"cleared", func(b BootRow) bool { return b.Cleared }},
 	{"crashed", func(b BootRow) bool { return !b.Cleared && b.Cause != "" }},
 	{"timer", func(b BootRow) bool { return !b.Cleared && b.Cause == game.TimedOut }},
-	{"out of lives", func(b BootRow) bool { return !b.Cleared && b.Cause == game.OutOfLives }},
+	{"out of cycles", func(b BootRow) bool { return !b.Cleared && b.Cause == game.OutOfLives }},
 	{":q!", func(b BootRow) bool { return !b.Cleared && b.Cause == game.GaveUp }},
 }
 

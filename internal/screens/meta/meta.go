@@ -150,7 +150,7 @@ func causeText(c game.Outcome) string {
 	case game.TimedOut:
 		return "timer"
 	case game.OutOfLives:
-		return "out of lives"
+		return "out of cycles"
 	case game.GaveUp:
 		return ":q!"
 	case game.Retreated:

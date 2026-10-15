@@ -1,0 +1,24 @@
+MAP · boot #42 · Silver · The ALU room 1/1       ♥ 23/30 cycles  0 B uncommitted
+────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+ act I   Userland ✓✗ ─ The Scheduler ✓ ─ ⚔ Off-by-One ✓
+           not taken: Brute Force Bunker · The Emulator · The Accumulator
+            · ⚔ OOM Killer
+ act II  The ALU ● ─ ⚔ Heisenbug | ⚔ Race Condition
+           not taken: Bisect Bridge · The Sliding Window · The Heap · The Lexer
+ act III 1 of 5 biomes, or skip +2 ─ ⚔ The Halting Problem one shot
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+ core dump: 312 B on "The Bovine Shuffle" (boot #41), lost if #42 is abandoned
+enter resume · n new boot · u upsolve · t RTFM · q quit

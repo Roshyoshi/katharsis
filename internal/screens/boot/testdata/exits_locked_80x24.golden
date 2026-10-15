@@ -1,0 +1,24 @@
+Boot #42 · Silver · route · act II                                  uptime 44:53
+♥ 23/50  🦆1  0 B uncommitted · 512 B committed                   daemons strace
+────────────────────────────────────────────────────────────────────────────────
+
+          Pick an exit. It sets the next door and the boss behind it.
+
+    ┏━ ▸ 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+    ┃ Bisect Bridge · binary-search       □ locked: CAP_BSEARCH or apt git ┃
+    ┃ Stub line for route.locked.                                          ┃
+    ┃ 1 room · ⏱ ~26:00 · +1 upgrade pick                    → ⚔ Heisenbug ┃
+    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+    ╭─ 2 ──────────────────────────────────────────────────────────────────╮
+    │ The Sliding Window · two-pointers               □ locked: CAP_TWOPTR │
+    │ Stub line for route.locked.                                          │
+    │ 1 room · ⏱ ~26:00 · +1 upgrade pick               → ⚔ race-condition │
+    ╰──────────────────────────────────────────────────────────────────────╯
+    ╭─ 3 ──────────────────────────────────────────────────────────────────╮
+    │ The ALU · math                             ◆950–1150 · aim 70% clear │
+    │ Stub blurb for alu, long enough to wrap onto a second line of a car… │
+    │ 1 room · ⏱ ~26:00                   → ⚔ Heisenbug → ⚔ race-condition │
+    ╰──────────────────────────────────────────────────────────────────────╯
+
+
+←/→ choose · t RTFM · m map

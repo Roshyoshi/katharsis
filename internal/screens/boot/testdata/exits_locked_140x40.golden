@@ -1,0 +1,40 @@
+Boot #42 · Silver · route · act II                                                                                              uptime 44:53
+♥ 23/50  🦆1  0 B uncommitted · 512 B committed                                                                               daemons strace
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+                                        Pick an exit. It sets the next door and the boss behind it.
+
+  ┏━ ▸ 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  ╭─ 2 ──────────────────────────────────────╮  ╭─ 3 ──────────────────────────────────────╮
+  ┃ Bisect Bridge                            ┃  │ The Sliding Window                       │  │ The ALU                                  │
+  ┃ binary-search                            ┃  │ two-pointers                             │  │ math                                     │
+  ┃ Stub blurb for bisect, long enough to    ┃  │ Stub blurb for window, long enough to    │  │ Stub blurb for alu, long enough to wrap  │
+  ┃ wrap onto a second line of a card.       ┃  │ wrap onto a second line of a card.       │  │ onto a second line of a card.            │
+  ┃                                          ┃  │                                          │  │                                          │
+  ┃ 1 room · ⏱ ~26:00                        ┃  │ 1 room · ⏱ ~26:00                        │  │ 1 room · ⏱ ~26:00                        │
+  ┃ □ locked: CAP_BSEARCH or apt git         ┃  │ □ locked: CAP_TWOPTR                     │  │ ◆950–1150 · aim 70% clear                │
+  ┃ Stub line for route.locked.              ┃  │ Stub line for route.locked.              │  │ a fail −12 ♥, the room lost              │
+  ┃ +1 upgrade pick                          ┃  │ +1 upgrade pick                          │  │ → ⚔ Heisenbug                            │
+  ┃ → ⚔ Heisenbug                            ┃  │ → ⚔ race-condition                       │  │ → ⚔ race-condition                       │
+  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ╰──────────────────────────────────────────╯  ╰──────────────────────────────────────────╯
+
+                                                              the boot so far
+              ╭─ Userland ─╮   ╭─ The Scheduler ─╮   ╭─ Off-by-One ─╮   ╭─ act II ─╮   ╭─ boss ─╮   ╭─ act III ─╮   ╭─ boss ─╮
+              │    ✓ ✗     │───│        ✓        │───│      ✓       │───│    ○     │───│   ⚔    │───│     ○     │───│   ⚔    │
+              ╰────────────╯   ╰─────────────────╯   ╰──────────────╯   ╰──────────╯   ╰────────╯   ╰───────────╯   ╰────────╯
+
+
+
+
+
+
+
+
+
+←/→ choose · t RTFM · m map

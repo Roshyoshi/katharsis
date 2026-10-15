@@ -1056,10 +1056,10 @@ func TestClearedKeys(t *testing.T) {
 
 func TestMapKeys(t *testing.T) {
 	m := NewMap(env(fixture.Doors()))
-	for _, k := range []string{"esc", "q", "m"} {
+	for k, want := range map[string]tea.Msg{"esc": Resume{}, "m": Resume{}, "enter": Resume{}, "q": screens.Quit{}} {
 		_, cmd := m.Update(press(k))
-		if got := emitted(cmd); got != (screens.Back{}) {
-			t.Errorf("%s: got %#v", k, got)
+		if got := emitted(cmd); got != want {
+			t.Errorf("%s: got %#v, want %#v", k, got, want)
 		}
 	}
 }
@@ -1483,7 +1483,7 @@ func TestCompactRowsKeepTheNumbers(t *testing.T) {
 	r := NewRoute(env(fixture.Route()))
 	v = ansi.Strip(r.View(36, 10))
 	for _, topic := range r.offers() {
-		if s := ansi.Strip(r.describe(topic).band); !strings.Contains(v, s) {
+		if s := ansi.Strip(r.topicCard(topic).band); !strings.Contains(v, s) {
 			t.Errorf("route %s lost %q:\n%s", topic, s, v)
 		}
 	}

@@ -1,0 +1,24 @@
+MAP · boot #42 · suspended · after ⚔ Heisenbug                ♥ 8/30 cycles  0 B
+────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+ act I   Userland ✓✗ ─ The Scheduler ✓ ─ ⚔ Off-by-One ✓
+           not taken: Brute Force Bunker · The Emulator · The Accumulator
+            · ⚔ OOM Killer
+ act II  The ALU ✓ ─ ⚔ Heisenbug ✓
+           not taken: Bisect Bridge · The Sliding Window · The Heap · The Lexer
+            · ⚔ Race Condition · ⚔ Undefined Behavior
+ act III ▸ Routing Table □ CAP_GRAPH +1 · The Cache +1 · Kernel Space · skip +2
+          ─ ⚔ The Halting Problem one shot
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+ core dump: 312 B on "The Bovine Shuffle" (boot #41), lost if #42 is abandoned
+enter resume · n new boot · u upsolve · t RTFM · q quit

@@ -2,22 +2,22 @@ git log --graph --oneline  42 boots · 10 cleared · 31 crashed        filter: a
 * 54bf774 #42 Oct 14 P2 1:04:12 crashed in The Heap (timer)                +96 B
 * 11b9dc7 #41 Oct 13 P2 2:18:40 cleared                                 +1.2 KiB
 * 3961090 #40 Oct 12 P2   41:05 crashed in Page Tables (:q!)                 0 B
-* 7677f58 #39 Oct 11 P1 1:17:30 crashed in The Scheduler (out of lives)   +410 B
+* 7677f58 #39 Oct 11 P1 1:17:30 crashed in The Schedul… (out of cycles)   +410 B
 * 2290cd9 #38 Oct 10 P1 1:41:02 cleared                                   +902 B
 * bb1a2d3 #37 Oct 09 P1   12:09 abandoned                                    0 B
 * 2e2f1f1 #36 Oct 08 P2   25:00 cleared                                   +700 B
 * a84eb59 #35 Oct 07 P2 1:02:13 crashed in The Stack (timer)               +53 B
-* 3df73d2 #34 Oct 06 P2 1:39:26 crashed in Page Tables (out of lives)     +106 B
+* 3df73d2 #34 Oct 06 P2 1:39:26 crashed in Page Tables (out of cycles)    +106 B
 * 456a842 #33 Oct 05 P2   26:39 crashed in The Cache (timer)              +159 B
 * 890b7c9 #32 Oct 04 P2 1:03:52 crashed in The Heap (:q!)                 +212 B
 * 73fde85 #31 Oct 03 P2 1:40:05 cleared                                   +755 B
 * fdc0073 #30 Oct 02 P2   27:18 crashed in Userland (timer)               +318 B
-* 7ebcbdb #29 Oct 01 P2 1:04:31 crashed in The Cache (out of lives)       +371 B
+* 7ebcbdb #29 Oct 01 P2 1:04:31 crashed in The Cache (out of cycles)      +371 B
 * caee4e1 #28 Sep 30 P2 1:41:44 crashed in The Heap (timer)                +24 B
 * 488cc22 #27 Sep 29 P1   28:57 crashed in The Stack (:q!)                 +77 B
 * 59095b0 #26 Sep 28 P1 1:05:10 cleared                                   +810 B
 * ce831d6 #25 Sep 27 P1 1:42:23 crashed in Shortest Paths (timer)         +183 B
-* d4fefd9 #24 Sep 26 P1   29:36 crashed in The Heap (out of lives)        +236 B
+* d4fefd9 #24 Sep 26 P1   29:36 crashed in The Heap (out of cycles)       +236 B
 * a289941 #23 Sep 25 P1 1:06:49 crashed in The Stack (timer)              +289 B
 * 9bb37bc #22 Sep 24 P1 1:43:02 crashed in Userland (:q!)                 +342 B
 * c880993 #21 Sep 23 P1   30:15 cleared                                   +865 B

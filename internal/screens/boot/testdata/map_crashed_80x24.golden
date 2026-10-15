@@ -1,6 +1,7 @@
-Boot #42 · Silver · map                                           uptime 1:10:03
-♥♥♡  🦆1  0 B uncommitted · 112 B committed                       daemons strace
+MAP · boot #42 · Silver · after The Heap                    ♥♥♡  0 B uncommitted
 ────────────────────────────────────────────────────────────────────────────────
+
+
 
           ╭─ Userland ─╮   ╭─ The Heap ─╮   ╭─ ? ─╮   ╭─ Heisenbug ─╮
           │    ✓ ✓     │───│    ✓ ☠     │───│ ○ ○ │───│      ⚔      │
@@ -18,7 +19,6 @@ Boot #42 · Silver · map                                           uptime 1:10:
 
 
 
-
-
-
-esc back
+────────────────────────────────────────────────────────────────────────────────
+ regression due: "Cereal" (stage 1)
+enter resume · n new boot · u upsolve · t RTFM · q quit

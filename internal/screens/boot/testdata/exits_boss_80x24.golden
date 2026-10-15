@@ -1,0 +1,24 @@
+Boot #42 · Silver · route · act I                                   uptime 29:51
+♥ 18/50  🦆1  192 B uncommitted · 0 B committed                   daemons strace
+────────────────────────────────────────────────────────────────────────────────
+
+
+          Pick an exit. It sets the next door and the boss behind it.
+
+╔═ ▸ 1 ═══════════════════════════════╗  ╔═ 2 ═════════════════════════════════╗
+║ ⚔ off-by-one                        ║  ║ ⚔ oom-killer                        ║
+║ act I boss                          ║  ║ act I boss                          ║
+║ It disappears the moment you add a  ║  ║ It disappears the moment you add a  ║
+║ print statement.                    ║  ║ print statement.                    ║
+║                                     ║  ║                                     ║
+║ 1 room · ⏱ ~35:00                   ║  ║ 1 room · ⏱ ~35:00                   ║
+║ ◆1050–1250 · aim 55% clear          ║  ║ ◆1050–1250 · aim 55% clear          ║
+║ a fail −20 ♥ ends the boot          ║  ║ a fail −20 ♥ ends the boot          ║
+╚═════════════════════════════════════╝  ╚═════════════════════════════════════╝
+
+                                the boot so far
+                        ✓✗ › ✓ › boss ⚔ › ○ › ⚔ › ○ › ⚔
+
+
+
+←/→ choose · enter take exit · m map

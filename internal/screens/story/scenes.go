@@ -178,17 +178,26 @@ func over(c anim.Clip, wide int) anim.Clip {
 	return indent((wide-widest(last(c)))/2, c)
 }
 
-// NewBiome is the drop into a biome: from (the screen being left, nil for
-// a blank one) slides up, the rabbit-hole goes by with the biome's name on
-// its wall, and you land on its title and biome.intro.<topic>. It shows
-// every biome start and leaves on its own after a moment.
+// NewBiome is the drop into a topic's biome: from (the screen being left,
+// nil for a blank one) slides up, the rabbit-hole goes by with the biome's
+// name on its wall, and you land on its title and biome.intro.<topic>. It
+// shows every biome start and leaves on its own after a moment.
 func NewBiome(topic string, from []string) *Scene {
-	name := flavor.BiomeName(topic)
+	return NewNodeBiome("", topic, flavor.BiomeName(topic), from)
+}
+
+// NewNodeBiome is NewBiome for a map node (rules.Biome.ID) named name: the
+// fall lands on biome.intro.<node>, else on its topic's line, as Kernel
+// Space, a mixed node, has its own where mixed's is Userland's.
+func NewNodeBiome(node, topic, name string, from []string) *Scene {
 	title := strings.ToUpper(name)
 	if sp := strings.Join(strings.Split(title, ""), " "); ansi.StringWidth(sp) <= 70 {
 		title = sp
 	}
-	intro := lines(flavor.Story("biome.intro."+topic, 0))
+	intro := lines(flavor.Story("biome.intro."+node, 0))
+	if node == "" || len(intro) == 0 {
+		intro = lines(flavor.Story("biome.intro."+topic, 0))
+	}
 	return newScene("", biomeDwell, func(w, h int) anim.Clip {
 		said := typed(intro, w)
 		parts := []anim.Clip{over(fadeIn(fit([]string{title}, w), strong()), widest(said.Lines))}

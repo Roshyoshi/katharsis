@@ -38,6 +38,10 @@ type Env struct {
 	// chosen while its download runs, nil for none.
 	Fetch map[catalog.ID]Fetch
 	Wait  *Wait
+	// Module names the RTFM module whose trial opens topic's capability
+	// for the player, for a route's locked exit; nil, or "" while RTFM is
+	// not loaded, names the capability instead.
+	Module func(topic string) string
 }
 
 // flavorSource is the slice of internal/flavor the screens use. fl points at
@@ -214,9 +218,12 @@ type step struct {
 	N       int
 }
 
-// steps replays the boot's attempts onto its biomes. Rooms only advance
-// on a clear (a retreat, or a timeout that cost a life, draws the same
-// room again; any other outcome ends the boot), so the walk is exact. The
+// steps replays the boot's attempts onto its biomes. Rooms advance on a
+// clear and, under cycles' rules.FailMoveOn, on a room lost to a timeout
+// or a give-up the boot survived (D47); a retreat, a boss's failure (a new
+// boss door) and D44's timeout draw the same room again, and any other
+// outcome ends the boot, so the walk is exact. An attempt that records its
+// biome (Attempt.Biome, later than the walk) moves the walk there. The
 // open or crashing attempt is included once even if the engine has not
 // yet moved it into History.
 func steps(st *game.State) []step {
@@ -235,8 +242,11 @@ func steps(st *game.State) []step {
 	out := make([]step, 0, len(atts))
 	b, r := 0, 0
 	for i, a := range atts {
+		if a.Biome > b && a.Biome < len(st.Biomes) {
+			b, r = a.Biome, 0
+		}
 		out = append(out, step{Attempt: a, Biome: b, Room: r, N: i + 1})
-		if a.Outcome == game.Cleared {
+		if a.Outcome == game.Cleared || lostRoom(st, a, b) {
 			r++
 			if b < len(st.Biomes) && r >= st.Biomes[b].Rooms {
 				b, r = b+1, 0
@@ -244,6 +254,17 @@ func steps(st *game.State) []step {
 		}
 	}
 	return out
+}
+
+// lostRoom reports whether attempt a, in biome b, lost its room and moved
+// the boot on (rules.FailMoveOn): a timeout or a give-up outside a boss,
+// in a biome with a failure price. A boss draws a new boss door.
+func lostRoom(st *game.State, a game.Attempt, b int) bool {
+	if a.Outcome != game.TimedOut && a.Outcome != game.GaveUp || !st.Rules.FailMoveOn {
+		return false
+	}
+	rb, ok := ruleBiome(st, b)
+	return ok && rb.FailCycles > 0 && b < len(st.Biomes) && st.Biomes[b].Kind != rules.Boss
 }
 
 // doorText is what a door shows before it is opened. Blind hides tags, as
