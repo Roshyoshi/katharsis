@@ -92,6 +92,20 @@ func TestHM(t *testing.T) {
 	}
 }
 
+func TestHMShort(t *testing.T) {
+	for _, c := range []struct {
+		d    time.Duration
+		want string
+	}{
+		{0, "0m"}, {-time.Minute, "0m"}, {52*time.Minute + 59*time.Second, "52m"}, {time.Hour, "1h00m"},
+		{41*time.Hour + 5*time.Minute + 40*time.Second, "41h05m"}, {141*time.Hour + 12*time.Minute, "141h12m"},
+	} {
+		if got := HMShort(c.d); got != c.want {
+			t.Errorf("HMShort(%v) = %q, want %q", c.d, got, c.want)
+		}
+	}
+}
+
 func TestHearts(t *testing.T) {
 	for _, c := range []struct {
 		n, of int

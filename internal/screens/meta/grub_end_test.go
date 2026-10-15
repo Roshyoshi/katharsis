@@ -2,6 +2,7 @@ package meta_test
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -143,5 +144,99 @@ func TestGrubRegressionDays(t *testing.T) {
 			t.Errorf("regression %d: want %q in:\n%s", i+1, w, v)
 		}
 		press(t, g, "down")
+	}
+}
+
+// fullGrub is GRUB with all the news the status line can carry beside
+// TIME+: the days away, the load average, the budget passed and a source
+// still indexing.
+func fullGrub(timePlus time.Duration) *meta.Menu {
+	c := fixture.GrubConfig()
+	c.Away, c.Today, c.Budget = 5, 3*time.Hour+12*time.Minute, 3*time.Hour
+	c.Load = &[3]float64{0.71, 0.43, 0.30}
+	c.Sources = func() string { return "Codeforces indexing… 40%" }
+	c.TimePlus = timePlus
+	return meta.NewGrub(c)
+}
+
+// loadGrub is GRUB for a player who plays most days: a load average and
+// nothing else on the status line.
+func loadGrub() *meta.Menu {
+	c := fixture.GrubConfig()
+	c.Load = &[3]float64{0.71, 0.43, 0.30}
+	return meta.NewGrub(c)
+}
+
+// statusLine is the view's status line, the one with the bank.
+func statusLine(v string) string {
+	for _, l := range strings.Split(plain(v), "\n") {
+		if strings.Contains(l, "bank ") {
+			return strings.TrimSpace(l)
+		}
+	}
+	return ""
+}
+
+// TIME+ sits by the bank and rating where the status line has room, and
+// is the first thing to go where it has none: the line is then the one
+// it would be without TIME+, the news intact.
+func TestGrubTimePlus(t *testing.T) {
+	tp := fixture.Stats().TimePlus
+	for _, sz := range sizes {
+		if s := statusLine(grub().View(sz[0], sz[1])); !strings.HasPrefix(s, "bank 1.3 KiB · rating 1432 · TIME+ 61h20m · next boot #43") {
+			t.Errorf("at %dx%d the status line is %q", sz[0], sz[1], s)
+		}
+		if got, want := statusLine(fullGrub(tp).View(sz[0], sz[1])), statusLine(fullGrub(0).View(sz[0], sz[1])); got != want {
+			t.Errorf("at %dx%d a full line kept TIME+ over its news:\n%q\nwant %q", sz[0], sz[1], got, want)
+		}
+	}
+	// One load average leaves no room at 80 columns, and plenty at 140.
+	if s := statusLine(loadGrub().View(80, 24)); strings.Contains(s, "TIME+") || !strings.Contains(s, "load average") {
+		t.Errorf("at 80x24 with a load average: %q", s)
+	}
+	if s := statusLine(loadGrub().View(140, 40)); !strings.Contains(s, "rating 1432 · TIME+ 61h20m · next boot #43 · load average") {
+		t.Errorf("at 140x40 with a load average: %q", s)
+	}
+	c := fixture.GrubConfig()
+	c.TimePlus = 0
+	if s := statusLine(meta.NewGrub(c).View(140, 40)); strings.Contains(s, "TIME+") {
+		t.Errorf("no TIME+ yet, but: %q", s)
+	}
+}
+
+// top's TIME+ is the header's total, in the meter TIME+ took from the
+// boots-only uptime, and each topic's share in its own column, which s
+// sorts by after TOPIC.
+func TestTopTimePlus(t *testing.T) {
+	st := fixture.Stats()
+	var sum time.Duration
+	for _, r := range st.Topics {
+		sum += r.Time
+	}
+	if sum != st.TimePlus {
+		t.Fatalf("fixture topics add up to %v, TIME+ is %v", sum, st.TimePlus)
+	}
+	for _, sz := range sizes {
+		v := plain(meta.NewTop(st).View(sz[0], sz[1]))
+		if !strings.Contains(v, "TIME+: 61:20:44") || strings.Contains(v, "Uptime") {
+			t.Errorf("at %dx%d no TIME+ meter:\n%s", sz[0], sz[1], v)
+		}
+		lines := strings.Split(v, "\n")
+		head := slices.IndexFunc(lines, func(l string) bool { return strings.HasPrefix(l, "  TOPIC") })
+		if head < 0 || !strings.Contains(lines[head], "RATING     TIME+") {
+			t.Fatalf("at %dx%d no TIME+ column:\n%s", sz[0], sz[1], v)
+		}
+		for _, want := range [][2]string{{"dp", "9:41:20"}, {"strings", "47:12"}} {
+			i := slices.IndexFunc(lines, func(l string) bool { return strings.HasPrefix(l, "  "+want[0]+" ") })
+			if i < 0 {
+				if sz[1] >= 40 {
+					t.Errorf("at %dx%d no %s row", sz[0], sz[1], want[0])
+				}
+				continue
+			}
+			if f := strings.Fields(lines[i]); len(f) < 6 || f[5] != want[1] {
+				t.Errorf("at %dx%d %s reads %q, want TIME+ %s", sz[0], sz[1], want[0], lines[i], want[1])
+			}
+		}
 	}
 }

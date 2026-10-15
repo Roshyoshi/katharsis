@@ -39,6 +39,7 @@ var topSorts = []topSort{
 	{"ATT", func(a, b TopicStat) int { return cmp.Compare(b.Attempts, a.Attempts) }},
 	{"CLR%", func(a, b TopicStat) int { return cmp.Compare(clearRate(b), clearRate(a)) }},
 	{"TOPIC", func(a, b TopicStat) int { return cmp.Compare(a.Topic, b.Topic) }},
+	{"TIME+", func(a, b TopicStat) int { return cmp.Compare(b.Time, a.Time) }},
 }
 
 func clearRate(t TopicStat) float64 {
@@ -196,7 +197,7 @@ func (t *Top) meters(w int) []string {
 		label("Crashes") + strings.Join(causes, ", "),
 		meterBar("Solves", w, solves, fmt.Sprint(ind+hint+ed)),
 		legend(w, solves),
-		label("Uptime") + val(uptime(st.Uptime)),
+		label("TIME+") + val(units.Clock(st.TimePlus)),
 		label("Bytes") + val(units.Bytes(st.LifetimeBytes)) + " lifetime, " + val(units.Bytes(st.Bank)) + " bank",
 		label("Trend") + ui.Focus.Render(sparkline(t.ratings, max(min(w-20, 30), 0))) + delta + ui.Muted.Render(" last 10"),
 	}
@@ -264,6 +265,7 @@ const (
 	colTopic  = 17
 	colNum    = 6
 	colRating = 8
+	colTime   = 10 // "  41:12:08": units.Clock, as every duration column
 )
 
 func (t *Top) tableHeader(w int) string {
@@ -276,6 +278,7 @@ func (t *Top) tableHeader(w int) string {
 		{ui.AlignRight("CLR", colNum), ""},
 		{ui.AlignRight("CLR%", colNum), "CLR%"},
 		{ui.AlignRight("RATING", colRating), "RATING"},
+		{ui.AlignRight("TIME+", colTime), "TIME+"},
 		{"  CLEARS / ATTEMPTS", ""},
 	}
 	var b strings.Builder
@@ -305,7 +308,7 @@ func (t *Top) table(w, h int) []string {
 	for _, r := range t.rows {
 		maxAtt = max(maxAtt, r.Attempts)
 	}
-	barW := w - colTopic - 3*colNum - colRating - 4
+	barW := w - colTopic - 3*colNum - colRating - colTime - 4
 
 	var out []string
 	for i := t.top; i < len(t.rows) && i < t.top+h; i++ {
@@ -319,9 +322,13 @@ func (t *Top) table(w, h int) []string {
 		if r.Rating > 0 {
 			rating = ui.Rank(r.Rating).Render(ui.AlignRight(fmt.Sprintf("%.0f", r.Rating), colRating))
 		}
+		spent := ui.Muted.Render(ui.AlignRight("-", colTime))
+		if r.Time > 0 {
+			spent = ui.AlignRight(units.Clock(r.Time), colTime)
+		}
 		line := ui.Fit("  "+r.Topic, colTopic) +
 			ui.AlignRight(fmt.Sprint(r.Attempts), colNum) +
-			ui.AlignRight(fmt.Sprint(r.Clears), colNum) + rate + rating +
+			ui.AlignRight(fmt.Sprint(r.Clears), colNum) + rate + rating + spent +
 			"  " + topicBar(r, maxAtt, barW)
 		if i == t.sel {
 			line = ui.Field.Render(ui.Fit(ansi.Strip(line), w))

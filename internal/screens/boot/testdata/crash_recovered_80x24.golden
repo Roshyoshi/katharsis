@@ -4,7 +4,6 @@
 [ 4203.000] Modules linked in: strace(O)
 [ 4203.000] Call Trace:
 [ 4203.000]  it_real_fn+0x1d/0x80
-[ 4203.000]  hrtimer_interrupt+0x10f/0x240
 [ 4203.000]  door_5+0x1e/0x1e [The Heap]
 [ 4203.000]  ... 4 older doors
 [ 4203.000]  boot_42+0x46/0x69
@@ -15,7 +14,8 @@
      Stub crash.epitaph.timed-out, a line in the story's voice.
 
   core dump recovered: +144 B banked
-  kept   rating 1214 → 1180 ▼34 · bank 2.2 KiB · ↺ back as a door Oct 17
+  kept   rating 1214 → 1180 ▼34 · bank 2.2 KiB · TIME+ 29:47 → 30:57
+         ↺ back as a door Oct 17
          apt strace ▓▓▓▓▓▓▓░ 2.2 KiB/2.4 KiB · ≈2 boots
          Gold ▓▓░░░░░░ 22/60 rated doors, then a clear
   lever  ⏱ 30:00 ran out before a :Submit · ≈66% predicted, curse not counted

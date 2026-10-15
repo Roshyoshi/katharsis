@@ -100,7 +100,7 @@ func (m *Model) stats(st store.Stats, hist []store.RatingPoint) meta.Stats {
 		Boots:         st.Boots,
 		FullClears:    st.FullClears,
 		Crashes:       st.Crashes,
-		Uptime:        st.Uptime,
+		TimePlus:      st.TimePlus,
 		LifetimeBytes: m.meta.LifetimeBytes,
 		Bank:          m.meta.Bank,
 	}
@@ -113,6 +113,7 @@ func (m *Model) stats(st store.Stats, hist []store.RatingPoint) meta.Stats {
 			Attempts: t.Attempts,
 			Clears:   t.Clears,
 			Rating:   m.meta.TopicRating[topic],
+			Time:     t.Time,
 		})
 	}
 	return s

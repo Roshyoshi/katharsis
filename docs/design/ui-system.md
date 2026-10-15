@@ -549,7 +549,7 @@ One leaf package with no dependencies, so the engine can use it too:
 | memory (RSS) | `judge.Bytes` stays: `9M`, `1.2K` | it must not look like currency |
 | countdown | `mm:ss`, then `h:mm:ss`, rounded **up** (`fmtCountdown`) | `14:51`, `1:12:30` |
 | durations in tables and logs | `mm:ss` / `h:mm:ss`, zero-padded minutes | `08:41 / 15:00` |
-| uptime (top only) | htop's `2 days, 03:12:09` | parody |
+| TIME+ (lifetime time inside doors) | top: as durations (`units.Clock`); GRUB's status line: `units.HMShort`; a boot's debrief: `units.HM`, as its budget line | `61:20:44`, `61h20m`, `29:47 → 30:46` |
 | counts | `16/30` (no spaces); time pairs `09:20 / 15:00` (spaced) | |
 | plurals | `plural(n, noun)` everywhere | `1 boot`, `2 boots` |
 

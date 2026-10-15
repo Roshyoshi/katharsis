@@ -87,6 +87,8 @@ func GrubConfig() meta.GrubConfig {
 		Story:    func(hook string, _ uint64) string { return "stub " + hook + ", a line in the story's voice" },
 		Gate:     game.PrestigeGate{Next: 3, Rated: 34, Need: 60},
 		Packages: Packages(),
+		// The same TIME+ as top's Stats.
+		TimePlus: Stats().TimePlus,
 	}
 }
 
@@ -209,22 +211,22 @@ func Stats() meta.Stats {
 		Rating:        1432,
 		RatingHistory: hist,
 		Topics: []meta.TopicStat{
-			{Topic: "dp", Attempts: 22, Clears: 14, Rating: 1612},
-			{Topic: "graphs", Attempts: 19, Clears: 8, Rating: 1430},
-			{Topic: "sorting-greedy", Attempts: 31, Clears: 24, Rating: 1515},
-			{Topic: "prefix-sums", Attempts: 14, Clears: 12, Rating: 1550},
-			{Topic: "binary-search", Attempts: 12, Clears: 7, Rating: 1390},
-			{Topic: "simulation", Attempts: 26, Clears: 23, Rating: 1350},
-			{Topic: "complete-search", Attempts: 18, Clears: 15, Rating: 1320},
-			{Topic: "two-pointers", Attempts: 7, Clears: 5, Rating: 1405},
-			{Topic: "trees", Attempts: 9, Clears: 3, Rating: 1280},
-			{Topic: "shortest-paths", Attempts: 6, Clears: 2, Rating: 1240},
-			{Topic: "dsu", Attempts: 4, Clears: 3, Rating: 1460},
-			{Topic: "math", Attempts: 11, Clears: 6, Rating: 1300},
-			{Topic: "strings", Attempts: 3, Clears: 1, Rating: 1150},
-			{Topic: "data-structures", Attempts: 5, Clears: 2, Rating: 1260},
+			{Topic: "dp", Attempts: 22, Clears: 14, Rating: 1612, Time: 9*time.Hour + 41*time.Minute + 20*time.Second},
+			{Topic: "graphs", Attempts: 19, Clears: 8, Rating: 1430, Time: 7*time.Hour + 58*time.Minute + 5*time.Second},
+			{Topic: "sorting-greedy", Attempts: 31, Clears: 24, Rating: 1515, Time: 8*time.Hour + 12*time.Minute + 44*time.Second},
+			{Topic: "prefix-sums", Attempts: 14, Clears: 12, Rating: 1550, Time: 3*time.Hour + 31*time.Minute + 10*time.Second},
+			{Topic: "binary-search", Attempts: 12, Clears: 7, Rating: 1390, Time: 4*time.Hour + 5*time.Minute + 33*time.Second},
+			{Topic: "simulation", Attempts: 26, Clears: 23, Rating: 1350, Time: 5*time.Hour + 52*time.Minute + 18*time.Second},
+			{Topic: "complete-search", Attempts: 18, Clears: 15, Rating: 1320, Time: 4*time.Hour + 40*time.Minute + 2*time.Second},
+			{Topic: "two-pointers", Attempts: 7, Clears: 5, Rating: 1405, Time: time.Hour + 48*time.Minute + 30*time.Second},
+			{Topic: "trees", Attempts: 9, Clears: 3, Rating: 1280, Time: 3*time.Hour + 20*time.Minute + 47*time.Second},
+			{Topic: "shortest-paths", Attempts: 6, Clears: 2, Rating: 1240, Time: 2*time.Hour + 31*time.Minute + 9*time.Second},
+			{Topic: "dsu", Attempts: 4, Clears: 3, Rating: 1460, Time: time.Hour + 2*time.Minute + 15*time.Second},
+			{Topic: "math", Attempts: 11, Clears: 6, Rating: 1300, Time: 3*time.Hour + 9*time.Minute + 51*time.Second},
+			{Topic: "strings", Attempts: 3, Clears: 1, Rating: 1150, Time: 47*time.Minute + 12*time.Second},
+			{Topic: "data-structures", Attempts: 5, Clears: 2, Rating: 1260, Time: time.Hour + 55*time.Minute + 40*time.Second},
 			{Topic: "geometry", Rating: 1000},
-			{Topic: "mixed", Attempts: 8, Clears: 5, Rating: 1380},
+			{Topic: "mixed", Attempts: 8, Clears: 5, Rating: 1380, Time: 2*time.Hour + 44*time.Minute + 8*time.Second},
 		},
 		Solves: map[game.SolveKind]int{
 			game.Independent: 88, game.Hinted: 30, game.Editorial: 12,
@@ -234,7 +236,8 @@ func Stats() meta.Stats {
 		Crashes: map[game.Outcome]int{
 			game.TimedOut: 18, game.OutOfLives: 10, game.GaveUp: 4,
 		},
-		Uptime:        51*time.Hour + 12*time.Minute + 9*time.Second,
+		// TIME+ is the topics' times added up: where the hours went.
+		TimePlus:      61*time.Hour + 20*time.Minute + 44*time.Second,
 		LifetimeBytes: 12698,
 		Bank:          1331,
 		// The last 20 boots: the engine forecast 18% early crashes, 3 did.

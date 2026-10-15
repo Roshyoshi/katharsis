@@ -79,7 +79,10 @@ type Stats struct {
 	FullClears int
 	Crashes    map[game.Outcome]int // by cause: TimedOut, OutOfLives, GaveUp
 
-	Uptime        time.Duration // summed over all boots
+	// TimePlus is the lifetime time inside doors (TIME+, after top's
+	// cumulative-time column): every boot's uptime and every upsolve. It
+	// only ever grows, never resets, and keys no goal (GR1).
+	TimePlus      time.Duration
 	LifetimeBytes int64
 	Bank          int64
 
@@ -111,23 +114,10 @@ type TopicStat struct {
 	Attempts int
 	Clears   int
 	Rating   float64
+	Time     time.Duration // TIME+ on the topic: its closed doors and upsolves
 }
 
 // ---- formatting ---------------------------------------------------------------
-
-// uptime formats a long duration as htop does: "3 days, 04:12:33".
-func uptime(d time.Duration) string {
-	d = d.Round(time.Second)
-	days := int(d.Hours()) / 24
-	hms := fmt.Sprintf("%02d:%02d:%02d", int(d.Hours())%24, int(d.Minutes())%60, int(d.Seconds())%60)
-	switch days {
-	case 0:
-		return hms
-	case 1:
-		return "1 day, " + hms
-	}
-	return fmt.Sprintf("%d days, %s", days, hms)
-}
 
 // ago formats how long before now t was, coarsely: "5h ago", "2d ago".
 func ago(t, now time.Time) string {

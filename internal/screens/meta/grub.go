@@ -55,6 +55,10 @@ type GrubConfig struct {
 	// next boot a comeback (game.Comeback, retention RT8), 0 otherwise:
 	// the status line says "first boot in N days", as the boot will.
 	Away int
+	// TimePlus is the lifetime time inside doors (TIME+, store.TimePlus),
+	// beside the bank and rating where the status line has room; 0 shows
+	// none.
+	TimePlus time.Duration
 
 	// PrestigeName and Banner default to the flavor package. Tests pin them
 	// so goldens do not churn whenever flavor text changes.
@@ -67,15 +71,17 @@ type GrubConfig struct {
 // Menu is a GRUB 2 style text menu: a boxed list with one highlighted
 // entry, submenus, and an `e` editor for boot entries.
 type Menu struct {
-	stack   []*page // stack[0] is the root; submenus push
-	edit    *editor
-	presets []string
-	maxP    int
-	nameOf  func(int) string
-	banner  string
-	status  string
-	gate    string // the prestige gate line under the status, "" for none
-	motd    string // boot.motd, on the status line when it fits
+	stack    []*page // stack[0] is the root; submenus push
+	edit     *editor
+	presets  []string
+	maxP     int
+	nameOf   func(int) string
+	banner   string
+	totals   string // the status line's head: bank and rating
+	timePlus string // "TIME+ 41h12m", after totals when it fits; "" for none
+	status   string // the rest: the next boot and the news after it
+	gate     string // the prestige gate line under the status, "" for none
+	motd     string // boot.motd, on the status line when it fits
 	// firstRegression is set until the regressions submenu has opened
 	// with story.first-regression unseen: the first open plays it.
 	firstRegression bool
@@ -142,8 +148,11 @@ func NewGrub(c GrubConfig) *Menu {
 			m.presets = append(m.presets, p)
 		}
 	}
-	m.status = fmt.Sprintf("bank %s"+ui.G.Sep+"rating %.0f"+ui.G.Sep+"next boot #%d",
-		units.Bytes(c.Meta.Bank), c.Meta.Rating, c.Meta.Boots+1)
+	m.totals = fmt.Sprintf("bank %s"+ui.G.Sep+"rating %.0f", units.Bytes(c.Meta.Bank), c.Meta.Rating)
+	if c.TimePlus > 0 {
+		m.timePlus = "TIME+ " + units.HMShort(c.TimePlus)
+	}
+	m.status = fmt.Sprintf("next boot #%d", c.Meta.Boots+1)
 	// The days away go next to the boot they make a comeback, before what
 	// a narrow line clips. A fact, never a guilt line (GR8).
 	if c.Away > 0 {
@@ -550,11 +559,17 @@ func (m *Menu) View(width, height int) string {
 	for i := range foot {
 		foot[i] = strings.Repeat(" ", max((w-helpW)/2, 1)) + foot[i]
 	}
-	status := m.status
+	news := m.status
 	if m.sources != nil {
 		if note := m.sources(); note != "" {
-			status += ui.G.Sep + note
+			news += ui.G.Sep + note
 		}
+	}
+	// TIME+ joins the totals where the line has room for it, and is the
+	// first thing dropped where it has none: the rest is news, TIME+ a count.
+	status := m.totals + ui.G.Sep + news
+	if with := m.totals + ui.G.Sep + m.timePlus + ui.G.Sep + news; m.timePlus != "" && ansi.StringWidth(with) <= w-2 {
+		status = with
 	}
 	// The motd rides along where the line has room for it (boot.motd).
 	if m.motd != "" && ansi.StringWidth(status+ui.G.Sep+m.motd) <= w-2 {

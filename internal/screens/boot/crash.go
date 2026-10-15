@@ -89,6 +89,16 @@ func (c *Crash) tick() tea.Cmd {
 
 func (c *Crash) crash() game.Crash { return *c.env.State.Crash }
 
+// uptime is the boot's uptime at its crash: the engine's number, the one the
+// panic screen shows, or the boot's doors up to the crash in a snapshot
+// saved without it.
+func (c *Crash) uptime(cr game.Crash) time.Duration {
+	if cr.Uptime == 0 {
+		return c.env.State.Uptime(cr.At)
+	}
+	return cr.Uptime
+}
+
 func (c *Crash) brief() game.Brief { return game.Debrief(c.env.State, &c.env.Meta) }
 
 func (c *Crash) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
@@ -234,10 +244,7 @@ func (c *Crash) elements(width, height int) [][]string {
 // innermost frame, the door that crashed and the boot frame always stay.
 func (c *Crash) panic(cr game.Crash, verdict, title string, seed uint64, width, room int) [][]string {
 	st := c.env.State
-	up := cr.Uptime
-	if up == 0 {
-		up = st.Uptime(cr.At)
-	}
+	up := c.uptime(cr)
 	reason := fl.PanicReason(cr.Cause, verdict)
 	switch {
 	case cr.Cursed:
@@ -365,7 +372,8 @@ func (c *Crash) end(cr game.Crash, verdict, title string, seed uint64, width int
 	if b.Topic != "" {
 		kept = append(kept, ratingItem(b.TopicRating, b.Topic, true))
 	}
-	kept = append(kept, ui.Muted.Render("bank ")+units.Bytes(b.Bank), regressionItem(b.Regression, env.Now))
+	kept = append(kept, ui.Muted.Render("bank ")+units.Bytes(b.Bank), timePlusItem(env.End.TimePlus, c.uptime(cr)),
+		regressionItem(b.Regression, env.Now))
 	kept = append(kept, easeItems(env.State)...)
 	kept = append(kept, brk, goalItem(env.End.Goal, b.Bank), brk, gateItem(b.Gate, env.Meta.Prestige))
 	ps = append(ps,

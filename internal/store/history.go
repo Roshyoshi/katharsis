@@ -144,6 +144,7 @@ func (s *Store) RatingHistory(since time.Time) ([]RatingPoint, error) {
 type TopicStats struct {
 	Attempts int
 	Clears   int
+	Time     time.Duration // TIME+ on the topic (topicTimes)
 }
 
 // Stats is the totals behind `top`.
@@ -153,7 +154,7 @@ type Stats struct {
 	Crashes    map[game.Outcome]int   // by cause
 	Solves     map[game.SolveKind]int // from Meta.Solves, upsolves included
 	Topics     map[string]TopicStats
-	Uptime     time.Duration // summed over boots
+	TimePlus   time.Duration // lifetime time inside doors (timeplus.go)
 }
 
 // Stats reads every total from one snapshot, so the numbers agree with each
@@ -165,14 +166,11 @@ func (s *Store) Stats() (Stats, error) {
 		Topics:  map[string]TopicStats{},
 	}
 	err := s.read(func(tx *sql.Tx) error {
-		var uptime int64
 		if err := tx.QueryRow(`
-			SELECT COUNT(*), COALESCE(SUM(outcome = 'cleared'), 0),
-				COALESCE(SUM(uptime), 0)
-			FROM boots`).Scan(&st.Boots, &st.FullClears, &uptime); err != nil {
+			SELECT COUNT(*), COALESCE(SUM(outcome = 'cleared'), 0)
+			FROM boots`).Scan(&st.Boots, &st.FullClears); err != nil {
 			return err
 		}
-		st.Uptime = time.Duration(uptime)
 
 		if err := eachRow(tx, `
 			SELECT cause, COUNT(*) FROM boots
@@ -211,7 +209,21 @@ func (s *Store) Stats() (Stats, error) {
 		for _, sv := range m.Solves {
 			st.Solves[sv.Kind]++
 		}
-		return nil
+
+		ups, err := upsolveTimes(tx, m.Solves)
+		if err != nil {
+			return err
+		}
+		if st.TimePlus, err = timePlus(tx, 0, ups); err != nil {
+			return err
+		}
+		times, err := topicTimes(tx, ups)
+		for topic, d := range times {
+			t := st.Topics[topic]
+			t.Time = d
+			st.Topics[topic] = t
+		}
+		return err
 	})
 	return st, err
 }

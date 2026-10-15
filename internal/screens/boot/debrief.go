@@ -35,6 +35,9 @@ type End struct {
 	// Today is how long the player has played today; Budget is the
 	// session budget (RT12), 0 for none. Past it, one line says so.
 	Today, Budget time.Duration
+	// TimePlus is the player's TIME+ without this boot (store.TimePlus),
+	// nil when unknown; kept shows it before and after the boot.
+	TimePlus *time.Duration
 	// Firsts are up to two first-time or personal-best lines for a clear
 	// (RT1): "first Heisenbug kill", "fastest clear: 1:52:10".
 	Firsts []string
@@ -259,6 +262,18 @@ func ratingItem(c game.Change, label string, crashed bool) string {
 	}
 	before := ui.Rank(c.Before).Render(fmt.Sprintf("%.0f", c.Before))
 	return ui.Muted.Render(label+" ") + before + ui.Muted.Render(" "+ui.G.Arrow+" ") + now + move
+}
+
+// timePlusItem is TIME+, the lifetime time inside doors, before and after
+// up, this boot's uptime: "TIME+ 41:12 → 43:05", in the hours and minutes
+// of the budget line; "" when before is unknown. It is a count that only
+// grows and never resets, kept with the bank and away from the goal bars:
+// no goal is keyed to it (GR1).
+func timePlusItem(before *time.Duration, up time.Duration) string {
+	if before == nil {
+		return ""
+	}
+	return ui.Muted.Render("TIME+ ") + units.HM(*before) + ui.Muted.Render(" "+ui.G.Arrow+" ") + units.HM(*before+up)
 }
 
 // goalItem is the bar toward apt's next package (RT3), with the ETA at the

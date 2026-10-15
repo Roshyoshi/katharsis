@@ -621,11 +621,13 @@ func TestStats(t *testing.T) {
 		FullClears: 1,
 		Crashes:    map[game.Outcome]int{game.TimedOut: 2, game.OutOfLives: 1},
 		Solves:     map[game.SolveKind]int{game.Independent: 1, game.Hinted: 1, game.Editorial: 1},
+		// Simulation: 9 + 14 min in each of the six boots. Prefix sums: 20 min
+		// on each crash, 25 on the clear; boots 5 and 6 left theirs open.
 		Topics: map[string]store.TopicStats{
-			"simulation":  {Attempts: 12, Clears: 12},
-			"prefix-sums": {Attempts: 4, Clears: 1},
+			"simulation":  {Attempts: 12, Clears: 12, Time: 6 * 23 * time.Minute},
+			"prefix-sums": {Attempts: 4, Clears: 1, Time: 85 * time.Minute},
 		},
-		Uptime: uptime,
+		TimePlus: uptime,
 	}
 	same(t, "stats", got, want)
 

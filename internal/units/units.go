@@ -84,6 +84,17 @@ func HM(d time.Duration) string {
 	return fmt.Sprintf("%d:%02d", int(d.Hours()), int(d.Minutes())%60)
 }
 
+// HMShort is HM with its units spelled, for a line short of room where a
+// bare "41:12" could read as minutes: "41h12m", "41h05m", and "52m" under
+// an hour. It counts whole minutes gone, so it never disagrees with HM.
+func HMShort(d time.Duration) string {
+	d = max(d, 0).Truncate(time.Minute)
+	if d < time.Hour {
+		return fmt.Sprintf("%dm", int(d.Minutes()))
+	}
+	return fmt.Sprintf("%dh%02dm", int(d.Hours()), int(d.Minutes())%60)
+}
+
 // Hearts is the cycles pool (D48: lives renamed cycles, still drawn as ♥)
 // as one heart and a count, "♥ 24/30": a row of 30 hearts fits no line.
 // of is what the count is out of, the pool the boot was dealt; a heal can

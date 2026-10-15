@@ -36,12 +36,15 @@ var stubTale = taleSource{
 func init() { tale = stubTale }
 
 // end is the app's figures as a player twenty boots in would have them:
-// apt's next package, ETAs from their own boots, short and patch offered.
+// apt's next package, ETAs from their own boots, short and patch offered,
+// and their TIME+ before this boot.
 func end() End {
+	timePlus := 29*time.Hour + 47*time.Minute + 20*time.Second
 	return End{
-		Goal:    &Goal{Name: "strace", Price: 2500, Per: 140},
-		ETA:     101 * time.Minute,
-		Reboots: []Reboot{{Key: "s", Preset: "short", ETA: 62 * time.Minute}, {Key: "p", Preset: "patch"}},
+		Goal:     &Goal{Name: "strace", Price: 2500, Per: 140},
+		ETA:      101 * time.Minute,
+		Reboots:  []Reboot{{Key: "s", Preset: "short", ETA: 62 * time.Minute}, {Key: "p", Preset: "patch"}},
+		TimePlus: &timePlus,
 	}
 }
 
@@ -309,6 +312,37 @@ func TestGoalItem(t *testing.T) {
 	} {
 		if got := ansi.Strip(goalItem(&tc.g, tc.bank)); got != tc.want {
 			t.Errorf("goal %+v bank %d: %q, want %q", tc.g, tc.bank, got, tc.want)
+		}
+	}
+}
+
+// kept shows TIME+ before the boot and after it, the boot's own uptime
+// added: the crash fixture's 58:41, the clear's 2:16:52. A TIME+ the app
+// could not read shows nothing, never a zero (GR3). It is a count: no
+// streak, no goal (GR1).
+func TestKeptTimePlus(t *testing.T) {
+	crash, cleared := crashEnv(game.OutOfLives), clearedEnv()
+	crash.End, cleared.End = end(), end()
+	unknown := crashEnv(game.OutOfLives)
+	unknown.End = end()
+	unknown.End.TimePlus = nil
+	for _, tc := range []struct {
+		name string
+		s    screens.Screen
+		want string
+	}{
+		{"crash", NewCrash(crash), "TIME+ 29:47 → 30:46"},
+		{"cleared", NewCleared(cleared), "TIME+ 29:47 → 32:04"},
+		{"unknown", NewCrash(unknown), ""},
+	} {
+		for _, sz := range goldenSizes {
+			v := ansi.Strip(tc.s.View(sz[0], sz[1]))
+			if tc.want == "" && strings.Contains(v, "TIME+") || !strings.Contains(v, tc.want) {
+				t.Errorf("%s at %dx%d: want %q in:\n%s", tc.name, sz[0], sz[1], tc.want, v)
+			}
+			if strings.Contains(strings.ToLower(v), "streak") {
+				t.Errorf("%s at %dx%d says streak:\n%s", tc.name, sz[0], sz[1], v)
+			}
 		}
 	}
 }

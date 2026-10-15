@@ -93,6 +93,11 @@ func (m *Model) computeEnd(st *game.State) bootui.End {
 	var err error
 	e.ETA, err = m.d.Store.MedianUptime(st.Rules.Name, etaBoots)
 	m.logErr("eta", err)
+	if tp, err := m.d.Store.TimePlus(st.Boot); err != nil { // kept adds this boot
+		m.logErr("TIME+", err)
+	} else {
+		e.TimePlus = &tp
+	}
 	for _, o := range offered {
 		if _, ok := m.d.Presets[o.preset]; !ok || o.preset == st.Rules.Name {
 			continue
@@ -291,8 +296,8 @@ func recoveredNote(got int64) string {
 }
 
 // grubEnd adds to GRUB what the store says between boots: how today's
-// nightly has been played (RT15) and today's play against the session
-// budget (RT12). A query that fails leaves its line out.
+// nightly has been played (RT15), TIME+, and today's play against the
+// session budget (RT12). A query that fails leaves its line out.
 func (m *Model) grubEnd(c meta.GrubConfig) meta.GrubConfig {
 	now := m.d.Now()
 	if r, ok, err := m.d.Store.SeedBest(meta.NightlySeed(now)); err != nil {
@@ -300,8 +305,10 @@ func (m *Model) grubEnd(c meta.GrubConfig) meta.GrubConfig {
 	} else if ok {
 		c.Nightly = &meta.NightlyBest{Played: r.Boots, Cleared: r.Cleared, Uptime: r.Uptime, Doors: r.Doors}
 	}
+	var err error
+	c.TimePlus, err = m.d.Store.TimePlus(0)
+	m.logErr("TIME+", err)
 	if c.Budget = m.d.Budget; c.Budget > 0 {
-		var err error
 		c.Today, err = m.d.Store.PlayToday(now)
 		m.logErr("play today", err)
 	}

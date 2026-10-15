@@ -132,6 +132,8 @@ func TestGoldens(t *testing.T) {
 			c.Away = 5
 			return meta.NewGrub(c)
 		}, nil},
+		// A load average leaves TIME+ no room at 80 columns (grub_end_test.go).
+		{"grub_load", func() screens.Screen { return loadGrub() }, nil},
 		{"grub_presets", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "enter"}},
 		{"grub_regressions", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "down", "enter"}},
 		{"grub_edit", func() screens.Screen { return grub() }, []string{"e", "down", "tab", "down", "8", "f", "3", "a"}},
@@ -143,6 +145,7 @@ func TestGoldens(t *testing.T) {
 		{"log_crashed", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, []string{"f", "f", "j", "enter"}},
 		{"top", func() screens.Screen { return meta.NewTop(fixture.Stats()) }, nil},
 		{"top_sorted", func() screens.Screen { return meta.NewTop(fixture.Stats()) }, []string{"s", "j", "j"}},
+		{"top_timeplus", func() screens.Screen { return meta.NewTop(fixture.Stats()) }, []string{"s", "s", "s", "s"}},
 		{"shop", func() screens.Screen { return meta.NewShop(fixture.ShopConfig()) }, []string{"j", "j"}},
 	}
 	for _, c := range cases {
@@ -165,8 +168,10 @@ func TestGoldens(t *testing.T) {
 // from cramped to huge: exactly height lines, none wider than width.
 func TestFits(t *testing.T) {
 	screensUnder := map[string]func() screens.Screen{
-		"grub": func() screens.Screen { return grub() },
-		"edit": func() screens.Screen { s := grub(); s.Update(key("e")); return s },
+		"grub":      func() screens.Screen { return grub() },
+		"grub full": func() screens.Screen { return fullGrub(fixture.Stats().TimePlus) },
+		"grub load": func() screens.Screen { return loadGrub() },
+		"edit":      func() screens.Screen { s := grub(); s.Update(key("e")); return s },
 		"regressions": func() screens.Screen {
 			s := grub()
 			for _, k := range []string{"G", "up", "up", "up", "enter"} {
@@ -508,8 +513,9 @@ func TestTopKeys(t *testing.T) {
 		}
 		return ""
 	}
-	// RATING, ATT, CLR% (simulation 23/26 beats prefix-sums 12/14), TOPIC.
-	order := []string{"dp", "sorting-greedy", "simulation", "binary-search"}
+	// RATING, ATT, CLR% (simulation 23/26 beats prefix-sums 12/14), TOPIC,
+	// TIME+ (dp's 9:41:20 beats sorting-greedy's 8:12:44).
+	order := []string{"dp", "sorting-greedy", "simulation", "binary-search", "dp"}
 	for i, want := range order {
 		if got := first(); got != want {
 			t.Errorf("sort %d: first topic %q, want %q", i, got, want)

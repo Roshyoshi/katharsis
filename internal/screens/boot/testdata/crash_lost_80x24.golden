@@ -1,5 +1,6 @@
 [ 4203.000] Kernel panic - not syncing: timer expired in "Closing the Farm"
 [ 4203.000] CPU: 0 PID: 1 Comm: you Tainted: B (blind) C (cursed)
+[ 4203.000] Hardware name: katharsis Silver, preset standard, seed 8f3a
 [ 4203.000] Call Trace:
 [ 4203.000]  it_real_fn+0x1d/0x80
 [ 4203.000]  door_5+0x1e/0x1e [The Heap]
@@ -12,10 +13,9 @@
      Stub crash.epitaph.timed-out, a line in the story's voice.
 
   core dump lost: 183 B on "Cow Poetry"
-    Stub coredump.lost verse, the first line,
-    the second, 183 B of it gone.
   core dumped: 96 B on "Closing the Farm"
-  kept   rating 1214 → 1180 ▼34 · bank 2.1 KiB · ↺ back as a door Oct 17
+  kept   rating 1214 → 1180 ▼34 · bank 2.1 KiB · TIME+ 29:47 → 30:57
+         ↺ back as a door Oct 17
          apt strace ▓▓▓▓▓▓░░ 2.1 KiB/2.4 KiB · ≈3 boots
          Gold ▓▓░░░░░░ 22/60 rated doors, then a clear
   lever  ⏱ 30:00 ran out before a :Submit · ≈66% predicted, curse not counted

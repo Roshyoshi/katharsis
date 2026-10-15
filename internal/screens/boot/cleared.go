@@ -182,6 +182,7 @@ func (c *Cleared) View(width, height int) string {
 	case !b.Trial:
 		kept = append(kept, gateItem(b.Gate, env.Meta.Prestige))
 	}
+	kept = append(kept, timePlusItem(env.End.TimePlus, uptime))
 	kept = append(kept, easeItems(st)...)
 	kept = append(kept, brk, goalItem(env.End.Goal, b.Bank), brk)
 	for _, f := range env.End.Firsts[:min(len(env.End.Firsts), 2)] {

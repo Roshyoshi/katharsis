@@ -10,6 +10,7 @@
                    cycles left ♥ 2/3 cycles
 
   kept   rating 1214 → 1262 ▲48 · ★ prestige unlocked: Gold
+         TIME+ 29:47 → 32:04
          declined: Userland aim 90% → 95% (first boot in 5 days)
          declined: +1 cycle (Userland's easiest doors in the pool are rated 800)
          apt strace affordable at GRUB
@@ -20,5 +21,4 @@
        ╭─ Userland ─╮   ╭─ The Heap ─╮   ╭─ The Mesh ─╮   ╭─ Heisenbug ─╮
        │    ✓ ✓     │───│    ✓ ✓     │───│    ✓ ✓     │───│      ✓      │
        ╰────────────╯   ╰────────────╯   ╰────────────╯   ╰─────────────╯
-
 r reboot ≈1h41 · s short ≈1h02 · p patch · b story · l git log · g GRUB
