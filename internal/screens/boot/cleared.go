@@ -20,7 +20,8 @@ import (
 // boot kept (the rating's move, the prestige it unlocked or what the next
 // still needs (D31), apt's goal bar, first-time and best lines), the
 // clear's lever, and the next step. Story lines from the boss's defeat and
-// the prestige just cleared sit under the banner.
+// the prestige just cleared (a trial's: the capability it granted) sit
+// under the banner.
 //
 // r or enter emits screens.StartBoot at the highest unlocked prestige, an
 // offered preset's key (s short, p patch) one on that preset (RT7), b
@@ -114,8 +115,14 @@ func (c *Cleared) View(width, height int) string {
 	if boss != "" {
 		defeat = centerVoice(tale.Story("boss.defeat."+boss, seed), width)
 	}
-	if st.Trial == nil {
+	switch {
+	case st.Trial == nil:
 		said = centerVoice(c.clearedLine(seed), width)
+	case st.Trial.Granted != "":
+		// The Gryphon names what the trial granted and the biome it opens
+		// (rtfm.trial.pass). A trial that granted nothing opened no route,
+		// so it gets no line.
+		said = centerVoice(c.trialLine(seed), width)
 	}
 
 	sol := units.Plural(solves, "door")
@@ -206,6 +213,15 @@ func (c *Cleared) clearedLine(seed uint64) string {
 	}
 	ring, _ := flavor.Ring(p)
 	return flavor.Fill(tale.Story("cleared.beyond", seed), "ring", strconv.Itoa(ring))
+}
+
+// trialLine is the story's line for a trial that granted a capability:
+// the capability, and the biome of the topic it unlocks (the trial's
+// integration topic is the module's, and so is the capability).
+func (c *Cleared) trialLine(seed uint64) string {
+	tr := c.env.State.Trial
+	return flavor.Fill(tale.Story("rtfm.trial.pass", seed),
+		"cap", ui.Clip(tr.Granted, 14), "biome", ui.Clip(fl.BiomeName(tr.IntegTopic), 18))
 }
 
 // centerVoice is a story line in the flavor voice, centered, wrapped to

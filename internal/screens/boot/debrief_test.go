@@ -51,6 +51,23 @@ func clearedEnv() Env {
 	return e
 }
 
+// trialClearedEnv is the cleared fixture played as a learn-mode trial of a
+// dp module that granted granted ("" when the capability was already
+// held): no boss door, no prestige unlocked.
+func trialClearedEnv(granted string) Env {
+	e := clearedEnv()
+	st := e.State
+	for i := range st.History {
+		st.History[i].Door.Boss = ""
+	}
+	st.Unlocked = 0
+	st.Trial = &game.TrialState{
+		TrialSpec: game.TrialSpec{Module: "dp-intro", Title: "Introduction to DP", IntegTopic: "dp", Capability: "CAP_DP"},
+		Passed:    true, Granted: granted,
+	}
+	return e
+}
+
 func endCases() []screenCase {
 	return []screenCase{
 		{"crash_end", func() screens.Screen {
@@ -102,6 +119,9 @@ func endCases() []screenCase {
 			e.End = end()
 			return NewCleared(e)
 		}},
+		// A trial that granted its capability: the Gryphon's line in place of
+		// the prestige's (rtfm.trial.pass).
+		{"cleared_trial", func() screens.Screen { return NewCleared(trialClearedEnv("CAP_DP")) }},
 		{"merge_goal", func() screens.Screen {
 			e := env(fixture.Merge())
 			e.End = End{Goal: &Goal{Name: "strace", Price: 2300, Per: 140}}
@@ -345,5 +365,22 @@ func TestRebootPrestige(t *testing.T) {
 	e.State.Prestige, e.Meta.Prestige = 0, 2
 	if got := emitted(func() tea.Cmd { _, c := NewCrash(e).Update(press("r")); return c }()); got != (screens.StartBoot{Prestige: 0, Preset: "standard"}) {
 		t.Errorf("crash r: %#v", got)
+	}
+}
+
+// A trial that granted a capability ends on the Gryphon's line, filled
+// with the capability and the biome it opens; one that granted nothing
+// has no story line at all, not the prestige's either.
+func TestClearedTrialLine(t *testing.T) {
+	defer func() { tale = stubTale }()
+	tale = realTale
+	want := flavor.Fill(flavor.Story("rtfm.trial.pass", 0), "cap", "CAP_DP", "biome", fl.BiomeName("dp"))
+	if v := ansi.Strip(NewCleared(trialClearedEnv("CAP_DP")).View(140, 40)); !strings.Contains(v, want) {
+		t.Errorf("want %q in:\n%s", want, v)
+	}
+	tale = stubTale
+	v := ansi.Strip(NewCleared(trialClearedEnv("")).View(140, 40))
+	if strings.Contains(v, "rtfm.trial.pass") || strings.Contains(v, "Stub cleared.") {
+		t.Errorf("a trial that granted nothing has a story line:\n%s", v)
 	}
 }
