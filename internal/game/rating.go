@@ -120,6 +120,11 @@ func rated(m *Meta) int {
 	return max(m.Rated, t)
 }
 
+// RatedDoors is the rated-door count the prestige gate reads against
+// Rules.CalibAfter (rated), so text that talks about the gate says what
+// the gate will do.
+func RatedDoors(m *Meta) int { return rated(m) }
+
 // PrestigeGate is what unlocking the next prestige still needs (D31). A
 // boot cleared at the highest unlocked prestige unlocks the next, but only
 // once Need doors are rated: before calibration starts, a strong

@@ -156,13 +156,10 @@ func Debrief(st *State, m *Meta) Brief {
 	if c == nil {
 		return d
 	}
-	a, _ := crashAttempt(st)
+	a := crashAttempt(st)
 	kind := map[Outcome]LeverKind{TimedOut: LeverTimer, OutOfLives: LeverLives, GaveUp: LeverGaveUp}[c.Cause]
 	if c.Cursed {
 		kind = LeverCursed
-	}
-	if a.Door.Problem == "" {
-		a.Door = c.Door
 	}
 	d.Lever = leverOf(kind, a)
 	if d.Lever.Verdict == "" {
@@ -238,18 +235,19 @@ func upsolvedSince(m *Meta, c *Crash) (SolveKind, bool) {
 }
 
 // crashAttempt is the attempt that crashed the boot: still open in
-// Current, or already filed in History.
-func crashAttempt(st *State) (Attempt, bool) {
+// Current, or already filed in History; failing both, one on the crash's
+// door with nothing else known.
+func crashAttempt(st *State) Attempt {
 	p := st.Crash.Door.Problem
 	if c := st.Current; c != nil && c.Door.Problem == p {
-		return *c, true
+		return *c
 	}
 	for i := len(st.History) - 1; i >= 0; i-- {
 		if st.History[i].Door.Problem == p {
-			return st.History[i], true
+			return st.History[i]
 		}
 	}
-	return Attempt{}, false
+	return Attempt{Door: st.Crash.Door}
 }
 
 // lastClear is the attempt that cleared the boot: its last clear.
