@@ -26,6 +26,18 @@ func (e *engine) doorTimer(b rules.Biome, boss bool, gap float64) time.Duration 
 	return roundTimer(scale(base, e.timerMult()))
 }
 
+// RouteTimer is the timer the current biome's doors get if the player
+// takes topic, for a route card before they are drawn: a door at the
+// biome's target rating (State.Target) gets it, with every multiplier the
+// boot runs with. Once the timer fits the player's own solves (fitTimer),
+// a door above the target gets more and one below less.
+func (s *State) RouteTimer(m *Meta, topic string) time.Duration {
+	e := &engine{s: s, meta: m}
+	rb := s.Rules.Biomes[s.Biome]
+	gap := e.target(topic, s.Biome) - PlayerRating(&s.Rules, m, topic)
+	return e.doorTimer(rb, rb.Kind == rules.Boss, gap)
+}
+
 // timerMult is the product of every timer modifier this boot runs with:
 // ascension, each Overclock (compounding), nice and chrt.
 func (e *engine) timerMult() float64 {

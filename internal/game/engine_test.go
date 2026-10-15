@@ -1381,3 +1381,27 @@ func TestNextPrestige(t *testing.T) {
 		}
 	}
 }
+
+// A route card's timer (State.RouteTimer) is the one the route's doors
+// get, every boot multiplier applied: two Overclocks and nice here (UX
+// J24). Without a fitted timer every door gets it.
+func TestRouteTimer(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, routeFirst(), nil, dense(catalog.Topics, 800, 2600, 20), 0, 5)
+	if h.s.Phase != game.PhaseRoute {
+		t.Fatalf("phase %s, want route", h.s.Phase)
+	}
+	h.s.Upgrades = []game.Upgrade{game.Overclock, game.Overclock}
+	h.s.Daemons = []game.Daemon{game.Nice}
+	topic := h.s.Biomes[0].Offers[0]
+	want := h.s.RouteTimer(h.m, topic)
+	if want != 48*time.Minute { // 30m × 1.15² × 1.2 = 47.6m
+		t.Errorf("route timer %v, want 48m", want)
+	}
+	h.do(game.ChooseRoute{Index: 0})
+	for _, d := range h.s.Doors {
+		if d.Timer != want {
+			t.Errorf("door %s timer %v, route said %v", d.Problem, d.Timer, want)
+		}
+	}
+}

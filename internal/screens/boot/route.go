@@ -122,7 +122,9 @@ func (r *Route) describe(topic string) route {
 	out.rooms = units.Plural(rooms, "room")
 	rb, ok := ruleBiome(st, st.Biome)
 	if ok && rb.Timer.Duration > 0 {
-		out.rooms += ui.Muted.Render(ui.G.Sep) + ui.G.Timer + "~" + units.Clock(rb.Timer.Duration)
+		// The doors' own timer, Overclock and the rest applied (UX J24):
+		// "~", since a fitted timer moves with each door's rating.
+		out.rooms += ui.Muted.Render(ui.G.Sep) + ui.G.Timer + "~" + units.Clock(st.RouteTimer(&r.env.Meta, topic))
 	}
 	// The aim is the biome's, or what an easing raised it to (RT8).
 	aim := 0.0

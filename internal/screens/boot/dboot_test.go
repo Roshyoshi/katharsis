@@ -18,6 +18,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/screens/boot/fixture"
 	"katharsis/internal/ui"
+	"katharsis/internal/units"
 )
 
 // D36: a door card never shows the engine's clear chance, at any width;
@@ -316,5 +317,27 @@ func TestForecastAfterDoors(t *testing.T) {
 	}
 	if s := forecastItem(fixture.Crash(game.TimedOut)); s != "" {
 		t.Errorf("no forecast: %q", ansi.Strip(s))
+	}
+}
+
+// A route card's timer is the one its doors will get (State.RouteTimer),
+// Overclock included, not the biome's bare default (UX J24), on every
+// card layout.
+func TestRouteTimerOverclocked(t *testing.T) {
+	st := fixture.Route()
+	st.Upgrades = []game.Upgrade{game.Overclock, game.Overclock}
+	e := env(st)
+	bare := "~" + units.Clock(st.Rules.Biomes[st.Biome].Timer.Duration)
+	for _, topic := range st.Biomes[st.Biome].Offers {
+		want := "~" + units.Clock(st.RouteTimer(&e.Meta, topic))
+		if want == bare {
+			t.Fatalf("%s: route timer %s is the bare default; the test needs one that moved", topic, want)
+		}
+		for _, sz := range [][2]int{{140, 40}, {80, 24}} {
+			v := ansi.Strip(NewRoute(e).View(sz[0], sz[1]))
+			if !strings.Contains(v, want) || strings.Contains(v, bare) {
+				t.Errorf("%dx%d: want %s, not %s:\n%s", sz[0], sz[1], want, bare, v)
+			}
+		}
 	}
 }
