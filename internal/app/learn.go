@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"math"
@@ -18,6 +19,7 @@ import (
 	"katharsis/internal/libs"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/screens/rtfm"
 	"katharsis/internal/ui"
@@ -25,18 +27,19 @@ import (
 )
 
 type learnLoadedMsg struct {
-	cur   *curriculum.Curriculum
-	err   error
-	topic string // openLearn's
+	cur  *curriculum.Curriculum
+	err  error
+	open screens.OpenLearn // openLearn's
 }
 
-// openLearn shows the RTFM browser, with a topic at its module nearest the
-// player (learnModule). The curriculum loads from the USACO Guide snapshot
-// the USACO source already downloaded, once per session.
-func (m *Model) openLearn(topic string) tea.Cmd {
+// openLearn shows the RTFM browser: at o's module, or with a topic at its
+// module nearest the player (learnModule). The curriculum loads from the
+// USACO Guide snapshot the USACO source already downloaded, once per
+// session.
+func (m *Model) openLearn(o screens.OpenLearn) tea.Cmd {
 	if m.cur != nil {
 		b := rtfm.NewBrowser(m.cur, m.meta, m.judgeable, m.d.Catalog.Get)
-		if id := m.learnModule(topic); id != "" {
+		if id := cmp.Or(o.Module, m.learnModule(o.Topic)); id != "" {
 			b.Open(id)
 		}
 		cmd := m.push(b)
@@ -54,7 +57,7 @@ func (m *Model) openLearn(topic string) tea.Cmd {
 			return learnLoadedMsg{err: err}
 		}
 		cur, err := curriculum.Load(dir)
-		return learnLoadedMsg{cur: cur, err: err, topic: topic}
+		return learnLoadedMsg{cur: cur, err: err, open: o}
 	})
 }
 
@@ -82,12 +85,34 @@ func (m *Model) learnModule(topic string) string {
 	return best
 }
 
+// trialNext is End.Learn for a passed trial: the next module after its own
+// in guide order whose trial earns a capability the player lacks, or, when
+// none is left or the curriculum is not loaded (a trial resumed after a
+// restart), the trial's own module, back in RTFM.
+func (m *Model) trialNext(st *game.State) *bootui.Learn {
+	back := &bootui.Learn{Module: st.Trial.Module}
+	if m.cur == nil {
+		return back
+	}
+	mods := m.cur.Modules()
+	i := slices.IndexFunc(mods, func(mod curriculum.Module) bool { return mod.ID == st.Trial.Module })
+	if i < 0 {
+		return back
+	}
+	for _, mod := range mods[i+1:] {
+		if c := curriculum.CapabilityFor(mod.Topic); !mod.Meta && c != "" && !slices.Contains(m.meta.Capabilities, c) {
+			return &bootui.Learn{Module: mod.ID, Title: mod.Title}
+		}
+	}
+	return back
+}
+
 func (m *Model) onLearnLoaded(msg learnLoadedMsg) tea.Cmd {
 	if msg.err != nil {
 		return fail("RTFM: %v", msg.err)
 	}
 	m.cur = msg.cur
-	return m.openLearn(msg.topic)
+	return m.openLearn(msg.open)
 }
 
 func (m *Model) judgeable(id catalog.ID) bool {

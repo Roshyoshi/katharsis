@@ -111,6 +111,9 @@ func (m *Model) computeEnd(st *game.State) bootui.End {
 	}
 	switch {
 	case st.Trial != nil:
+		if st.Phase == game.PhaseCleared {
+			e.Learn = m.trialNext(st) // learn.go
+		}
 	case st.Phase == game.PhaseCleared:
 		e.Firsts = m.firsts(st)
 	default:

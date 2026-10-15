@@ -272,3 +272,50 @@ func TestRTFMOpensTheNearestModule(t *testing.T) {
 		}
 	})
 }
+
+// A passed trial's next step is the next module in guide order whose
+// trial earns a capability the player lacks, or back to RTFM when none is
+// left; m (or enter) takes it, and r still retries the trial. It offered
+// only the retry.
+func TestPassedTrialOffersTheNextModule(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		held []string
+		line string // the next step
+		page string // the module m opens at
+	}{
+		{"next module", nil, "m next module: Two Pointers", "two-pointers"},
+		{"none left", []string{"CAP_TWOPTR", "CAP_DS"}, "m back to RTFM", "prefix-sums"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				h := newHarness(t)
+				loadGuide(h)
+				for _, c := range tc.held {
+					game.GrantCapability(&h.m.meta, c)
+				}
+				h.send(screens.StartTrial{Module: "prefix-sums"})
+				if got := h.play(); got != game.PhaseCleared {
+					t.Fatalf("trial ended %q, want cleared", got)
+				}
+				v := ansi.Strip(h.m.top().View(100, 30)) // under the trial's flash
+				if !strings.Contains(v, tc.line) || !strings.Contains(v, "r retry") {
+					t.Fatalf("the passed trial's end offers no %q beside r retry:\n%s", tc.line, v)
+				}
+				for _, k := range []string{"m", "enter"} {
+					h.send(key(k))
+					b, ok := h.m.top().(*rtfm.Browser)
+					if !ok || !strings.Contains(ansi.Strip(b.View(100, 30)), tc.page+" - ") {
+						t.Fatalf("%s opened %T, want RTFM at %s", k, h.m.top(), tc.page)
+					}
+					h.send(screens.Back{})
+				}
+				passed := h.m.state.Boot
+				h.send(key("r"))
+				if s := h.m.state; s.Boot == passed || s.Trial == nil || s.Trial.Module != "prefix-sums" {
+					t.Errorf("r after a pass: boot %d (was %d), trial %+v; want prefix-sums again", s.Boot, passed, s.Trial)
+				}
+			})
+		})
+	}
+}

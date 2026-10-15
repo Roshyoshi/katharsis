@@ -26,7 +26,9 @@ import (
 // r or enter emits screens.StartBoot at the highest unlocked prestige, an
 // offered preset's key (s short, p patch) one on that preset (RT7), b
 // reads the story beat waiting (story.Read), l opens git log, and
-// g or q goes to GRUB (screens.OpenGrub, UX J12).
+// g or q goes to GRUB (screens.OpenGrub, UX J12). After a passed trial r
+// retries it, and the next step is RTFM (End.Learn): m or enter emits
+// screens.OpenLearn at the next module, or back at the trial's.
 type Cleared struct{ env Env }
 
 func NewCleared(env Env) *Cleared { return &Cleared{env: env} }
@@ -43,6 +45,9 @@ func (c *Cleared) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	key := k.String()
 	if key == "enter" {
 		key = "r"
+		if c.env.End.Learn != nil {
+			key = learnKey // the step the screen offers
+		}
 	}
 	if b, ok := rebootKey(c.env, key); ok {
 		return c, screens.Emit(b)
@@ -51,6 +56,10 @@ func (c *Cleared) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	case beatKey:
 		if id := beat(c.env); id != "" {
 			return c, screens.Emit(story.Read{ID: id})
+		}
+	case learnKey:
+		if l := c.env.End.Learn; l != nil {
+			return c, screens.Emit(screens.OpenLearn{Module: l.Module})
 		}
 	case "l":
 		return c, screens.Emit(screens.OpenLog{})
@@ -169,6 +178,9 @@ func (c *Cleared) View(width, height int) string {
 		kept = append(kept, star+ui.Strong.Render(f))
 	}
 	nextStep := rebootStep(env)
+	if l := env.End.Learn; l != nil {
+		nextStep = trialNextStep(l)
+	}
 	// The debrief is one column, centered like the rest of the screen.
 	cw := min(width, debriefW)
 	col := func(ls []string) []string { return indent((width-cw)/2, ls) }
@@ -244,3 +256,12 @@ func centerVoice(s string, width int) []string {
 // debriefW is the widest the clear's debrief column grows: wider, its
 // lines run past where the eye takes in the centered stats.
 const debriefW = 96
+
+// trialNextStep is a passed trial's next step: the module to go on to, or
+// back to RTFM when no module is left to earn a capability (End.Learn).
+func trialNextStep(l *Learn) string {
+	if l.Title == "" {
+		return ui.Strong.Render(learnKey) + " back to RTFM"
+	}
+	return ui.Strong.Render(learnKey) + " next module: " + l.Title
+}

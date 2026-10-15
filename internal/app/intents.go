@@ -41,7 +41,7 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 	case screens.OpenCredits:
 		return m.openCredits(), true
 	case screens.OpenLearn:
-		return m.openLearn(msg.Topic), true
+		return m.openLearn(msg), true
 	case screens.OpenShop:
 		return m.openShop(), true
 	case screens.Install:

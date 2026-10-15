@@ -40,15 +40,21 @@ type End struct {
 	Firsts []string
 	// Learn makes RTFM the next step after a crash (RT1): the crashed
 	// door's topic crashed boots before in the last 14 days, and the
-	// player lacks the capability its trial earns. nil for none.
+	// player lacks the capability its trial earns. After a passed trial it
+	// is the module to go on to. nil for none.
 	Learn *Learn
 }
 
-// Learn is the topic RTFM teaches and how many boots crashed on it in the
-// last 14 days, this one too.
+// Learn is where RTFM goes next. After a crash: the topic RTFM teaches
+// and how many boots crashed on it in the last 14 days, this one too.
+// After a passed trial: the Module RTFM opens at, the next one whose trial
+// earns a capability the player lacks, named by its Title; with no Title,
+// the trial's own module, back in RTFM.
 type Learn struct {
 	Topic   string
 	Crashes int
+
+	Module, Title string
 }
 
 // Goal is the next apt package and the player's own pace toward it.
