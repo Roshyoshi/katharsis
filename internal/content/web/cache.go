@@ -44,8 +44,8 @@ func WriteFile(p string, data []byte) error {
 // rename can leave a published dir of empty files, which a cache then
 // trusts for good. Each entry gets a plain fsync and dir a File.Sync last.
 // On darwin that last one is F_FULLFSYNC, which flushes the drive's cache
-// for everything written before it; one per file would cost its ~5 ms
-// each (40 test files: 6 ms in all against 150-260 ms, measured).
+// for everything written before it. A full sync per file costs ~5 ms
+// each: 40 test files took 150-260 ms that way, 6 ms this way.
 func SyncDir(dir string) error {
 	err := filepath.WalkDir(dir, func(p string, _ fs.DirEntry, err error) error {
 		if err != nil || p == dir {

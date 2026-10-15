@@ -154,15 +154,7 @@ func removeOtherCommits(root, commit string) {
 
 // isCommit is true for a full lowercase hex SHA-1, as Commit is written.
 func isCommit(s string) bool {
-	if len(s) != 40 {
-		return false
-	}
-	for _, c := range []byte(s) {
-		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
-			return false
-		}
-	}
-	return true
+	return len(s) == 40 && strings.Trim(s, "0123456789abcdef") == ""
 }
 
 func isDir(p string) bool {

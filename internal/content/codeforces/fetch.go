@@ -10,9 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/parquet-go/parquet-go"
@@ -66,39 +64,16 @@ func loadAssets(dir string) (catalog.Assets, bool) {
 	if m.HasEditorial {
 		a.Editorial = filepath.Join(dir, "editorial.md")
 	}
-	if a.Samples, err = pairs(filepath.Join(dir, "samples")); err != nil {
+	if a.Samples, err = problem.LoadTests(filepath.Join(dir, "samples")); err != nil {
 		return catalog.Assets{}, false
 	}
-	if a.Tests, err = pairs(filepath.Join(dir, "tests")); err != nil {
+	if a.Tests, err = problem.LoadTests(filepath.Join(dir, "tests")); err != nil {
 		return catalog.Assets{}, false
 	}
 	if len(a.Samples) != m.Samples || len(a.Tests) != m.Official+m.Generated {
 		return catalog.Assets{}, false // tampered with; fetch again
 	}
 	return a, true
-}
-
-// pairs lists N.in/N.out in dir in natural order ("2" before "10").
-func pairs(dir string) ([]problem.Test, error) {
-	ins, err := filepath.Glob(filepath.Join(dir, "*.in"))
-	if err != nil {
-		return nil, err
-	}
-	var out []problem.Test
-	for _, in := range ins {
-		name := strings.TrimSuffix(filepath.Base(in), ".in")
-		o := filepath.Join(dir, name+".out")
-		if _, err := os.Stat(o); err != nil {
-			return nil, fmt.Errorf("%s: %s.in without %s.out", dir, name, name)
-		}
-		out = append(out, problem.Test{Name: name, In: in, Out: o})
-	}
-	sort.Slice(out, func(i, j int) bool {
-		x, _ := strconv.Atoi(out[i].Name)
-		y, _ := strconv.Atoi(out[j].Name)
-		return x < y || x == y && out[i].Name < out[j].Name
-	})
-	return out, nil
 }
 
 // materialize builds the problem dir in a temp dir and renames it into
