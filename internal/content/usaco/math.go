@@ -26,7 +26,6 @@ func (v *verbatim) placeholder(s string) string {
 	return fmt.Sprintf("DCVERB%dX", len(v.spans)-1)
 }
 
-// restore puts every span back.
 func (v *verbatim) restore(md string) string {
 	if len(v.spans) == 0 {
 		return md
@@ -42,19 +41,8 @@ func (v *verbatim) restore(md string) string {
 // on usaco.org is configured with $...$ and \(...\) inline, $$...$$ and
 // \[...\] display, and processEscapes, so "\$" is a literal dollar; it is
 // protected too, so the reader does not mistake it for a delimiter. Text
-// in <pre> and <code> is not math. MathJax's own <script type="math/tex">
-// form becomes "$...$" (or "$$...$$" for mode=display) first.
+// in <pre> and <code> is not math.
 func (v *verbatim) protectMath(body *html.Node) {
-	for _, s := range findAll(body, func(n *html.Node) bool {
-		return n.DataAtom == atom.Script && strings.HasPrefix(attr(n, "type"), "math/tex")
-	}) {
-		delim := "$"
-		if strings.Contains(attr(s, "type"), "mode=display") {
-			delim = "$$"
-		}
-		s.Parent.InsertBefore(&html.Node{Type: html.TextNode, Data: delim + textOf(s) + delim}, s)
-		s.Parent.RemoveChild(s)
-	}
 	for _, n := range findAll(body, func(n *html.Node) bool { return n.Type == html.TextNode }) {
 		if inside(n, atom.Pre) || inside(n, atom.Code) {
 			continue

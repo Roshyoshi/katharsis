@@ -68,12 +68,6 @@ func (c *politeClient) get(ctx context.Context, rawURL string, read func(io.Read
 	return c.do(ctx, http.MethodGet, rawURL, read)
 }
 
-// head checks that rawURL exists without downloading it (errNotFound if
-// not); facts.json records which problems have test zips this way.
-func (c *politeClient) head(ctx context.Context, rawURL string) error {
-	return c.do(ctx, http.MethodHead, rawURL, func(io.Reader) error { return nil })
-}
-
 func (c *politeClient) do(ctx context.Context, method, rawURL string, read func(io.Reader) error) error {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -136,7 +130,7 @@ func (c *politeClient) once(ctx context.Context, s *hostSlot, method, rawURL str
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	switch {
 	case resp.StatusCode == http.StatusOK:
 	case resp.StatusCode == http.StatusNotFound:

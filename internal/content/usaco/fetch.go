@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -46,59 +45,26 @@ type meta struct {
 	Fetched      time.Time `json:"fetched"`
 }
 
-func loadAssets(dir string) (catalog.Assets, bool) {
+func loadAssets(dir string) (catalog.Assets, meta, bool) {
 	var m meta
 	if readJSON(filepath.Join(dir, "meta.json"), &m) != nil {
-		return catalog.Assets{}, false
+		return catalog.Assets{}, m, false
 	}
 	a := catalog.Assets{Statement: filepath.Join(dir, "statement.md")}
 	if m.HasEditorial {
 		a.Editorial = filepath.Join(dir, "editorial.md")
 	}
 	var err error
-	if a.Samples, err = pairs(filepath.Join(dir, "samples")); err != nil {
-		return catalog.Assets{}, false
+	if a.Samples, err = problem.LoadTests(filepath.Join(dir, "samples")); err != nil {
+		return catalog.Assets{}, m, false
 	}
-	if a.Tests, err = pairs(filepath.Join(dir, "tests")); err != nil {
-		return catalog.Assets{}, false
+	if a.Tests, err = problem.LoadTests(filepath.Join(dir, "tests")); err != nil {
+		return catalog.Assets{}, m, false
 	}
 	if len(a.Samples) != m.Samples || len(a.Tests) != m.Tests {
-		return catalog.Assets{}, false // tampered with; fetch again
+		return catalog.Assets{}, m, false // tampered with; fetch again
 	}
-	return a, true
-}
-
-// pairs lists N.in/N.out in dir in natural order ("2" before "10").
-func pairs(dir string) ([]problem.Test, error) {
-	ins, err := filepath.Glob(filepath.Join(dir, "*.in"))
-	if err != nil {
-		return nil, err
-	}
-	var out []problem.Test
-	for _, in := range ins {
-		name := strings.TrimSuffix(filepath.Base(in), ".in")
-		o := filepath.Join(dir, name+".out")
-		if _, err := os.Stat(o); err != nil {
-			return nil, fmt.Errorf("%s: %s.in without %s.out", dir, name, name)
-		}
-		out = append(out, problem.Test{Name: name, In: in, Out: o})
-	}
-	sort.Slice(out, func(i, j int) bool { return natLess(out[i].Name, out[j].Name) })
-	return out, nil
-}
-
-func natLess(a, b string) bool {
-	x, errA := strconv.Atoi(a)
-	y, errB := strconv.Atoi(b)
-	switch {
-	case errA == nil && errB == nil:
-		return x < y
-	case errA == nil:
-		return true
-	case errB == nil:
-		return false
-	}
-	return a < b
+	return a, m, true
 }
 
 // materialize downloads everything for e into a temp dir and renames it
@@ -114,15 +80,14 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 	if err != nil {
 		return catalog.Assets{}, err
 	}
-	defer os.RemoveAll(tmp)
+	defer func() { _ = os.RemoveAll(tmp) }()
 
 	m := meta{CPID: e.CPID, Stem: e.Stem, Fetched: time.Now().UTC()}
-	pageURL := statementURL(e.CPID)
-	page, err := c.client.getBytes(ctx, c.base+"/index.php?page=viewproblem2&cpid="+strconv.Itoa(e.CPID), maxPage)
+	page, err := c.client.getBytes(ctx, c.base+statementPath(e.CPID), maxPage)
 	if err != nil {
 		return catalog.Assets{}, fmt.Errorf("%s statement: %w", e.ID, err)
 	}
-	st, err := parseStatement(page, pageURL)
+	st, err := parseStatement(page, statementURL(e.CPID))
 	if err != nil {
 		return catalog.Assets{}, fmt.Errorf("%s statement: %w", e.ID, err)
 	}
@@ -141,7 +106,8 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 	// Tests are skipped when there is nothing to judge with them: an
 	// interactive problem, or a zip that facts.json marks as holding
 	// another problem's data (see sharedStemData in regen_test.go).
-	if e.Stem != "" && !st.Interactive && (e.HasZip || !e.Verified) {
+	// HasZip is only false for a verified entry.
+	if e.Stem != "" && !st.Interactive && e.HasZip {
 		n, err := c.fetchTests(ctx, e.Stem, filepath.Join(tmp, "tests"))
 		switch {
 		case errors.Is(err, errNotFound):
@@ -152,14 +118,14 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 		}
 	}
 	if e.Stem != "" {
-		solURL := c.base + "/current/data/sol_" + e.Stem + ".html"
-		sol, err := c.client.getBytes(ctx, solURL, maxPage)
+		solPath := "/current/data/sol_" + e.Stem + ".html"
+		sol, err := c.client.getBytes(ctx, c.base+solPath, maxPage)
 		switch {
 		case errors.Is(err, errNotFound):
 		case err != nil:
 			return catalog.Assets{}, fmt.Errorf("%s analysis: %w", e.ID, err)
 		default:
-			md, err := editorialMarkdown(sol, st, "https://usaco.org/current/data/sol_"+e.Stem+".html")
+			md, err := editorialMarkdown(sol, st, site+solPath)
 			if err != nil {
 				return catalog.Assets{}, fmt.Errorf("%s analysis: %w", e.ID, err)
 			}
@@ -172,9 +138,6 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 			m.HasEditorial = true
 		}
 	}
-	if err := os.MkdirAll(filepath.Join(tmp, "tests"), 0o755); err != nil {
-		return catalog.Assets{}, err
-	}
 	mb, err := json.MarshalIndent(m, "", " ")
 	if err != nil {
 		return catalog.Assets{}, err
@@ -184,20 +147,22 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 	}
 
 	// A dir without meta.json is debris from an older crash; replace it.
-	if _, ok := loadAssets(dir); !ok {
-		os.RemoveAll(dir)
+	if _, _, ok := loadAssets(dir); !ok {
+		if err := os.RemoveAll(dir); err != nil {
+			return catalog.Assets{}, err
+		}
 	}
 	if err := os.Rename(tmp, dir); err != nil {
 		// Another process published first; its copy is as good.
-		if a, ok := loadAssets(dir); ok {
+		if a, _, ok := loadAssets(dir); ok {
 			return a, nil
 		}
 		return catalog.Assets{}, err
 	}
-	if err := c.update(e.ID, m.Facts, m.HasZip && e.HasZip, m.HasEditorial); err != nil {
+	if err := c.update(e.ID, m); err != nil {
 		return catalog.Assets{}, err
 	}
-	a, ok := loadAssets(dir)
+	a, _, ok := loadAssets(dir)
 	if !ok {
 		return catalog.Assets{}, fmt.Errorf("%s: cache dir %s unreadable after fetch", e.ID, dir)
 	}
@@ -236,8 +201,10 @@ func (c *Catalog) fetchTests(ctx context.Context, stem, dst string) (int, error)
 	if err != nil {
 		return 0, err
 	}
-	defer os.Remove(zf.Name())
-	defer zf.Close()
+	defer func() {
+		_ = zf.Close()
+		_ = os.Remove(zf.Name()) // keep it out of the published dir
+	}()
 	err = c.client.get(ctx, c.base+"/current/data/"+stem+".zip", func(r io.Reader) error {
 		// A retry after a cut connection starts the spool over.
 		if _, err := zf.Seek(0, io.SeekStart); err != nil {
@@ -293,13 +260,17 @@ func unzipTests(r io.ReaderAt, size int64, dst string) (int, error) {
 		if m == nil {
 			continue
 		}
-		norm := m[1] + "." + m[2]
+		num, ext := m[1], "."+m[2]
 		if m[3] != "" {
-			norm = m[4] + map[string]string{"I": ".in", "O": ".out"}[m[3]]
+			num, ext = m[4], ".in"
+			if m[3] == "O" {
+				ext = ".out"
+			}
 		}
-		if n, _ := strconv.Atoi(strings.SplitN(norm, ".", 2)[0]); n <= 0 || n > 10000 {
+		if n, err := strconv.Atoi(num); err != nil || n <= 0 || n > 10000 {
 			continue
 		}
+		norm := num + ext
 		if seen[norm] {
 			return 0, permanentError{fmt.Errorf("zip has two entries for %s", norm)}
 		}
@@ -333,7 +304,7 @@ func copyEntry(f *zip.File, dst string, limit int64) (int64, error) {
 	if err != nil {
 		return 0, permanentError{err}
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return 0, err
@@ -361,7 +332,7 @@ func editorialMarkdown(page []byte, st *statement, srcURL string) (string, error
 	}
 	body := find(doc, func(n *html.Node) bool { return n.DataAtom == atom.Body })
 	if body == nil {
-		body = doc
+		body = doc // a <frameset> page, say an error page served with a 200
 	}
 	for _, n := range findAll(body, func(n *html.Node) bool {
 		return n.DataAtom == atom.Script || n.DataAtom == atom.Style || n.DataAtom == atom.Head
@@ -378,12 +349,8 @@ func editorialMarkdown(page []byte, st *statement, srcURL string) (string, error
 	if err != nil {
 		return "", err
 	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "# Analysis: %s\n\n", mdEscape(st.Title))
-	fmt.Fprintf(&b, "*USACO %s, %s, Problem %d*\n\n", st.Contest, titleCase(st.Division), st.Position)
-	b.WriteString(strings.TrimSpace(md))
-	fmt.Fprintf(&b, "\n\n---\n\nSource: <%s>\n", srcURL)
-	return b.String(), nil
+	return st.heading("Analysis: ") + strings.TrimSpace(md) +
+		"\n\n---\n\nSource: <" + srcURL + ">\n", nil
 }
 
 func guessLang(code string) string {

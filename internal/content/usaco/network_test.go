@@ -57,7 +57,7 @@ func TestNetwork(t *testing.T) {
 		// the statement disagree.
 		got, _ := os.ReadFile(a.Tests[0].In)
 		want, _ := os.ReadFile(a.Samples[0].In)
-		if normWS(string(got)) != normWS(string(want)) {
+		if squash(string(got)) != squash(string(want)) {
 			t.Errorf("%s: tests/1.in differs from the sample", tc.id)
 		}
 		dir := filepath.Dir(a.Statement)
@@ -68,7 +68,7 @@ func TestNetwork(t *testing.T) {
 
 func dirSize(dir string) int64 {
 	var n int64
-	filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() {
 			if fi, err := d.Info(); err == nil {
 				n += fi.Size()

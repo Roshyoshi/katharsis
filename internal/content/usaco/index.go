@@ -6,14 +6,15 @@ import (
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"math"
 	"os"
 	"path"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -149,10 +150,9 @@ func readIDToSol(dir string) (map[int]string, error) {
 func readSolveRates(dir string) (map[string]map[string][]float64, error) {
 	var raw map[string]map[string][]float64
 	p := filepath.Join(dir, guide.DivisionList, "contest_to_points.json")
-	if err := readJSON(p, &raw); err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
+	if err := readJSON(p, &raw); errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 	out := map[string]map[string][]float64{}
@@ -209,12 +209,7 @@ func readGuideProblems(dir string) (map[int]*guideProblem, error) {
 			_ = json.Unmarshal(raw, &module)
 		}
 		section := sectionOf(content, p)
-		keys := make([]string, 0, len(file))
-		for k := range file {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys) // stable tag order across runs
-		for _, k := range keys {
+		for _, k := range slices.Sorted(maps.Keys(file)) { // stable tag order
 			var rows []guideRow
 			if json.Unmarshal(file[k], &rows) != nil {
 				continue // MODULE_ID or another non-list value
@@ -332,14 +327,8 @@ func buildIndex(guideDir string, table map[int]factsRow) (*index, error) {
 	for id := range gps {
 		ids[id] = true
 	}
-	var sorted []int
-	for id := range ids {
-		sorted = append(sorted, id)
-	}
-	slices.Sort(sorted)
-
 	idx := &index{Key: indexKey()}
-	for _, id := range sorted {
+	for _, id := range slices.Sorted(maps.Keys(ids)) {
 		e := entry{CPID: id, Stem: stems[id], HasZip: true}
 		row, verified := table[id]
 		f := row.facts
@@ -359,7 +348,7 @@ func buildIndex(guideDir string, table map[int]factsRow) (*index, error) {
 		}
 		e.Tags = g.tags
 		e.Topic = topicFor(g.tags, g.modules)
-		e.rate(g, rates)
+		e.rate(g.labels, rates[f.Division][f.Contest])
 		idx.Entries = append(idx.Entries, e)
 	}
 	return idx, nil
@@ -433,24 +422,27 @@ func contestString(f facts) string {
 	return fmt.Sprintf("%s, %s P%d", f.Contest, titleCase(f.Division), f.Position)
 }
 
-func statementURL(cpid int) string {
-	return fmt.Sprintf("https://usaco.org/index.php?page=viewproblem2&cpid=%d", cpid)
+const site = "https://usaco.org"
+
+func statementPath(cpid int) string {
+	return "/index.php?page=viewproblem2&cpid=" + strconv.Itoa(cpid)
 }
+
+func statementURL(cpid int) string { return site + statementPath(cpid) }
 
 // rate fills Rating and RatingSource: the division/position table, then
 // the guide's labels from home-section modules, then the contest's solve
-// rates.
-func (e *entry) rate(g *guideProblem, rates map[string]map[string][]float64) {
+// rates (P1..P3, nil when the guide has none).
+func (e *entry) rate(guideLabels []guideLabel, solveRates []float64) {
 	era := eraDivision(e.CPID, e.Division)
 	var labels []string
-	for _, l := range g.labels {
-		if isHomeSection(era, l.section) {
+	for _, l := range guideLabels {
+		if slices.Contains(homeSections[era], l.section) {
 			labels = append(labels, l.label)
 		}
 	}
 	r, src := estimate(era, e.Position, labels)
-	contest := strings.SplitN(e.Contest, ",", 2)[0]
-	if d, ok := solveRateDelta(rates[e.Division][contest], e.Position); ok {
+	if d, ok := solveRateDelta(solveRates, e.Position); ok {
 		r += d
 		src += "+solve-rate"
 	}
@@ -507,20 +499,23 @@ func saveIndex(p string, idx *index) error {
 // writeAtomic writes via a temp file in the same dir and a rename, so a
 // reader (or a crash) never sees half a file.
 func writeAtomic(p string, data []byte) error {
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+	dir := filepath.Dir(p)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	f, err := os.CreateTemp(filepath.Dir(p), ".tmp-"+filepath.Base(p)+"-")
+	f, err := os.CreateTemp(dir, ".tmp-"+filepath.Base(p)+"-")
 	if err != nil {
 		return err
 	}
-	defer os.Remove(f.Name()) // no-op after the rename
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		return err
+	_, err = f.Write(data)
+	if cerr := f.Close(); err == nil {
+		err = cerr
 	}
-	if err := f.Close(); err != nil {
-		return err
+	if err == nil {
+		err = os.Rename(f.Name(), p)
 	}
-	return os.Rename(f.Name(), p)
+	if err != nil {
+		_ = os.Remove(f.Name())
+	}
+	return err
 }

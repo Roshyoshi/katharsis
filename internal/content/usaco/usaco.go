@@ -20,8 +20,11 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/guide"
@@ -29,7 +32,7 @@ import (
 
 type Catalog struct {
 	root   string // <cache>/katharsis/usaco
-	base   string // "https://usaco.org"; a test server in tests
+	base   string // site; a test server in tests
 	client *politeClient
 
 	mu      sync.RWMutex // guards entries (fetches refine them)
@@ -54,6 +57,7 @@ func Open(ctx context.Context) (*Catalog, error) {
 }
 
 func open(ctx context.Context, root string, snapshot func(context.Context) (string, error)) (*Catalog, error) {
+	cleanDebris(root, time.Now().Add(-debrisAge))
 	idxPath := filepath.Join(root, "index.json")
 	idx, ok := loadIndex(idxPath)
 	if !ok {
@@ -74,7 +78,7 @@ func open(ctx context.Context, root string, snapshot func(context.Context) (stri
 	}
 	c := &Catalog{
 		root:    root,
-		base:    "https://usaco.org",
+		base:    site,
 		client:  client,
 		entries: map[catalog.ID]*entry{},
 		flights: map[catalog.ID]*flight{},
@@ -85,6 +89,27 @@ func open(ctx context.Context, root string, snapshot func(context.Context) (stri
 		c.order = append(c.order, e.ID)
 	}
 	return c, nil
+}
+
+// debrisAge is how old a .tmp-* entry must be before Open deletes it:
+// older than any fetch still running, so another process's work in
+// progress is left alone.
+const debrisAge = 6 * time.Hour
+
+// cleanDebris removes what a killed process leaves behind: materialize's
+// temp dirs (a half-downloaded zip and its tests can be hundreds of MB)
+// and writeAtomic's temp files. The game quits without waiting for door
+// prefetches, so this is the normal case, not just a crash.
+func cleanDebris(root string, before time.Time) {
+	des, _ := os.ReadDir(root) // a missing root has nothing to clean
+	for _, d := range des {
+		if !strings.HasPrefix(d.Name(), ".tmp-") {
+			continue
+		}
+		if fi, err := d.Info(); err == nil && fi.ModTime().Before(before) {
+			_ = os.RemoveAll(filepath.Join(root, d.Name()))
+		}
+	}
 }
 
 // All lists every problem in cpid order, judgeable or not.
@@ -125,22 +150,17 @@ func (c *Catalog) entry(id catalog.ID) (entry, bool) {
 	return *e, true
 }
 
-// update replaces the statement-derived fields of id after a fetch and
-// persists the index when anything changed, so the next Open (and the
-// engine's next Get) sees, say, that a problem turned out to need a
-// checker.
-func (c *Catalog) update(id catalog.ID, f facts, hasZip, hasEditorial bool) error {
+// update applies what a fetch read from the statement and persists the
+// index when anything changed, so the next Open (and the engine's next
+// Get) sees, say, that a problem turned out to need a checker.
+func (c *Catalog) update(id catalog.ID, m meta) error {
 	c.mu.Lock()
-	e, ok := c.entries[id]
-	if !ok {
-		c.mu.Unlock()
-		return nil
-	}
-	before, beforeZip, beforeVerified := e.problem(), e.HasZip, e.Verified
-	e.HasZip, e.Verified = hasZip, true
-	e.apply(f)
-	e.HasEditorial = hasEditorial
-	changed := e.HasZip != beforeZip || e.Verified != beforeVerified || !sameProblem(before, e.Problem)
+	e := c.entries[id]
+	before := *e // apply never touches Tags, so sharing them is fine
+	e.HasZip, e.Verified = m.HasZip, true
+	e.apply(m.Facts)
+	e.HasEditorial = m.HasEditorial
+	changed := !reflect.DeepEqual(before, *e)
 	c.mu.Unlock()
 	if !changed {
 		return nil
@@ -163,14 +183,6 @@ func (c *Catalog) persist() error {
 	return saveIndex(filepath.Join(c.root, "index.json"), idx)
 }
 
-func sameProblem(a, b catalog.Problem) bool {
-	return a.Title == b.Title && a.Contest == b.Contest && a.Division == b.Division &&
-		a.Position == b.Position && a.TimeLimit == b.TimeLimit && a.MemLimit == b.MemLimit &&
-		a.FileIO == b.FileIO && a.Interactive == b.Interactive &&
-		a.NeedsChecker == b.NeedsChecker && a.FloatTolerance == b.FloatTolerance &&
-		a.Judgeable == b.Judgeable && a.HasEditorial == b.HasEditorial
-}
-
 // flight is one in-progress Fetch that later callers for the same id wait
 // on instead of downloading again.
 type flight struct {
@@ -188,11 +200,7 @@ func (c *Catalog) Fetch(ctx context.Context, id catalog.ID) (catalog.Assets, err
 	if !ok {
 		return catalog.Assets{}, errors.New(string(id) + ": not a USACO problem in the catalog")
 	}
-	dir := filepath.Join(c.root, strconv.Itoa(e.CPID))
 	for {
-		if a, ok := loadAssets(dir); ok {
-			return a, nil
-		}
 		c.flightMu.Lock()
 		f, waiting := c.flights[id]
 		if !waiting {
@@ -202,7 +210,7 @@ func (c *Catalog) Fetch(ctx context.Context, id catalog.ID) (catalog.Assets, err
 		c.flightMu.Unlock()
 
 		if !waiting {
-			f.assets, f.err = c.materialize(ctx, e, dir)
+			f.assets, f.err = c.fetch(ctx, e)
 			c.flightMu.Lock()
 			delete(c.flights, id)
 			c.flightMu.Unlock()
@@ -221,6 +229,26 @@ func (c *Catalog) Fetch(ctx context.Context, id catalog.ID) (catalog.Assets, err
 		}
 		return f.assets, f.err
 	}
+}
+
+// fetch runs as the only flight for e, so its cache check cannot miss a
+// download of the same problem that finishes a moment later and start a
+// second one.
+func (c *Catalog) fetch(ctx context.Context, e entry) (catalog.Assets, error) {
+	dir := filepath.Join(c.root, strconv.Itoa(e.CPID))
+	a, m, ok := loadAssets(dir)
+	if !ok {
+		return c.materialize(ctx, e, dir)
+	}
+	// An index rebuilt since that fetch (new facts.json, new guide commit)
+	// is back on guess-work for a problem facts.json lacks: default
+	// limits, and judgeable even if its zip turned out not to exist.
+	if !e.Verified {
+		if err := c.update(e.ID, m); err != nil {
+			return catalog.Assets{}, err
+		}
+	}
+	return a, nil
 }
 
 func isCtxErr(err error) bool {

@@ -1,9 +1,6 @@
 package usaco
 
-import (
-	"math"
-	"strings"
-)
+import "math"
 
 // baseRating estimates a Codeforces-scale rating from division and problem
 // position. USACO orders P1 < P2 < P3 by intended difficulty, and the USACO
@@ -64,9 +61,8 @@ var homeSections = map[string][]string{
 	"old gold":   {"gold", "plat", "adv"},
 }
 
-// eraDivision is the rating-table key: "old gold" for contests before the
-// 2015-16 season (cpid < 567 is the last pre-Platinum contest, US Open
-// 2015), the division otherwise.
+// eraDivision is the rating-table key: "old gold" for a Gold problem from
+// before the 2015-16 season, the division otherwise.
 func eraDivision(cpid int, division string) string {
 	if cpid < firstPlatinumCPID && division != "platinum" {
 		return "old " + division
@@ -103,13 +99,4 @@ func estimate(era string, position int, labels []string) (int, string) {
 		src += "+guide-label"
 	}
 	return r, src
-}
-
-func isHomeSection(era, section string) bool {
-	for _, s := range homeSections[era] {
-		if strings.EqualFold(s, section) {
-			return true
-		}
-	}
-	return false
 }

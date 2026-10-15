@@ -140,10 +140,16 @@ func contestLabel(s string) string {
 	return strings.TrimSuffix(s, " Contest")
 }
 
+// heading is the title and contest line that statement and analysis
+// markdown both open with.
+func (st *statement) heading(prefix string) string {
+	return fmt.Sprintf("# %s%s\n\n*USACO %s, %s, Problem %d*\n\n",
+		prefix, mdEscape(st.Title), st.Contest, titleCase(st.Division), st.Position)
+}
+
 func (st *statement) render(pageURL string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "# %s\n\n", mdEscape(st.Title))
-	fmt.Fprintf(&b, "*USACO %s, %s, Problem %d*\n\n", st.Contest, titleCase(st.Division), st.Position)
+	b.WriteString(st.heading(""))
 	b.WriteString(strings.TrimSpace(st.Markdown))
 	b.WriteString("\n\n---\n\n")
 	if st.Credits != "" {
@@ -238,9 +244,11 @@ func htmlToMarkdown(body *html.Node, textPre bool) (string, error) {
 	v.protectMath(body)
 	if textPre {
 		for _, pre := range findAll(body, func(n *html.Node) bool { return n.DataAtom == atom.Pre }) {
-			data := strings.TrimRight(textOf(pre), "\n") + "\n"
+			data := textOf(pre)
 			if sampleKind(pre) != "" {
-				data = sampleText(textOf(pre)) // same bytes as samples/N.in
+				data = sampleText(data) // same bytes as samples/N.in
+			} else {
+				data = strings.TrimRight(data, "\n") + "\n"
 			}
 			p := &html.Node{Type: html.ElementNode, Data: "p", DataAtom: atom.P}
 			p.AppendChild(&html.Node{Type: html.TextNode, Data: v.placeholder(fence("text", data))})
@@ -260,7 +268,7 @@ func htmlToMarkdown(body *html.Node, textPre bool) (string, error) {
 		wrap.AppendChild(c)
 		c = next
 	}
-	md, err := conv.ConvertNode(wrap, converter.WithDomain("https://usaco.org/"))
+	md, err := conv.ConvertNode(wrap, converter.WithDomain(site+"/"))
 	if err != nil {
 		return "", err
 	}

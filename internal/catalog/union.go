@@ -9,23 +9,32 @@ import (
 // Union serves several sources as one catalog. IDs carry their source
 // ("usaco:1141", "cf:1899C"), so a lookup goes straight to its owner.
 type Union struct {
-	all   []Problem
+	cats  []Catalog
 	bySrc map[Source]Catalog
 }
 
+// NewUnion keys each catalog by the source of its first problem; one with
+// no problems has nothing to serve and is left out.
 func NewUnion(cats ...Catalog) *Union {
 	u := &Union{bySrc: map[Source]Catalog{}}
 	for _, c := range cats {
-		ps := c.All()
-		u.all = append(u.all, ps...)
-		if len(ps) > 0 {
+		if ps := c.All(); len(ps) > 0 {
+			u.cats = append(u.cats, c)
 			u.bySrc[ps[0].Source] = c
 		}
 	}
 	return u
 }
 
-func (u *Union) All() []Problem { return u.all }
+// All asks every source again rather than keeping a copy from NewUnion, so
+// it agrees with Get after a fetch has refined a problem.
+func (u *Union) All() []Problem {
+	var out []Problem
+	for _, c := range u.cats {
+		out = append(out, c.All()...)
+	}
+	return out
+}
 
 func (u *Union) Get(id ID) (Problem, bool) {
 	if c, ok := u.owner(id); ok {
@@ -43,10 +52,7 @@ func (u *Union) Fetch(ctx context.Context, id ID) (Assets, error) {
 }
 
 func (u *Union) owner(id ID) (Catalog, bool) {
-	src, _, ok := strings.Cut(string(id), ":")
-	if !ok {
-		return nil, false
-	}
+	src, _, _ := strings.Cut(string(id), ":")
 	c, ok := u.bySrc[Source(src)]
 	return c, ok
 }

@@ -83,6 +83,8 @@ func TestLoadTests(t *testing.T) {
 	}{
 		{"natural order", []string{"10.in", "10.out", "2.in", "2.out", "1.in", "1.out"}, []string{"1", "2", "10"}, ""},
 		{"numeric before named", []string{"b.in", "b.out", "11.in", "11.out", "a.in", "a.out", "3.in", "3.out"}, []string{"3", "11", "a", "b"}, ""},
+		{"equal numbers by name", []string{"1.in", "1.out", "01.in", "01.out"}, []string{"01", "1"}, ""},
+		{"a dir named .in is not a test", []string{"x.in/keep", "1.in", "1.out"}, []string{"1"}, ""},
 		{"missing out is an error", []string{"1.in", "1.out", "2.in"}, nil, "missing 2.out"},
 		{"empty tests dir", nil, nil, ""},
 	}
@@ -155,6 +157,25 @@ func TestLoadMetadata(t *testing.T) {
 	if p.TimeLim != problem.DefaultTimeLimit || p.MemLimit != problem.DefaultMemLimit {
 		t.Errorf("limits = %v, %d; want defaults %v, %d",
 			p.TimeLim, p.MemLimit, problem.DefaultTimeLimit, problem.DefaultMemLimit)
+	}
+}
+
+// A dir whose name is a glob pattern used to find no tests at all, since
+// "p[1]/tests/*.in" only matches files under "p1/tests".
+func TestLoadPatternNamedDir(t *testing.T) {
+	t.Parallel()
+	dir := mkdir(t, "p[1]", map[string]string{
+		"main.cpp": "int main() {}\n", "tests/1.in": "1\n", "tests/1.out": "1\n",
+	})
+	p, err := problem.Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if filepath.Base(p.Source) != "main.cpp" {
+		t.Errorf("Source = %s, want main.cpp", p.Source)
+	}
+	if len(p.Tests) != 1 || p.Tests[0].In != filepath.Join(dir, "tests", "1.in") {
+		t.Errorf("Tests = %+v, want tests/1.in", p.Tests)
 	}
 }
 

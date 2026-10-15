@@ -145,8 +145,8 @@ func TestIndexCached(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a, b := c1.All(), c2.All(); len(a) != len(b) || !equalProblem(a[4], b[4]) {
-		t.Errorf("cached index differs: %+v vs %+v", a[4], b[4])
+	if !slices.EqualFunc(c1.All(), c2.All(), equalProblem) {
+		t.Error("the cached index differs from the one built")
 	}
 
 	// A stale key (older schema, other guide commit) is rebuilt.
@@ -174,12 +174,12 @@ func TestGetCopies(t *testing.T) {
 func TestEstimate(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		era      string
-		pos      int
-		labels   []string
-		rating   int
-		src      string
-		cpidNote string
+		era    string
+		pos    int
+		labels []string
+		rating int
+		src    string
+		why    string
 	}{
 		{"bronze", 1, nil, 1000, "division+position", ""},
 		{"silver", 3, nil, 1650, "division+position", ""},
@@ -192,7 +192,7 @@ func TestEstimate(t *testing.T) {
 		r, src := estimate(tc.era, tc.pos, tc.labels)
 		if r != tc.rating || src != tc.src {
 			t.Errorf("estimate(%s, %d, %v) = %d, %s; want %d, %s (%s)",
-				tc.era, tc.pos, tc.labels, r, src, tc.rating, tc.src, tc.cpidNote)
+				tc.era, tc.pos, tc.labels, r, src, tc.rating, tc.src, tc.why)
 		}
 	}
 }

@@ -71,8 +71,8 @@ func TestInjectAboveMain(t *testing.T) {
 
 func TestInjectNoMainAppends(t *testing.T) {
 	got := Inject("// nothing", []game.Lib{{Name: "x", Source: "int x;\n"}})
-	if !strings.HasSuffix(got, "// lib: x\nint x;\n// end lib\n\n") || !strings.HasPrefix(got, "// nothing\n") {
-		t.Fatalf("got %q", got)
+	if want := "// nothing\n\n// lib: x\nint x;\n// end lib\n\n"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
 	}
 }
 

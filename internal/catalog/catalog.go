@@ -1,5 +1,5 @@
 // Package catalog is the shared vocabulary for problems the game can serve.
-// Content sources (USACO now; CSES and Codeforces later) produce Problems;
+// Content sources (USACO and Codeforces now, CSES later) produce Problems;
 // the engine picks doors from them; the app materializes the chosen one.
 package catalog
 

@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -54,7 +55,7 @@ func newFakeUSACO(t *testing.T) (*fakeUSACO, *httptest.Server) {
 			http.NotFound(w, r)
 			return
 		}
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	t.Cleanup(srv.Close)
 	return f, srv
@@ -118,17 +119,25 @@ func TestFetch(t *testing.T) {
 	if len(a.Tests) != 10 || a.Tests[1].Name != "2" || a.Tests[9].Name != "10" {
 		t.Fatalf("tests = %+v", a.Tests)
 	}
-	zr, _ := zip.OpenReader(filepath.Join("testdata", "zips", "ctiming.zip"))
-	defer zr.Close()
+	zr, err := zip.OpenReader(filepath.Join("testdata", "zips", "ctiming.zip"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = zr.Close() }()
 	for _, zf := range zr.File {
-		rc, _ := zf.Open()
-		var want bytes.Buffer
-		want.ReadFrom(rc)
-		rc.Close()
+		rc, err := zf.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		want, err := io.ReadAll(rc)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
 		kind, n, _ := strings.Cut(zf.Name, ".")
 		ext := map[string]string{"I": ".in", "O": ".out"}[kind]
 		got, err := os.ReadFile(filepath.Join(dir, "tests", n+ext))
-		if err != nil || !bytes.Equal(got, want.Bytes()) {
+		if err != nil || !bytes.Equal(got, want) {
 			t.Errorf("tests/%s%s does not match zip entry %s", n, ext, zf.Name)
 		}
 	}
@@ -220,6 +229,62 @@ func TestFetchRefinesIndex(t *testing.T) {
 	}
 }
 
+// An index rebuilt after a fetch (new facts.json, new guide commit) starts
+// over from div_to_probs for a problem facts.json lacks. Its cached dir
+// must refine it again, or it stays judgeable with no tests.
+func TestFetchRefinesIndexFromCache(t *testing.T) {
+	t.Parallel()
+	fake, srv := newFakeUSACO(t)
+	root := t.TempDir()
+	if _, err := testCatalog(t, root, srv).Fetch(context.Background(), "usaco:9999"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, "index.json")); err != nil {
+		t.Fatal(err)
+	}
+	c := testCatalog(t, root, srv)
+	if p, _ := c.Get("usaco:9999"); !p.Judgeable {
+		t.Fatalf("rebuilt index should start from the guide: %+v", p)
+	}
+	before := fake.total()
+	if _, err := c.Fetch(context.Background(), "usaco:9999"); err != nil {
+		t.Fatal(err)
+	}
+	if n := fake.total() - before; n != 0 {
+		t.Errorf("cached fetch made %d requests", n)
+	}
+	for _, cat := range []*Catalog{c, testCatalog(t, root, srv)} {
+		if p, _ := cat.Get("usaco:9999"); p.TimeLimit != 4*time.Second || p.Judgeable {
+			t.Errorf("after cached fetch: %+v", p)
+		}
+	}
+}
+
+// The game quits without waiting for door prefetches, which leaves a
+// fetch's temp dir behind; Open removes old ones and nothing else.
+func TestOpenCleansDebris(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	old := time.Now().Add(-debrisAge - time.Hour)
+	for _, name := range []string{".tmp-84-1", ".tmp-index.json-2", ".tmp-85-3", "84"} {
+		p := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Join(p, "tests"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if name != ".tmp-85-3" {
+			if err := os.Chtimes(p, old, old); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	openTest(t, root)
+	for name, want := range map[string]bool{".tmp-84-1": false, ".tmp-index.json-2": false, ".tmp-85-3": true, "84": true} {
+		if _, err := os.Stat(filepath.Join(root, name)); (err == nil) != want {
+			t.Errorf("%s exists = %v, want %v", name, err == nil, want)
+		}
+	}
+}
+
 func TestFetchErrors(t *testing.T) {
 	t.Parallel()
 	_, srv := newFakeUSACO(t)
@@ -252,7 +317,9 @@ func zipOf(t *testing.T, files map[string]string) []byte {
 		if err != nil {
 			t.Fatal(err)
 		}
-		w.Write([]byte(body))
+		if _, err := w.Write([]byte(body)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err := zw.Close(); err != nil {
 		t.Fatal(err)
@@ -288,7 +355,9 @@ func TestUnzipTests(t *testing.T) {
 			t.Parallel()
 			parent := t.TempDir()
 			dst := filepath.Join(parent, "tests")
-			os.MkdirAll(dst, 0o755)
+			if err := os.MkdirAll(dst, 0o755); err != nil {
+				t.Fatal(err)
+			}
 			zb := zipOf(t, tc.files)
 			n, err := unzipTests(bytes.NewReader(zb), int64(len(zb)), dst)
 			if tc.err != "" {

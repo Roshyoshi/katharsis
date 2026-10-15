@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -148,10 +149,7 @@ func TestParseStatement(t *testing.T) {
 }
 
 func atoi(s string) int {
-	n := 0
-	for _, c := range s {
-		n = n*10 + int(c-'0')
-	}
+	n, _ := strconv.Atoi(s)
 	return n
 }
 
@@ -188,6 +186,17 @@ func TestEditorialMarkdown(t *testing.T) {
 			golden(t, strings.TrimSuffix(tc.page, ".html")+".md", md)
 		})
 	}
+	// A page with no <body> (a frameset) must not crash the fetch.
+	t.Run("frameset", func(t *testing.T) {
+		t.Parallel()
+		st, err := parseStatement(readPage(t, "84.html"), "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := editorialMarkdown([]byte("<frameset><frame src=x></frameset>"), st, ""); err != nil {
+			t.Error(err)
+		}
+	})
 }
 
 func TestMapMath(t *testing.T) {

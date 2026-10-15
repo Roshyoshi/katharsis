@@ -36,7 +36,7 @@ func TestPoliteClientSerializes(t *testing.T) {
 		starts = append(starts, time.Now())
 		mu.Unlock()
 		time.Sleep(5 * time.Millisecond)
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 		mu.Lock()
 		ends = append(ends, time.Now())
 		mu.Unlock()
@@ -95,7 +95,7 @@ func TestPoliteClientRetries(t *testing.T) {
 					w.Header().Set("Retry-After", "0")
 				}
 				w.WriteHeader(st)
-				w.Write([]byte("body"))
+				_, _ = w.Write([]byte("body"))
 			}))
 			defer srv.Close()
 			c := &politeClient{http: srv.Client(), gap: time.Millisecond, retries: tc.retries, backoff: time.Millisecond}
@@ -124,7 +124,7 @@ func TestPoliteClientBodyCap(t *testing.T) {
 	var hits atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hits.Add(1)
-		w.Write([]byte(strings.Repeat("x", 101)))
+		_, _ = w.Write([]byte(strings.Repeat("x", 101)))
 	}))
 	defer srv.Close()
 	c := &politeClient{http: srv.Client(), gap: time.Millisecond, retries: 3, backoff: time.Millisecond}

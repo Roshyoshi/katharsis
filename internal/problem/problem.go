@@ -8,12 +8,14 @@
 package problem
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -51,7 +53,7 @@ func Load(dir string) (*Problem, error) {
 	if err != nil {
 		return nil, err
 	}
-	tests, err := findTests(filepath.Join(dir, "tests"))
+	tests, err := LoadTests(filepath.Join(dir, "tests"))
 	if err != nil {
 		return nil, err
 	}
@@ -72,10 +74,13 @@ func findSource(dir string) (string, error) {
 			return p, nil
 		}
 	}
-	cpps, _ := filepath.Glob(filepath.Join(dir, "*.cpp"))
+	cpps, err := namesWithSuffix(dir, ".cpp")
+	if err != nil {
+		return "", err
+	}
 	switch len(cpps) {
 	case 1:
-		return cpps[0], nil
+		return filepath.Join(dir, cpps[0]), nil
 	case 0:
 		return "", fmt.Errorf("%s: no .cpp source", dir)
 	default:
@@ -84,39 +89,57 @@ func findSource(dir string) (string, error) {
 	}
 }
 
-// findTests pairs tests/N.in with tests/N.out. A missing directory means no
-// tests; an input without an output is an error so it is not silently skipped.
-func findTests(dir string) ([]Test, error) {
-	ins, err := filepath.Glob(filepath.Join(dir, "*.in"))
+// namesWithSuffix lists dir instead of globbing it, so a dir named like a
+// pattern ("p[1]") still finds its own files.
+func namesWithSuffix(dir, suffix string) ([]string, error) {
+	des, err := os.ReadDir(dir)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+	var out []string
+	for _, d := range des {
+		if !d.IsDir() && strings.HasSuffix(d.Name(), suffix) {
+			out = append(out, d.Name())
+		}
+	}
+	return out, nil
+}
+
+// LoadTests pairs dir/N.in with dir/N.out in natural order ("2" before
+// "10"). A missing dir means no tests; an input without an output is an
+// error so it is not silently skipped.
+func LoadTests(dir string) ([]Test, error) {
+	ins, err := namesWithSuffix(dir, ".in")
 	if err != nil {
 		return nil, err
 	}
 	var tests []Test
 	for _, in := range ins {
-		name := strings.TrimSuffix(filepath.Base(in), ".in")
+		name := strings.TrimSuffix(in, ".in")
 		out := filepath.Join(dir, name+".out")
 		if _, err := os.Stat(out); errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("%s: missing %s.out", dir, name)
 		}
-		tests = append(tests, Test{Name: name, In: in, Out: out})
+		tests = append(tests, Test{Name: name, In: filepath.Join(dir, in), Out: out})
 	}
-	sort.Slice(tests, func(i, j int) bool { return natLess(tests[i].Name, tests[j].Name) })
+	slices.SortFunc(tests, func(a, b Test) int { return natCmp(a.Name, b.Name) })
 	return tests, nil
 }
 
-// natLess orders "2" before "10"; non-numeric names fall back to strings.
-func natLess(a, b string) bool {
+// natCmp orders numeric names by value, before any other name; ties
+// ("1", "01") and other names fall back to the string order.
+func natCmp(a, b string) int {
 	x, errA := strconv.Atoi(a)
 	y, errB := strconv.Atoi(b)
 	switch {
-	case errA == nil && errB == nil:
-		return x < y
-	case errA == nil:
-		return true
-	case errB == nil:
-		return false
+	case errA == nil && errB == nil && x != y:
+		return cmp.Compare(x, y)
+	case errA == nil && errB != nil:
+		return -1
+	case errA != nil && errB == nil:
+		return 1
 	}
-	return a < b
+	return strings.Compare(a, b)
 }
 
 var freopenRE = regexp.MustCompile(`freopen\s*\(\s*"([^"/]+)\.in"`)

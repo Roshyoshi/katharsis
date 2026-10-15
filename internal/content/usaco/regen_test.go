@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -76,7 +78,7 @@ func TestRegenFacts(t *testing.T) {
 			t.Errorf("cpid %d: no samples in a non-interactive statement", id)
 		}
 		code, err := cached(ctx, filepath.Join(dir, "heads", strconv.Itoa(id)+".code"), func() ([]byte, error) {
-			err := client.head(ctx, "https://usaco.org/current/data/"+stems[id]+".zip")
+			err := client.head(ctx, site+"/current/data/"+stems[id]+".zip")
 			switch {
 			case errors.Is(err, errNotFound):
 				return []byte("404\n"), nil
@@ -107,13 +109,7 @@ func TestRegenFacts(t *testing.T) {
 
 	var b bytes.Buffer
 	b.WriteString("{\n")
-	keys := slices.Sorted(func(yield func(int) bool) {
-		for k := range rows {
-			if !yield(k) {
-				return
-			}
-		}
-	})
+	keys := slices.Sorted(maps.Keys(rows))
 	for i, id := range keys {
 		line, err := json.Marshal(rows[id])
 		if err != nil {
@@ -153,7 +149,7 @@ func sharedStemData(ctx context.Context, t *testing.T, dir string, stems map[int
 		}
 		slices.Sort(ids)
 		zb, err := cached(ctx, filepath.Join(dir, "zips", stem+".zip"), func() ([]byte, error) {
-			return client.getBytes(ctx, "https://usaco.org/current/data/"+stem+".zip", maxZip)
+			return client.getBytes(ctx, site+"/current/data/"+stem+".zip", maxZip)
 		})
 		if err != nil {
 			t.Errorf("stem %s: %v", stem, err)
@@ -168,7 +164,7 @@ func sharedStemData(ctx context.Context, t *testing.T, dir string, stems map[int
 		for _, id := range ids {
 			inZip := false
 			for _, s := range samples[id] {
-				inZip = inZip || inputs[normWS(s.In)]
+				inZip = inZip || inputs[squash(s.In)]
 			}
 			ok := rows[id].Contest == newest && inZip
 			t.Logf("stem %s: cpid %d %s %s P%d %q sample-in-zip=%v keep=%v",
@@ -197,16 +193,14 @@ func zipInputs(zb []byte) (map[string]bool, error) {
 			return nil, err
 		}
 		b, err := io.ReadAll(io.LimitReader(rc, 1<<20))
-		rc.Close()
+		_ = rc.Close()
 		if err != nil {
 			return nil, err
 		}
-		out[normWS(string(b))] = true
+		out[squash(string(b))] = true
 	}
 	return out, nil
 }
-
-func normWS(s string) string { return strings.Join(strings.Fields(s), " ") }
 
 // cached returns the file at p, or calls get and saves its result there.
 func cached(ctx context.Context, p string, get func() ([]byte, error)) ([]byte, error) {
@@ -224,4 +218,10 @@ func cached(ctx context.Context, p string, get func() ([]byte, error)) ([]byte, 
 		return nil, err
 	}
 	return b, os.WriteFile(p, b, 0o644)
+}
+
+// head checks that rawURL exists without downloading it (errNotFound if
+// not); facts.json records which problems have test zips this way.
+func (c *politeClient) head(ctx context.Context, rawURL string) error {
+	return c.do(ctx, http.MethodHead, rawURL, func(io.Reader) error { return nil })
 }
