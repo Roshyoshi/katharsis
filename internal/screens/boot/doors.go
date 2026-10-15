@@ -55,6 +55,10 @@ func (d *Doors) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		if n > 0 {
 			return d, screens.Emit(game.ChooseDoor{Index: d.sel})
 		}
+	case "x":
+		if _, decline := easing(d.env.State); decline != nil {
+			return d, screens.Emit(decline)
+		}
 	case "s":
 		if d.canShuf() {
 			return d, screens.Emit(game.Reroll{})
@@ -82,6 +86,10 @@ func (d *Doors) View(width, height int) string {
 	if d.canShuf() {
 		keys = append(keys, "s", fmt.Sprintf("shuf (%d)", st.Rerolls))
 	}
+	ease, decline := easing(st)
+	if decline != nil {
+		keys = append(keys, "x", "decline the easing")
+	}
 	footer := ui.Footer(width, append(keys, "m", "map")...)
 	if w := d.env.waitLine(width); w != "" {
 		footer = w
@@ -91,7 +99,14 @@ func (d *Doors) View(width, height int) string {
 	// way a game frames a choice, with at least one blank line under the
 	// header when there is room for it.
 	room := height - len(head) - 1
-	block := d.cards(width, room)
+	var notes []string
+	for _, l := range ease {
+		notes = append(notes, ui.Center(ui.Muted.Render(l), width))
+	}
+	if len(notes) > 0 {
+		notes = append(notes, "")
+	}
+	block := append(notes, d.cards(width, room-len(notes))...)
 	if m := centerBlock(renderMap(st, width), width); len(block)+1+len(m) <= room-1 {
 		block = append(append(block, ""), m...)
 	}
@@ -370,6 +385,9 @@ func (d *Doors) modifiers(door game.Door, cw int, form hiddenForm) []string {
 	}
 	if door.Cursed {
 		mods = append(mods, modLine{mod: ui.ModCursed, text: withMult("no ducks · 1 WA = crash", r.CursedMult)})
+	}
+	if t, ok := timeoutNote(d.env.State, door); ok {
+		mods = append(mods, modLine{text: ui.G.Timer + t, mastered: true}) // Muted, no modifier
 	}
 	if door.Regression {
 		txt := "regression: crashed you before"

@@ -62,6 +62,9 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	if door.Regression {
 		mods = append(mods, ui.Modifier(ui.ModRegression, ""))
 	}
+	if t, ok := timeoutNote(st, door); ok {
+		mods = append(mods, ui.Muted.Render(ui.G.Timer+t))
+	}
 	out = append(out, pack(mods, ui.Muted.Render(ui.G.Sep), width)...)
 
 	// Tags: hidden on blind doors and mastered topics until the duck reveals

@@ -2,6 +2,11 @@ package boot
 
 import (
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -93,5 +98,47 @@ func TestGoldenDoorsFetch(t *testing.T) {
 	}
 	if _, cmd := NewDoors(env(fixture.Doors())).Update(press("esc")); cmd != nil {
 		t.Errorf("esc with no wait emitted %#v", emitted(cmd))
+	}
+}
+
+// The copy guardrails (docs/research/retention.md §(d)) over every string
+// the boot screens write: no streaks (GR1), and easing is never called
+// easy, assist or mercy (GR9).
+func TestCopyGuardrails(t *testing.T) {
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	banned := regexp.MustCompile(`(?i)\b(streaks?|easy|assist|mercy)\b`)
+	fset := token.NewFileSet()
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		af, err := parser.ParseFile(fset, f, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ast.Inspect(af, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.STRING && banned.MatchString(lit.Value) {
+				t.Errorf("%s: %s", fset.Position(lit.Pos()), lit.Value)
+			}
+			return true
+		})
+	}
+}
+
+// The engine has neither notice yet (notice.go): no door gets the D44
+// line and no boot an easing, so nothing shows and x does nothing.
+func TestNoticesWaitForTheEngine(t *testing.T) {
+	st := fixture.Doors()
+	if _, ok := timeoutNote(st, st.Doors[0]); ok {
+		t.Error("a D44 line before the engine marks a door")
+	}
+	if lines, decline := easing(st); lines != nil || decline != nil {
+		t.Errorf("an easing before the engine made one: %q %v", lines, decline)
+	}
+	if _, cmd := NewDoors(env(st)).Update(press("x")); cmd != nil {
+		t.Errorf("x emitted %#v with nothing to decline", emitted(cmd))
 	}
 }

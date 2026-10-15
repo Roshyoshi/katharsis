@@ -192,6 +192,12 @@ func (t *Tracker) Observe(st *game.State, m *game.Meta, now time.Time) []Event {
 	var out []Event
 	if ok {
 		out = t.diff(p, n, st, m, now)
+	} else {
+		// A boot's easing is said as the strip starts (RT8, notice.go).
+		lines, _ := easing(st)
+		for _, l := range lines {
+			out = append(out, Event{At: now, Kind: EvEase, Text: l})
+		}
 	}
 	if !t.Hold {
 		out = append(out, tips(st, m, now, out)...)
