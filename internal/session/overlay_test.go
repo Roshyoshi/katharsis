@@ -238,6 +238,25 @@ func TestOverlayCommands(t *testing.T) {
 	}
 }
 
+// A reply wider than the message line keeps its head, where the game puts
+// what a submit costs. Vim cuts a long message in the middle (shortmess
+// T): beside a 140-column game, "a fail ends the boot (last ♥)" was the
+// part cut. :messages still has the whole reply.
+func TestOverlayFitsLongReplies(t *testing.T) {
+	privateTmux(t)
+	sock, reqs := serve(t)
+	pane := startVim(t, Overlay{}, sock, solution(t))
+	if _, err := tmux("resize-window", "-t", pane, "-x", "72"); err != nil {
+		t.Fatal(err)
+	}
+	ex(t, pane, "Submit")
+	r := next(t, reqs)
+	r.Answer(Reply{Text: "samples 0/1 pass · a fail ends the boot (last ♥) · :Submit! submits anyway"})
+	waitScreen(t, pane, "samples 0/1 pass · a fail ends the boot")
+	ex(t, pane, `echo execute('messages') =~# 'submits anyway' ? 'history: whole' : 'history: cut'`)
+	waitScreen(t, pane, "history: whole")
+}
+
 // :q! asks; no leaves vim as it was, yes gives up (and vim stays: the game
 // closes it).
 func TestOverlayQuitGivesUp(t *testing.T) {

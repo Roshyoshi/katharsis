@@ -154,8 +154,33 @@ function! s:Show(st) abort
   if a:st.status != 0
     echohl ErrorMsg
   endif
+  " :messages keeps the whole reply; the message line shows what fits.
   echomsg l:text
+  let l:fit = s:Fit(l:text)
+  if l:fit !=# l:text
+    redraw
+    echo l:fit
+  endif
   echohl None
+endfunction
+
+" s:Fit keeps text to the message line by cutting its tail: vim cuts a
+" longer message in the middle (shortmess T), and the middle is where a
+" reply says what a submit costs. The prefix goes first.
+function! s:Fit(text) abort
+  let l:room = exists('v:echospace') ? v:echospace
+        \ : &columns - 1 - (&ruler ? 18 : 0) - (&showcmd ? 11 : 0)
+  let l:text = a:text
+  if strdisplaywidth(l:text) > l:room
+    let l:text = substitute(l:text, '^katharsis: ', '', '')
+  endif
+  if strdisplaywidth(l:text) <= l:room
+    return l:text
+  endif
+  while strchars(l:text) > 0 && strdisplaywidth(l:text) > l:room - 1
+    let l:text = strcharpart(l:text, 0, strchars(l:text) - 1)
+  endwhile
+  return l:text . '…'
 endfunction
 
 function! s:Out(st, ch, msg) abort
