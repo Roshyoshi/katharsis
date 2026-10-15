@@ -227,6 +227,13 @@ D54 settled 10-15  Each boss bends one rule (user: "we can also ..."): off-by-on
       fit) and ui-door (cycles display, retreat lock, ECC, overclock, fountain,
       fsck, boss cards and twists wired into judge/HUD/border, debrief, rename).
 
+10-15 ui-hub merged (Hub screen and three-act map; exit cards with fail costs, picks,
+      bosses and locks naming RTFM modules; suspend/resume/abandon flow; ctrl+c in a
+      door refuses with Model.doorQuit; /proc/story and the RTFM tail gone;
+      MaxPrestige 8 with GRUB folding P4-P0 under P5-P8). Defaults: n abandons then
+      GRUB; no title before the hub; trials share the one boot slot (asks, then
+      abandons); after an upsolve from the hub you land on the boot screen.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
