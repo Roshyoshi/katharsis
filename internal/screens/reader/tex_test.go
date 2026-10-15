@@ -17,6 +17,10 @@ func TestTeXToUnicode(t *testing.T) {
 		{"floor", `Output $\lfloor S / 2 \rfloor$.`, `Output ⌊S / 2⌋.`},
 		{"ceil frac", `$\left\lceil \frac{n}{2} \right\rceil$`, `⌈n/2⌉`},
 		{"frac parens", `$\frac{n(n+1)}{2}$ and $\frac{a+b}{c}$`, `n(n+1)/2 and (a+b)/c`},
+		// n!/k!(n-k)! reads as (n!/k!)·(n-k)!.
+		{"frac product denominator", `$\frac{n!}{k!(n-k)!}$`, `n!/(k!(n-k)!)`},
+		{"frac factor denominators", `$\frac{x}{10^9}$, $\frac{1}{a_i}$, $\frac{1}{dp[i][j]}$, $\frac{d}{\max(1, b)}$`,
+			`x/10⁹, 1/aᵢ, 1/dp\[i]\[j], d/max(1, b)`},
 		{"sqrt", `$\sqrt{N}$, $\sqrt{a+b}$`, `√N, √(a+b)`},
 
 		// Subscripts: Unicode when every character has one.
@@ -73,7 +77,9 @@ func TestTeXToUnicode(t *testing.T) {
 
 		// Delimiters.
 		{"paren delims", `\(1 \le n \le 100\)`, `1 ≤ n ≤ 100`},
-		{"bracket delims", `\[\sum_{i=1}^{n} i\]`, `∑ᵢ₌₁ⁿ i`},
+		// \[ is markdown's escaped bracket, which html-to-markdown and the
+		// curriculum both write: it never opens math.
+		{"escaped brackets", `A\[0...K\] and dp\[i\]\[j\]`, `A\[0...K\] and dp\[i\]\[j\]`},
 		{"display", "Compute\n\n$$\n\\sum_{i=1}^{n} i\n$$\n", "Compute\n\n∑ᵢ₌₁ⁿ i\n"},
 		{"codeforces", `$$$1 \le n \le 2 \cdot 10^5$$$`, `1 ≤ n ≤ 2 · 10⁵`},
 		// Six dollars is one display span; read as three, it swapped math

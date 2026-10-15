@@ -14,9 +14,12 @@ import (
 //	$a_1, a_2, \ldots, a_N$       →  a[1], a[2], …, a[N]
 //
 // Math is whatever sits between $…$, $$…$$, $$$…$$$ or $$$$$$…$$$$$$
-// (Codeforces inline and display), \(…\) or \[…\]. Text outside math is
-// left alone, and so are fenced code blocks and inline code spans, because
-// sample input must reach the judge's reader byte for byte.
+// (Codeforces inline and display), or \(…\). MathJax's \[…\] is not math
+// here: in markdown \[ is an escaped bracket, and html-to-markdown and the
+// curriculum write it for every literal "[" (A\[i\] read as math was "Ai").
+// Text outside math is left alone, and so are fenced code blocks and inline
+// code spans, because sample input must reach the judge's reader byte for
+// byte.
 //
 // Subscripts become Unicode subscripts when every character has one (aᵢ,
 // x₁₀); otherwise the whole math span switches to brackets (a[N], b[i,j]) so
@@ -127,19 +130,15 @@ func convertProse(s string) string {
 			}
 			b.WriteString(s[i : end+n])
 			i = end + n
-		case c == '\\' && i+1 < len(s) && (s[i+1] == '(' || s[i+1] == '['):
-			closer := `\)`
-			if s[i+1] == '[' {
-				closer = `\]`
-			}
-			end := findCloser(s, i+2, closer)
+		case strings.HasPrefix(s[i:], `\(`):
+			end := findCloser(s, i+2, `\)`)
 			if end < 0 {
 				b.WriteString(s[i : i+2])
 				i += 2
 				continue
 			}
 			b.WriteString(mathToMarkdown(s[i+2 : end]))
-			i = end + len(closer)
+			i = end + 2
 		case c == '\\' && i+1 < len(s):
 			// A markdown escape (\$, \\, \*): copy both bytes so the
 			// escaped character never opens math.
@@ -592,7 +591,7 @@ func (p *texParser) command(script bool) (out string, isOp bool) {
 	switch name {
 	case "frac", "dfrac", "tfrac", "cfrac":
 		num, den := p.arg(script, false), p.arg(script, false)
-		return wrapOperand(tidy(num)) + "/" + wrapOperand(tidy(den)), false
+		return wrapOperand(tidy(num)) + "/" + wrapDenominator(tidy(den)), false
 	case "binom", "dbinom", "tbinom":
 		n, k := p.arg(script, false), p.arg(script, false)
 		return "C(" + tidy(n) + ", " + tidy(k) + ")", false
@@ -731,6 +730,32 @@ func wrapOperand(s string) string {
 			if depth == 0 {
 				return "(" + s + ")"
 			}
+		}
+	}
+	return s
+}
+
+// wrapDenominator also parenthesizes a product, since n!/k!(n-k)! reads as
+// (n!/k!)·(n-k)!. One factor stays bare: a symbol, or a name or number
+// followed only by bracketed groups (10⁹, aᵢ, dp[i][j], max(1, |B|)).
+func wrapDenominator(s string) string {
+	if w := wrapOperand(s); w != s || utf8.RuneCountInString(s) <= 1 {
+		return w
+	}
+	rest := strings.TrimLeftFunc(s, func(r rune) bool {
+		return unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.IsMark(r)
+	})
+	depth := 0
+	for _, r := range rest {
+		open := strings.ContainsRune("([{⌊⌈", r)
+		if depth == 0 && !open {
+			return "(" + s + ")"
+		}
+		switch {
+		case open:
+			depth++
+		case strings.ContainsRune(")]}⌋⌉", r):
+			depth--
 		}
 	}
 	return s
