@@ -228,10 +228,16 @@ scroll region so the end line no longer lands mid-panic; merge cursor; vim reply
 heads; flash wraps; merge leave row; top "-"; trial cleared title; crash tick
 cost; refusal text). Speed: GRUB 0.2 s, :w warm 0.55 s, :Submit 10 tests 3.5 s,
 idle 0.5-1.4% CPU. Disk: /tmp agent scratch removed (1.2 -> 5.3 GiB free); go
-build cache 16 GB is the user's call. Running: fix-orphans (RLIMIT_CPU backstop +
-start sweep for orphaned solutions), fix-polish (O2 via editorial_open events,
-J21, J24, at +5:00, RTFM next-step name/level, strip ellipsis, resume note,
-after-pass step). Then alpha; wave 1 done.
+build cache 16 GB is the user's call. Merged: fix-orphans (each run starts via dash with ulimit -t, +0.9 ms; macOS sends
+SIGXCPU only, so Sweep at start kills orphaned runs by executable path),
+fix-polish (O2: an upsolve pays the editorial rate only after an editorial_open
+event; RTFM hides the guide's pages about itself; route and door timers are the
+ones the doors open with; RTFM next step names the biome and the nearest-band
+module; strip ellipsis; resume note clears; a passed trial offers the next
+module). ALPHA READY 10-15: full gate green, -race clean, nix build ok, binary
+30.2 MB. Open for the user: practice trials for the 33 capability-less modules;
+rate retreats or not; J18 fixed-order redraw; J11 refuse a quack that reveals
+nothing; go clean -cache (16 GB); nix-collect-garbage; the GitHub remote; wave 1 done.
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
 retired milestone); cleanup wave 1: g-store, g-qa
