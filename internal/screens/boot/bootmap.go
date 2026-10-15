@@ -10,6 +10,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -27,15 +28,15 @@ const (
 func (n node) glyph() string {
 	switch n {
 	case nodeDone:
-		return sGreen.Render("✓")
+		return ui.OK.Render(ui.G.Pass)
 	case nodeHere:
-		return sYellow.Bold(true).Render("●")
+		return ui.Focus.Render(ui.G.Here)
 	case nodeCrash:
-		return sRed.Bold(true).Render("☠")
+		return ui.Danger.Render(ui.G.Crash)
 	case nodeBoss:
-		return sMagenta.Render("⚔")
+		return ui.Special.Render(ui.G.Boss)
 	}
-	return sFaint.Render("○")
+	return ui.Muted.Render(ui.G.Ahead)
 }
 
 // mapNodes places every room of the boot. merge is the merge window the
@@ -91,9 +92,9 @@ func boxMap(st *game.State, nodes [][]node, merge, here, width int) []string {
 	total := 0
 	for i := range st.Biomes {
 		if i > 0 {
-			link := sFaint.Render("───")
+			link := ui.Rule(3)
 			if merge == i-1 {
-				link = sFaint.Render("─") + nodeHere.glyph() + sFaint.Render("─")
+				link = ui.Rule(1) + nodeHere.glyph() + ui.Rule(1)
 			}
 			rows[0].WriteString("   ")
 			rows[1].WriteString(link)
@@ -107,20 +108,20 @@ func boxMap(st *game.State, nodes [][]node, merge, here, width int) []string {
 		inside := strings.Join(glyphs, " ")
 		name := biomeLabel(st, i)
 		w := max(widthOf(name)+6, widthOf(inside)+4)
-		f := frameIdle
+		f := ui.FrameIdle
 		switch {
 		case i == here && st.Phase == game.PhaseCrashed:
-			f = frameCursed
+			f = ui.FrameCursed
 		case i == here:
-			f = frameHere
+			f = ui.FrameHere
 		case allDone(nodes[i]):
-			f = frameDone
+			f = ui.FrameDone
 		}
 		label := name
 		if i == here {
-			label = sBold.Render(name)
+			label = ui.Strong.Render(name)
 		}
-		b := box(f, w, label, "", []string{center(inside, w-4)})
+		b := ui.Frame(f, w, label, "", []string{ui.Center(inside, w-4)})
 		for k := range rows {
 			rows[k].WriteString(b[k])
 		}
@@ -151,13 +152,13 @@ func lineMap(st *game.State, nodes [][]node, merge, here, width int) string {
 				if merge == i-1 {
 					sb.WriteString(" " + nodeHere.glyph() + " ")
 				} else {
-					sb.WriteString(sFaint.Render(" › "))
+					sb.WriteString(ui.Muted.Render(ui.G.Crumb))
 				}
 			}
 			if names || i == here {
 				name := biomeLabel(st, i)
 				if i == here {
-					name = sBold.Render(name)
+					name = ui.Strong.Render(name)
 				}
 				sb.WriteString(name + " ")
 			}
@@ -170,7 +171,7 @@ func lineMap(st *game.State, nodes [][]node, merge, here, width int) string {
 	if s := build(true); widthOf(s) <= width {
 		return s
 	}
-	return clip(build(false), width)
+	return ui.Clip(build(false), width)
 }
 
 // Map is the boot map as its own screen: the strip, a legend, and every
@@ -191,7 +192,7 @@ func (m *Map) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 }
 
 func (m *Map) View(width, height int) string {
-	return mapScreen(m.env, width, height, hint("esc", "back"))
+	return mapScreen(m.env, width, height, ui.Footer(width, "esc", "back"))
 }
 
 func mapScreen(env Env, width, height int, footer string) string {
@@ -202,7 +203,7 @@ func mapScreen(env Env, width, height int, footer string) string {
 		nodeDone.glyph() + " cleared", nodeHere.glyph() + " here", nodeAhead.glyph() + " ahead",
 		nodeCrash.glyph() + " crash", nodeBoss.glyph() + " boss",
 	}, "   ")
-	body = append(body, "", center(legend, width), "")
+	body = append(body, "", ui.Center(legend, width), "")
 	rows := historyRows(env, width)
 	room := height - len(body) - 1
 	if height > 0 && len(rows) > room {
@@ -211,16 +212,17 @@ func mapScreen(env Env, width, height int, footer string) string {
 		rows = append(rows[:1:1], rows[len(rows)-keep:]...)
 	}
 	body = append(body, rows...)
-	return layout(width, height, body, footer)
+	return ui.Layout(width, height, body, footer)
 }
 
 // historyRows is the table of doors opened this boot, oldest first, with a
 // header row. Titles are shown even for mystery doors: opening one
-// reveals it.
+// reveals it. A door's difficulty is a bare numeral in its rank color under
+// a ◆ header, so the column stays narrow.
 func historyRows(env Env, width int) []string {
 	ss := steps(env.State)
 	if len(ss) == 0 {
-		return []string{"  " + sFaint.Render("no doors opened yet")}
+		return []string{"  " + ui.Muted.Render("no doors opened yet")}
 	}
 	const (
 		numW    = 3
@@ -247,17 +249,18 @@ func historyRows(env Env, width int) []string {
 		titleW = 40
 	}
 	row := func(n, biome, title, rating, result, tm string) string {
-		s := strings.Repeat(" ", pad) + fit(n, numW) + "  "
+		s := strings.Repeat(" ", pad) + ui.Fit(n, numW) + "  "
 		if showBiome {
-			s += fit(biome, biomeW) + "  "
+			s += ui.Fit(biome, biomeW) + "  "
 		}
-		s += fit(title, max(titleW, 4)) + "  " + fmt.Sprintf("%*s", ratingW, rating) + "  " + fit(result, resultW)
+		// By cells: %*s pads bytes, which a colored numeral has more of.
+		s += ui.Fit(title, max(titleW, 4)) + "  " + ui.AlignRight(rating, ratingW) + "  " + ui.Fit(result, resultW)
 		if showTime {
 			s += "  " + tm
 		}
 		return s
 	}
-	out := []string{sFaint.Render(row("#", "biome", "door", "◆", "result", "time"))}
+	out := []string{ui.Muted.Render(row("#", "biome", "door", ui.G.Rating, "result", "time"))}
 	for _, s := range ss {
 		a := s.Attempt
 		p := env.problem(a.Door.Problem)
@@ -267,10 +270,10 @@ func historyRows(env Env, width int) []string {
 		}
 		title := p.Title
 		if a.Door.Boss != "" {
-			title = "⚔ " + title
+			title = ui.G.Boss + " " + title
 		}
 		out = append(out, row(fmt.Sprint(s.N), biomeLabel(env.State, s.Biome), title,
-			fmt.Sprint(a.Door.Rating), outcomeLabel(a), tm))
+			ui.Rank(float64(a.Door.Rating)).Render(fmt.Sprint(a.Door.Rating)), outcomeLabel(a), tm))
 	}
 	return out
 }
@@ -278,20 +281,22 @@ func historyRows(env Env, width int) []string {
 func outcomeLabel(a game.Attempt) string {
 	switch a.Outcome {
 	case game.Cleared:
+		// Green paints the glyph; the word stays plain (R2).
+		s := ui.OK.Render(ui.G.Pass) + " AC"
 		if a.Quacks > 0 {
-			return sGreen.Render(fmt.Sprintf("✓ AC 🦆%d", a.Quacks))
+			s += fmt.Sprintf(" %s%d", ui.G.Duck, a.Quacks)
 		}
-		return sGreen.Render("✓ AC")
+		return s
 	case game.TimedOut:
-		return sRed.Render("☠ timer")
+		return ui.Danger.Render(ui.G.Crash + " timer")
 	case game.OutOfLives:
-		return sRed.Render("☠ lives")
+		return ui.Danger.Render(ui.G.Crash + " lives")
 	case game.GaveUp:
-		return sRed.Render("☠ :q!")
+		return ui.Danger.Render(ui.G.Crash + " :q!")
 	case game.Retreated:
-		return sYellow.Render("↺ retreat")
+		return ui.Warn.Render(ui.G.Retreat) + " retreat"
 	case "":
-		return sYellow.Render("● open")
+		return ui.Focus.Render(ui.G.Here) + " open"
 	}
 	return string(a.Outcome)
 }
