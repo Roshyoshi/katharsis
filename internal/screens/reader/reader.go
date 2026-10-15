@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 )
 
 // Doc is one page to read.
@@ -243,10 +244,10 @@ func (m *Model) layout(width, height int) {
 // render runs Glamour, falling back to the prepared markdown wrapped as
 // plain text so a renderer failure still leaves something to read.
 func render(md string, wrap int) (string, error) {
-	// Glamour v2 no longer detects the background, and nothing asks the
-	// terminal for it, so the style is fixed.
+	// The style is built from the palette, so the page follows the
+	// terminal's theme rather than Glamour's fixed 256-color "dark" one.
 	r, err := glamour.NewTermRenderer(
-		glamour.WithStandardStyle("dark"),
+		glamour.WithStyles(ui.StyleConfig()),
 		glamour.WithWordWrap(wrap),
 	)
 	var out string
@@ -267,37 +268,19 @@ func render(md string, wrap int) (string, error) {
 	return strings.Join(lines, "\n"), nil
 }
 
-var (
-	bold    = lipgloss.NewStyle().Bold(true)
-	faint   = lipgloss.NewStyle().Faint(true)
-	red     = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	hit     = lipgloss.NewStyle().Reverse(true)
-	current = lipgloss.NewStyle().Reverse(true).Bold(true).Foreground(lipgloss.Color("3"))
-)
-
 func (m *Model) View(width, height int) string {
 	m.layout(width, height)
 	var out []string
 
-	head := bold.Render(m.doc.Title)
+	head := ui.Strong.Render(m.doc.Title)
 	if m.doc.Source != "" {
-		head += faint.Render("  ·  " + m.doc.Source)
+		head += ui.Muted.Render(ui.G.Sep + m.doc.Source)
 	}
-	out = append(out, " "+head, faint.Render(strings.Repeat("─", width)))
+	out = append(out, " "+head, ui.Rule(width))
 
 	body := strings.Split(m.vp.View(), "\n")
 	m.highlight(body)
-	out = append(out, body...)
-	for len(out) < height-1 {
-		out = append(out, "")
-	}
-	out = out[:max(height-1, 0)]
-	out = append(out, m.footer(width))
-
-	for i := range out {
-		out[i] = ansi.Truncate(out[i], width, "…")
-	}
-	return strings.Join(out, "\n")
+	return ui.Layout(width, max(height, 1), append(out, body...), m.footer(width))
 }
 
 // highlight marks search hits on the visible lines.
@@ -328,9 +311,9 @@ func (m *Model) highlight(body []string) {
 			if end <= 0 || start < 0 {
 				continue
 			}
-			st := hit
+			st := ui.Hit.Style()
 			if m.matches[m.cur] == idx {
-				st = current
+				st = ui.HitCurrent.Style()
 			}
 			ranges = append(ranges, lipgloss.NewRange(start, end, st))
 		}
@@ -340,43 +323,27 @@ func (m *Model) highlight(body []string) {
 	}
 }
 
+// footer is the pager's status bar, as in less: where the page is on the
+// left, the keys on the right; or the / prompt while typing.
 func (m *Model) footer(width int) string {
 	if m.typing {
 		return "/" + m.input + "█"
 	}
-	keys := "j/k scroll · space/b page · g/G ends · / search"
-	if m.doc.URL != "" {
-		keys += " · o browser"
-	}
-	keys += " · q back"
-	var right string
+	pos := ui.PagerLine(m.vp.YOffset(), m.vp.Height(), m.vp.TotalLineCount())
 	switch {
 	case m.renderErr != nil:
-		right = red.Render("render: " + m.renderErr.Error())
+		pos = "render failed: " + m.renderErr.Error()
 	case m.query != "" && len(m.matches) == 0:
-		right = red.Render("no match: " + m.query)
+		pos = "Pattern not found: /" + m.query
 	case m.query != "":
-		right = fmt.Sprintf("match %d/%d · n/N", m.cur+1, len(m.matches))
-	default:
-		right = m.position()
+		pos += ui.G.Sep + fmt.Sprintf("match %d/%d", m.cur+1, len(m.matches))
 	}
-	gap := width - ansi.StringWidth(keys) - ansi.StringWidth(right) - 1
-	if gap < 1 {
-		// Narrow terminal: the position matters more than the key help.
-		return ansi.Truncate(faint.Render(keys), max(width-ansi.StringWidth(right)-2, 0), "…") + "  " + right
+	keys := []string{"j/k", "scroll", "space/b", "page", "g/G", "ends", "/", "search"}
+	if len(m.matches) > 0 {
+		keys = append(keys, "n/N", "next")
 	}
-	return faint.Render(keys) + strings.Repeat(" ", gap) + right
-}
-
-// position reads like vim's ruler: All, Top, Bot or a percentage.
-func (m *Model) position() string {
-	switch {
-	case m.vp.TotalLineCount() <= m.vp.Height():
-		return "All"
-	case m.vp.AtTop():
-		return "Top"
-	case m.vp.AtBottom():
-		return "Bot"
+	if m.doc.URL != "" {
+		keys = append(keys, "o", "browser")
 	}
-	return fmt.Sprintf("%d%%", int(m.vp.ScrollPercent()*100))
+	return ui.StatusBar(width, pos, append(keys, "q", "back")...)
 }

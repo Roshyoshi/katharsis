@@ -1,4 +1,4 @@
- Prefix Sums  ·  USACO Guide · Silver
+ Prefix Sums · USACO Guide · Silver
 ────────────────────────────────────────────────────────────────────────────────
             long long a;
             cin >> a;
@@ -13,12 +13,12 @@
 
   ## Pitfalls
 
-  • Sums overflow  int  quickly: N = 2 × 10⁵ values up to 10⁹
-  reach 2 × 10¹⁴. Use  long long .
+  • Sums overflow int quickly: N = 2 × 10⁵ values up to 10⁹
+  reach 2 × 10¹⁴. Use long long.
   • Off by one: with 1-indexed p, the range [l, r] is pᵣ - pₗ₋₁.
 
    Problem                        │ Source              │ Difficulty
   ────────────────────────────────┼─────────────────────┼─────────────────────
    Static Range Sum Queries       │ CSES                │ Easy
    Breed Counting                 │ USACO Silver        │ Easy
-j/k scroll · space/b page · g/G ends · / search · o browser · …  match 1/1 · n/N
+ line 23/44 · match 1/1           j/k scroll · space/b page · g/G ends · q back

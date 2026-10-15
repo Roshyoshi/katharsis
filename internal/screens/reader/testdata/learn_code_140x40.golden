@@ -1,4 +1,4 @@
- Prefix Sums  ·  USACO Guide · Silver
+ Prefix Sums · USACO Guide · Silver
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
   aₗ + aₗ₊₁ + ⋯ + aᵣ = pᵣ - pₗ₋₁
@@ -28,8 +28,8 @@
 
   ## Pitfalls
 
-  • Sums overflow  int  quickly: N = 2 × 10⁵ values up to 10⁹
-  reach 2 × 10¹⁴. Use  long long .
+  • Sums overflow int quickly: N = 2 × 10⁵ values up to 10⁹
+  reach 2 × 10¹⁴. Use long long.
   • Off by one: with 1-indexed p, the range [l, r] is pᵣ - pₗ₋₁.
 
    Problem                        │ Source                        │ Difficulty
@@ -37,4 +37,4 @@
    Static Range Sum Queries       │ CSES                          │ Easy
    Breed Counting                 │ USACO Silver                  │ Easy
    Subsequences Summing to Sevens │ USACO Silver                  │ Normal
-j/k scroll · space/b page · g/G ends · / search · o browser · q back                                                        match 1/1 · n/N
+ line 6/42 (END) · match 1/1                                j/k scroll · space/b page · g/G ends · / search · n/N next · o browser · q back

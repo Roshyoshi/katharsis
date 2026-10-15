@@ -1,4 +1,4 @@
- Bovine Shuffle  ·  USACO 2024 December, Silver P2
+ Bovine Shuffle · USACO 2024 December, Silver P2
 ────────────────────────────────────────────────────────────────────────────────
 
   Note: The time limit for this problem is 4s, twice the default.
@@ -21,4 +21,4 @@
   ### OUTPUT FORMAT (print output to the terminal / stdout):
 
   Two integers: the count, and ⌊S/2⌋ modulo 10⁹+7.
-j/k scroll · space/b page · g/G ends · / search · o browser · q back        Top
+ line 1/41             j/k scroll · space/b page · g/G ends · / search · q back

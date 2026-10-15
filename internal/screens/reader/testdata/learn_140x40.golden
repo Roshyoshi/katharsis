@@ -1,4 +1,4 @@
- Prefix Sums  ·  USACO Guide · Silver
+ Prefix Sums · USACO Guide · Silver
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
   ## Introduction
@@ -33,8 +33,8 @@
 
   ## Pitfalls
 
-  • Sums overflow  int  quickly: N = 2 × 10⁵ values up to 10⁹
-  reach 2 × 10¹⁴. Use  long long .
+  • Sums overflow int quickly: N = 2 × 10⁵ values up to 10⁹
+  reach 2 × 10¹⁴. Use long long.
   • Off by one: with 1-indexed p, the range [l, r] is pᵣ - pₗ₋₁.
 
-j/k scroll · space/b page · g/G ends · / search · o browser · q back                                                                    Top
+ line 1/42                                                             j/k scroll · space/b page · g/G ends · / search · o browser · q back
