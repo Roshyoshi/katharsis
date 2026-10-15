@@ -206,8 +206,13 @@ first-crash title cut to 24 cells; 92 quotes checked live; SPONGEs added on
 merge.full and regression.door for the storyteller). g-ui (overtime clears showed the unpaid reward; the HUD froze at 00:00 past a soft
 deadline; compact rows dropped their numbers for long titles; one h:mm; OLE gets
 the MLE line; ASCII separators; route stats aligned; Solves meter |#*; git log
-rating column; real GRUB art fits 80x24 with up to 13 entries).
-Cleanup wave 2 running: g-engine, g-app, story-polish; wave 1 done.
+rating column; real GRUB art fits 80x24 with up to 13 entries). story-polish (daemon.cron, daemon.chrt, upgrade.shuf, verdict.OLE written; every
+draft revised; milestones carry no counts; the Turing-note thread closes its own
+questions; {days} replaces "Day three" / "Seventeen days on"; regression.door
+and merge.full SPONGEs resolved; dead hooks cut or given a home; text.md
+pointers fixed).
+Cleanup wave 2 running: g-engine, g-app; story-wire (screen wiring of the new
+lines), story-wire2 (storyteller: reveal.prestige first lines to 59 columns); wave 1 done.
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
 retired milestone); cleanup wave 1: g-store, g-qa
