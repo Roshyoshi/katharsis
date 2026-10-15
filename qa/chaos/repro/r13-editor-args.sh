@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-# r13: --editor is split with strings.Fields. A quoted argument breaks
-# (vim opens a buffer named `nu"` before the solution), and an editor that
-# cannot start just reads "editor closed · e reopens it", with no reason.
+# r13: --editor was split with strings.Fields. A quoted argument broke (vim
+# opened a buffer named `nu"` before the solution), and an editor that
+# could not start just read "editor closed · e reopens it", with no reason.
+#
+# --editor is now a shell command line, and a missing editor is refused at
+# start, before the TUI, so r13b runs the game directly (kc_direct): in the
+# case's tmux server the pane is gone before it can be read.
 set -u
 . "$(dirname "$0")/../lib.sh"
 kc_case r13 usaco
@@ -11,9 +15,4 @@ echo "== quoted editor arg, vim's buffers:"; kc_cap "$(kc_edpane)" | grep -E '^ 
 kc_kill
 
 kc_case r13b usaco
-KC_EDITOR=nosuchvim KC_BOOTWAIT=0 kc_start
-kc_wait_for "GNU GRUB" 90
-kc_keys Enter; kc_wait_for "enter open door" 20; kc_keys Enter; kc_pause 6
-echo "== missing editor binary:"; kc_cap | head -1; kc_cap | grep "editor closed"
-kc_keys e; kc_pause 3; echo "== after e:"; kc_cap | grep "editor closed"
-kc_kill
+echo "== missing editor binary:"; KC_EDITOR=nosuchvim kc_direct | tail -1

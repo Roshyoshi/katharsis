@@ -19,6 +19,7 @@
 # kc_ed KEYS...              send-keys to the editor pane
 # kc_db SQL                  sqlite3 on the case's store
 # kc_kill                    kill the case's tmux server and its processes
+# kc_direct [game args...]   run the game from this shell; print its output
 
 REPO=${REPO:-/Users/roshanhegde/katharsis}
 # KC_ROOT is made by kc_setup (below); the default is this run's.
@@ -184,6 +185,21 @@ kc_outside() {
 # kc_inner ARGS... is tmux against the game's own session server
 # (-L katharsis), the one kc_outside's game starts.
 kc_inner() { TMUX_TMPDIR="$KC/tmux" tmux -L katharsis "$@"; }
+
+# kc_direct [game args...] runs the game straight from this shell, as from a
+# shell pane inside tmux, and prints what it printed. It is for an error
+# that ends the game before its TUI: in a pane of the case's server the
+# pane, or the whole server, is gone before kc_cap can read it. TMUX names
+# a server that does not exist, so the game neither re-execs into a session
+# of its own nor reaches a real server. A game that gets as far as its TUI
+# is killed after 20 s.
+kc_direct() {
+	local cmd
+	cmd=$(KC_NOLOG=1 kc_gamecmd "$@")
+	# shellcheck disable=SC2046
+	env $(kc_env) TMUX="$KC/tmux/none,1,0" TMUX_PANE=%0 \
+		perl -e 'alarm shift; exec @ARGV' 20 sh -c "$cmd" 2>&1 </dev/null
+}
 
 # kc_mash N [pane] sends N random keys (no C-c, q or Q: those quit or give
 # up by design and are tested on their own) to the game pane.
