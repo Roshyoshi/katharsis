@@ -168,7 +168,9 @@ type Block struct {
 // Tally counts boots and full clears at one prestige level.
 type Tally struct{ Boots, FullClears int }
 
-// Report sums a simulation. Per-biome slices are indexed like Rules.Biomes.
+// Report sums a simulation. Per-biome slices are indexed like each boot's
+// State.Biomes: Rules.Biomes, except that boot #1 plays Rules.FirstBiomes,
+// so a run from a new player has as many entries as the longer of the two.
 type Report struct {
 	Boots, FullClears int
 	ClearRate         float64
@@ -248,7 +250,6 @@ func Simulate(r rules.Rules, pool []catalog.Problem, playerRating float64, boots
 
 // Run is Simulate with every knob.
 func Run(c Config) Report {
-	nb := len(c.Rules.Biomes)
 	m := c.Meta
 	if m == nil {
 		m = &game.Meta{}
@@ -256,6 +257,10 @@ func Run(c Config) Report {
 			game.GrantCapability(m, cap)
 		}
 		slices.Sort(m.Capabilities)
+	}
+	nb := len(c.Rules.Biomes)
+	if m.Boots == 0 { // boot #1 plays its own shape
+		nb = max(nb, len(c.Rules.FirstBiomes))
 	}
 	if c.Prestige >= 0 {
 		m.Prestige = max(m.Prestige, min(c.Prestige, game.MaxPrestige))

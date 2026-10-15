@@ -154,6 +154,25 @@ func TestSimulateDeterministic(t *testing.T) {
 	}
 }
 
+// A preset with fewer biomes than boot #1's shape (rules.FirstBiomes)
+// plays: boot #1's later biomes have report entries of their own.
+func TestRunShorterPreset(t *testing.T) {
+	t.Parallel()
+	r := rules.Standard()
+	r.Biomes = []rules.Biome{r.Biomes[0], r.Biomes[2]}
+	rep := sim.Run(sim.Config{Rules: r, Pool: sim.SyntheticPool(3000, 1), Player: sim.DefaultPlayer(1300), Boots: 20, Seed: 1})
+	crashes := 0
+	for _, n := range rep.CrashBiome {
+		crashes += n
+	}
+	if n := len(r.FirstBiomes); len(rep.Attempts) != n || len(rep.CrashBiome) != n {
+		t.Errorf("%d attempt and %d crash entries, want boot #1's %d biomes", len(rep.Attempts), len(rep.CrashBiome), n)
+	}
+	if rep.Boots != 20 || rep.Errors != 0 || rep.FullClears+crashes != rep.Boots {
+		t.Errorf("boots %d errors %d clears %d crashes %d", rep.Boots, rep.Errors, rep.FullClears, crashes)
+	}
+}
+
 func TestSyntheticPool(t *testing.T) {
 	t.Parallel()
 	ps := sim.SyntheticPool(600, 1)

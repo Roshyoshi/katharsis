@@ -251,7 +251,7 @@ func prestigeTable(r rules.Rules, pool []catalog.Problem, rating float64, boots 
 			crash = append(crash, fmt.Sprintf("%2.0f", pct(rep.CrashBiome[i], rep.Boots)))
 			doors = append(doors, fmt.Sprintf("%2.0f", pct(rep.Clears[i], rep.Attempts[i])))
 		}
-		mid := len(rep.Taught) / 2
+		mid := len(r.Biomes) / 2
 		exp := rep.TaughtP[mid] / float64(max(rep.Taught[mid], 1))
 		cal := rep.Meta.Calibration
 		off := cal[game.CalibrationAll].Offset + cal[game.CalibrationTier(r.Biomes[mid])].Offset
