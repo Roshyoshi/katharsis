@@ -217,3 +217,34 @@ func TestDoorQuitLine(t *testing.T) {
 
 // countdown is a countdown as the reply prints it.
 func countdown(d time.Duration) string { return strings.TrimSuffix(leftText(d), " left") }
+
+// TestGiveUpAsks: vim's :q! asks the game what giving up costs now (ctl
+// giveup ask), and asking gives nothing up: the room's burn while the
+// boot can pay it, the end of the boot once it cannot.
+func TestGiveUpAsks(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := cyclesBoot(t, func(r *rules.Rules) {
+			r.Cycles, r.MaxCycles, r.FailMoveOn = 30, 50, true
+			r.Biomes[0].FailCycles = 10
+		})
+		ask := func() string {
+			req, reply := session.NewRequest(session.Command{Cmd: session.CmdGiveUp, Args: []string{session.ArgAsk}})
+			h.send(req)
+			rep, _ := answer(reply)
+			if !rep.OK {
+				t.Fatalf("giveup ask answered %+v", rep)
+			}
+			return rep.Text
+		}
+		if got := ask(); got != "Give up? :q! burns 10 cycles, 20 left · room lost." {
+			t.Errorf("with cycles to spare: %q", got)
+		}
+		if h.m.state.Phase != game.PhaseProblem || h.m.state.Current == nil {
+			t.Fatal("asking gave the door up")
+		}
+		h.m.state.Cycles = 10
+		if got := ask(); got != "Give up? :q! ends the boot." {
+			t.Errorf("on the last cycles: %q", got)
+		}
+	})
+}

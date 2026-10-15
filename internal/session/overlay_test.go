@@ -266,15 +266,24 @@ func TestOverlayQuitGivesUp(t *testing.T) {
 	pane := startVim(t, Overlay{QuitGivesUp: true}, sock, path)
 	keys(t, pane, "ounsaved", "Escape")
 
-	ex(t, pane, "q!")
-	waitScreen(t, pane, "Give up?")
+	// The question is the game's, asked as :q! comes (D47).
+	ask := func() {
+		t.Helper()
+		ex(t, pane, "q!")
+		r := next(t, reqs)
+		if r.Cmd != CmdGiveUp || !slices.Equal(r.Args, []string{ArgAsk}) {
+			t.Fatalf("q! sent %+v, want giveup ask", r.Command)
+		}
+		r.Answer(Reply{OK: true, Text: "Give up? :q! burns 12 cycles, 10 left · room lost."})
+		waitScreen(t, pane, "burns 12 cycles, 10 left")
+	}
+	ask()
 	keys(t, pane, "n")
 	noRequest(t, reqs)
 	ex(t, pane, "echo 'modified=' . &modified . ' lines=' . line('$')")
 	waitScreen(t, pane, "modified=1 lines=2")
 
-	ex(t, pane, "q!")
-	waitScreen(t, pane, "Give up?")
+	ask()
 	keys(t, pane, "y")
 	r := next(t, reqs)
 	if r.Cmd != CmdGiveUp {

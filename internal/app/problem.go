@@ -446,6 +446,15 @@ func (m *Model) onRequest(req session.Request) tea.Cmd {
 	case session.CmdQuack:
 		a = game.Quack{}
 	case session.CmdGiveUp:
+		if slices.Contains(req.Args, session.ArgAsk) {
+			// vim's :GiveUp asks what it costs now, then confirms.
+			if !m.inBootDoor() || m.attempt() == nil {
+				req.Answer(session.Reply{Text: "no door open"})
+			} else {
+				req.Answer(session.Reply{OK: true, Text: "Give up? " + giveUpPrice(m.state) + "."})
+			}
+			return nil
+		}
 		a = game.GiveUp{}
 	case session.CmdRetreat:
 		if m.retreatRefused() {

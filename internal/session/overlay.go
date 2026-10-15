@@ -12,6 +12,10 @@ import (
 // ArgForce, after submit, submits although the samples fail: :Submit!.
 const ArgForce = "force"
 
+// ArgAsk, after giveup, asks the game what giving up the open door costs
+// now, without giving up: the question vim's :GiveUp confirm puts (D47).
+const ArgAsk = "ask"
+
 // Overlay is the vimscript the game's vim sources with -S, after the user's
 // own vimrc, which loads as usual. It defines the game's commands; each runs
 // `katharsis ctl` as a job (vim 8+ +job), so vim never waits on the judge,
@@ -23,8 +27,9 @@ const ArgForce = "force"
 //	:Debug [n]   write if modified, open lldb on test n (default: the
 //	             first failing test)
 //	:Quack       use a rubber duck
-//	:Retreat     swap the door for a life
-//	:GiveUp      confirm, then give up (crash; the editorial opens)
+//	:Retreat     swap the door for cycles
+//	:GiveUp      ask the game what it costs (ctl giveup ask), confirm,
+//	             then give up
 type Overlay struct {
 	// Ctl is the argv that reaches the game, normally the absolute path of
 	// this binary and "ctl"; the command and its arguments follow it.
@@ -224,7 +229,14 @@ function! s:Run(save, ...) abort
 endfunction
 
 function! s:GiveUp() abort
-  if confirm('Give up? The boot crashes and the editorial opens.', "&Yes\n&No", 2) == 1
+  " What giving up costs is the game's to say, asked now: a burn the boot
+  " survives as the door opens can be its last by the time :q! comes.
+  let l:ask = 'Give up this door?'
+  let l:out = systemlist(join(map(s:ctl + ['giveup', 'ask'], 'shellescape(v:val)')))
+  if v:shell_error == 0 && !empty(l:out)
+    let l:ask = l:out[0]
+  endif
+  if confirm(l:ask, "&Yes\n&No", 2) == 1
     call s:Ctl('giveup')
   endif
 endfunction

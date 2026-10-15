@@ -36,8 +36,8 @@ const (
 	CmdDebug   = "debug"   // [test]: open lldb on a test
 	CmdQuack   = "quack"   // use a rubber duck
 	CmdGiveUp  = "giveup"  // :q!, after vim asked
-	CmdRetreat = "retreat" // swap the door for a life
-	CmdStatus  = "status"  // one line: timer, lives, tests
+	CmdRetreat = "retreat" // swap the door for cycles
+	CmdStatus  = "status"  // one line: timer, cycles, tests
 )
 
 var commands = []string{CmdSubmit, CmdDebug, CmdQuack, CmdGiveUp, CmdRetreat, CmdStatus}
