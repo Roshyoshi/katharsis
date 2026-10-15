@@ -313,11 +313,13 @@ func TestClientIdleAfterRead(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := fast(srv, 0)
-	c.Idle = 20 * time.Millisecond
+	// Wide enough that a loaded machine delivering the two bytes late is
+	// not itself a stall; the sleep after the read still outlasts it.
+	c.Idle = 150 * time.Millisecond
 	err := c.Do(context.Background(), Request{URL: srv.URL, Read: func(resp *http.Response) error {
 		var buf bytes.Buffer
 		_, err := buf.ReadFrom(resp.Body)
-		time.Sleep(80 * time.Millisecond) // the timer fires here
+		time.Sleep(450 * time.Millisecond) // the timer fires here
 		return err
 	}})
 	if err != nil {
