@@ -198,7 +198,7 @@ func runGame(args []string) error {
 // in the background (20 s when measured, minutes on a stalled network) and
 // joins when done, for the next boot. The note it returns is GRUB's line
 // until then: the build's progress, or "Codeforces offline" once it fails.
-// A failed build is not retried before the next start.
+// A failed build tries once more after codeforces.RetryWait.
 func joinCodeforces(ctx context.Context, cats *catalog.Union) (note func() string) {
 	var text atomic.Pointer[string]
 	set := func(s string) { text.Store(&s) }
@@ -212,7 +212,7 @@ func joinCodeforces(ctx context.Context, cats *catalog.Union) (note func() strin
 	go func() {
 		cf, err := codeforces.Build(ctx, func(done, total int) {
 			set(fmt.Sprintf("Codeforces indexing… %d%%", done*100/total))
-		})
+		}, func(error) { set("Codeforces offline") })
 		if err != nil {
 			set("Codeforces offline")
 			return

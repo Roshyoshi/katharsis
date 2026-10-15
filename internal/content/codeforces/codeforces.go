@@ -87,12 +87,43 @@ func Cached() (*Catalog, error) {
 // 17 MB in 38 requests, 20 s when measured. progress, when set, hears how
 // many of the build's steps are done as each finishes. Afterwards All and
 // Get need no network.
-func Build(ctx context.Context, progress func(done, total int)) (*Catalog, error) {
+//
+// A failed build tries once more after RetryWait, so a game that started
+// offline picks Codeforces up later in the session rather than at the next
+// start. offline, when set, hears the first failure as the wait begins.
+func Build(ctx context.Context, progress func(done, total int), offline func(error)) (*Catalog, error) {
 	root, err := cacheRoot()
 	if err != nil {
 		return nil, err
 	}
-	return build(ctx, root, "https://huggingface.co", pinned, client, progress)
+	return retryOnce(ctx, RetryWait, offline, func() (*Catalog, error) {
+		return build(ctx, root, "https://huggingface.co", pinned, client, progress)
+	})
+}
+
+// RetryWait is how long Build waits to try again: long enough for a
+// network to come back, and only once, so a site that is down is not
+// asked all session.
+const RetryWait = 10 * time.Minute
+
+// retryOnce runs try, and if it fails for any reason but ctx ending, tells
+// offline and runs it once more after wait.
+func retryOnce(ctx context.Context, wait time.Duration, offline func(error), try func() (*Catalog, error)) (*Catalog, error) {
+	c, err := try()
+	if err == nil || ctx.Err() != nil {
+		return c, err
+	}
+	if offline != nil {
+		offline(err)
+	}
+	t := time.NewTimer(wait)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-t.C:
+	}
+	return try()
 }
 
 // Open is Cached, else Build, for a caller that would rather wait than do

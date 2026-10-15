@@ -1,6 +1,7 @@
 package codeforces
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"reflect"
@@ -424,5 +425,41 @@ func TestJudgeRules(t *testing.T) {
 		if e.Skip != tc.skip || e.AnyCase != tc.anyCase {
 			t.Errorf("%s: skip %q any-case %v, want %q %v", tc.name, e.Skip, e.AnyCase, tc.skip, tc.anyCase)
 		}
+	}
+}
+
+// A failed build tries once more after the wait, so a game that started
+// offline picks Codeforces up when the network is back; offline hears
+// the first failure, for GRUB to show meanwhile.
+func TestBuildRetriesOnce(t *testing.T) {
+	t.Parallel()
+	h := newFakeHF(t, newFixture(t))
+	root := t.TempDir()
+	try := func(ctx context.Context) func() (*Catalog, error) {
+		return func() (*Catalog, error) {
+			return build(ctx, root, h.srv.URL, fixtureLayout, testClient(h), nil)
+		}
+	}
+
+	h.setFail(true)
+	offline := 0
+	c, err := retryOnce(t.Context(), time.Millisecond, func(error) { offline++; h.setFail(false) }, try(t.Context()))
+	if err != nil || len(c.All()) == 0 || offline != 1 {
+		t.Fatalf("down, then up: %v, offline heard %d times; want a catalog after one failure", err, offline)
+	}
+
+	// Down for both tries: the second failure comes back.
+	h.setFail(true)
+	offline = 0
+	if _, err := retryOnce(t.Context(), time.Millisecond, func(error) { offline++ }, try(t.Context())); err == nil || offline != 1 {
+		t.Errorf("down twice: %v, offline heard %d times; want an error after one", err, offline)
+	}
+
+	// A game that quits during the wait does not sit it out.
+	ctx, cancel := context.WithCancel(t.Context())
+	start := time.Now()
+	_, err = retryOnce(ctx, time.Hour, func(error) { cancel() }, try(ctx))
+	if !errors.Is(err, context.Canceled) || time.Since(start) > time.Minute {
+		t.Errorf("quit while waiting: %v after %v; want context.Canceled at once", err, time.Since(start))
 	}
 }
