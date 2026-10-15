@@ -175,6 +175,13 @@ D47 settled 10-15  Meta research before any change to lives: "3 lives seems a li
 D48 settled 10-15  Lives are renamed cycles (CPU cycles), still drawn as ♥: "can change
                    lives name to cycles lol / keep icon". Lands with the D47 meta change.
 
+D49 proposed       Trial by fire back: "over the past couple of changes where we eased the
+                   difficulty we lost the trial by fire aspect". Default band for the map
+                   design: G1 <= 10%, P0 full clear 40-55%, crash hazard by act ~15/25/35%,
+                   P4 <= 30%, P8 ~10%; levers: act damage x1/1.25/1.5, no heal on AC, at
+                   most a partial refill between acts, bosses 1-2 retry -20, final
+                   one-shot. User numbers fixed (D47).
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
