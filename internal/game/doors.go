@@ -19,12 +19,18 @@ func topicOf(p *catalog.Problem) string {
 }
 
 // target is the door rating at which the player clears rb's topic doors
-// with probability rb.TargetClear, raised by the prestige offset and
-// corrected by the tier's calibration.
+// with probability rb.TargetClear, raised by the prestige offset but never
+// past where they would clear rb.MinClear, and corrected by the tier's
+// calibration. The floor applies before the calibration, which corrects
+// the logistic's shape at whatever rating the floor leaves.
 func (e *engine) target(topic string, rb rules.Biome) float64 {
 	r := &e.s.Rules
-	return Aim(PlayerRating(r, e.meta, topic), rb.TargetClear) +
-		float64(e.s.Prestige)*r.PrestigeOffset + e.aimOffset(rb)
+	R := PlayerRating(r, e.meta, topic)
+	aim := Aim(R, rb.TargetClear) + float64(e.s.Prestige)*r.PrestigeOffset
+	if rb.MinClear > 0 {
+		aim = min(aim, Aim(R, rb.MinClear))
+	}
+	return aim + e.aimOffset(rb)
 }
 
 // Target is the door rating the current biome aims topic doors at for m:

@@ -51,6 +51,10 @@ type Biome struct {
 	// given the player's rating; it sets door difficulty.
 	TargetClear float64  `toml:"target_clear"`
 	Timer       Duration `toml:"timer"` // default timer before fitting
+	// MinClear is the lowest solve probability the prestige offset may push
+	// this biome's doors to: past it, a higher prestige stops raising them
+	// and is harder only through its ascensions. 0 sets no floor.
+	MinClear float64 `toml:"min_clear"`
 }
 
 type Rules struct {
@@ -313,7 +317,9 @@ func Standard() Rules {
 		DoorsPerRoom: 3,
 		Biomes: []Biome{
 			{Kind: Fixed, Name: "Userland", Rooms: 2, TargetClear: 0.92, Timer: Duration{15 * time.Minute}},
-			{Kind: Choice, Rooms: 2, Choices: 2, TargetClear: 0.7, Timer: Duration{30 * time.Minute}},
+			// The mid biome is where learning happens, so prestige holds it at
+			// 0.6 or above (D22) and adds risk instead.
+			{Kind: Choice, Rooms: 2, Choices: 2, TargetClear: 0.7, MinClear: 0.6, Timer: Duration{30 * time.Minute}},
 			{Kind: Boss, Rooms: 1, TargetClear: 0.5, Timer: Duration{50 * time.Minute}},
 		},
 		BlindChance:     0.25,
@@ -375,11 +381,15 @@ func Standard() Rules {
 		OvertimeBytesMult: 0.5,
 
 		PrestigeOffset: 25,
+		// Prestige gets harder through these more than through the offset:
+		// the mid biome's floor stops the offset there (D22), and each level
+		// costs the model players a few points of full clears (sim
+		// TestBalanceReport/prestige).
 		Ascensions: []Ascension{
-			{Level: 1, BlindChance: 0.15},
-			{Level: 2, Ducks: -1, MysteryChance: 0.05},
-			{Level: 3, CursedChance: 0.07, TimerMult: 0.9},
-			{Level: 4, Lives: -1},
+			{Level: 1, BlindChance: 0.15, TimerMult: 0.95},
+			{Level: 2, Ducks: -1, MysteryChance: 0.05, CursedChance: 0.04},
+			{Level: 3, CursedChance: 0.05, TimerMult: 0.9},
+			{Level: 4, Lives: -1, CursedChance: 0.04, TimerMult: 0.9},
 		},
 	}
 }
@@ -462,6 +472,9 @@ func (r Rules) Validate() error {
 	for i, b := range r.Biomes {
 		if b.Rooms < 1 || b.TargetClear <= 0 || b.TargetClear >= 1 || b.Timer.Duration <= 0 {
 			return fmt.Errorf("rules %q: biome %d needs rooms >= 1, 0 < target_clear < 1, timer > 0", r.Name, i)
+		}
+		if b.MinClear < 0 || b.MinClear > b.TargetClear {
+			return fmt.Errorf("rules %q: biome %d needs 0 <= min_clear <= target_clear", r.Name, i)
 		}
 		if b.Kind == Choice && b.Choices < 2 {
 			return fmt.Errorf("rules %q: choice biome %d needs choices >= 2", r.Name, i)

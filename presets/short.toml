@@ -25,6 +25,7 @@ kind = "choice"
 rooms = 1
 choices = 2
 target_clear = 0.7
+min_clear = 0.6
 timer = "20m"
 
 [[biome]]

@@ -224,6 +224,39 @@ func TestDoorTargets(t *testing.T) {
 	}
 }
 
+// The prestige offset raises a biome's doors until they reach its
+// MinClear and no further (D22); a biome without a floor keeps rising.
+// Doors and their SolveP follow the clamped aim.
+func TestPrestigeFloor(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 400, 3000, 10)
+	const rating = 1500
+	for _, floor := range []float64{0, 0.6} {
+		for p := range game.MaxPrestige + 1 {
+			r := plain()
+			r.Biomes[0].TargetClear, r.Biomes[0].MinClear = 0.7, floor
+			m := &game.Meta{Rating: rating, Prestige: game.MaxPrestige}
+			h := newHarness(t, r, m, ps, p, 1)
+			want := game.Aim(rating, 0.7) + float64(p)*r.PrestigeOffset
+			if floor > 0 {
+				want = min(want, game.Aim(rating, floor))
+			}
+			got := h.s.Target(m, "dp")
+			if math.Abs(got-want) > 1e-9 {
+				t.Errorf("floor %v prestige %d: Target %.1f, want %.1f", floor, p, got, want)
+			}
+			if floor > 0 && game.Expected(rating, got) < floor-1e-9 {
+				t.Errorf("prestige %d aims at %.3f, under the %.2f floor", p, game.Expected(rating, got), floor)
+			}
+			for _, d := range h.s.Doors {
+				if math.Abs(float64(d.Rating)-want) > 100 || math.Abs(d.SolveP-game.Expected(rating, float64(d.Rating))) > 1e-12 {
+					t.Errorf("floor %v prestige %d: door %d (SolveP %.3f) for target %.0f", floor, p, d.Rating, d.SolveP, want)
+				}
+			}
+		}
+	}
+}
+
 func TestDoorWindows(t *testing.T) {
 	t.Parallel()
 	at := func(topic string, rating, n int) []catalog.Problem {

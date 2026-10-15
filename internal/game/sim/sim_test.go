@@ -65,8 +65,8 @@ func TestIdealPlayerHitsTargets(t *testing.T) {
 // engine expects of them in every tier, within binomial noise (3 standard
 // errors, plus 2 points of calibration lag), and the expectation must be
 // TargetClear at prestige 0 and, at prestige 2, the logistic chance
-// 2·PrestigeOffset above the aim: a higher prestige stays harder by
-// exactly what the offset says.
+// 2·PrestigeOffset above the aim (or the biome's MinClear, where that
+// binds): a higher prestige stays harder by exactly what the offset says.
 func TestCalibrationHitsTargets(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -87,7 +87,11 @@ func TestCalibrationHitsTargets(t *testing.T) {
 		t.Logf("model 1600, prestige %d:\n%s", prestige, rep)
 		for i, b := range r.Biomes {
 			got, exp := taught(rep, i)
-			want := game.Expected(0, game.Aim(0, b.TargetClear)+float64(prestige)*r.PrestigeOffset)
+			aim := game.Aim(0, b.TargetClear) + float64(prestige)*r.PrestigeOffset
+			if b.MinClear > 0 {
+				aim = min(aim, game.Aim(0, b.MinClear))
+			}
+			want := game.Expected(0, aim)
 			tol := 3*math.Sqrt(exp*(1-exp)/float64(max(rep.Taught[i], 1))) + 0.02
 			if math.Abs(got-exp) > tol || math.Abs(exp-want) > 0.03 {
 				t.Errorf("prestige %d biome %d: plain doors clear %.3f (±%.3f), engine expected %.3f, want both near %.3f",

@@ -101,6 +101,9 @@ func TestValidate(t *testing.T) {
 			r.BaseBytes, r.MaxBytesMult, r.BossMult, r.CursedMult = rules.MaxBaseBytes, 100, 100, 100
 		}, "a door could pay"},
 		{"rich but bounded", func(r *rules.Rules) { r.BaseBytes, r.BossMult = 1<<20, 1000 }, ""},
+		{"min_clear at target_clear", func(r *rules.Rules) { r.Biomes[1].MinClear = r.Biomes[1].TargetClear }, ""},
+		{"min_clear above target_clear", func(r *rules.Rules) { r.Biomes[1].MinClear = 0.8 }, "min_clear"},
+		{"negative min_clear", func(r *rules.Rules) { r.Biomes[0].MinClear = -0.1 }, "min_clear"},
 	}
 	for _, tc := range tests {
 		r := rules.Standard()
@@ -122,10 +125,10 @@ func TestAscend(t *testing.T) {
 		timer               float64
 	}{
 		{0, 0, 0, 0, 0, 0, 1},
-		{1, 0.15, 0, 0, 0, 0, 1},
-		{2, 0.15, 0.05, 0, 0, -1, 1},
-		{3, 0.15, 0.05, 0.07, 0, -1, 0.9},
-		{4, 0.15, 0.05, 0.07, -1, -1, 0.9},
+		{1, 0.15, 0, 0, 0, 0, 0.95},
+		{2, 0.15, 0.05, 0.04, 0, -1, 0.95},
+		{3, 0.15, 0.05, 0.09, 0, -1, 0.855},
+		{4, 0.15, 0.05, 0.13, -1, -1, 0.7695},
 	}
 	near := func(a, b float64) bool { return math.Abs(a-b) < 1e-12 }
 	for _, tc := range tests {
@@ -153,9 +156,11 @@ func TestLoad(t *testing.T) {
 kind = "boss"
 rooms = 1
 target_clear = 0.5
+min_clear = 0.4
 timer = "40m"
 `, func(r rules.Rules) bool {
-			return len(r.Biomes) == 1 && r.Biomes[0].Name == "" && r.Biomes[0].Timer.Duration == 40*time.Minute
+			return len(r.Biomes) == 1 && r.Biomes[0].Name == "" && r.Biomes[0].Timer.Duration == 40*time.Minute &&
+				r.Biomes[0].MinClear == 0.4
 		}, ""},
 		{"ascension tables replace Standard's", `
 [[ascension]]
