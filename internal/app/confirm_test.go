@@ -49,6 +49,11 @@ func TestSubmitBangOverFailingSamples(t *testing.T) {
 	if !ok || rep.OK || !strings.Contains(rep.Text, "samples 0/1 pass") || !strings.Contains(rep.Text, ":Submit!") {
 		t.Fatalf(":Submit over failing samples answered %v %+v, want the :Submit! question", ok, rep)
 	}
+	// A submit that fails a sample again is free: the question must not
+	// quote a hidden test's price for it.
+	if !strings.Contains(rep.Text, "free if a sample fails again") || strings.Contains(rep.Text, "burns") {
+		t.Errorf(":Submit question %q, want the free sample fail and no price", rep.Text)
+	}
 	if h.m.judging || h.m.state.Cycles != lives || h.m.state.Current.Submits != 0 {
 		t.Fatalf("a refused :Submit judged or charged: judging %v lives %d submits %d",
 			h.m.judging, h.m.state.Cycles, h.m.state.Current.Submits)

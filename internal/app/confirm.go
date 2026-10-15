@@ -13,18 +13,22 @@ import (
 	"katharsis/internal/units"
 )
 
-// The game asks before it spends cycles on a misinput (UX J3, J4): a full
-// submit while the samples already fail, and a retreat. The editor's
-// :Submit refuses and names :Submit!; the pane's s and R ask on the keys'
-// row and go ahead on a second press. Every price is the engine's own
-// (bootui.SubmitPrice, State.RetreatCost), said before it is paid.
+// The game asks before a misinput (UX J3, J4): a full submit while the
+// samples already fail (free if a sample fails again, sampleFailed), and
+// a retreat, which burns cycles. The editor's :Submit refuses and names
+// :Submit!; the pane's s and R ask on the keys' row and go ahead on a
+// second press. Every price is the engine's own (State.RetreatCost),
+// said before it is paid.
 
 // samplesFail is the question for a full submit of the open boot door
-// while its samples fail, ending in again (how to go ahead); ok is false
+// while its samples fail, again (how to go ahead) before the note, since
+// vim's message line cuts a reply's tail; ok is false
 // when there is nothing to ask: no sample has failed yet (none has run, or
 // all that ran passed), the samples did not compile (a CE costs nothing),
 // or the door is an upsolve, where a failure costs nothing either. On
-// Heisenbug's doors (Door.QuietSamples) it says only that they fail.
+// Heisenbug's doors (Door.QuietSamples) it says only that they fail. A
+// submit that fails a sample again is free (sampleFailed), so it names no
+// price: the question guards against a misinput, not a cost.
 func (m *Model) samplesFail(again string) (string, bool) {
 	h := m.hud()
 	// A submit still judging answers any other as busy first.
@@ -41,7 +45,7 @@ func (m *Model) samplesFail(again string) (string, bool) {
 	if m.state.Current.Door.QuietSamples {
 		samples = "samples fail"
 	}
-	return samples + " · " + bootui.SubmitPrice(m.state) + " · " + again, true
+	return samples + " · " + again + " · free if a sample fails again", true
 }
 
 // retreatAsk is the question before the pane's R swaps the door: what it
