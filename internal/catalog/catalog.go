@@ -5,6 +5,7 @@ package catalog
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -74,9 +75,9 @@ type Problem struct {
 	// when unknown. USACO orders P1 < P2 < P3 by intended difficulty.
 	Position int
 
-	// Tags are topic labels from USACO Guide (e.g. "Prefix Sums",
-	// "Binary Search"). Topic is the single biome topic derived from them
-	// (see Topics), Mixed when unknown.
+	// Tags are the source's topic labels (USACO Guide's "Prefix Sums",
+	// Codeforces' "dp"). Topic is the single biome topic derived from them
+	// (see Topics and MostSpecific), Mixed when unknown.
 	Tags  []string
 	Topic string
 
@@ -114,6 +115,29 @@ var Topics = []string{
 	"complete-search", "simulation", "sorting-greedy", "prefix-sums",
 	"binary-search", "two-pointers", "graphs", "trees", "shortest-paths",
 	"dsu", "dp", "math", "strings", "data-structures", "geometry", Mixed,
+}
+
+// MostSpecific picks the topic of a problem whose tags map to several: the
+// most specific technique wins. "Tree, DP" is a trees problem; "Sorting,
+// Prefix Sums" is a prefix-sums problem; "Binary Search, Graphs" is a graph
+// problem whose answer is searched. Every source ranks the same way, so a
+// topic means one thing whichever source a door comes from. It is Mixed
+// when topics holds no topic but Mixed.
+func MostSpecific(topics []string) string {
+	for _, t := range specificity {
+		if slices.Contains(topics, t) {
+			return t
+		}
+	}
+	return Mixed
+}
+
+// specificity is Topics, Mixed aside, from the most specific technique to
+// the least.
+var specificity = []string{
+	"shortest-paths", "dsu", "trees", "strings", "dp", "geometry", "graphs",
+	"binary-search", "two-pointers", "prefix-sums", "data-structures", "math",
+	"sorting-greedy", "complete-search", "simulation",
 }
 
 // Assets are local paths for a materialized problem, all inside the cache.

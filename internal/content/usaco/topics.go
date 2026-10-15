@@ -1,8 +1,6 @@
 package usaco
 
 import (
-	"slices"
-
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/guide"
 )
@@ -78,19 +76,9 @@ var tagTopic = map[string]string{
 	"Sweep Line": "geometry",
 }
 
-// topicRank breaks ties when a problem's tags map to several topics: the
-// most specific technique wins. "Tree, DP" is a trees problem; "Sorting,
-// Prefix Sums" is a prefix-sums problem; "Binary Search, Graphs" is a graph
-// problem whose answer is searched.
-var topicRank = []string{
-	"shortest-paths", "dsu", "trees", "strings", "dp", "geometry", "graphs",
-	"binary-search", "two-pointers", "prefix-sums", "data-structures", "math",
-	"sorting-greedy", "complete-search", "simulation",
-}
-
 // topicFor picks the biome topic from tags, then from the guide modules
 // that list the problem (guide.ModuleTopic says what each teaches), else
-// catalog.Mixed.
+// catalog.Mixed. Among several, catalog.MostSpecific decides.
 func topicFor(tags, modules []string) string {
 	var fromTags, fromModules []string
 	for _, tag := range tags {
@@ -98,7 +86,7 @@ func topicFor(tags, modules []string) string {
 			fromTags = append(fromTags, t)
 		}
 	}
-	if t := mostSpecific(fromTags); t != "" {
+	if t := catalog.MostSpecific(fromTags); t != catalog.Mixed {
 		return t
 	}
 	for _, m := range modules {
@@ -106,19 +94,5 @@ func topicFor(tags, modules []string) string {
 			fromModules = append(fromModules, t)
 		}
 	}
-	if t := mostSpecific(fromModules); t != "" {
-		return t
-	}
-	return catalog.Mixed
-}
-
-// mostSpecific is the one of topics that topicRank lists first, "" when it
-// lists none of them (Mixed, say).
-func mostSpecific(topics []string) string {
-	for _, t := range topicRank {
-		if slices.Contains(topics, t) {
-			return t
-		}
-	}
-	return ""
+	return catalog.MostSpecific(fromModules)
 }

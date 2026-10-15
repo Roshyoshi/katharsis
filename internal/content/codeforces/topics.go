@@ -57,36 +57,22 @@ var tagTopic = map[string]string{
 	"geometry": "geometry",
 }
 
-// topicRank picks among the topics a problem's tags map to: the most
-// specific technique wins. It is the USACO source's order, so a topic
-// means the same thing whichever source a door comes from. Codeforces
-// tags are generous (a typical Div. 2 C carries "greedy", "math" and
-// "implementation" on top of its real technique), and the dataset lists
-// them alphabetically, so tag order carries no signal and rank decides:
+// topicFor picks the biome topic for a tag list, catalog.Mixed if no tag
+// maps. Codeforces tags are generous (a typical Div. 2 C carries "greedy",
+// "math" and "implementation" on top of its real technique), and the
+// dataset lists them alphabetically, so tag order carries no signal and
+// catalog.MostSpecific decides:
 //
 //	dp, greedy, two pointers                    → dp
 //	binary search, data structures, greedy      → binary-search
 //	combinatorics, dfs and similar, dp, trees   → trees
 //	constructive algorithms, greedy, math       → math
-var topicRank = []string{
-	"shortest-paths", "dsu", "trees", "strings", "dp", "geometry", "graphs",
-	"binary-search", "two-pointers", "prefix-sums", "data-structures", "math",
-	"sorting-greedy", "complete-search", "simulation",
-}
-
-// topicFor picks the biome topic for a tag list, catalog.Mixed if no tag
-// maps.
 func topicFor(tags []string) string {
-	have := map[string]bool{}
+	var topics []string
 	for _, t := range tags {
 		if topic, ok := tagTopic[t]; ok {
-			have[topic] = true
+			topics = append(topics, topic)
 		}
 	}
-	for _, t := range topicRank {
-		if have[t] {
-			return t
-		}
-	}
-	return catalog.Mixed
+	return catalog.MostSpecific(topics)
 }

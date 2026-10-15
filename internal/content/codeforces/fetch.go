@@ -110,7 +110,7 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 	if err := os.MkdirAll(c.root, 0o755); err != nil {
 		return catalog.Assets{}, err
 	}
-	tmp, err := os.MkdirTemp(c.root, ".tmp-"+filepath.Base(dir)+"-")
+	tmp, err := os.MkdirTemp(c.root, web.TempPrefix+filepath.Base(dir)+"-")
 	if err != nil {
 		return catalog.Assets{}, err
 	}

@@ -43,7 +43,7 @@ import (
 
 type Catalog struct {
 	root   string // <cache>/katharsis/codeforces
-	base   string // "https://huggingface.co"; a test server in tests
+	base   string // site; a test server in tests
 	lay    layout
 	client *web.Client
 
@@ -57,6 +57,8 @@ type Catalog struct {
 }
 
 var _ catalog.Catalog = (*Catalog)(nil)
+
+const site = "https://huggingface.co"
 
 // client is the process's one client for Hugging Face, which rate-limits
 // anonymous resolves (3000 per 5 minutes when written).
@@ -80,7 +82,7 @@ func Cached() (*Catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cached(root, "https://huggingface.co", pinned, client)
+	return cached(root, site, pinned, client)
 }
 
 // Build downloads the problem table, caches the index and opens it: about
@@ -97,7 +99,7 @@ func Build(ctx context.Context, progress func(done, total int), offline func(err
 		return nil, err
 	}
 	return retryOnce(ctx, RetryWait, offline, func() (*Catalog, error) {
-		return build(ctx, root, "https://huggingface.co", pinned, client, progress)
+		return build(ctx, root, site, pinned, client, progress)
 	})
 }
 
@@ -133,7 +135,7 @@ func Open(ctx context.Context) (*Catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	return open(ctx, root, "https://huggingface.co", pinned, client)
+	return open(ctx, root, site, pinned, client)
 }
 
 func cacheRoot() (string, error) {

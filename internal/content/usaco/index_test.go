@@ -327,11 +327,6 @@ func TestTopicsAreCatalogTopics(t *testing.T) {
 			t.Errorf("%s maps to %q, not in catalog.Topics", k, v)
 		}
 	}
-	for _, v := range topicRank {
-		if !slices.Contains(catalog.Topics, v) {
-			t.Errorf("topicRank has %q, not in catalog.Topics", v)
-		}
-	}
 }
 
 // facts.json must cover the pinned guide and agree with what the brief
