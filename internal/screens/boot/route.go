@@ -8,6 +8,7 @@ import (
 
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -52,13 +53,13 @@ func (r *Route) View(width, height int) string {
 	offers := r.offers()
 	where := fmt.Sprintf("route · biome %d/%d", st.Biome+1, len(st.Biomes))
 	head := r.env.header(where, width)
-	footer := hint("←/→", "choose", "enter", "take route")
-	block := []string{center(sBold.Render("Pick a route.")+
-		sFaint.Render(" The topic you choose sets every door in this biome."), width), ""}
+	footer := ui.Footer(width, "←/→", "choose", "enter", "take route")
+	block := []string{ui.Center(ui.Strong.Render("Pick a route.")+
+		ui.Muted.Render(" The topic you choose sets every door in this biome."), width), ""}
 	room := height - len(head) - 1
 	if len(offers) == 0 {
-		block = append(block, "  "+sFaint.Render("no routes on offer"))
-		return layout(width, height, append(append(head, ""), block...), footer)
+		block = append(block, "  "+ui.Muted.Render("no routes on offer"))
+		return ui.Layout(width, height, append(append(head, ""), block...), footer)
 	}
 
 	n := len(offers)
@@ -74,9 +75,9 @@ func (r *Route) View(width, height int) string {
 		}
 		blocks := make([][]string, n)
 		for i := range offers {
-			blocks[i] = r.card(i, cw, padLines(bodies[i], h))
+			blocks[i] = r.card(i, cw, ui.PadLines(bodies[i], h))
 		}
-		cards = centerBlock(joinH(2, blocks...), width)
+		cards = centerBlock(ui.JoinH(2, blocks...), width)
 	}
 	if cards == nil || len(block)+len(cards) > room {
 		cards = nil
@@ -90,27 +91,26 @@ func (r *Route) View(width, height int) string {
 	}
 	block = append(block, cards...)
 	if m := centerBlock(renderMap(st, width), width); len(block)+2+len(m) <= room-1 {
-		block = append(block, "", center(sFaint.Render("the boot so far"), width))
+		block = append(block, "", ui.Center(ui.Muted.Render("the boot so far"), width))
 		block = append(block, m...)
 	}
-	return layout(width, height, centered(head, block, height), footer)
+	return ui.Layout(width, height, centered(head, block, height), footer)
 }
 
 func (r *Route) card(i, w int, body []string) []string {
-	f := frameIdle
-	title := sFaint.Render(fmt.Sprint(i + 1))
+	f, title := ui.FrameIdle, ui.Muted.Render(fmt.Sprint(i+1))
 	if i == r.sel {
-		f = frameSelected
-		title = sCyan.Bold(true).Render(fmt.Sprintf("▸ %d", i+1))
+		f = ui.FrameSelected
+		title = f.Render(fmt.Sprintf("%s %d", ui.G.Cursor, i+1))
 	}
-	return box(f, w, title, "", body)
+	return ui.Frame(f, w, title, "", body)
 }
 
 // route is what a card says about one topic.
 type route struct {
 	name, topic, blurb string
 	rooms              string // "2 rooms · ⏱ ~30:00"
-	band               string // "◆ 1050–1250 · aim 70% clear", "" without rules
+	band               string // "◆1050–1250 · aim 70% clear", "" without rules
 	mine               string // "your dp rating 1120", "" unless doors aim by it
 }
 
@@ -121,25 +121,23 @@ func (r *Route) describe(topic string) route {
 		out.name = topic
 	}
 	rooms := st.Biomes[st.Biome].Rooms
-	out.rooms = fmt.Sprintf("%d room", rooms)
-	if rooms != 1 {
-		out.rooms += "s"
-	}
+	out.rooms = units.Plural(rooms, "room")
 	rb, ok := ruleBiome(st, st.Biome)
 	if ok && rb.Timer.Duration > 0 {
-		out.rooms += sFaint.Render(" · ") + "⏱ ~" + units.Clock(rb.Timer.Duration)
+		out.rooms += ui.Muted.Render(ui.G.Sep) + ui.G.Timer + "~" + units.Clock(rb.Timer.Duration)
 	}
 	if ok && rb.TargetClear > 0 && rb.TargetClear < 1 {
 		// A preview of the rating the engine aims this topic's doors at,
 		// widened ±100 and rounded to 50; the pool picks the actual doors.
 		meta := &r.env.Meta
 		mid := int(math.Round(st.Target(meta, topic)/50) * 50)
-		out.band = sYellow.Render("◆") + fmt.Sprintf(" %d–%d", mid-100, mid+100) +
-			sFaint.Render(fmt.Sprintf(" · aim %d%% clear", int(math.Round(rb.TargetClear*100))))
+		out.band = ui.RatingBand(mid-100, mid+100) +
+			ui.Muted.Render(fmt.Sprintf("%saim %d%% clear", ui.G.Sep, int(math.Round(rb.TargetClear*100))))
 		// The engine aims with the topic's own rating only once it has
 		// enough attempts behind it; a mixed door always gets the overall one.
 		if own := game.PlayerRating(&st.Rules, meta, topic); own != game.PlayerRating(&st.Rules, meta, game.Mixed) {
-			out.mine = sFaint.Render(fmt.Sprintf("your %s rating %d", topic, int(math.Round(own))))
+			// A player's rating is a bare numeral; the ◆ marks a door's.
+			out.mine = ui.Muted.Render("your "+topic+" rating ") + ui.Rank(own).Render(fmt.Sprint(int(math.Round(own))))
 		}
 	}
 	return out
@@ -148,12 +146,12 @@ func (r *Route) describe(topic string) route {
 // cardBody is a side-by-side card: room for the blurb to wrap.
 func (r *Route) cardBody(topic string, cw int) []string {
 	d := r.describe(topic)
-	out := []string{sBold.Render(d.name)}
+	out := []string{ui.Strong.Render(d.name)}
 	if d.name != d.topic {
-		out = append(out, sFaint.Render(d.topic))
+		out = append(out, ui.Muted.Render(d.topic))
 	}
-	for _, l := range wrapN(d.blurb, cw, 3) {
-		out = append(out, sItalic.Render(l))
+	for _, l := range ui.WrapN(d.blurb, cw, 3) {
+		out = append(out, ui.Voice.Render(l))
 	}
 	out = append(out, "", d.rooms)
 	if d.band != "" {
@@ -168,15 +166,15 @@ func (r *Route) cardBody(topic string, cw int) []string {
 // stackedBody is a full-width card: three lines, the blurb clipped to one.
 func (r *Route) stackedBody(topic string, cw int) []string {
 	d := r.describe(topic)
-	name := sBold.Render(d.name)
+	name := ui.Strong.Render(d.name)
 	if d.name != d.topic {
-		name += sFaint.Render(" · " + d.topic)
+		name += ui.Muted.Render(ui.G.Sep + d.topic)
 	}
-	out := []string{spread(name, d.band, cw)}
+	out := []string{ui.Spread(name, d.band, cw)}
 	if d.blurb != "" {
-		out = append(out, sItalic.Render(clip(d.blurb, cw)))
+		out = append(out, ui.Voice.Render(ui.Clip(d.blurb, cw)))
 	}
-	return append(out, spread(d.rooms, d.mine, cw))
+	return append(out, ui.Spread(d.rooms, d.mine, cw))
 }
 
 // compact is one line per route, for terminals too short for cards.
@@ -186,9 +184,9 @@ func (r *Route) compact(width int) []string {
 		d := r.describe(t)
 		mark := "  "
 		if i == r.sel {
-			mark = sCyan.Bold(true).Render("▸ ")
+			mark = ui.Focus.Render(ui.G.Cursor) + " "
 		}
-		out = append(out, spread(mark+fmt.Sprintf("%d ", i+1)+sBold.Render(d.name), d.band, width))
+		out = append(out, ui.Spread(mark+fmt.Sprintf("%d ", i+1)+ui.Strong.Render(d.name), d.band, width))
 	}
 	return out
 }

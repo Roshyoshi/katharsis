@@ -1161,7 +1161,7 @@ func TestRouteBandFollowsEngineAim(t *testing.T) {
 	v := ansi.Strip(NewRoute(e).View(140, 40))
 	// dp, two attempts: the overall 1180 aims, 1033 at 70%, +4·25 = 1133.
 	// data-structures: its own 1240, 1093, +100 = 1193.
-	for _, want := range []string{"◆ 1050–1250", "◆ 1100–1300", "your data-structures rating 1240"} {
+	for _, want := range []string{"◆1050–1250", "◆1100–1300", "your data-structures rating 1240"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("route missing %q:\n%s", want, v)
 		}
