@@ -177,7 +177,12 @@ S8 consolidation (after all code QA lands; from the cross-package report):
      (qa/chaos/oracle.sh); single-player honor system, not fixed
 
 ## Now
-Merged since last: C part 2 (every screen on internal/ui: rank-coloured ◆ ratings, one HP
+Merged since last: S9 part 2 (scenes at their moments via app/story.go: splash, prologue,
+first door, ACCEPTED on AC, first merge, biome drops, boss cards, the Cat 1.5 s
+after a first crash; never over an open door; esc drops the queue; --motion
+full|reduced, --fps; story styles on ui; Carroll + SICP in the RTFM COLOPHON;
+milestone.mastered.1; story.Read{ID}; first-regression-retired waits on
+Meta state from the engine lane), C part 2 (every screen on internal/ui: rank-coloured ◆ ratings, one HP
 bar per pane, toned border clock, no blink, C8 problem pane, HUD 36-48 cols, pager
 zoom, credits on GRUB `c` with the banner back at 80x24, crash bottom-anchored,
 framed cleared banner, Mono under NO_COLOR), B content (content/web shared client with a 30 s idle cut, fsync
@@ -219,7 +224,7 @@ Running (workspaces): s10-engine (RT0 now treats the CF 800 floor as a clamp:
 an "800" problem is <= 800, per the user), d-end (debrief, core dump, goal bar,
 presets, session nudge, motd, nightly, GRUB story page, end-of-boot text), d-boot
 (dmesg strip, onboarding lines, :Submit! and R R, statement-first pane, door
-readiness, D36, in-boot text), s9-wire (scene flow, motion settings, ui styles). Agents keep .agents/work/progress-<ws>.md for
+readiness, D36, in-boot text)  Agents keep .agents/work/progress-<ws>.md for
 restarts (spamming esc stops every agent).
 For B (from the GCC report): qa/judge expects ASan wording on the libstdc++
 sample profile (re_heap_oob, re_container_oob, re_after_20KB_debug_stderr) and
