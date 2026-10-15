@@ -46,7 +46,9 @@ func Load(dir string) (*Problem, error) {
 	if err != nil {
 		return nil, err
 	}
-	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
+	if fi, err := os.Stat(dir); err != nil {
+		return nil, err
+	} else if !fi.IsDir() {
 		return nil, fmt.Errorf("%s: not a directory", dir)
 	}
 	src, err := findSource(dir)
@@ -146,11 +148,12 @@ var (
 	// fileRE is a file name literal, wherever the source opens it:
 	// freopen("milk2.in", ...), fopen("milk2.in", "r"), ifstream
 	// fin("milk2.in"), fin.open("milk2.in"), ofstream fout("milk2.out").
-	fileRE = regexp.MustCompile(`"([^"/\\\s]+)\.(in|out)"`)
+	fileRE = regexp.MustCompile(`"([^"/\\\s%]+)\.(in|out)"`)
 	// extRE is a bare extension literal, which a helper appends to a stem
-	// given elsewhere: freopen((name + ".in").c_str(), ...), or
-	// freopen(TASK ".in", ...) after #define TASK "milk2".
-	extRE = regexp.MustCompile(`"\.(?:in|out)"`)
+	// given elsewhere: freopen((name + ".in").c_str(), ...),
+	// freopen(TASK ".in", ...) after #define TASK "milk2", or a format,
+	// sprintf(f, "%s.in", TASK).
+	extRE = regexp.MustCompile(`"(?:%s)?\.(?:in|out)"`)
 	// stemRE is where those stems come from: a call such as the USACO
 	// Guide's setIO("milk2"), a #define, or a string variable's
 	// initializer.

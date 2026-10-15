@@ -1,6 +1,8 @@
 package problem_test
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -179,13 +181,16 @@ func TestLoadPatternNamedDir(t *testing.T) {
 	}
 }
 
+// A file is not a directory, and a path that does not exist says so
+// rather than that.
 func TestLoadNotADirectory(t *testing.T) {
 	t.Parallel()
 	dir := mkdir(t, "p", map[string]string{"sol.cpp": "int main() {}\n"})
-	for _, path := range []string{filepath.Join(dir, "sol.cpp"), filepath.Join(dir, "missing")} {
-		if _, err := problem.Load(path); err == nil {
-			t.Errorf("Load(%s): want error", path)
-		}
+	if _, err := problem.Load(filepath.Join(dir, "sol.cpp")); err == nil || !strings.Contains(err.Error(), "not a directory") {
+		t.Errorf("Load(file) = %v, want not a directory", err)
+	}
+	if _, err := problem.Load(filepath.Join(dir, "missing")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("Load(missing) = %v, want it does not exist", err)
 	}
 }
 
@@ -223,6 +228,7 @@ func TestFileIO(t *testing.T) {
 			"\tfreopen((name + \".out\").c_str(), \"w\", stdout);\n}\n" +
 			"int main() { setIO(\"milk2\"); }", "milk2"},
 		{"define", "#define TASK \"milk2\"\nint main() { freopen(TASK \".in\", \"r\", stdin); }", "milk2"},
+		{"printf format", "#define TASK \"milk2\"\nchar f[64]; sprintf(f, \"%s.in\", TASK); freopen(f, \"r\", stdin);", "milk2"},
 		{"string variable", "string name = \"milk2\";\nfreopen((name + \".in\").c_str(), \"r\", stdin);", "milk2"},
 		{"setIO with no stem is stdio", "void setIO(string s = \"\") {}\nint main() { setIO(); }", ""},
 		{"names without an extension are not stems", `puts("hello"); printFile("x");`, ""},
