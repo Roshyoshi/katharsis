@@ -103,9 +103,9 @@ func (t Track) check() error {
 		return fmt.Errorf("size %d is outside 1 B..64 MiB", t.Size)
 	}
 	switch t.Format {
-	case "mp3", "ogg", "wav":
+	case "mp3", "ogg", "wav", "mml":
 	default:
-		return fmt.Errorf("format %q is not mp3, ogg or wav", t.Format)
+		return fmt.Errorf("format %q is not mp3, ogg, wav or mml", t.Format)
 	}
 	if len(t.Pools) == 0 {
 		return fmt.Errorf("no pools")

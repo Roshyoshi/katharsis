@@ -14,6 +14,11 @@ import (
 	"github.com/jfreymuth/oggvorbis"
 )
 
+// looper is a source that knows its own loop, in frames.
+type looper interface {
+	loop() (start, end int64, ok bool)
+}
+
 // source is decoded audio at its own rate, as interleaved stereo float32.
 type source interface {
 	Rate() int
@@ -27,6 +32,8 @@ type source interface {
 // decode opens data as the format its name or magic says.
 func decode(name string, data []byte) (source, error) {
 	switch {
+	case strings.EqualFold(filepath.Ext(name), ".mml"):
+		return newMML(data)
 	case bytes.HasPrefix(data, []byte("OggS")):
 		return newOgg(data)
 	case bytes.HasPrefix(data, []byte("RIFF")) && len(data) > 12 && string(data[8:12]) == "WAVE":
@@ -34,13 +41,13 @@ func decode(name string, data []byte) (source, error) {
 	case bytes.HasPrefix(data, []byte("ID3")) || len(data) > 2 && data[0] == 0xFF && data[1]&0xE0 == 0xE0:
 		return newMP3(data)
 	}
-	return nil, fmt.Errorf("%s: not mp3, ogg vorbis or wav", filepath.Base(name))
+	return nil, fmt.Errorf("%s: not mp3, ogg vorbis, wav or VGS mml", filepath.Base(name))
 }
 
 // IsAudioName reports whether a file name has an extension decode reads.
 func IsAudioName(name string) bool {
 	switch strings.ToLower(filepath.Ext(name)) {
-	case ".mp3", ".ogg", ".oga", ".wav":
+	case ".mp3", ".ogg", ".oga", ".wav", ".mml":
 		return true
 	}
 	return false

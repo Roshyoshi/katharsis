@@ -37,6 +37,12 @@ func newStream(src source, loopStart, loopEnd float64, passes int) *stream {
 	if ls := int64(loopStart * r); loopStart > 0 && ls < s.loopEnd {
 		s.loopStart = ls
 	}
+	// A VGS song carries its own loop point; the manifest need not.
+	if l, ok := src.(looper); ok && loopStart == 0 && loopEnd == 0 {
+		if a, b, ok := l.loop(); ok {
+			s.loopStart, s.loopEnd = a, b
+		}
+	}
 	if s.ratio != 1 {
 		f0, _ := s.next()
 		f1, _ := s.next()

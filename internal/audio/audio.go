@@ -96,12 +96,12 @@ type Track struct {
 	URL          string   `toml:"url"`  // the file, fetched as is
 	SHA256       string   `toml:"sha256"`
 	Size         int64    `toml:"size"`
-	Format       string   `toml:"format"` // "mp3", "ogg", "wav"
+	Format       string   `toml:"format"` // "mp3", "ogg", "wav", or "mml" (VGS MML, rendered as it plays)
 	Seconds      float64  `toml:"seconds"`
 	Pools        []string `toml:"pools"`
 	// LoopStart and LoopEnd, in seconds, bound the part that repeats; 0
-	// and 0 repeat the whole file. A track with an intro starts at 0 and
-	// loops back to LoopStart.
+	// and 0 repeat the whole file, or a VGS song from its own loop mark.
+	// A track with an intro starts at 0 and loops back to LoopStart.
 	LoopStart float64 `toml:"loop_start"`
 	LoopEnd   float64 `toml:"loop_end"`
 	Note      string  `toml:"note"` // loop suitability, for the curious
