@@ -259,6 +259,11 @@ D56 open 10-15     Achievements: "w spoiler ones as well"; like Star of Providen
       Sim P0: clears 44-46.5%, act hazards 13-16/21-24/29-37%, G1 0.8-2.5%. Full-boot
       QA on the map next (qa-map).
 
+10-15 TIME+ merged (top header + per-topic column + sort; GRUB status drops it first,
+      so at 80 cols it rarely fits beside the load average; debrief kept line).
+      Achievements design on main: docs/design/achievements.md (61 setuid bits,
+      the Trial ending "Dull Reality"); awaiting the user's calls.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
