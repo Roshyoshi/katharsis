@@ -128,6 +128,8 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		return s, screens.Emit(submitMsg{})
 	case "t":
 		return s, screens.Emit(screens.OpenStatement{Problem: s.door.Problem})
+	case "o":
+		return s, s.openPage()
 	case "?":
 		if !s.upsolve {
 			return s, screens.Emit(game.Quack{})
@@ -252,10 +254,33 @@ func (s *problemScreen) View(w, h int) string {
 	return b.String()
 }
 
+// openPage opens the problem's page online (o), for what the terminal
+// cannot draw: a figure, a matrix, the original typesetting. A mystery
+// door's page names it, so the door keeps it to itself until it closes;
+// the upsolve after has it.
+func (s *problemScreen) openPage() tea.Cmd {
+	if s.door.Mystery && !s.upsolve {
+		return note("mystery door: its page would name it")
+	}
+	p, _ := s.m.d.Catalog.Get(s.door.Problem)
+	if p.URL == "" {
+		return note("%s has no page online", s.door.Problem)
+	}
+	return screens.Emit(reader.OpenURL{URL: p.URL})
+}
+
+// online reports whether o opens a page here.
+func (s *problemScreen) online() bool {
+	p, _ := s.m.d.Catalog.Get(s.door.Problem)
+	return p.URL != "" && (s.upsolve || !s.door.Mystery)
+}
+
 // footers are the two key rows (C8): the editor's commands, then this
 // pane's keys, only the ones that matter and h for the rest (J17). Under
 // 52 columns the editor's are bare names, and the pane's drop Q, whose
-// :q! the editor row already has. enter names what it swaps to.
+// :q! the editor row already has. enter names what it swaps to. o, the
+// page on the web, comes after the keys J17 keeps (s, ?, h) and ahead of
+// the rest, so at 48 columns it still shows.
 func (s *problemScreen) footers(w int) (vim, keys string) {
 	narrow := w < 52
 	var swap []string
@@ -266,23 +291,31 @@ func (s *problemScreen) footers(w int) (vim, keys string) {
 	default:
 		swap = []string{"enter", "tests"}
 	}
-	pairs := func(ps ...string) string {
+	var web []string
+	if s.online() {
+		web = []string{"o", "web"}
+	}
+	row := func(ps ...[]string) string {
 		out := append([]string{"s", "submit"}, swap...)
-		return ui.Footer(w, append(append(out, ps...), "h", "help")...)
+		for _, p := range ps {
+			out = append(out, p...)
+		}
+		return ui.Footer(w, append(out, "h", "help")...)
 	}
 	switch {
 	case s.upsolve && narrow:
-		return ui.Muted.Render(":w :Submit :Debug n"), ui.Footer(w, "s", "submit", "e", "editorial", "Q", "leave", "h", "help")
+		return ui.Muted.Render(":w :Submit :Debug n"),
+			ui.Footer(w, append(append([]string{"s", "submit", "e", "editorial"}, web...), "Q", "leave", "h", "help")...)
 	case s.upsolve:
 		return ui.Footer(w, ":w", "samples", ":Submit", "judge", ":Debug n", "debug"),
-			pairs("e", "editorial", "Q", "leave")
+			row([]string{"e", "editorial"}, web, []string{"Q", "leave"})
 	case narrow:
 		return ui.Muted.Render(":w :Submit :Debug n :Quack :Retreat :q!"),
-			ui.Footer(w, append(append(append([]string{"s", "submit"}, swap...), "?", "duck", "R", "retreat"), "h", "help")...)
+			row([]string{"?", "duck"}, web, []string{"R", "retreat"})
 	}
 	return ui.Footer(w, ":w", "samples", ":Submit", "judge", ":Debug n", "debug", ":Quack", "duck",
 			":Retreat", "retreat", ":q!", "give up"),
-		pairs("?", "duck", "R", "retreat", "Q", "give up")
+		row([]string{"?", "duck"}, web, []string{"R", "retreat", "Q", "give up"})
 }
 
 // headless is the body without a HUD: the pane's one HP bar (C6), the

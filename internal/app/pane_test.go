@@ -12,6 +12,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/hud"
 	"katharsis/internal/screens"
+	"katharsis/internal/screens/reader"
 )
 
 func paneHarness(t *testing.T) *harness {
@@ -72,6 +73,51 @@ func TestPaneMysteryStatement(t *testing.T) {
 			t.Fatalf("mystery pane gives away %q:\n%s", p.Title, v)
 		}
 	})
+}
+
+// o opens the problem's page online, the catalog's URL, and the keys row
+// says so. A mystery door's page would name it: o says that instead, and
+// neither the row nor the help offers it.
+func TestPaneOpensPage(t *testing.T) {
+	for _, mystery := range []bool{false, true} {
+		synctest.Test(t, func(t *testing.T) {
+			h := paneHarness(t)
+			cat, ok := h.m.d.Catalog.(*fakeCatalog)
+			if !ok {
+				t.Fatalf("catalog is a %T", h.m.d.Catalog)
+			}
+			id := h.m.state.Doors[0].Problem
+			p := cat.byID[id]
+			p.URL = "https://codeforces.com/contest/1899/problem/C"
+			cat.byID[id] = p
+			h.m.state.Doors[0].Mystery = mystery
+			h.send(game.ChooseDoor{})
+			// The pane's width beside vim: the row keeps s, enter, ?, o and h.
+			h.send(tea.WindowSizeMsg{Width: 48, Height: 32})
+			s, ok := h.m.top().(*problemScreen)
+			if !ok {
+				t.Fatalf("top is a %T", h.m.top())
+			}
+			// The command, not the app: the app would run open(1).
+			_, cmd := s.Update(key("o"))
+			msg := cmd()
+			v := view(h)
+			switch {
+			case !mystery && msg != (reader.OpenURL{URL: p.URL}):
+				t.Errorf("o sent %#v, want the page %s", msg, p.URL)
+			case !mystery && !strings.Contains(v, "o web"):
+				t.Errorf("keys row has no o:\n%s", v)
+			case mystery && msg != noteMsg{"mystery door: its page would name it"}:
+				t.Errorf("o on a mystery door sent %#v", msg)
+			case mystery && strings.Contains(v, "o web"):
+				t.Errorf("a mystery door offers its page:\n%s", v)
+			}
+			h.send(key("h"))
+			if got := strings.Contains(view(h), "the page on the web"); got == mystery {
+				t.Errorf("mystery %v: help lists o: %v", mystery, got)
+			}
+		})
+	}
 }
 
 // A source still the template is pristine, so its samples wait for a save

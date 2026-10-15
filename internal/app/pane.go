@@ -83,6 +83,9 @@ func (s *problemScreen) helpLines(w int) []string {
 		{"t", "statement full screen, /search"},
 		{"r", "judge the samples again"},
 	}
+	if s.online() {
+		pairs = append(pairs, [2]string{"o", "the page on the web: figures, layout"})
+	}
 	if s.upsolve {
 		pairs = append(pairs, [2]string{"e", "the editorial"}, [2]string{"Q", "leave the upsolve"})
 	} else {
