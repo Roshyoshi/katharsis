@@ -67,6 +67,9 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 	case reader.OpenURL:
 		return openURL(msg.URL), true
 	case docMsg:
+		if msg.editorial != "" {
+			m.readEditorial(msg.editorial)
+		}
 		s := m.docShown(msg)
 		m.zoomFor(s)
 		return m.push(s), true
@@ -180,11 +183,7 @@ func (m *Model) openDoc(id catalog.ID, editorial bool) tea.Cmd {
 	cat := m.d.Catalog
 	var ed catalog.ID
 	if editorial {
-		m.editorials[id] = true
 		ed = id
-		if m.open != nil && m.open.Door.Problem == id {
-			m.open.ReadEditorial = true
-		}
 	}
 	// A mystery door hides its title on the door and in the directory
 	// name; the statement must not give it away either.
@@ -255,14 +254,28 @@ func (m *Model) startUpsolve(id catalog.ID) tea.Cmd {
 	return tea.Batch(m.push(newUpsolveScreen(m, door)), m.openDoor(door, true))
 }
 
+// readEditorial notes that id's editorial is on screen: an upsolve of it
+// this session, the one open included, is editorial-assisted. Only a shown
+// one counts: marked when asked for, an editorial that was not there (or
+// did not download) made the solve pay as assisted.
+func (m *Model) readEditorial(id catalog.ID) {
+	m.editorials[id] = true
+	if m.open != nil && m.open.Door.Problem == id {
+		m.open.ReadEditorial = true
+	}
+}
+
 // sawEditorial reports whether the player has had id's editorial in front
 // of them: opened this session, or offered by a :q! on it (the crash screen
-// offers it after every :q!) that no solve has come after. The second
-// survives a restart, so a core dump upsolved from GRUB the next day still
-// counts.
+// offers it after a :q! when the problem has one) that no solve has come
+// after. The second survives a restart, so a core dump upsolved from GRUB
+// the next day still counts.
 func (m *Model) sawEditorial(id catalog.ID) bool {
 	if m.editorials[id] {
 		return true
+	}
+	if p, _ := m.d.Catalog.Get(id); !p.HasEditorial {
+		return false // nothing was offered
 	}
 	atts, err := m.d.Store.Attempts(store.AttemptFilter{Problem: id, Limit: 1})
 	if err != nil || len(atts) == 0 || atts[0].Outcome != game.GaveUp {

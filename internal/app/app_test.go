@@ -871,6 +871,7 @@ func TestUpsolveAfterGiveUpIsEditorial(t *testing.T) {
 		h.enterDoor()
 		h.send(submitMsg{})
 		id := h.enterDoor().Door.Problem
+		hasEditorial(h, id)
 		h.send(game.GiveUp{})
 		if h.m.meta.CoreDump == nil || h.m.meta.CoreDump.Problem != id {
 			t.Fatalf("core dump %+v, want one on %s", h.m.meta.CoreDump, id)
@@ -882,6 +883,40 @@ func TestUpsolveAfterGiveUpIsEditorial(t *testing.T) {
 		last := h.m.meta.Solves[len(h.m.meta.Solves)-1]
 		if last.Problem != id || !last.Upsolve || last.Kind != game.Editorial {
 			t.Fatalf("last solve %+v, want an editorial upsolve of %s", last, id)
+		}
+	})
+}
+
+// hasEditorial gives problem id an editorial in the harness's catalog.
+func hasEditorial(h *harness, id catalog.ID) {
+	c := h.m.d.Catalog.(*fakeCatalog)
+	p := c.byID[id]
+	p.HasEditorial = true
+	c.byID[id] = p
+}
+
+// An editorial never on screen costs the upsolve nothing. A :q! on a
+// problem without one offered none, and e on the upsolve, with nothing to
+// show, marked the solve editorial-assisted when it was pressed: it paid
+// the editorial rate, not the independent one.
+func TestUpsolveWithoutAnEditorialIsIndependent(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.acFirst = 1
+		h.enterDoor()
+		h.send(submitMsg{})
+		id := h.enterDoor().Door.Problem
+		h.send(game.GiveUp{})
+		h.send(screens.Upsolve{Problem: id})
+		h.send(key("e")) // the upsolve's editorial key
+		if !strings.Contains(h.m.flash, "no editorial") {
+			t.Fatalf("e on an upsolve without an editorial flashed %q", h.m.flash)
+		}
+		h.send(submitMsg{})
+		last := h.m.meta.Solves[len(h.m.meta.Solves)-1]
+		if last.Problem != id || !last.Upsolve || last.Kind != game.Independent {
+			t.Fatalf("last solve %+v, want an independent upsolve of %s", last, id)
 		}
 	})
 }
