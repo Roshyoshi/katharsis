@@ -10,9 +10,7 @@ import (
 func TestMain(m *testing.M) {
 	// The HUD's submits compile through judge.Compile, which caches under
 	// os.UserCacheDir ($HOME/Library/Caches on macOS). Point HOME at a
-	// scratch dir: the real cache stays out of the tests, and every run
-	// starts cold. A warm cache judged a submit inside the harness's 30 ms
-	// step, before the tests could look at the clock it held.
+	// scratch dir, so the real cache stays out of the tests.
 	home, err := os.MkdirTemp("", "katharsis-app-test-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

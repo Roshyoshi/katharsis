@@ -109,9 +109,11 @@ func (m *Model) computeEnd(st *game.State) bootui.End {
 			m.event(eventNudgeShown, "", kv{"today_ms": e.Today.Milliseconds(), "budget_ms": e.Budget.Milliseconds()})
 		}
 	}
-	if st.Phase == game.PhaseCleared && st.Trial == nil {
+	switch {
+	case st.Trial != nil:
+	case st.Phase == game.PhaseCleared:
 		e.Firsts = m.firsts(st)
-	} else if st.Trial == nil {
+	default:
 		e.Learn = m.learnNext(st)
 	}
 	return e
