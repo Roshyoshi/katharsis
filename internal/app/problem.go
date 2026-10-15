@@ -156,6 +156,8 @@ func (s *problemScreen) View(w, h int) string {
 		top = append(top, ui.Strong.Render("upsolve · "+p.Title)+ui.Muted.Render("  untimed, editorial allowed"))
 	case s.m.state != nil:
 		top = append(top, strings.Split(bootui.HUDBar(s.m.state, p, s.m.d.Now(), w), "\n")...)
+		// The strip's newest line on this door: its cost, its flavor (J5).
+		top = append(top, s.m.env().DoorLines(w, 3)...)
 	}
 	switch {
 	case s.closed && s.editorErr != "":
@@ -289,6 +291,7 @@ func (m *Model) onRequest(req session.Request) tea.Cmd {
 	hint := m.state.Current.Hint
 	cmd, err := m.try(a)
 	if err != nil {
+		m.refused(a)
 		req.Answer(session.Reply{Text: refusal(err)})
 		return nil
 	}

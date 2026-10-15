@@ -103,6 +103,12 @@ var stubFlavor = flavorSource{
 		}
 		return []string{"do_exit+0x3a/0xc0"}
 	},
+	// Every hook has a line, the hook named in it, so a golden shows which
+	// line a screen asked for and where it went.
+	Story: func(hook string, _ uint64) string { return "Stub line for " + hook + "." },
+	StoryBlock: func(hook string) []string {
+		return []string{"Stub block for " + hook + ", line one.", "Stub block, line two."}
+	},
 }
 
 func TestMain(m *testing.M) {

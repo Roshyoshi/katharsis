@@ -140,6 +140,9 @@ func (h *harness) playStory() (names []string, end game.Phase) {
 func seenIDs(m game.Meta) []string {
 	var ids []string
 	for _, s := range m.Seen {
+		if flavor.BeatTitle(s.ID) == "" {
+			continue // a one-time line that is no beat: the boot screens' tips
+		}
 		ids = append(ids, s.ID)
 	}
 	return ids

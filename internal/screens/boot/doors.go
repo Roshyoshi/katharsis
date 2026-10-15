@@ -68,7 +68,7 @@ func (d *Doors) View(width, height int) string {
 	if d.showMap {
 		return mapScreen(d.env, width, height, ui.Footer(width, "m", "back to doors"))
 	}
-	head := d.env.header(d.where(), width)
+	head := d.env.header(d.where(), width, height)
 	n := len(st.Doors)
 	var keys []string
 	if n > 1 {

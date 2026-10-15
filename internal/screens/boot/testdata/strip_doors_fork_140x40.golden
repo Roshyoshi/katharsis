@@ -1,0 +1,40 @@
+Boot #42 · Silver · The Mesh · room 1/2                                                                                       uptime 1:12:30
+♥♥♡  🦆1  176 B uncommitted · 112 B committed                                                                            daemons strace fork
+[  166.2] merge window: ducks refilled 🦆0 → 🦆1
+[  170.0] commit: 41 B banked · bank 2.1 KiB
+          Stub line for merge.commit.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+ ┏━ ▸ 1 ━━━━━━━━━━ ↺ regression ━┓  ╭─ 2 ───────────────────────────╮  ╭─ 3 ───────────────── ◌ blind ─╮  ╭─ 4 ──────────────── ☠ cursed ─╮
+ ┃ USACO · 2020 US Open, Silver… ┃  │ USACO · 2019 December, Silve… │  │ USACO · 2018 February, Silve… │  │ CSES                          │
+ ┃ Cereal                        ┃  │ MooBuzz                       │  │ Snow Boots                    │  │ ???                           │
+ ┃ Simulation · Amortized        ┃  │ Math · Periodicity            │  │ tags hidden                   │  │ tags hidden                   │
+ ┃ Analysis                      ┃  │                               │  │                               │  │                               │
+ ┃                               ┃  │                               │  │                               │  │                               │
+ ┃ ◆1400  ⏱ 35:00  +128 B        ┃  │ ◆1200  ⏱ 35:00  +96 B         │  │ ◆1350  ⏱ 35:00  +168 B        │  │ ◆1600  ⏱ 35:00  +512 B        │
+ ┃ ↺ regression: crashed you 3   ┃  │                               │  │ ◌ blind · ×1.5                │  │ ? mystery · ×2                │
+ ┃ days ago                      ┃  │                               │  │                               │  │ ☠ no ducks · 1 WA = crash ·   │
+ ┃                               ┃  │                               │  │                               │  │ ×2                            │
+ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ╰───────────────────────────────╯  ╰───────────────────────────────╯  ╰───────────────────────────────╯
+
+                                     ╭─ Userland ─╮   ╭─ The Heap ─╮   ╭─ The Mesh ─╮   ╭─ Heisenbug ─╮
+                                     │    ✓ ✓     │───│    ✓ ✓     │───│    ● ○     │───│      ⚔      │
+                                     ╰────────────╯   ╰────────────╯   ╰────────────╯   ╰─────────────╯
+
+
+
+
+
+
+
+
+
+←/→ select · 1-4 jump · enter open door · m map

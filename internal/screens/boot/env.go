@@ -31,6 +31,9 @@ type Env struct {
 	Lookup screens.Lookup
 	Now    time.Time
 	End    End // the app's figures for the end screens and the goal bar (debrief.go)
+	// Events is the dmesg strip, oldest first (Tracker.Events); nil shows
+	// none.
+	Events []Event
 }
 
 // flavorSource is the slice of internal/flavor the screens use. fl points at
@@ -52,6 +55,10 @@ type flavorSource struct {
 	// text after "not syncing: " and the innermost frames of the trace.
 	PanicReason func(cause game.Outcome, verdict string) string
 	CallTrace   func(cause game.Outcome, verdict string, seed uint64) []string
+	// Story and StoryBlock are docs/story/text.md by hook: one line of a
+	// pool or fixed hook, and every line of a block (flavor.Story).
+	Story      func(hook string, seed uint64) string
+	StoryBlock func(hook string) []string
 }
 
 var realFlavor = flavorSource{
@@ -66,6 +73,8 @@ var realFlavor = flavorSource{
 	Banner:       flavor.Banner,
 	PanicReason:  flavor.PanicReason,
 	CallTrace:    flavor.CallTrace,
+	Story:        flavor.Story,
+	StoryBlock:   flavor.StoryBlock,
 }
 
 var fl = realFlavor
@@ -293,8 +302,9 @@ func (e Env) regressionAge(id catalog.ID) (int, bool) {
 }
 
 // header is the top of every boot screen: who and where on the first line,
-// lives, ducks and bytes on the second, then a rule.
-func (e Env) header(where string, width int) []string {
+// lives, ducks and bytes on the second, the dmesg strip once the boot has
+// events (stripRows for a screen height tall), then a rule.
+func (e Env) header(where string, width, height int) []string {
 	st := e.State
 	dot := ui.Muted.Render(ui.G.Sep)
 	left := ui.Strong.Render(fmt.Sprintf("Boot #%d", st.Boot)) + dot + prestigeLabel(st.Prestige)
@@ -316,11 +326,9 @@ func (e Env) header(where string, width int) []string {
 	if len(ds) > 0 {
 		daemons = ui.Muted.Render("daemons ") + strings.Join(ds, " ")
 	}
-	return []string{
-		ui.Spread(left, right, width),
-		ui.Spread(status, daemons, width),
-		ui.Rule(width),
-	}
+	out := []string{ui.Spread(left, right, width), ui.Spread(status, daemons, width)}
+	out = append(out, e.strip(width, e.stripRows(height))...)
+	return append(out, ui.Rule(width))
 }
 
 // keyName is the key a press stands for, folding vim and arrow synonyms

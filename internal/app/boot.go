@@ -58,7 +58,7 @@ func (m *Model) baseKey() baseKey {
 }
 
 func (m *Model) env() bootui.Env {
-	return bootui.Env{State: m.state, Meta: m.meta, Lookup: m.d.Catalog.Get, Now: m.d.Now(), End: m.endInfo()}
+	return bootui.Env{State: m.state, Meta: m.meta, Lookup: m.d.Catalog.Get, Now: m.d.Now(), End: m.endInfo(), Events: m.dmesg.Events()}
 }
 
 // startBoot begins a new boot. A boot still running is given up first.
@@ -149,6 +149,7 @@ func (m *Model) abandon() error {
 func (m *Model) step(a game.Action) tea.Cmd {
 	cmd, err := m.try(a)
 	if err != nil {
+		m.refused(a) // the strip's word on it (dmesg.go)
 		return func() tea.Msg { return errMsg{err} }
 	}
 	return cmd
@@ -590,6 +591,7 @@ func (m *Model) onJudged(j judgedMsg) tea.Cmd {
 	if m.open != nil && m.open.Upsolve {
 		return tea.Batch(harvest, m.onUpsolveJudged(j))
 	}
+	m.dmesg.Judged(j.passed, j.total) // the strip's verdict line
 	cmd, err := m.tryAt(game.SubmitResult{Verdict: game.Verdict(j.verdict), Passed: j.passed, Total: j.total}, at)
 	if err != nil {
 		cmd = func() tea.Msg { return errMsg{err} }

@@ -169,7 +169,7 @@ func (u *UpgradeScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 
 func (u *UpgradeScreen) View(width, height int) string {
 	st := u.env.State
-	head := u.env.header("upgrade", width)
+	head := u.env.header("upgrade", width, height)
 	var block []string
 	if a, ok := lastClear(st); ok {
 		p := u.env.problem(a.Door.Problem)

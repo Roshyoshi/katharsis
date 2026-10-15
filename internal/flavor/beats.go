@@ -38,6 +38,9 @@ func NextBeat(st *game.State, m *game.Meta, gap int) (id string, ok bool) {
 	}
 	last := 0 // the boot of the newest beat of any kind
 	for _, s := range m.Seen {
+		if BeatTitle(s.ID) == "" {
+			continue // a one-time line that is no beat, such as a tip
+		}
 		if s.Boot == st.Boot && endBeat(s.ID) {
 			return "", false // this boot end already had its beat
 		}

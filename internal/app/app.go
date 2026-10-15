@@ -144,6 +144,9 @@ type Model struct {
 
 	// Sound (audio.go): the last state effects were diffed from, the door
 	// whose timer warning sounded, and the credit toast.
+	// dmesg is the boot's event strip (dmesg.go).
+	dmesg dmesgTracker
+
 	audioPrev   audioSnap
 	warned      time.Time
 	toast       string
@@ -269,6 +272,7 @@ func (m *Model) initTop() tea.Cmd {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	defer m.syncAudio()
 	defer m.syncZoom()
+	defer m.syncDmesg()
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height

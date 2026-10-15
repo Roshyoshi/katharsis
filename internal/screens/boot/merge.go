@@ -134,7 +134,7 @@ func (m *Merge) View(width, height int) string {
 	st := m.env.State
 	m.sync()
 	cur := m.row()
-	head := m.env.header("merge window", width)
+	head := m.env.header("merge window", width, height)
 	// The sections read as one form, so they share a column; on a wide
 	// terminal it sits under the centered map instead of hugging the left.
 	// The column grows past 76 cells when an option needs it, so a long
@@ -190,7 +190,9 @@ func (m *Merge) View(width, height int) string {
 		for i, d := range st.Daemons {
 			held[i], _ = daemonText(d, st)
 		}
-		note := fmt.Sprintf("pick one%sheld %d/%d", ui.G.Sep, len(st.Daemons), st.Rules.MaxDaemons)
+		// What a daemon is, every time: the first one is picked before
+		// anyone has said.
+		note := fmt.Sprintf("pick one, it runs for the rest of the boot%sheld %d/%d", ui.G.Sep, len(st.Daemons), st.Rules.MaxDaemons)
 		if len(held) > 0 {
 			note += ": " + strings.Join(held, ", ")
 		}
@@ -233,12 +235,7 @@ func onSale(st *game.State) []game.Item {
 func itemOptions(st *game.State) []option {
 	var out []option
 	for _, it := range onSale(st) {
-		desc := map[game.Item]string{
-			game.Fsck: "+1 life now",
-			game.Dup:  "+1 rubber duck",
-			game.Shuf: "re-roll one room's doors (s at the doors)",
-			game.At:   "+" + units.Clock(st.Rules.AtTime.Duration) + " on the next door's timer",
-		}[it] + ui.G.Sep + units.Bytes(st.Price(it))
+		desc := itemDesc(it, st) + ui.G.Sep + units.Bytes(st.Price(it))
 		switch {
 		case it == game.Fsck && st.Lives >= st.MaxLives:
 			desc += ui.G.Sep + "lives full"
@@ -268,4 +265,14 @@ func (m *Merge) next() string {
 		return fmt.Sprintf("biome %d: route choice", b+1)
 	}
 	return fmt.Sprintf("biome %d: %s", b+1, biomeLabel(st, b))
+}
+
+// itemDesc is what an item on sale does, in the boot's numbers.
+func itemDesc(it game.Item, st *game.State) string {
+	return map[game.Item]string{
+		game.Fsck: "+1 life now",
+		game.Dup:  "+1 rubber duck",
+		game.Shuf: "re-roll one room's doors (s at the doors)",
+		game.At:   "+" + units.Clock(st.Rules.AtTime.Duration) + " on the next door's timer",
+	}[it]
 }

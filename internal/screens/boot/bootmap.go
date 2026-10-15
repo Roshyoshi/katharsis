@@ -197,7 +197,7 @@ func (m *Map) View(width, height int) string {
 
 func mapScreen(env Env, width, height int, footer string) string {
 	st := env.State
-	body := append(env.header("map", width), "")
+	body := append(env.header("map", width, height), "")
 	body = append(body, centerBlock(renderMap(st, width), width)...)
 	legend := strings.Join([]string{
 		nodeDone.glyph() + " cleared", nodeHere.glyph() + " here", nodeAhead.glyph() + " ahead",

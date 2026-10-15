@@ -52,7 +52,7 @@ func (r *Route) View(width, height int) string {
 	st := r.env.State
 	offers := r.offers()
 	where := fmt.Sprintf("route · biome %d/%d", st.Biome+1, len(st.Biomes))
-	head := r.env.header(where, width)
+	head := r.env.header(where, width, height)
 	footer := ui.Footer(width, "←/→", "choose", "enter", "take route")
 	block := []string{ui.Center(ui.Strong.Render("Pick a route.")+
 		ui.Muted.Render(" The topic you choose sets every door in this biome."), width), ""}

@@ -1,0 +1,40 @@
+Boot #42 · Silver · The Heap · room 2/2                                                                                         uptime 47:12
+♥♥♡  🦆1  96 B uncommitted · 112 B committed                                                                                  daemons strace
+[  166.2] merge window: ducks refilled 🦆0 → 🦆1
+[  170.0] commit: 41 B banked · bank 2.1 KiB
+          Stub line for merge.commit.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+┏━ ▸ 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  ╭─ 2 ──────────────────────────── ☠ cursed ─╮  ╭─ 3 ─────────────────────────── ? mystery ─╮
+┃ USACO · 2017 December, Silver P1          ┃  │ USACO · 2016 US Open, Silver P3           │  │ USACO                                     │
+┃ The Bovine Shuffle                        ┃  │ Closing the Farm                          │  │ ???                                       │
+┃ Functional Graphs · Cycle Detection       ┃  │ tags hidden                               │  │ tags hidden                               │
+┃                                           ┃  │                                           │  │                                           │
+┃ ◆1300  ⏱ 30:00  +80 B                     ┃  │ ◆1350  ⏱ 30:00  +240 B                    │  │ ◆1450  ⏱ 30:00  +160 B                    │
+┃                                           ┃  │ ◌ blind · ×1.5                            │  │ ? mystery · ×2                            │
+┃                                           ┃  │ ☠ no ducks · 1 WA = crash · ×2            │  │                                           │
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ╰───────────────────────────────────────────╯  ╰───────────────────────────────────────────╯
+
+                                        ╭─ Userland ─╮   ╭─ The Heap ─╮   ╭─ ? ─╮   ╭─ Heisenbug ─╮
+                                        │    ✓ ✓     │───│    ✓ ●     │───│ ○ ○ │───│      ⚔      │
+                                        ╰────────────╯   ╰────────────╯   ╰─────╯   ╰─────────────╯
+
+
+
+
+
+
+
+
+
+
+←/→ select · 1-3 jump · enter open door · m map
