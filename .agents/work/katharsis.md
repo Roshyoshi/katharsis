@@ -177,7 +177,21 @@ S8 consolidation (after all code QA lands; from the cross-package report):
      (qa/chaos/oracle.sh); single-player honor system, not fixed
 
 ## Now
-Merged since last: D in-boot (D36: no clear % on door cards; dmesg strip with verdict costs,
+Merged since last: S10 engine (RT0: CF 800 read as censored, X ~ Exp(250); union G1
+1000 53.8 -> 13.1, 1600 26.4 -> 5.8; D44; D22 holds 0.65+ at p0-p4; easing
+machinery built, only D34 life + governor on; Meta.Retired; ML1 offer logging
+with propensities (chi2 p 0.75); ML3 learning player, EOMM ratio 2.16; ML7
+TestGuardrailG1; RT8 comeback; RT11 boot #1 short, 66 min for the 1000 model;
+apt prices up to keep the ladder 40+ boots deep). All wave 2 merged.
+FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
+comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
+retired milestone); cleanup wave 1: g-judge, g-content, g-learn, g-store, g-qa
+(brief: ~/.claude/jobs/e2124f03/tmp/cleanup-brief.md). After f-hooks merges:
+cleanup wave 2 g-engine (game, sim, rules), g-flavor (flavor, anim, story), g-ui
+(ui, units, screens/boot, screens/meta), g-app (app, cmd, demos; -race in the
+robust_test harness, app tests that wait on real time ~30 s, fork with tmux,
+RT1 RTFM next step, D36 in top). Then core-loop QA, then alpha.
+D in-boot (D36: no clear % on door cards; dmesg strip with verdict costs,
 -O3, timer.warn, the Queen's lines; one-time tip.* onboarding lines; :Submit! over
 failing samples, pane s s and R R in ui.Alert; statement-first pane, template
 unjudged until saved; per-door fetch state + bytes, esc cancels, pick a ready door;
@@ -229,8 +243,7 @@ and :Debug; samples clang ASan on libstdc++ + _GLIBCXX_ASSERTIONS; cin 1e6 ints
 38 ms vs 967 ms on libc++; clang 21 out; package closure 2013 -> 1989 MiB;
 binary 28.4 MB). Main tests green (judge TLE timing flaked at load 23; passed
 alone); nix build ok.
-Running (workspaces): s10-engine (RT0 now treats the CF 800 floor as a clamp:
-an "800" problem is <= 800, per the user). Agents keep .agents/work/progress-<ws>.md for
+Agents keep .agents/work/progress-<ws>.md for
 restarts (spamming esc stops every agent).
 For B (from the GCC report): qa/judge expects ASan wording on the libstdc++
 sample profile (re_heap_oob, re_container_oob, re_after_20KB_debug_stderr) and
