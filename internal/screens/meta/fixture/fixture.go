@@ -82,8 +82,10 @@ func GrubConfig() meta.GrubConfig {
 		Now:          Now,
 		PrestigeName: PrestigeName,
 		Banner:       func(string) string { return "" }, // flavor's art stays out of goldens
-		Gate:         game.PrestigeGate{Next: 3, Rated: 34, Need: 60},
-		Packages:     Packages(),
+		// The story's words stay out too: stubs of realistic length.
+		Story:    func(hook string, _ uint64) string { return "stub " + hook + ", a line in the story's voice" },
+		Gate:     game.PrestigeGate{Next: 3, Rated: 34, Need: 60},
+		Packages: Packages(),
 	}
 }
 

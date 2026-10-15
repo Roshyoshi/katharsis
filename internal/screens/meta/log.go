@@ -1,6 +1,7 @@
 package meta
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -51,6 +52,7 @@ func NewLog(boots []BootRow, prestigeName func(int) string) *Log {
 	}
 	all := slices.Clone(boots)
 	slices.SortStableFunc(all, func(a, b BootRow) int { return b.Boot - a.Boot })
+	markNightlies(all)
 	l := &Log{all: all, nameOf: prestigeName}
 	l.apply()
 	return l
@@ -103,6 +105,12 @@ func (l *Log) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 				l.open = b.Boot
 			}
 		}
+	case "r":
+		// Any boot's seed plays again, a past nightly's too: nothing
+		// here expires (retention RT15).
+		if b := l.selected(); b != nil {
+			return l, screens.Emit(screens.StartBoot{Prestige: b.Prestige, Preset: cmp.Or(b.Preset, standardPreset), Seed: b.Seed})
+		}
 	case "f":
 		l.filter = (l.filter + 1) % len(logFilters)
 		l.apply()
@@ -129,7 +137,7 @@ func (l *Log) View(width, height int) string {
 			ui.Muted.Render(fmt.Sprintf("  %s%s%d cleared%s%d crashed", units.Plural(len(l.all), "boot"), ui.G.Sep, cleared, ui.G.Sep, crashed)),
 		"filter: "+ui.Focus.Render(logFilters[l.filter].name),
 		w)
-	keys := ui.Footer(w, "j/k", "move", "enter", "expand", "f", "filter", "g/G", "ends", "q", "back")
+	keys := ui.Footer(w, "j/k", "move", "enter", "expand", "r", "replay seed", "f", "filter", "g/G", "ends", "q", "back")
 
 	rows := max(h-2, 0)
 	l.h = rows
@@ -211,6 +219,10 @@ func (l *Log) bootLine(b BootRow, w, numW int, wide bool) string {
 		bytes = ui.OK.Render(ui.AlignRight("+"+units.Bytes(b.Banked), bytesW))
 	}
 	room := w - ansi.StringWidth(left) - bytesW - 1
+	if tag := seedTag(b); tag != "" && room > 30 {
+		room -= ansi.StringWidth(tag)
+		return left + ui.Fit(outcomeText(b, room), room) + ui.Muted.Render(tag) + " " + bytes
+	}
 	return left + ui.Fit(outcomeText(b, room), room) + " " + bytes
 }
 
@@ -340,4 +352,32 @@ func attemptLine(a AttemptRow, lay attemptLayout) string {
 	}
 	return fmt.Sprintf("%s %s %s %s %s %s%d %s", mark, ui.Fit(a.Title, lay.title), ui.Fit(topic, lay.topic),
 		t, ui.Fit(subs, 8), ui.G.Duck, a.Quacks, end)
+}
+
+// markNightlies tags the nightly builds among boots (newest first): a
+// boot on its own day's NightlySeed, the first played on a seed marked
+// First; the rest on that seed are practice (retention RT15). Boots older
+// than the list are not seen, so the oldest listed counts as first.
+func markNightlies(boots []BootRow) {
+	seen := map[uint64]bool{}
+	for i := len(boots) - 1; i >= 0; i-- {
+		b := &boots[i]
+		if b.Seed == 0 || b.Seed != NightlySeed(b.Started) {
+			continue
+		}
+		b.Nightly, b.First = true, !seen[b.Seed]
+		seen[b.Seed] = true
+	}
+}
+
+// seedTag marks a nightly in its row: " nightly · first" for the first
+// play of the day's seed, " nightly" for a replay.
+func seedTag(b BootRow) string {
+	switch {
+	case !b.Nightly:
+		return ""
+	case b.First:
+		return " nightly" + ui.G.Sep + "first"
+	}
+	return " nightly"
 }

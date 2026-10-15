@@ -1,0 +1,24 @@
+                             GNU GRUB  version 2.12
+
+ ┌────────────────────────────────────────────────────────────────────────────┐
+ │*katharsis, prestige 2 (Gold)                                               │
+ │ upsolve core dump: Bovine Shuffle (312 B)                                  │
+ │ katharsis, prestige 1 (Silver)                                             │
+ │ katharsis, prestige 0 (Bronze)                                             │
+ │ katharsis (nightly build 2026-10-14) · best: cleared in 1:32:10            │
+ │ katharsis (RTFM — learn mode)                                              │
+ │ katharsis (custom preset…)                                                 │
+ │ regressions due: 2                                                         │
+ │ apt install rng-tools (256 B, affordable)                                  │
+ │ cat /proc/story                                                            │
+ │ git log                                                                    │
+ │ top                                                                        │
+ │ poweroff                                                                   │
+ │                                                                            │
+ └────────────────────────────────────────────────────────────────────────────┘
+           stub grub.subtitle.prestige.2, a line in the story's voice
+     Use the ↑ and ↓ keys to select which entry is highlighted. Press enter
+     to boot the selected entry, `e' to edit the commands, `c' for credits.
+
+        bank 1.3 KiB · rating 1432 · next boot #43 · today 3:12 of 3:00
+     Platinum unlocks after 60 rated doors (34 so far) and a clear at Gold

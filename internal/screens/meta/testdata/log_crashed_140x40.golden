@@ -37,4 +37,4 @@ git log --graph --oneline  42 boots · 10 cleared · 31 crashed                 
 
 
 
-j/k move · enter expand · f filter · g/G ends · q back
+j/k move · enter expand · r replay seed · f filter · g/G ends · q back

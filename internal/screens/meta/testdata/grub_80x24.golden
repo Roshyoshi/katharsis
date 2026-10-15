@@ -2,12 +2,12 @@
 
  ┌────────────────────────────────────────────────────────────────────────────┐
  │*katharsis, prestige 2 (Gold)                                               │
+ │ upsolve core dump: Bovine Shuffle (312 B)                                  │
  │ katharsis, prestige 1 (Silver)                                             │
  │ katharsis, prestige 0 (Bronze)                                             │
  │ katharsis (nightly build 2026-10-14)                                       │
  │ katharsis (RTFM — learn mode)                                              │
  │ katharsis (custom preset…)                                                 │
- │ upsolve core dump: Bovine Shuffle (312 B)                                  │
  │ regressions due: 2                                                         │
  │ apt install rng-tools (256 B, affordable)                                  │
  │ git log                                                                    │
@@ -16,7 +16,7 @@
  │                                                                            │
  │                                                                            │
  └────────────────────────────────────────────────────────────────────────────┘
-
+           stub grub.subtitle.prestige.2, a line in the story's voice
      Use the ↑ and ↓ keys to select which entry is highlighted. Press enter
      to boot the selected entry, `e' to edit the commands, `c' for credits.
 

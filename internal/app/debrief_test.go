@@ -150,3 +150,20 @@ func TestQuitAndResumeWords(t *testing.T) {
 		t.Errorf("resumeNote %q", s)
 	}
 }
+
+// GRUB shows how today's nightly went, and past the budget says so
+// (RT15, RT12).
+func TestGrubNightlyBest(t *testing.T) {
+	h := newHarness(t)
+	h.m.d.Budget = time.Minute
+	h.send(screens.StartBoot{Preset: "standard", Seed: meta.NightlySeed(h.clock.t)})
+	h.verdict = "WA"
+	if got := h.play(); got != game.PhaseCrashed {
+		t.Fatalf("boot ended %q", got)
+	}
+	h.send(screens.OpenGrub{})
+	v := ansi.Strip(h.m.top().View(140, 40))
+	if !strings.Contains(v, "best: 0 doors cleared") || !strings.Contains(v, "today ") {
+		t.Errorf("GRUB lacks the nightly's best or the budget:\n%s", v)
+	}
+}

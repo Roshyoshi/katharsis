@@ -88,7 +88,7 @@ func (m *Model) grub() screens.Screen {
 		}
 	}
 	slices.Sort(presets)
-	return meta.NewGrub(meta.GrubConfig{
+	return meta.NewGrub(m.grubEnd(meta.GrubConfig{ // the nightly's best, the budget (debrief.go)
 		Meta:     m.meta,
 		Presets:  presets,
 		Lookup:   m.d.Catalog.Get,
@@ -97,7 +97,7 @@ func (m *Model) grub() screens.Screen {
 		Packages: m.packages(),
 		Load:     m.loadAverage(),
 		Sources:  m.d.Sources,
-	})
+	}))
 }
 
 func (m *Model) title(id catalog.ID) string {

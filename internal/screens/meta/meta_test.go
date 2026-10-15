@@ -116,7 +116,7 @@ func TestGoldens(t *testing.T) {
 		keys []string
 	}{
 		{"grub", func() screens.Screen { return grub() }, nil},
-		{"grub_presets", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "enter"}},
+		{"grub_presets", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "enter"}},
 		{"grub_regressions", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "down", "enter"}},
 		{"grub_edit", func() screens.Screen { return grub() }, []string{"e", "down", "tab", "down", "8", "f", "3", "a"}},
 		{"log", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, nil},
@@ -185,8 +185,9 @@ func TestFits(t *testing.T) {
 // ---- GRUB keys ---------------------------------------------------------------
 
 func TestGrubEntries(t *testing.T) {
-	// Entries top to bottom: prestige 2, 1, 0, nightly build, RTFM, custom
-	// preset…, core dump, regressions due, git log, top, credits, poweroff.
+	// Entries top to bottom: prestige 2, the core dump under it (RT4),
+	// prestige 1, 0, nightly build, RTFM, custom preset…, regressions due,
+	// apt, git log, top, poweroff.
 	down := func(n int) []string {
 		ks := make([]string, n)
 		for i := range ks {
@@ -200,11 +201,11 @@ func TestGrubEntries(t *testing.T) {
 		want tea.Msg
 	}{
 		{"default boots highest prestige", []string{"enter"}, screens.StartBoot{Prestige: 2, Preset: "standard"}},
-		{"bronze", append(down(2), "enter"), screens.StartBoot{Prestige: 0, Preset: "standard"}},
-		{"nightly", append(down(3), "enter"), screens.StartBoot{Prestige: 2, Preset: "standard", Seed: 0x20261014}},
-		{"rtfm", append(down(4), "enter"), screens.OpenLearn{}},
-		{"preset submenu", append(down(5), "enter", "down", "enter"), screens.StartBoot{Prestige: 2, Preset: "speedrun"}},
-		{"core dump", append(down(6), "enter"), screens.Upsolve{Problem: "usaco:1014"}},
+		{"bronze", append(down(3), "enter"), screens.StartBoot{Prestige: 0, Preset: "standard"}},
+		{"nightly", append(down(4), "enter"), screens.StartBoot{Prestige: 2, Preset: "standard", Seed: 0x20261014}},
+		{"rtfm", append(down(5), "enter"), screens.OpenLearn{}},
+		{"preset submenu", append(down(6), "enter", "down", "enter"), screens.StartBoot{Prestige: 2, Preset: "speedrun"}},
+		{"core dump", append(down(1), "enter"), screens.Upsolve{Problem: "usaco:1014"}},
 		// The core dump has its own entry; the submenu is regressions only,
 		// oldest due first, without usaco:740, which is not due.
 		{"regressions submenu lists only regressions", append(down(7), "enter", "enter"), screens.Upsolve{Problem: "usaco:891"}},
@@ -215,11 +216,11 @@ func TestGrubEntries(t *testing.T) {
 		{"poweroff", append(down(11), "enter"), screens.Quit{}},
 		// The credits are a key, as real GRUB's command line is, in any menu.
 		{"c opens the credits", []string{"c"}, screens.OpenCredits{}},
-		{"c in a submenu too", append(down(5), "enter", "c"), screens.OpenCredits{}},
+		{"c in a submenu too", append(down(6), "enter", "c"), screens.OpenCredits{}},
 		{"end is poweroff", []string{"G", "enter"}, screens.Quit{}},
 		{"down stops at the end", append(down(30), "enter"), screens.Quit{}},
 		{"ctrl+x boots like enter", []string{"ctrl+x"}, screens.StartBoot{Prestige: 2, Preset: "standard"}},
-		{"esc leaves submenu, keeping its entry highlighted", append(down(5), "enter", "esc", "down", "enter"), screens.Upsolve{Problem: "usaco:1014"}},
+		{"esc leaves submenu, keeping its entry highlighted", append(down(6), "enter", "esc", "up", "enter"), screens.OpenLearn{}},
 		{"esc at root does nothing", []string{"esc"}, nil},
 		{"e on a non-boot entry does nothing", append(down(9), "e", "enter"), screens.OpenLog{}},
 	}
@@ -249,9 +250,9 @@ func TestGrubEdit(t *testing.T) {
 			screens.StartBoot{Prestige: 1, Preset: "speedrun"}},
 		{"prestige wraps within unlocked", []string{"e", "right", "enter"},
 			screens.StartBoot{Prestige: 0, Preset: "standard"}},
-		{"from a preset entry", []string{"down", "down", "down", "down", "down", "enter", "e", "ctrl+x"},
+		{"from a preset entry", []string{"down", "down", "down", "down", "down", "down", "enter", "e", "ctrl+x"},
 			screens.StartBoot{Prestige: 2, Preset: "hardcore"}},
-		{"nightly keeps its seed", []string{"down", "down", "down", "e", "ctrl+x"},
+		{"nightly keeps its seed", []string{"down", "down", "down", "down", "e", "ctrl+x"},
 			screens.StartBoot{Prestige: 2, Preset: "standard", Seed: 0x20261014}},
 		{"esc returns to the menu", []string{"e", "down", "down", "7", "esc", "enter"},
 			screens.StartBoot{Prestige: 2, Preset: "standard"}},
@@ -348,13 +349,13 @@ func TestGrubFollowKeepsTheCursor(t *testing.T) {
 
 	// An entry that is gone leaves the cursor at its row.
 	old = grub()
-	press(t, old, down(6)...) // the core dump, since upsolved
+	press(t, old, down(1)...) // the core dump, since upsolved
 	c = fixture.GrubConfig()
 	c.Meta.CoreDump = nil
 	g = meta.NewGrub(c)
 	g.Follow(old)
-	// Row 6 is the regressions submenu now; its first is usaco:891.
-	wantMsg(t, press(t, g, "enter", "enter"), screens.Upsolve{Problem: "usaco:891"})
+	// Row 1 is prestige 1 now.
+	wantMsg(t, press(t, g, "enter"), screens.StartBoot{Prestige: 1, Preset: "standard"})
 }
 
 // TestGrubFlavorBanner uses flavor's real art, the default and each apt

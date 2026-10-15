@@ -79,7 +79,7 @@ GRUB ─enter→ boot ─→ doors ─enter→ problem (vim + HUD) ─AC→ upgr
 | Kernel panic | `u` upsolve the problem · `e` editorial · `r` reboot (twice over a live core dump) · `s` short · `p` patch · `b` read the story beat · `l` git log · `g` GRUB |
 | Cleared | `r` reboot · `s` short · `p` patch · `b` story beat · `l` git log · `g` GRUB |
 | Reader | `j/k` · `space/b` · `g/G` · `/` search, `n/N` · `o` open in the browser · `q` back |
-| git log | `j/k` · `enter` expand a boot · `f` filter · `q` back |
+| git log | `j/k` · `enter` expand a boot · `r` play its seed again (a past nightly too) · `f` filter · `q` back |
 | top | `s` sort topics · `q` back |
 
 **Libs.** Mark a snippet in any solution and it becomes reusable:

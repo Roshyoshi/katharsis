@@ -21,4 +21,4 @@ git log --graph --oneline  42 boots · 10 cleared · 31 crashed        filter: a
 * a289941 #23 Sep 25 P1 1:06:49 crashed in The Stack (timer)              +289 B
 * 9bb37bc #22 Sep 24 P1 1:43:02 crashed in Userland (:q!)                 +342 B
 * c880993 #21 Sep 23 P1   30:15 cleared                                   +865 B
-j/k move · enter expand · f filter · g/G ends · q back
+j/k move · enter expand · r replay seed · f filter · g/G ends · q back

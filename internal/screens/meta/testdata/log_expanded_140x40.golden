@@ -37,4 +37,4 @@ git log --graph --oneline  42 boots · 10 cleared · 31 crashed                 
 * f44f438 #12 2026-09-14 16:00 P0   33:12 crashed in Page Tables (:q!)                                                                 +72 B
 * 3682b7b #11 2026-09-13 20:00 P0 1:10:25 cleared                                                                                     +975 B
 * 5b3457d #10 2026-09-12 19:00 P0 1:47:38 crashed in The Heap (timer)                                                                 +178 B
-j/k move · enter expand · f filter · g/G ends · q back
+j/k move · enter expand · r replay seed · f filter · g/G ends · q back

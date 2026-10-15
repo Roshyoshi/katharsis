@@ -38,6 +38,10 @@ type BootRow struct {
 	Banked int64 // bytes committed during the boot
 	Dumped int64 // uncommitted bytes left in the core dump by the crash
 
+	// Nightly marks a boot on its day's nightly seed, First the first boot
+	// played on that seed (retention RT15); NewLog sets both.
+	Nightly, First bool
+
 	Attempts []AttemptRow // in the order they were opened
 }
 

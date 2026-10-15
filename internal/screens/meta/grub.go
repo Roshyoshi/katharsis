@@ -15,6 +15,7 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/screens/story"
 	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
@@ -42,11 +43,21 @@ type GrubConfig struct {
 	// Sources, when set, is a note on content sources not serving yet
 	// ("Codeforces indexing… 40%"), added to the status line at every draw.
 	Sources func() string
+	// Nightly is how today's nightly has been played (retention RT15),
+	// shown on its entry; nil for not yet.
+	Nightly *NightlyBest
+	// Today is the play so far today and Budget the session budget
+	// (RT12, 0 for none): past it the status line says so.
+	Today, Budget time.Duration
 
 	// PrestigeName and Banner default to the flavor package. Tests pin them
 	// so goldens do not churn whenever flavor text changes.
 	PrestigeName func(int) string
 	Banner       func(kind string) string
+	// Story and StoryLog are the story's text and the reread log; they
+	// default to flavor.Story and flavor.StoryLog.
+	Story    func(hook string, seed uint64) string
+	StoryLog func(m *game.Meta) []flavor.LogEntry
 }
 
 // Menu is a GRUB 2 style text menu: a boxed list with one highlighted
@@ -60,6 +71,7 @@ type Menu struct {
 	banner  string
 	status  string
 	gate    string // the prestige gate line under the status, "" for none
+	motd    string // boot.motd, on the status line when it fits
 	lastH   int    // box rows at the last View, for page up/down
 	sources func() string
 }
@@ -67,6 +79,7 @@ type Menu struct {
 type page struct {
 	entries  []entry
 	pick     bool // entries upsolve rather than boot, for the help text
+	story    bool // entries read story beats, for the help text
 	sel, top int
 }
 
@@ -75,6 +88,7 @@ type entry struct {
 	msg   tea.Msg            // emitted on enter
 	boot  *screens.StartBoot // boot entries: also editable with e
 	sub   *page              // submenus
+	note  string             // the subtitle shown under the box while selected
 }
 
 const standardPreset = "standard"
@@ -89,6 +103,12 @@ func NewGrub(c GrubConfig) *Menu {
 	}
 	if c.Banner == nil {
 		c.Banner = flavor.Banner
+	}
+	if c.Story == nil {
+		c.Story = flavor.Story
+	}
+	if c.StoryLog == nil {
+		c.StoryLog = flavor.StoryLog
 	}
 	now := c.Now
 	if now.IsZero() {
@@ -124,52 +144,121 @@ func NewGrub(c GrubConfig) *Menu {
 	if c.Load != nil {
 		m.status += " · " + LoadText(*c.Load)
 	}
+	// Past the session budget the status line says so, and nothing more
+	// (retention RT12: a nudge, never a lock).
+	if c.Budget > 0 && c.Today >= c.Budget {
+		m.status += fmt.Sprintf(" · today %s of %s", hm(c.Today), hm(c.Budget))
+	}
+	m.motd = c.Story("boot.motd", uint64(max(c.Meta.Boots, 0)))
 	m.gate = screens.GateText(c.Gate, m.maxP, func(p int) string {
 		return cmp.Or(m.nameOf(p), fmt.Sprintf("prestige %d", p))
 	})
+	sub := func(hook string, pairs ...string) string {
+		return flavor.Fill(c.Story("grub.subtitle."+hook, 0), pairs...)
+	}
 
+	// The default boot, then the core dump right under it (RT4): the
+	// cliffhanger is the second thing GRUB offers.
 	var es []entry
 	for p := m.maxP; p >= 0; p-- {
-		es = append(es, m.bootEntry(p, standardPreset))
+		e := m.bootEntry(p, standardPreset)
+		e.note = prestigeNote(p, sub)
+		es = append(es, e)
+		if d := c.Meta.CoreDump; d != nil && p == m.maxP {
+			es = append(es, entry{
+				label: fmt.Sprintf("upsolve core dump: %s (%s)", title(d.Problem), units.Bytes(d.Bytes)),
+				msg:   screens.Upsolve{Problem: d.Problem},
+				note:  sub("coredump", "bytes", units.Bytes(d.Bytes), "title", ui.Clip(title(d.Problem), 24)),
+			})
+		}
 	}
 	es = append(es, entry{
-		label: "katharsis (nightly build " + now.Format(time.DateOnly) + ")",
+		label: "katharsis (nightly build " + now.Format(time.DateOnly) + ")" + nightlyBest(c.Nightly),
 		boot:  &screens.StartBoot{Prestige: m.maxP, Preset: standardPreset, Seed: NightlySeed(now)},
+		note:  sub("nightly"),
 	})
-	es = append(es, entry{label: "katharsis (RTFM — learn mode)", msg: screens.OpenLearn{}})
+	es = append(es, entry{label: "katharsis (RTFM — learn mode)", msg: screens.OpenLearn{}, note: sub("rtfm")})
 	if len(m.presets) > 1 {
 		sub := &page{}
 		for _, name := range m.presets[1:] {
 			sub.entries = append(sub.entries, m.bootEntry(m.maxP, name))
 		}
-		es = append(es, entry{label: "katharsis (custom preset…)", sub: sub})
-	}
-	if d := c.Meta.CoreDump; d != nil {
-		es = append(es, entry{
-			label: fmt.Sprintf("upsolve core dump: %s (%s)", title(d.Problem), units.Bytes(d.Bytes)),
-			msg:   screens.Upsolve{Problem: d.Problem},
-		})
+		es = append(es, entry{label: "katharsis (custom preset…)", sub: sub, note: c.Story("grub.subtitle.custom", 0)})
 	}
 	if regs := dueRegressions(c.Meta.Regressions, now); len(regs) > 0 {
-		sub := &page{pick: true}
+		// At most three on screen, and no count past them (retention
+		// GR10): the rest wait, and none of it is a debt.
+		regs = regs[:min(len(regs), maxDue)]
+		page := &page{pick: true}
 		for _, r := range regs {
-			sub.entries = append(sub.entries, entry{
+			page.entries = append(page.entries, entry{
 				label: fmt.Sprintf("regression: %s (due %s, stage %d)", title(r.Problem), ago(r.Due, now), r.Stage+1),
 				msg:   screens.Upsolve{Problem: r.Problem},
 			})
 		}
-		es = append(es, entry{label: fmt.Sprintf("regressions due: %d", len(regs)), sub: sub})
+		label := fmt.Sprintf("regressions due: %d", len(regs))
+		if len(regs) == maxDue && len(dueRegressions(c.Meta.Regressions, now)) > maxDue {
+			label = fmt.Sprintf("regressions due: %d+", maxDue)
+		}
+		es = append(es, entry{label: label, sub: page, note: sub("regressions")})
 	}
 	if len(c.Packages) > 0 {
 		es = append(es, entry{label: aptLabel(c.Packages, c.Meta.Bank), msg: screens.OpenShop{}})
 	}
+	// The reread log (RT6): every beat seen, newest first, each opening
+	// its page (story.Read). Nothing the story says is missable.
+	if log := c.StoryLog(&c.Meta); len(log) > 0 {
+		page := &page{story: true}
+		for i := len(log) - 1; i >= 0; i-- {
+			b := log[i]
+			when := fmt.Sprintf("boot %d", b.Boot)
+			if b.Boot == 0 {
+				when = "before boot 1"
+			}
+			page.entries = append(page.entries, entry{label: b.Title + " (" + when + ")", msg: story.Read{ID: b.ID}})
+		}
+		es = append(es, entry{label: "cat /proc/story", sub: page})
+	}
 	es = append(es,
-		entry{label: "git log", msg: screens.OpenLog{}},
-		entry{label: "top", msg: screens.OpenTop{}},
-		entry{label: "poweroff", msg: screens.Quit{}},
+		entry{label: "git log", msg: screens.OpenLog{}, note: sub("gitlog")},
+		entry{label: "top", msg: screens.OpenTop{}, note: sub("top")},
+		entry{label: "poweroff", msg: screens.Quit{}, note: sub("poweroff")},
 	)
 	m.stack = []*page{{entries: es}}
 	return m
+}
+
+// maxDue is how many due regressions GRUB lists (retention GR10).
+const maxDue = 3
+
+// prestigeNote is a prestige entry's subtitle (grub.subtitle.prestige.N):
+// the ring it boots into.
+func prestigeNote(p int, sub func(string, ...string) string) string {
+	if s := sub(fmt.Sprintf("prestige.%d", p)); s != "" {
+		return s
+	}
+	ring, _ := flavor.Ring(p)
+	return sub("prestige.beyond", "ring", strconv.Itoa(ring))
+}
+
+// NightlyBest is how today's nightly has been played (retention RT15): a
+// personal best, with nothing to keep up. Played 0 is not yet.
+type NightlyBest struct {
+	Played  int // boots on the seed
+	Cleared bool
+	Uptime  time.Duration // the fastest clear, else the longest crash
+	Doors   int           // doors cleared on that boot
+}
+
+// nightlyBest is the nightly entry's personal best, "" before a play.
+func nightlyBest(b *NightlyBest) string {
+	switch {
+	case b == nil || b.Played == 0:
+		return ""
+	case b.Cleared:
+		return " · best: cleared in " + units.Clock(b.Uptime)
+	}
+	return " · best: " + units.Plural(b.Doors, "door") + " cleared"
 }
 
 // NightlySeed is the nightly build's seed for the day t falls on in t's own
@@ -417,7 +506,10 @@ var (
 	helpMenu = "Use the ↑ and ↓ keys to select which entry is highlighted. " +
 		"Press enter to boot the selected entry, `e' to edit the commands, " +
 		"`c' for credits."
-	helpSub  = helpMenu + " ESC to return previous menu."
+	helpSub   = helpMenu + " ESC to return previous menu."
+	helpStory = "Use the ↑ and ↓ keys to select which entry is highlighted. " +
+		"Press enter to read the selected beat again, or ESC to return " +
+		"previous menu."
 	helpPick = "Use the ↑ and ↓ keys to select which entry is highlighted. " +
 		"Press enter to upsolve the selected problem, or ESC to return " +
 		"previous menu."
@@ -435,6 +527,8 @@ func (m *Menu) View(width, height int) string {
 		help = helpEdit
 	case m.cur().pick:
 		help = helpPick
+	case m.cur().story:
+		help = helpStory
 	case len(m.stack) > 1:
 		help = helpSub
 	}
@@ -448,6 +542,10 @@ func (m *Menu) View(width, height int) string {
 		if note := m.sources(); note != "" {
 			status += " · " + note
 		}
+	}
+	// The motd rides along where the line has room for it (boot.motd).
+	if m.motd != "" && ansi.StringWidth(status+" · "+m.motd) <= w-2 {
+		status += " · " + m.motd
 	}
 	foot = append(foot, "", ui.Center(ui.Muted.Render(status), w))
 	if m.gate != "" {
@@ -521,7 +619,9 @@ func (m *Menu) View(width, height int) string {
 	}
 	out = append(out, " └"+strings.Repeat("─", max(inner-1, 0))+down+"┘")
 	if foot != nil {
-		out = append(out, "")
+		// The selected entry's subtitle (grub.subtitle.*) takes the row
+		// between the box and the help, so it costs the menu nothing.
+		out = append(out, m.subtitle(w))
 		out = append(out, foot...)
 	}
 	return ui.Layout(w, h, out, "")
@@ -561,4 +661,14 @@ func aptLabel(ps []Package, bank int64) string {
 		return fmt.Sprintf("apt install %s (%s, %s to go)", p.Name, units.Bytes(p.Price), units.Bytes(short))
 	}
 	return fmt.Sprintf("apt install %s (%s, affordable)", p.Name, units.Bytes(p.Price))
+}
+
+// subtitle is the selected entry's story line, centered in the flavor
+// voice, "" when it has none or the editor is open.
+func (m *Menu) subtitle(w int) string {
+	p := m.cur()
+	if m.edit != nil || p.sel < 0 || p.sel >= len(p.entries) || p.entries[p.sel].note == "" {
+		return ""
+	}
+	return ui.Center(ui.Voice.Render(ui.Muted.Render(ui.Clip(p.entries[p.sel].note, max(w-4, 1)))), w)
 }

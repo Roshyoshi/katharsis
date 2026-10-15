@@ -223,3 +223,21 @@ func recoveredNote(got int64) string {
 	}
 	return "core dump recovered: +" + units.Bytes(got) + " banked"
 }
+
+// grubEnd adds to GRUB what the store says between boots: how today's
+// nightly has been played (RT15) and today's play against the session
+// budget (RT12). A query that fails leaves its line out.
+func (m *Model) grubEnd(c meta.GrubConfig) meta.GrubConfig {
+	now := m.d.Now()
+	if r, ok, err := m.d.Store.SeedBest(meta.NightlySeed(now)); err != nil {
+		m.logErr("nightly best", err)
+	} else if ok {
+		c.Nightly = &meta.NightlyBest{Played: r.Boots, Cleared: r.Cleared, Uptime: r.Uptime, Doors: r.Doors}
+	}
+	if c.Budget = m.d.Budget; c.Budget > 0 {
+		var err error
+		c.Today, err = m.d.Store.PlayToday(now)
+		m.logErr("play today", err)
+	}
+	return c
+}
