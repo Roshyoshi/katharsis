@@ -272,3 +272,29 @@ func TestSnapshotCleansDebris(t *testing.T) {
 		t.Errorf("requests = %d, want 1", n)
 	}
 }
+
+// A Commit bump leaves the old snapshot behind, up to maxExtracted of it;
+// the next Snapshot removes it. Only commit-named dirs go.
+func TestSnapshotSweepsOldCommits(t *testing.T) {
+	root := t.TempDir()
+	old := filepath.Join(root, strings.Repeat("9", 40))
+	other := filepath.Join(root, "notes")
+	for _, d := range []string{filepath.Join(old, "content"), other} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	srv, _ := serve(t, tarball(t, good), 0)
+	dir, err := snapshot(context.Background(), fast(srv), root, srv.URL, testCommit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(old); err == nil {
+		t.Error("the old commit's snapshot is still there")
+	}
+	for _, keep := range []string{dir, other} {
+		if _, err := os.Stat(keep); err != nil {
+			t.Errorf("%s: %v", keep, err)
+		}
+	}
+}

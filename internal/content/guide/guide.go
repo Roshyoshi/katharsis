@@ -31,8 +31,8 @@ import (
 )
 
 // Commit is the usaco-guide master commit the game is built against
-// (looked up 2026-10-14). Bumping it re-downloads the snapshot and
-// rebuilds every index derived from it.
+// (looked up 2026-10-14). Bumping it re-downloads the snapshot, removes
+// the old one and rebuilds every index derived from it.
 const Commit = "092bf547cf4f63140057b220dba2861f884e1905"
 
 // DivisionList is where the guide keeps its USACO contest tables
@@ -89,6 +89,7 @@ func snapshot(ctx context.Context, c *web.Client, root, url, commit string) (str
 	// next start usually downloads again at once, while the debris is too
 	// young to remove, and from then on the snapshot is there.
 	web.CleanDebris(root, web.TempPrefix)
+	removeOtherCommits(root, commit)
 	dir := filepath.Join(root, commit)
 	if isDir(dir) {
 		return dir, nil
@@ -133,6 +134,31 @@ func snapshot(ctx context.Context, c *web.Client, root, url, commit string) (str
 		return "", err
 	}
 	return dir, nil
+}
+
+// removeOtherCommits deletes the snapshots of commits other than commit: a
+// Commit bump leaves the old one behind, and nothing else reads it. Only
+// dirs named like a commit go. A failed removal is tried again next time.
+func removeOtherCommits(root, commit string) {
+	des, _ := os.ReadDir(root)
+	for _, d := range des {
+		if name := d.Name(); d.IsDir() && name != commit && isCommit(name) {
+			_ = os.RemoveAll(filepath.Join(root, name))
+		}
+	}
+}
+
+// isCommit is true for a full lowercase hex SHA-1, as Commit is written.
+func isCommit(s string) bool {
+	if len(s) != 40 {
+		return false
+	}
+	for _, c := range []byte(s) {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func isDir(p string) bool {
