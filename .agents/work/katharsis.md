@@ -156,6 +156,9 @@ D47 open 10-15     Meta research before any change to lives: "3 lives seems a li
                    level": suspend only between doors; no quit inside a door (solve,
                    retreat or give up); crash-safety resume stays.
 
+D48 settled 10-15  Lives are renamed cycles (CPU cycles), still drawn as ♥: "can change
+                   lives name to cycles lol / keep icon". Lands with the D47 meta change.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
