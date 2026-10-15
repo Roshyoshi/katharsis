@@ -14,6 +14,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"katharsis/internal/anim"
 	"katharsis/internal/app"
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/codeforces"
@@ -35,6 +36,8 @@ func runGame(args []string) error {
 	scale := fs.Float64("scale", 1, "multiply CPU time limits (below 1 is stricter than the judge)")
 	af := addAudioFlags(fs)
 	noPrompts := fs.Bool("no-prompts", false, "never ask: no first-launch rating question, no line under a boot's end")
+	motion := fs.String("motion", "full", "story animations: full, or reduced (every scene drawn at once)")
+	fps := fs.Int("fps", 0, fmt.Sprintf("frame-rate cap for the story animations (0 is %d)", anim.DefaultFPS))
 	stdioT := fs.String("template", filepath.Join(home, "cp", "atcoder", "template.cpp"), "C++ template for stdin/stdout problems")
 	fileT := fs.String("template-fileio", filepath.Join(home, "cp", "template.cpp"), "C++ template for file-I/O problems (\"problem\" becomes the file stem)")
 	var presetFiles []string
@@ -49,6 +52,11 @@ func runGame(args []string) error {
 		usage(fs)
 		return fmt.Errorf("unknown command %q", fs.Arg(0))
 	}
+	mo, err := anim.ParseMotion(*motion, *fps)
+	if err != nil {
+		return err
+	}
+	anim.SetMotion(mo)
 
 	// Presets load before tmux, so a --preset that fails ends the game in
 	// the player's own terminal, where the error stays on screen. The
@@ -150,6 +158,7 @@ func runGame(args []string) error {
 		Credits:       credits,
 		Log:           logger,
 		Prompts:       !*noPrompts,
+		Story:         true,
 		Sources:       cfNote,
 	})
 	if err != nil {

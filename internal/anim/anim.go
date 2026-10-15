@@ -19,6 +19,7 @@
 package anim
 
 import (
+	"fmt"
 	"math"
 	"sync/atomic"
 	"time"
@@ -60,6 +61,22 @@ func (m Motion) step() time.Duration {
 		fps = DefaultFPS
 	}
 	return time.Second / time.Duration(fps)
+}
+
+// ParseMotion is the motion setting from the settings ui.motion and
+// ui.fps: motion is "full" (or "") or "reduced", and fps the frame-rate
+// cap, 0 for DefaultFPS.
+func ParseMotion(motion string, fps int) (Motion, error) {
+	if fps < 0 {
+		return Motion{}, fmt.Errorf("fps %d: want 0 (the default, %d) or more", fps, DefaultFPS)
+	}
+	switch motion {
+	case "", "full":
+		return Motion{FPS: fps}, nil
+	case "reduced":
+		return Motion{Reduced: true, FPS: fps}, nil
+	}
+	return Motion{}, fmt.Errorf("motion %q: want full or reduced", motion)
 }
 
 var motion atomic.Value // Motion

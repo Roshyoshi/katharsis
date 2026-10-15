@@ -400,3 +400,28 @@ func TestPlayerInput(t *testing.T) {
 		t.Errorf("Seek: at %v", p.At())
 	}
 }
+
+func TestParseMotion(t *testing.T) {
+	for _, c := range []struct {
+		motion string
+		fps    int
+		want   Motion
+	}{
+		{"", 0, Motion{}},
+		{"full", 60, Motion{FPS: 60}},
+		{"reduced", 0, Motion{Reduced: true}},
+		{"reduced", 12, Motion{Reduced: true, FPS: 12}},
+	} {
+		if got, err := ParseMotion(c.motion, c.fps); err != nil || got != c.want {
+			t.Errorf("ParseMotion(%q, %d) = %+v, %v; want %+v", c.motion, c.fps, got, err, c.want)
+		}
+	}
+	for _, bad := range []struct {
+		motion string
+		fps    int
+	}{{"none", 0}, {"Reduced", 0}, {"full", -1}} {
+		if _, err := ParseMotion(bad.motion, bad.fps); err == nil {
+			t.Errorf("ParseMotion(%q, %d) took it", bad.motion, bad.fps)
+		}
+	}
+}

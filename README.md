@@ -33,6 +33,8 @@ start.
 | `--scale` | `1` | multiply CPU time limits (below 1 is stricter) |
 | `--quiet` | off | no sound at all; `--no-music` and `--no-sfx` silence one each |
 | `--music-volume`, `--sfx-volume` | `audio.toml` | 0..1, over the settings file |
+| `--motion` | `full` | `reduced` draws every story scene at once; any key skips a scene, esc leaves the story |
+| `--fps` | `30` | frame-rate cap for the story animations |
 | `--preset` | | also load a rules preset file (repeatable); presets in `~/.config/katharsis/presets` load automatically. `presets/short.toml` is a ~1 h boot |
 
 `katharsis practice <dir>` is the training room: any folder with
