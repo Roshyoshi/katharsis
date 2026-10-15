@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -138,6 +139,90 @@ func TestMigrateFromV1(t *testing.T) {
 	if _, err := s.Event(store.Event{At: t0, Kind: store.EventAppStart}); err != nil {
 		t.Errorf("event on a migrated file: %v", err)
 	}
+}
+
+// TestMigrateKeepsV1Rows: migration 2 only adds. Every column a v1 table
+// had reads back, row for row and value for value, from the migrated
+// file, so the first launch of a v2 build loses nothing a v1 build saved.
+func TestMigrateKeepsV1Rows(t *testing.T) {
+	t.Parallel()
+	path := tempPath(t)
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	st := midBoot(3, t0)
+	st.History[1].Biome = 1
+	writeV1(t, path, sampleMeta(), st)
+
+	db, err := sql.Open("sqlite", store.DSN(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mustClose(t, db)
+	v1 := map[string][]string{} // table -> its v1 columns
+	for _, table := range []string{"meta", "boots", "attempts", "rating_history"} {
+		v1[table] = columns(t, db, table)
+	}
+	before := map[string][][]any{}
+	for table, cols := range v1 {
+		before[table] = dumpRows(t, db, table, cols)
+		if len(before[table]) == 0 {
+			t.Fatalf("v1 fixture wrote no %s rows", table)
+		}
+	}
+
+	mustClose(t, open(t, path))
+	for table, cols := range v1 {
+		same(t, table+" after migration", dumpRows(t, db, table, cols), before[table])
+	}
+}
+
+func columns(t *testing.T, db *sql.DB, table string) []string {
+	t.Helper()
+	rows, err := db.Query(`SELECT name FROM pragma_table_info(?) ORDER BY cid`, table)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, name)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// dumpRows reads cols of every row of table, in rowid order, as the
+// driver returns them.
+func dumpRows(t *testing.T, db *sql.DB, table string, cols []string) [][]any {
+	t.Helper()
+	rows, err := db.Query(`SELECT ` + strings.Join(cols, ", ") + ` FROM ` + table + ` ORDER BY rowid`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var out [][]any
+	for rows.Next() {
+		row := make([]any, len(cols))
+		ptrs := make([]any, len(cols))
+		for i := range row {
+			ptrs[i] = &row[i]
+		}
+		if err := rows.Scan(ptrs...); err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, row)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return out
 }
 
 type attemptML struct {
