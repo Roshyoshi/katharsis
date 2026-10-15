@@ -248,10 +248,15 @@ D55 settled 10-15  TIME+ (top's cumulative CPU-time column): lifetime in-door ti
                    count as another motivator". A count, never a streak (GR1).
                    Cycles display out of MaxCycles (50) by the user's call.
 
-D56 open 10-15     Achievements: "w spoiler ones as well"; like Star of Providence, Hollow
+D56 settled 10-15  Achievements: "w spoiler ones as well"; like Star of Providence, Hollow
                    Knight, Silksong: clear barriers, skill ones (speedrun, 112% speedrun),
                    secret ones (an alternate ending like Silksong's act 2 one),
                    completion. Design thread first: docs/design/achievements.md.
+                   "go" on the doc's defaults: 61 setuid bits, GRUB `find / -perm -4000`,
+                   spoilers none, speedruns 1:30/1:00 door time (reset from 10 real map
+                   clears), speed completions on boot time (60 h / 150 h placeholders),
+                   no rewards, the Trial ending (Dull Reality), backfill, built-in
+                   presets only, percent shown after the first three-act clear.
 
 10-15 engine merged: cycles, twists, three-act map with gates, time bought, fountain,
       ladder P1-P8, easing in cycles, standard = the map (short/patch linear, trials
