@@ -119,6 +119,8 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 		EditorAlive:   func() bool { return session.PaneAlive(pane) },
 		CloseEditor:   func() error { return session.CloseEditor(pane) },
 		Clock:         r.Clock,
+		// The problem screen draws the boot bar and the keys around it.
+		Embedded: true,
 	}
 	if !d.Upsolve {
 		opt.Conceal = r.Conceal
@@ -166,8 +168,13 @@ func (r *TmuxRunner) Reopen() error {
 	return r.Open(context.Background(), d)
 }
 
-// Close ends the door's side: watcher, HUD, editor (asked to quit, never
-// discarding unsaved work), border. The control socket stays up.
+// Close ends the door's side: watcher, HUD, editor, border. The control
+// socket stays up. The editor saves before it quits: a door ends without
+// the player at the keyboard (AC, a timeout, quitting the game), and in
+// play a "Save changes?" prompt left behind outlived the game, answered
+// itself with the player's next keystroke, and on resume put a second vim
+// with a swap-file warning beside it. The watcher is stopped first, so
+// that last write judges nothing.
 func (r *TmuxRunner) Close() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -178,7 +185,7 @@ func (r *TmuxRunner) Close() error {
 		r.hud.Cleanup()
 	}
 	if r.pane != "" && session.PaneAlive(r.pane) {
-		session.CloseEditor(r.pane)
+		session.SaveAndCloseEditor(r.pane)
 	}
 	if r.border != nil {
 		r.border.Restore()

@@ -9,8 +9,8 @@ import (
 	"context"
 	"fmt"
 	"math/rand/v2"
-	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -82,6 +82,11 @@ type Model struct {
 	// editorials are the problems whose editorial was opened this session,
 	// including the one a :q! opens before any upsolve exists.
 	editorials map[catalog.ID]bool
+	// choosing is the door chosen while its problem is still being
+	// fetched; it opens when the fetch lands (chooseDoor).
+	choosing catalog.ID
+	// prefetching tells the running prefetch to start no more fetches.
+	prefetching *atomic.Bool
 
 	width, height int
 }
@@ -170,6 +175,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tickMsg:
 		return m, tea.Batch(tick(), m.onTick())
+	case game.ChooseDoor:
+		return m, m.chooseDoor(msg)
+	case doorReadyMsg:
+		return m, m.onDoorReady(msg)
 	case game.Action:
 		return m, m.step(msg)
 	case judgedMsg:
@@ -261,13 +270,14 @@ func fail(format string, args ...any) tea.Cmd {
 	return func() tea.Msg { return errMsg{err} }
 }
 
-// Conceal reports whether the open door's full tests are hidden: always in
-// a boot, unless the strace daemon is held. Upsolves never hide them.
+// Conceal reports whether the open door's full tests are hidden: in a boot
+// unless the engine says its failing input shows (the strace daemon, or a
+// preset that shows it). Upsolves never hide them.
 func (m *Model) Conceal() bool {
 	if m.state == nil || m.open == nil || m.open.Upsolve {
 		return false
 	}
-	return !slices.Contains(m.state.Daemons, game.Strace)
+	return !m.state.ShowsFailingInput()
 }
 
 // Clock is the HUD's clock in a boot: the countdown with lives and ducks,

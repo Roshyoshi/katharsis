@@ -114,6 +114,11 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 				return s, guard(r.HUD().Init())
 			}
 		}
+		if s.m.open == nil && !s.upsolve {
+			// A resumed door whose fetch failed (offline, say) has no
+			// editor; without a retry it could only time out.
+			return s, s.m.openDoor(s.door, false)
+		}
 		if s.upsolve {
 			return s, screens.Emit(screens.OpenEditorial{Problem: string(s.door.Problem)})
 		}
@@ -185,7 +190,9 @@ func (s *problemScreen) View(w, h int) string {
 			s.hudSize = [2]int{w, room}
 			hm.Update(tea.WindowSizeMsg{Width: w, Height: room})
 		}
-		b.WriteString(strings.TrimSuffix(hm.View().Content, "\n") + "\n")
+		// Exactly room lines, the last of them often blank padding: trimming
+		// a trailing newline here would drop a row and lift the footer.
+		b.WriteString(hm.View().Content + "\n")
 		b.WriteString(ansi.Truncate(faint.Render(vimHelp), w, "…") + "\n")
 	} else {
 		b.WriteString(s.headless(w))
@@ -202,7 +209,7 @@ func (s *problemScreen) headless(w int) string {
 	line := faint.Render("samples rejudge on :w · :Submit for the full tests")
 	switch {
 	case s.m.open == nil:
-		line = faint.Render("fetching " + string(s.door.Problem) + "…")
+		line = faint.Render("fetching " + string(s.door.Problem) + "… · e retries")
 	case s.m.judging:
 		line = faint.Render("judging full tests…")
 	case s.last.verdict != "":

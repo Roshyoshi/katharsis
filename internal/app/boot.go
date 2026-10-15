@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -264,23 +265,105 @@ func (m *Model) closeDoor() {
 // prefetch warms the cache for doors on offer so opening one is instant.
 // Failures are ignored here; opening the door reports them.
 //
-// The doors fetch in parallel: one after another, a cold USACO problem
-// took 1-2 s each in play, so the third door was ready about 6 s after the
-// room appeared, and a Codeforces one can take 8 s. The sources share one
-// download per problem (opening a door mid-prefetch joins it) and limit
-// requests per host themselves, so this stays polite.
+// Each source fetches its doors one at a time, in door order, while the
+// sources run side by side. A source sends one request at a time per host,
+// so fetching its doors in parallel only interleaves them: in play, three
+// cold Codeforces doors fetched together were all ready after 42-56 s,
+// where in turn the first would have been ready in about a third of that.
+// Door 1, where the cursor starts, goes first. Choosing a door stops the
+// rest (stopPrefetch): the room's other doors are gone, and their requests
+// would only slow the chosen one. Opening a door mid-fetch joins the
+// source's download of it rather than starting another.
 func (m *Model) prefetch(ids []catalog.ID) tea.Cmd {
+	m.stopPrefetch()
+	stop := new(atomic.Bool)
+	m.prefetching = stop
 	cat := m.d.Catalog
+	var bySource [][]catalog.ID
+	index := map[catalog.Source]int{}
+	for _, id := range ids {
+		p, _ := cat.Get(id)
+		i, ok := index[p.Source]
+		if !ok {
+			i = len(bySource)
+			index[p.Source] = i
+			bySource = append(bySource, nil)
+		}
+		bySource[i] = append(bySource[i], id)
+	}
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 		var wg sync.WaitGroup
-		for _, id := range ids {
-			wg.Go(func() { cat.Fetch(ctx, id) })
+		for _, ids := range bySource {
+			wg.Go(func() {
+				for _, id := range ids {
+					if stop.Load() {
+						return
+					}
+					cat.Fetch(ctx, id)
+				}
+			})
 		}
 		wg.Wait()
 		return nil
 	}
+}
+
+// stopPrefetch lets the fetch in progress finish (it may be the chosen
+// door's) but starts no more.
+func (m *Model) stopPrefetch() {
+	if m.prefetching != nil {
+		m.prefetching.Store(true)
+		m.prefetching = nil
+	}
+}
+
+// doorReadyMsg reports that the problem behind a chosen door is on disk,
+// or could not be fetched.
+type doorReadyMsg struct {
+	index int
+	id    catalog.ID
+	err   error
+}
+
+// chooseDoor opens a door once its problem is on disk. The engine starts a
+// door's timer when the door is chosen, so choosing first and fetching
+// after spent the timer on the download: a cold Codeforces door fetched
+// for 56 s in play with its countdown running and no editor, and a fetch
+// that failed left a door that could only time out. A cached problem
+// answers at once, so a prefetched door opens as before.
+func (m *Model) chooseDoor(a game.ChooseDoor) tea.Cmd {
+	s := m.state
+	if s == nil || s.Phase != game.PhaseDoors || s.PendingUpgrade || a.Index < 0 || a.Index >= len(s.Doors) {
+		return m.step(a) // the engine says why not
+	}
+	m.stopPrefetch()
+	id := s.Doors[a.Index].Problem
+	m.choosing = id
+	m.flash = fmt.Sprintf("fetching door %d… its timer starts once it opens", a.Index+1)
+	cat := m.d.Catalog
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		_, err := cat.Fetch(ctx, id)
+		return doorReadyMsg{index: a.Index, id: id, err: err}
+	}
+}
+
+func (m *Model) onDoorReady(r doorReadyMsg) tea.Cmd {
+	if m.choosing != r.id {
+		return nil // the player chose another door meanwhile
+	}
+	m.choosing, m.flash = "", ""
+	if r.err != nil {
+		return fail("door %d: %v", r.index+1, r.err)
+	}
+	s := m.state
+	if s == nil || s.Phase != game.PhaseDoors || r.index >= len(s.Doors) || s.Doors[r.index].Problem != r.id {
+		return nil
+	}
+	return m.step(game.ChooseDoor{Index: r.index})
 }
 
 type judgedMsg struct {

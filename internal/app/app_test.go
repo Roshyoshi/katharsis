@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -229,6 +230,9 @@ func TestFullClear(t *testing.T) {
 	if _, ok := h.m.top().(interface{ Editing() bool }); !ok {
 		t.Fatalf("start screen is %T, want the GRUB menu", h.m.top())
 	}
+	// Prestige unlocks only for a calibrated player (rules.CalibAfter
+	// rated doors); this one has played enough.
+	h.m.meta.Rated = 100
 	h.send(screens.StartBoot{Prestige: 0, Preset: "standard"})
 	if got := h.play(); got != game.PhaseCleared {
 		t.Fatalf("boot ended %q, want cleared", got)
@@ -621,42 +625,147 @@ func biomeLabelOf(s *game.State) string {
 	return flavor.BiomeName(b.Topic)
 }
 
-// barrierCatalog's Fetch waits until n fetches run at once (or a second
-// passes), so a serial prefetch shows up as a timeout per door.
-type barrierCatalog struct {
+// gateCatalog records the order fetches start in and holds each one until
+// its gate opens; Get puts ids starting "b" in a second source.
+type gateCatalog struct {
 	*fakeCatalog
-	n       int
 	mu      sync.Mutex
-	active  int
-	release chan struct{}
+	started []catalog.ID
+	gates   map[catalog.ID]chan struct{}
+	start   chan catalog.ID
 }
 
-func (c *barrierCatalog) Fetch(ctx context.Context, id catalog.ID) (catalog.Assets, error) {
-	c.mu.Lock()
-	c.active++
-	if c.active == c.n {
-		close(c.release)
+func newGateCatalog(fc *fakeCatalog, ids ...catalog.ID) *gateCatalog {
+	c := &gateCatalog{fakeCatalog: fc, gates: map[catalog.ID]chan struct{}{}, start: make(chan catalog.ID, 16)}
+	for _, id := range ids {
+		c.byID[id] = catalog.Problem{ID: id, Source: catalog.Source(string(id[:1])), Title: string(id)}
+		c.gates[id] = make(chan struct{})
 	}
+	return c
+}
+
+func (c *gateCatalog) Fetch(ctx context.Context, id catalog.ID) (catalog.Assets, error) {
+	c.mu.Lock()
+	c.started = append(c.started, id)
 	c.mu.Unlock()
+	c.start <- id
 	select {
-	case <-c.release:
-	case <-time.After(time.Second):
+	case <-c.gates[id]:
+	case <-ctx.Done():
 	}
 	return catalog.Assets{}, nil
 }
 
-// Doors on offer are fetched side by side: one at a time, the last door of
-// a cold room was ready seconds after the first.
-func TestPrefetchFetchesDoorsInParallel(t *testing.T) {
-	h := newHarness(t)
-	fc := h.m.d.Catalog.(*fakeCatalog)
-	ids := []catalog.ID{fc.all[0].ID, fc.all[1].ID, fc.all[2].ID}
-	bc := &barrierCatalog{fakeCatalog: fc, n: len(ids), release: make(chan struct{})}
-	h.m.d.Catalog = bc
+func (c *gateCatalog) waitStart(t *testing.T) catalog.ID {
+	t.Helper()
+	select {
+	case id := <-c.start:
+		return id
+	case <-time.After(time.Second):
+		t.Fatal("no fetch started")
+		return ""
+	}
+}
 
-	start := time.Now()
-	h.m.prefetch(ids)()
-	if took := time.Since(start); took > 500*time.Millisecond {
-		t.Fatalf("prefetch of %d doors took %v, want them fetched at once", len(ids), took)
+// Doors on offer prefetch one at a time per source, in door order (a
+// source sends one request at a time, so fetching its doors together
+// only delays the first), while different sources run side by side; a
+// chosen door stops the rest.
+func TestPrefetchOrder(t *testing.T) {
+	h := newHarness(t)
+	c := newGateCatalog(h.m.d.Catalog.(*fakeCatalog), "a1", "a2", "a3", "b1")
+	h.m.d.Catalog = c
+	done := make(chan struct{})
+	cmd := h.m.prefetch([]catalog.ID{"a1", "a2", "a3", "b1"})
+	go func() { cmd(); close(done) }()
+
+	first := map[catalog.ID]bool{c.waitStart(t): true, c.waitStart(t): true}
+	if !first["a1"] || !first["b1"] {
+		t.Fatalf("first fetches %v, want a1 and b1 side by side", first)
+	}
+	close(c.gates["a1"])
+	if id := c.waitStart(t); id != "a2" {
+		t.Fatalf("after a1, %s started, want a2", id)
+	}
+	h.m.stopPrefetch() // the player chose a door
+	close(c.gates["a2"])
+	close(c.gates["b1"])
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("prefetch kept going after a door was chosen")
+	}
+	if slices.Contains(c.started, "a3") {
+		t.Errorf("fetched %v, want a3 skipped once a door was chosen", c.started)
+	}
+}
+
+// A door's timer starts when its problem is on disk, not when it is
+// chosen: a cold fetch took up to 56 s in play, all of it off the timer.
+// A fetch that fails leaves the door unopened instead of open and doomed.
+func TestChosenDoorWaitsForItsProblem(t *testing.T) {
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	for h.m.state.Phase != game.PhaseDoors {
+		h.send(game.ChooseRoute{})
+	}
+	id := h.m.state.Doors[0].Problem
+	h.send(game.ChooseDoor{Index: 0})
+	if h.m.state.Phase != game.PhaseProblem {
+		t.Fatalf("phase %q after choosing a cached door, want problem", h.m.state.Phase)
+	}
+
+	h = newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	for h.m.state.Phase != game.PhaseDoors {
+		h.send(game.ChooseRoute{})
+	}
+	id = h.m.state.Doors[0].Problem
+	c := newGateCatalog(h.m.d.Catalog.(*fakeCatalog))
+	c.gates[id] = make(chan struct{})
+	h.m.d.Catalog = c
+	h.send(game.ChooseDoor{Index: 0}) // the fetch hangs; the harness moves on
+	if h.m.state.Phase != game.PhaseDoors || h.m.flash == "" {
+		t.Fatalf("phase %q flash %q while the door's problem downloads, want doors and a note", h.m.state.Phase, h.m.flash)
+	}
+	h.clock.t = h.clock.t.Add(40 * time.Second)
+	h.send(doorReadyMsg{index: 0, id: id})
+	cur := h.m.state.Current
+	if h.m.state.Phase != game.PhaseProblem || !cur.Opened.Equal(h.clock.t) {
+		t.Fatalf("phase %q opened %v, want the door opened at %v, after its fetch", h.m.state.Phase, cur.Opened, h.clock.t)
+	}
+	close(c.gates[id])
+
+	h = newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	for h.m.state.Phase != game.PhaseDoors {
+		h.send(game.ChooseRoute{})
+	}
+	id = h.m.state.Doors[0].Problem
+	h.m.choosing = id
+	h.send(doorReadyMsg{index: 0, id: id, err: errors.New("offline")})
+	if h.m.state.Phase != game.PhaseDoors || !strings.Contains(h.m.flash, "offline") {
+		t.Fatalf("phase %q flash %q after a failed fetch, want doors and the error", h.m.state.Phase, h.m.flash)
+	}
+}
+
+// The problem screen fills the pane exactly: boot bar, the embedded HUD,
+// then the two footer rows on the last two lines.
+func TestProblemScreenFillsThePane(t *testing.T) {
+	h := newHarnessWith(t, func(f *fakeRunner) Runner {
+		return &hudFakeRunner{fakeRunner: f, hud: hud.New(hud.Options{Dir: t.TempDir(), Embedded: true})}
+	})
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.enterDoor()
+	for _, size := range [][2]int{{69, 49}, {40, 20}} {
+		h.send(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
+		lines := strings.Split(h.m.View().Content, "\n")
+		if len(lines) != size[1] {
+			t.Fatalf("%d lines at height %d, want %d", len(lines), size[1], size[1])
+		}
+		vim, keys := ansi.Strip(lines[len(lines)-2]), ansi.Strip(lines[len(lines)-1])
+		if !strings.HasPrefix(vim, "vim ") || !strings.HasPrefix(keys, "s submit") {
+			t.Fatalf("footer at height %d is %q / %q, want the vim and key help", size[1], vim, keys)
+		}
 	}
 }
