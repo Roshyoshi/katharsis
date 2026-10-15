@@ -194,6 +194,11 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 			if d.Boss != "" && d.Cursed || d.Mystery && !d.Blind {
 				fail("door modifiers %+v", d)
 			}
+			// A twist is its boss's, and its flags are that twist's alone.
+			if d.Twist != "" && d.Twist != d.Boss || d.MemMult != 0 && d.Twist != "oom-killer" || d.QuietSamples && d.Twist != "heisenbug" ||
+				d.NoSanitizers && d.Twist != "undefined-behavior" || d.HiddenClock && d.Twist != game.FinalBoss {
+				fail("door twist %+v", d)
+			}
 			if d.Mastered && (d.Blind || s.Trial != nil) {
 				fail("mastered door %+v", d)
 			}
@@ -205,7 +210,10 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 			// most half a byte.
 			if !d.Blind && !d.Cursed && 0.5/d.SolveP <= s.Rules.MaxBytesMult && 0.5/d.SolveP >= s.Rules.MinBytesMult {
 				flat := 1.0
-				if d.Boss != "" {
+				switch {
+				case d.Twist == "race-condition" && s.Rules.Twists.RacePay > 0:
+					flat *= s.Rules.Twists.RacePay
+				case d.Boss != "":
 					flat *= s.Rules.BossMult
 				}
 				if slices.Contains(s.Daemons, game.Chrt) {

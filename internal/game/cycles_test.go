@@ -2,6 +2,7 @@ package game_test
 
 import (
 	"errors"
+	"math"
 	"slices"
 	"testing"
 	"time"
@@ -273,4 +274,87 @@ func toMergeFast(h *harness) {
 	if h.s.Phase != game.PhaseMerge {
 		h.t.Fatalf("phase %s after clearing biome %d, want merge", h.s.Phase, b)
 	}
+}
+
+// TestTwists: each boss bends its one rule where the rules turn it on, and
+// none where they do not (a boot saved before twists).
+func TestTwists(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	bossOnly := func(r rules.Rules) rules.Rules {
+		r = calm(r)
+		r.Biomes = []rules.Biome{r.Biomes[len(r.Biomes)-1]}
+		return r
+	}
+	on, off := bossOnly(cyclesPlain()), bossOnly(rules.Legacy())
+	// door finds a boot whose boss is key and returns its door under both.
+	door := func(key string) (twisted, plain game.Door) {
+		prestige := 0
+		if key == game.FinalBoss {
+			prestige = on.TopPrestige(game.MaxPrestige)
+		}
+		for seed := range uint64(500) {
+			m := &game.Meta{Prestige: game.MaxPrestige}
+			h := newHarness(t, on, m, ps, prestige, seed)
+			if h.s.Biomes[0].Boss != key {
+				continue
+			}
+			p := newHarness(t, off, &game.Meta{Prestige: game.MaxPrestige}, ps, prestige, seed)
+			return h.s.Doors[0], p.s.Doors[0]
+		}
+		t.Fatalf("no seed draws %s", key)
+		return
+	}
+	for _, key := range append(slices.Clone(game.BossKeys), game.FinalBoss) {
+		d, p := door(key)
+		if d.Twist != key || p.Twist != "" || p.MemMult != 0 || p.QuietSamples || p.NoSanitizers || p.HiddenClock {
+			t.Errorf("%s: twist %q, legacy %+v", key, d.Twist, p)
+		}
+		switch key {
+		case "oom-killer":
+			if d.MemMult != 0.5 {
+				t.Errorf("oom-killer: memory x%v", d.MemMult)
+			}
+		case "heisenbug":
+			if !d.QuietSamples {
+				t.Error("heisenbug: samples tell")
+			}
+		case "undefined-behavior":
+			if !d.NoSanitizers {
+				t.Error("undefined-behavior: sanitizers on")
+			}
+		case game.FinalBoss:
+			if !d.HiddenClock {
+				t.Error("halting-problem: clock shown")
+			}
+		case "race-condition":
+			// x0.8 the clock for x4 the pay instead of x3, against the same
+			// door without the twist.
+			base := on.Biomes[0].Timer.Duration
+			want := math.Round(float64(on.BaseBytes) * min(max(0.5/d.SolveP, on.MinBytesMult), on.MaxBytesMult) * 4)
+			if d.Timer != (base*4/5).Round(time.Minute) || float64(d.Bytes) != want {
+				t.Errorf("race-condition: timer %s (base %s), %d B, want %.0f", d.Timer, base, d.Bytes, want)
+			}
+		}
+	}
+
+	// Off-by-One burns double for a submit one test short.
+	for seed := range uint64(500) {
+		h := newHarness(t, on, nil, ps, 0, seed)
+		if h.s.Biomes[0].Boss != "off-by-one" {
+			continue
+		}
+		h.open(0)
+		if c, _ := h.s.SubmitCost(1); c != 4 {
+			t.Errorf("off-by-one, one test failing: %d", c)
+		}
+		if c, _ := h.s.SubmitCost(2); c != 2 {
+			t.Errorf("off-by-one, two failing: %d", c)
+		}
+		if err := stepNow(h, game.SubmitResult{Verdict: "WA", Passed: 9, Total: 10}); err != nil || h.s.Cycles != 26 {
+			t.Errorf("off-by-one WA 9/10: %v, cycles %d", err, h.s.Cycles)
+		}
+		return
+	}
+	t.Fatal("no seed draws off-by-one")
 }

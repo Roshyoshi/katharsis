@@ -382,6 +382,7 @@ func (e *engine) makeDoor(p *catalog.Problem, i int, boss string, regression boo
 		d.Blind, d.Mystery, d.Cursed = e.s.Biome > 0 || r.BlindAll, false, false
 	}
 	d.Timer = e.doorTimer(rb, boss != "", d.Difficulty(r)-R)
+	e.twist(&d)
 	e.dress(&d, i)
 	return d
 }
@@ -491,7 +492,10 @@ func (e *engine) doorBytes(d Door) int64 {
 	if d.Cursed {
 		mult *= r.CursedMult
 	}
-	if d.Boss != "" {
+	switch {
+	case d.Twist == "race-condition" && r.Twists.RacePay > 0:
+		mult *= r.Twists.RacePay // the race pays for its clock
+	case d.Boss != "":
 		mult *= r.BossMult
 	}
 	if d.Regression && slices.Contains(e.s.Daemons, Cron) {

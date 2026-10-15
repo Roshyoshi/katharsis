@@ -294,3 +294,39 @@ func (s *State) offerable(u Upgrade) bool {
 	}
 	return s.Cycles < s.MaxCycles
 }
+
+// twist bends the rule boss door d's boss bends (rules.Twists), where the
+// rules turn it on: Race Condition's clock runs fast (its pay is doorBytes'),
+// and the rest are flags the judge and the HUD carry out, or a price
+// (Off-by-One, SubmitCost).
+func (e *engine) twist(d *Door) {
+	tw := e.s.Rules.Twists
+	switch d.Boss {
+	case "off-by-one":
+		if tw.OffByOne > 1 {
+			d.Twist = d.Boss
+		}
+	case "oom-killer":
+		if tw.OOMMemory > 0 {
+			d.Twist, d.MemMult = d.Boss, tw.OOMMemory
+		}
+	case "heisenbug":
+		if tw.Heisenbug {
+			d.Twist, d.QuietSamples = d.Boss, true
+		}
+	case "race-condition":
+		if tw.RaceClock > 0 {
+			d.Twist, d.Timer = d.Boss, roundTimer(scale(d.Timer, tw.RaceClock))
+		} else if tw.RacePay > 0 {
+			d.Twist = d.Boss
+		}
+	case "undefined-behavior":
+		if tw.UBNoSanitizers {
+			d.Twist, d.NoSanitizers = d.Boss, true
+		}
+	case FinalBoss:
+		if tw.HaltingClock {
+			d.Twist, d.HiddenClock = d.Boss, true
+		}
+	}
+}
