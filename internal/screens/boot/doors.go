@@ -168,7 +168,7 @@ func (d *Doors) card(i int, door game.Door, w int, body []string, source bool) [
 		f = frameSelected
 	}
 	if sel {
-		num = f.paint.Render(fmt.Sprintf("▸ %d", i+1))
+		num = f.Render(fmt.Sprintf("▸ %d", i+1))
 	}
 	title := num
 	if door.Boss != "" {
