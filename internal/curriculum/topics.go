@@ -4,6 +4,7 @@ import (
 	"maps"
 	"strings"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 )
 
@@ -178,7 +179,7 @@ var topicKeywords = []struct{ word, topic string }{
 }
 
 // TopicFor returns the catalog topic for a module: the table entry when
-// there is one, else a keyword guess from id and title, else "mixed".
+// there is one, else a keyword guess from id and title, else Mixed.
 // division "general" (and ids ending in -conclusion) have no topic ("").
 func TopicFor(moduleID, title, division string) string {
 	if t, ok := moduleTopics[moduleID]; ok {
@@ -193,7 +194,7 @@ func TopicFor(moduleID, title, division string) string {
 			return k.topic
 		}
 	}
-	return "mixed"
+	return catalog.Mixed
 }
 
 // CapabilityFor names the capability a passed trial grants for topic. The

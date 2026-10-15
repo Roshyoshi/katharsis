@@ -3,7 +3,6 @@ package curriculum
 import (
 	"reflect"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 
@@ -44,7 +43,7 @@ func ids(s ...string) []catalog.ID {
 }
 
 func TestTrialUnit(t *testing.T) {
-	noCSES := func(id catalog.ID) bool { return !strings.HasPrefix(string(id), "cses:") }
+	noCSES := func(id catalog.ID) bool { return id.Source() != catalog.CSES }
 	for _, tc := range []struct {
 		name      string
 		judgeable func(catalog.ID) bool
@@ -120,7 +119,7 @@ func TestTrialSpec(t *testing.T) {
 
 func TestTrialForFixture(t *testing.T) {
 	m, _ := loadFixture(t).Module("prefix-sums")
-	got := TrialFor(m, func(id catalog.ID) bool { return strings.HasPrefix(string(id), "usaco:") })
+	got := TrialFor(m, func(id catalog.ID) bool { return id.Source() == catalog.USACO })
 	// The fixture's USACO problems: 572, 691 (Very Easy), 595 (Easy), 1471
 	// (Medium, starred). One per label, then a second Very Easy.
 	want := ids("usaco:572", "usaco:691", "usaco:595", "usaco:1471")

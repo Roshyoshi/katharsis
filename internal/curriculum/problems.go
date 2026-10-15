@@ -48,9 +48,9 @@ func CatalogID(uniqueID string) catalog.ID {
 	}
 	switch src {
 	case "usaco":
-		return catalog.ID(string(catalog.USACO) + ":" + num)
+		return catalog.NewID(catalog.USACO, num)
 	case "cses":
-		return catalog.ID(string(catalog.CSES) + ":" + num)
+		return catalog.NewID(catalog.CSES, num)
 	}
 	return ""
 }

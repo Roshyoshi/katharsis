@@ -35,12 +35,8 @@ var problems = map[catalog.ID]catalog.Problem{}
 
 func init() {
 	add := func(id catalog.ID, title, contest, div string, pos, rating int, topic string, tags ...string) {
-		src := catalog.USACO
-		if id == pathCounting {
-			src = catalog.CSES
-		}
 		problems[id] = catalog.Problem{
-			ID: id, Source: src, Title: title, Division: div, Contest: contest, Position: pos,
+			ID: id, Source: id.Source(), Title: title, Division: div, Contest: contest, Position: pos,
 			Tags: tags, Topic: topic, Rating: rating, RatingSource: "division+position",
 			TimeLimit: 2 * time.Second, MemLimit: 256 << 20, Judgeable: true, HasEditorial: true,
 		}

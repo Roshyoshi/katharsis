@@ -5,6 +5,7 @@ package catalog
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"katharsis/internal/problem"
@@ -18,8 +19,46 @@ const (
 	CF    Source = "cf"
 )
 
-// ID is "<source>:<native id>", e.g. "usaco:1598", "cses:1094".
+// Label is the source's name as screens show it: "USACO", "Codeforces",
+// "CSES". An unknown source shows as itself.
+func (s Source) Label() string {
+	switch s {
+	case USACO:
+		return "USACO"
+	case CF:
+		return "Codeforces"
+	case CSES:
+		return "CSES"
+	}
+	return string(s)
+}
+
+// ID is "<source>:<native id>", e.g. "usaco:1598", "cf:1899C",
+// "cses:1094". Build one with NewID and take it apart with Source and
+// Native rather than by hand.
 type ID string
+
+// NewID is the catalog ID of a source's own problem id: NewID(USACO,
+// "1598") is "usaco:1598".
+func NewID(src Source, native string) ID { return ID(string(src) + ":" + native) }
+
+// Source is the source part of the ID, "" when it has none.
+func (id ID) Source() Source {
+	src, _, ok := strings.Cut(string(id), ":")
+	if !ok {
+		return ""
+	}
+	return Source(src)
+}
+
+// Native is the source's own id for the problem: "1598" for "usaco:1598".
+// An ID with no source is all native.
+func (id ID) Native() string {
+	if _, native, ok := strings.Cut(string(id), ":"); ok {
+		return native
+	}
+	return string(id)
+}
 
 type Problem struct {
 	ID     ID
@@ -37,7 +76,7 @@ type Problem struct {
 
 	// Tags are topic labels from USACO Guide (e.g. "Prefix Sums",
 	// "Binary Search"). Topic is the single biome topic derived from them
-	// (see Topics), "mixed" when unknown.
+	// (see Topics), Mixed when unknown.
 	Tags  []string
 	Topic string
 
@@ -65,12 +104,16 @@ type Problem struct {
 	HasEditorial bool
 }
 
+// Mixed is the topic of problems no tag maps to a biome topic. A biome on
+// Mixed draws doors from every topic.
+const Mixed = "mixed"
+
 // Topics are the biome topics doors are grouped by. Content sources map
-// their tags onto these; anything unmapped is "mixed".
+// their tags onto these; anything unmapped is Mixed.
 var Topics = []string{
 	"complete-search", "simulation", "sorting-greedy", "prefix-sums",
 	"binary-search", "two-pointers", "graphs", "trees", "shortest-paths",
-	"dsu", "dp", "math", "strings", "data-structures", "geometry", "mixed",
+	"dsu", "dp", "math", "strings", "data-structures", "geometry", Mixed,
 }
 
 // Assets are local paths for a materialized problem, all inside the cache.

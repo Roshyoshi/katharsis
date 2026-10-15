@@ -82,7 +82,7 @@ func TrialForN(m Module, judgeable func(catalog.ID) bool, n int) Trial {
 		Capability: CapabilityFor(m.Topic),
 	}
 	if t.IntegTopic == "" {
-		t.IntegTopic = "mixed"
+		t.IntegTopic = catalog.Mixed
 	}
 
 	seen := map[catalog.ID]int{}

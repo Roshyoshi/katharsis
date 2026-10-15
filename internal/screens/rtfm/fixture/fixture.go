@@ -8,7 +8,6 @@ package fixture
 import (
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/curriculum"
@@ -39,7 +38,7 @@ func Meta() game.Meta {
 // Judgeable accepts USACO problems only, as the catalog does until CSES
 // test data is available (DESIGN.md "Content"); modules that lean on CSES
 // get short units, which the screens show as topped up.
-func Judgeable(id catalog.ID) bool { return strings.HasPrefix(string(id), "usaco:") }
+func Judgeable(id catalog.ID) bool { return id.Source() == catalog.USACO }
 
 // problems are the fixture catalog. Titles and contests are USACO's;
 // ratings are illustrative estimates for layout, not the catalog's.

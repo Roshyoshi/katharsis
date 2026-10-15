@@ -3,12 +3,13 @@ package game
 import (
 	"math"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/rules"
 )
 
-// Mixed is the catalog topic for problems with no mapped tag. A biome on
-// Mixed draws doors from every topic, and it has no rating of its own.
-const Mixed = "mixed"
+// Mixed is catalog.Mixed, the topic of untagged problems. A biome on Mixed
+// draws doors from every topic, and it has no rating of its own.
+const Mixed = catalog.Mixed
 
 // Expected is the logistic (Elo) chance that a player rated player clears a
 // door rated door: 1/(1+10^((door-player)/400)).

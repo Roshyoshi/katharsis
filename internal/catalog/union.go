@@ -3,7 +3,6 @@ package catalog
 import (
 	"context"
 	"fmt"
-	"strings"
 )
 
 // Union serves several sources as one catalog. IDs carry their source
@@ -52,7 +51,6 @@ func (u *Union) Fetch(ctx context.Context, id ID) (Assets, error) {
 }
 
 func (u *Union) owner(id ID) (Catalog, bool) {
-	src, _, _ := strings.Cut(string(id), ":")
-	c, ok := u.bySrc[Source(src)]
+	c, ok := u.bySrc[id.Source()]
 	return c, ok
 }

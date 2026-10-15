@@ -244,21 +244,9 @@ func (e Env) doorText(d game.Door) doorText {
 func sourceLabel(p catalog.Problem, contest bool) string {
 	src := p.Source
 	if src == "" {
-		if s, _, ok := strings.Cut(string(p.ID), ":"); ok {
-			src = catalog.Source(s)
-		}
+		src = p.ID.Source()
 	}
-	var name string
-	switch src {
-	case catalog.USACO:
-		name = "USACO"
-	case catalog.CSES:
-		name = "CSES"
-	case catalog.CF:
-		name = "Codeforces"
-	default:
-		name = string(src)
-	}
+	name := src.Label()
 	if contest && p.Contest != "" {
 		if name == "" {
 			return p.Contest

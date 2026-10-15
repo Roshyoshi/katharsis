@@ -24,7 +24,7 @@ func TestFullGuide(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	isUSACO := func(id catalog.ID) bool { return strings.HasPrefix(string(id), "usaco:") }
+	isUSACO := func(id catalog.ID) bool { return id.Source() == catalog.USACO }
 	unknown := map[string]int{}
 	var dropped []string
 	var failures, lostCode int
@@ -53,7 +53,7 @@ func TestFullGuide(t *testing.T) {
 					external++
 					continue
 				}
-				src := catalog.Source(strings.SplitN(string(p.ID), ":", 2)[0])
+				src := p.ID.Source()
 				raw[src]++
 				distinct[p.ID] = true
 				if !seen[p.ID] {
@@ -85,7 +85,7 @@ func TestFullGuide(t *testing.T) {
 	}
 	count := func(src catalog.Source) (n int) {
 		for id := range distinct {
-			if strings.HasPrefix(string(id), string(src)+":") {
+			if id.Source() == src {
 				n++
 			}
 		}
