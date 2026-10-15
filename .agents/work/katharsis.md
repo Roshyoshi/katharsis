@@ -177,7 +177,12 @@ S8 consolidation (after all code QA lands; from the cross-package report):
      (qa/chaos/oracle.sh); single-player honor system, not fixed
 
 ## Now
-Merged since last: D end-of-boot (game.Debrief + State.AtStart; crash/clear debrief: kept,
+Merged since last: D in-boot (D36: no clear % on door cards; dmesg strip with verdict costs,
+-O3, timer.warn, the Queen's lines; one-time tip.* onboarding lines; :Submit! over
+failing samples, pane s s and R R in ui.Alert; statement-first pane, template
+unjudged until saved; per-door fetch state + bytes, esc cancels, pick a ready door;
+white Knight/Queen/Hatter blocks; SPONGE slots for D44 + RT8 in
+screens/boot/notice.go). D is complete. D end-of-boot (game.Debrief + State.AtStart; crash/clear debrief: kept,
 lever, next; double-r guard; lost dump headline; goal bars; 1.5x independent upsolve;
 GRUB order, subtitles, /proc/story, nightly best, regressions capped at 3;
 katharsis motd; settings.toml + --session-budget; git log r replays a seed;
@@ -225,9 +230,7 @@ and :Debug; samples clang ASan on libstdc++ + _GLIBCXX_ASSERTIONS; cin 1e6 ints
 binary 28.4 MB). Main tests green (judge TLE timing flaked at load 23; passed
 alone); nix build ok.
 Running (workspaces): s10-engine (RT0 now treats the CF 800 floor as a clamp:
-an "800" problem is <= 800, per the user), d-boot
-(dmesg strip, onboarding lines, :Submit! and R R, statement-first pane, door
-readiness, D36, in-boot text)  Agents keep .agents/work/progress-<ws>.md for
+an "800" problem is <= 800, per the user). Agents keep .agents/work/progress-<ws>.md for
 restarts (spamming esc stops every agent).
 For B (from the GCC report): qa/judge expects ASan wording on the libstdc++
 sample profile (re_heap_oob, re_container_oob, re_after_20KB_debug_stderr) and
@@ -275,6 +278,9 @@ Run with the unslop pass (package by package), then core-loop QA, then alpha.
 - Engine hooks for the final pass: boot/debrief.go easeItems (list State.Ease
   with Why, "declined"), the comeback boot on GRUB's status row, register
   short and patch as built-in presets (the end screens offer s/p only then).
+- D boot leftovers: the vim reply after a failed submit does not name the life
+  lost; timer.warn not on the vim border; merge.full line promises a daemon
+  swap the engine lacks (storyteller).
 - D end leftovers: RT1 "RTFM as the next step after 2+ crashes on a topic in
   14 days"; D36 predicted-vs-observed in top; a real-binary smoke run.
 - When deps change: recompute vendorHash with a fake hash (nix reuses a
