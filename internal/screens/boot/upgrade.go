@@ -62,6 +62,20 @@ func optionCards(opts []option, cursor, width int) []string {
 	return indent(max((width-widthOf(row[0]))/2, 0), row)
 }
 
+// listWidth is how wide optionList draws opts when nothing is cut: the
+// cursor mark, the names padded to the longest, a gap, the description.
+func listWidth(opts []option) int {
+	if len(opts) == 0 {
+		return 0
+	}
+	nameW, descW := 0, 0
+	for _, o := range opts {
+		nameW = max(nameW, widthOf(o.name))
+		descW = max(descW, widthOf(o.desc))
+	}
+	return 2 + nameW + 2 + descW
+}
+
 // optionList draws options one per line. cursor < 0 hides the cursor, for
 // a list that does not have focus.
 func optionList(opts []option, cursor, width int) []string {
@@ -180,13 +194,46 @@ func (u *UpgradeScreen) View(width, height int) string {
 		block = append(block, center(line, width),
 			center(sGreen.Render("+"+FormatBytes(a.Door.Bytes))+sFaint.Render(" uncommitted"), width), "")
 	}
-	block = append(block, center(sBold.Render("Pick an upgrade."), width), "")
+	ask := sBold.Render("Pick an upgrade.")
+	switch n, o3 := owedPicks(st); {
+	case n >= 2:
+		ask = sBold.Render("Pick an upgrade") + sFaint.Render(" · ") + picksNote(n, o3)
+	case n == 1 && o3:
+		ask = sBold.Render("Pick another upgrade") + sFaint.Render(" · ") + picksNote(n, o3)
+	}
+	block = append(block, center(ask, width), "")
 	if len(u.picker.Offers) == 0 {
 		block = append(block, center(sFaint.Render("nothing on offer"), width))
 	} else {
 		block = append(block, centerBlock(u.picker.View(width), width)...)
 	}
 	return layout(width, height, centered(head, block, height), hint("←/→", "choose", "enter", "take upgrade"))
+}
+
+// owedPicks is how many upgrade picks the boot owes, and whether the last
+// clear was an -O3 one, which owes two. The two picks of an -O3 clear
+// offer the same kind of cards, so without a count the second reads as
+// the first one again, as if the keypress was missed.
+func owedPicks(st *game.State) (n int, o3 bool) {
+	n = st.UpgradePicks
+	if n == 0 && st.PendingUpgrade {
+		n = 1 // a state saved before UpgradePicks existed
+	}
+	a, ok := lastClear(st)
+	return n, ok && a.O3
+}
+
+// picksNote counts the picks owed after an -O3 clear: "2 to pick" on the
+// first, "1 left" on the second.
+func picksNote(n int, o3 bool) string {
+	s := fmt.Sprintf("%d to pick", n)
+	if n < 2 {
+		s = fmt.Sprintf("%d left", n)
+	}
+	if o3 {
+		s += " (-O3 earned an extra)"
+	}
+	return sFaint.Render(s)
 }
 
 // lastClear is the most recent cleared attempt of the boot.

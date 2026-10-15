@@ -130,7 +130,9 @@ func base() *game.State {
 			{Name: "Userland", Topic: "mixed", Kind: rules.Fixed, Rooms: 2},
 			{Topic: "data-structures", Kind: rules.Choice, Rooms: 2, Offers: []string{"dp", "data-structures"}},
 			{Kind: rules.Choice, Rooms: 2},
-			{Kind: rules.Boss, Rooms: 1},
+			// The engine gives a boss biome the mixed topic and names its
+			// boss at boot.
+			{Topic: "mixed", Kind: rules.Boss, Rooms: 1, Boss: "heisenbug"},
 		},
 		Biome: 1, Room: 1,
 		Doors: roomDoors(),
@@ -199,17 +201,18 @@ func cleared5() *game.State {
 func Merge() *game.State {
 	st := cleared5()
 	st.Phase = game.PhaseMerge
-	st.PendingUpgrade = true
+	st.PendingUpgrade, st.UpgradePicks = true, 1
 	st.UpgradeOffers = []game.Upgrade{game.Overclock, game.ECC, game.Duck}
 	st.DaemonOffers = []game.Daemon{game.Nice, game.Fork, game.DevRandom}
 	return st
 }
 
-// Upgrade is the pick right after a normal clear: Moocast was just
-// cleared in under half its timer.
+// Upgrade is the pick right after a clear: Moocast was just cleared in
+// under half its timer, an -O3 clear, so two picks are owed.
 func Upgrade() *game.State {
 	st := base()
-	st.PendingUpgrade = true
+	st.History[len(st.History)-1].O3 = true
+	st.PendingUpgrade, st.UpgradePicks = true, 2
 	st.UpgradeOffers = []game.Upgrade{game.Overclock, game.ECC, game.Duck}
 	return st
 }
@@ -333,6 +336,15 @@ func Crash(cause game.Outcome) *game.State {
 	st.Uncommitted = 0
 	rebase(st, crashAt.Sub(start))
 	return st
+}
+
+// CrashMeta is Meta right after Crash(cause): the crash moved the
+// uncommitted bytes into a core dump on the crashing door.
+func CrashMeta(cause game.Outcome) game.Meta {
+	cr := Crash(cause).Crash
+	m := Meta()
+	m.CoreDump = &game.CoreDump{Problem: cr.Door.Problem, Bytes: cr.Lost, Boot: 42, At: cr.At}
+	return m
 }
 
 // Cleared is the boot after the Heisenbug fell: all eight rooms cleared,

@@ -176,7 +176,7 @@ func (m *Model) submitReply() session.Reply {
 	case s.sum.Verdict == judge.CE:
 		log := ""
 		if s.build != nil {
-			log = firstError(s.build.Log)
+			log = firstError(m.compilerLog(s.build.Log))
 		}
 		return fail("CE: " + log)
 	case s.sum.Verdict == judge.AC:
@@ -233,7 +233,7 @@ func (m *Model) submitLines(w int) []string {
 	case s.build == nil && s.running:
 		return []string{faint.Render("submit · compiling -O2…")}
 	case s.build != nil && !s.build.OK:
-		return []string{red.Render("submit CE") + faint.Render("  "+firstError(s.build.Log))}
+		return []string{red.Render("submit CE") + faint.Render("  "+firstError(m.compilerLog(s.build.Log)))}
 	}
 	sum := judge.Summarize(s.results)
 	style := faint
@@ -287,7 +287,7 @@ func (m *Model) startDebug(req session.Request) tea.Cmd {
 		defer cancel()
 		b, err := judge.Compile(ctx, src, judge.Debug)
 		if err == nil && !b.OK {
-			err = fmt.Errorf("CE: %s", firstError(b.Log))
+			err = fmt.Errorf("CE: %s", firstError(relLog(b.Log, src)))
 		}
 		if err != nil {
 			ready.err = err

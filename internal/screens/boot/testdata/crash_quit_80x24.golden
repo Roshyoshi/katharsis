@@ -1,4 +1,3 @@
-[  890.000] door_2: retreat from "Haybale Stacking", -1 life
 [ 1651.000] door_3: AC "Milk Measurement" +64 B
 [ 1750.000] merge: committed 112 B, loaded strace
 [ 2642.000] door_4: AC "Moocast" +96 B
@@ -21,4 +20,5 @@
   "Talk is cheap. Show me the code."
                                        — Linus Torvalds, linux-kernel (2000)
 
-  core dumped: 96 B on "Wormhole Sort" · [u] upsolve  [r] reboot  [l] git log
+  core dumped: 96 B on "Wormhole Sort"
+  [u] upsolve  [e] editorial  [r] reboot  [l] git log

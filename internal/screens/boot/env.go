@@ -77,6 +77,21 @@ func (e Env) problem(id catalog.ID) catalog.Problem {
 	return catalog.Problem{ID: id, Title: string(id)}
 }
 
+// hasEditorial reports whether id has an editorial to open. A problem the
+// lookup cannot find gets the benefit of the doubt: the app, which fetches
+// it, says so if there is none.
+func (e Env) hasEditorial(id catalog.ID) bool {
+	if id == "" {
+		return false
+	}
+	if e.Lookup != nil {
+		if p, ok := e.Lookup(id); ok {
+			return p.HasEditorial
+		}
+	}
+	return true
+}
+
 func (e Env) uptime() time.Duration {
 	if e.State == nil || e.State.Started.IsZero() || e.Now.IsZero() {
 		return 0
@@ -124,7 +139,9 @@ func ruleBiome(st *game.State, i int) (rules.Biome, bool) {
 }
 
 // biomeLabel names biome i for maps and headers: the engine's name, else
-// the flavor name of its topic, else what kind of biome it is.
+// the boss it holds, else the flavor name of its topic, else what kind of
+// biome it is. The boss goes before the topic because a boss biome's topic
+// is Mixed, whose flavor name (Userland) belongs to the first biome.
 func biomeLabel(st *game.State, i int) string {
 	if st == nil || i < 0 || i >= len(st.Biomes) {
 		return "?"
@@ -133,6 +150,8 @@ func biomeLabel(st *game.State, i int) string {
 	switch {
 	case b.Name != "":
 		return b.Name
+	case b.Kind == rules.Boss && b.Boss != "":
+		return bossLabel(b.Boss)
 	case b.Topic != "":
 		if n := fl.BiomeName(b.Topic); n != "" {
 			return n

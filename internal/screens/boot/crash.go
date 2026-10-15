@@ -2,6 +2,7 @@ package boot
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -22,8 +23,10 @@ type revealMsg struct{ gen int }
 // Crash is the kernel panic. It reads as a real dmesg tail: the last log
 // lines, the cause, taint flags for the door's modifiers, the boot's doors
 // as a call trace, then a quote matched to the cause and the core dump.
-// u emits screens.Upsolve, r screens.StartBoot, l screens.OpenLog and
-// q screens.Quit.
+// u emits screens.Upsolve, e screens.OpenEditorial (when the problem has
+// one), r screens.StartBoot, l screens.OpenLog and q screens.Quit. The
+// editorial is a key, not opened over the panic, so the panic is seen
+// first even after a :q!.
 type Crash struct {
 	env   Env
 	shown int // elements revealed so far; < 0 shows everything
@@ -85,6 +88,10 @@ func (c *Crash) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		switch msg.String() {
 		case "u":
 			return c, screens.Emit(screens.Upsolve{Problem: string(c.crash().Door.Problem)})
+		case "e":
+			if id := c.crash().Door.Problem; c.env.hasEditorial(id) {
+				return c, screens.Emit(screens.OpenEditorial{Problem: string(id)})
+			}
 		case "r":
 			return c, screens.Emit(screens.StartBoot{Prestige: st.Prestige, Preset: st.Rules.Name})
 		case "l":
@@ -171,7 +178,12 @@ func (c *Crash) elements(width, height int) [][]string {
 	room := height - len(quote) - len(core)
 
 	reason := fl.PanicReason(cr.Cause, verdict)
-	if reason == "" {
+	switch {
+	case cr.Cursed:
+		// Cause is OutOfLives for the curse too, but lives are left; the
+		// engine's own panic line names the curse.
+		reason = "curse triggered"
+	case reason == "":
 		reason = "unknown cause"
 	}
 	head := []dline{}
@@ -292,7 +304,7 @@ func (c *Crash) precursor(cr game.Crash, verdict string) string {
 			verdict = "?"
 		}
 		who := "Out of lives"
-		if cr.Door.Cursed && c.env.State.Lives > 0 {
+		if cr.Cursed || cr.Door.Cursed && c.env.State.Lives > 0 {
 			who = "Cursed door"
 		}
 		return fmt.Sprintf("%s: Killed process 1 (you) verdict:%s passed:%d/%d submits:%d",
@@ -313,6 +325,14 @@ func (c *Crash) attempt(cr game.Crash) game.Attempt {
 		}
 	}
 	return game.Attempt{}
+}
+
+// upsolved reports whether the crashed door was upsolved after the crash,
+// which is what banks its core dump (game.Upsolve).
+func (c *Crash) upsolved(cr game.Crash) bool {
+	return slices.ContainsFunc(c.env.Meta.Solves, func(s game.Solve) bool {
+		return s.Upsolve && s.Problem == cr.Door.Problem && !s.At.Before(cr.At)
+	})
 }
 
 // taint maps door modifiers onto kernel taint flags, in the kernel's own
@@ -417,11 +437,29 @@ func (c *Crash) quote(cr game.Crash, verdict string, seed uint64, width int) []s
 }
 
 // core is the core dump line: what the crash left behind, and the keys.
+// The dump is offered only while Meta still holds it on this door.
+// Crash.Lost keeps what the crash dumped, but an upsolve from this screen
+// banks the dump and clears Meta.CoreDump, and the line must not keep
+// offering bytes that are gone. A trial crash loses its bytes without
+// leaving a dump.
 func (c *Crash) core(cr game.Crash, title string, width int) []string {
-	keys := sBold.Render("[u]") + " upsolve  " + sBold.Render("[r]") + " reboot  " + sBold.Render("[l]") + " git log"
-	dump := sFaint.Render("no core dump: nothing was uncommitted")
-	if cr.Lost > 0 {
-		dump = "core dumped: " + sGreen.Bold(true).Render(FormatBytes(cr.Lost)) + fmt.Sprintf(" on %q", title)
+	keys := sBold.Render("[u]") + " upsolve  "
+	if c.env.hasEditorial(cr.Door.Problem) {
+		keys += sBold.Render("[e]") + " editorial  "
+	}
+	keys += sBold.Render("[r]") + " reboot  " + sBold.Render("[l]") + " git log"
+	var dump string
+	switch d := c.env.Meta.CoreDump; {
+	case d != nil && cr.Door.Problem != "" && d.Problem == cr.Door.Problem:
+		dump = "core dumped: " + sGreen.Bold(true).Render(FormatBytes(d.Bytes)) + fmt.Sprintf(" on %q", title)
+	case cr.Lost > 0 && c.upsolved(cr):
+		dump = "core dump recovered: " + sGreen.Bold(true).Render("+"+FormatBytes(cr.Lost)) + sFaint.Render(" banked")
+	case cr.Lost > 0 && c.env.State.Trial != nil:
+		dump = sFaint.Render("no core dump: a trial loses its " + FormatBytes(cr.Lost) + " outright")
+	case cr.Lost > 0:
+		dump = sFaint.Render("no core dump left to recover")
+	default:
+		dump = sFaint.Render("no core dump: nothing was uncommitted")
 	}
 	if line := "  " + dump + sFaint.Render(" · ") + keys; widthOf(line) <= width {
 		return []string{"", line}

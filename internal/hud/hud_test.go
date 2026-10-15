@@ -93,6 +93,70 @@ func TestCompileErrorShowsLog(t *testing.T) {
 	}
 }
 
+// The compiler names the source by its absolute path, which in a boot is a
+// deep temp directory; every place a CE shows must cut it, or a narrow pane
+// shows only the path.
+func TestCompileErrorDropsSourceDir(t *testing.T) {
+	ceLog := func(m *Model) (log, dir string) {
+		dir = filepath.Dir(m.prob.Source) + string(filepath.Separator)
+		return dir + "milk2.cpp:3:1: error: expected ';' after expression\n" +
+			dir + "milk2.cpp:7:9: note: in instantiation\n" +
+			"/usr/include/c++/v1/vector:12:1: note: declared here\n", dir
+	}
+	for _, tc := range []struct {
+		name string
+		show func(m *Model, log string) string
+		want []string
+	}{
+		{"sample CE", func(m *Model, log string) string {
+			feed(m, judge.BuildDone{Build: judge.Build{OK: false, Log: log}}, judge.Finished{})
+			return screen(m)
+		}, []string{
+			"milk2.cpp:3:1: error: expected ';'",
+			// Paths outside the source's directory are kept.
+			"/usr/include/c++/v1/vector:12:1",
+		}},
+		{"submit CE line", func(m *Model, log string) string {
+			m.sub = submission{gen: 1, started: true, build: &judge.Build{OK: false, Log: log}}
+			return screen(m)
+		}, []string{"submit CE  milk2.cpp:3:1: error: expected ';'"}},
+		{"submit CE reply", func(m *Model, log string) string {
+			sum := judge.Summary{Verdict: judge.CE}
+			m.sub = submission{gen: 1, started: true, build: &judge.Build{OK: false, Log: log}, sum: &sum}
+			return m.submitReply().Text
+		}, []string{"CE: milk2.cpp:3:1: error: expected ';' after expression"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := fixture(t, 1)
+			log, dir := ceLog(m)
+			got := tc.show(m, log)
+			for _, w := range tc.want {
+				if !strings.Contains(got, w) {
+					t.Errorf("want %q in:\n%s", w, got)
+				}
+			}
+			if strings.Contains(got, dir) {
+				t.Errorf("still shows the source directory %q:\n%s", dir, got)
+			}
+		})
+	}
+}
+
+// The standalone header puts the clock flush with the right edge. A boot's
+// clock carries ♥ and 🦆, which are wider in bytes than in cells.
+func TestHeaderClockFlushRight(t *testing.T) {
+	for _, clock := range []string{"12:34", "23:41  ♥♥♡  🦆1  96 B"} {
+		t.Run(clock, func(t *testing.T) {
+			m := fixture(t, 1)
+			m.opt.Clock = func() string { return clock }
+			head := strings.Split(screen(m), "\n")[0]
+			if !strings.HasSuffix(head, "⏱ "+clock) || ansi.StringWidth(head) != 60 {
+				t.Errorf("header %q is %d cells, want 60 ending in the clock", head, ansi.StringWidth(head))
+			}
+		})
+	}
+}
+
 func TestStalePassIsDropped(t *testing.T) {
 	m := fixture(t, 1)
 	m.Update(judgeMsg{gen: m.gen - 1, ev: judge.TestDone{Index: 0, Result: judge.Result{Verdict: judge.WA}}})

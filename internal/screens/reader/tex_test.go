@@ -49,6 +49,17 @@ func TestTeXToUnicode(t *testing.T) {
 		{"mid", `$\{x \mid x > 0\}$`, `{x \| x > 0}`},
 		{"thin space", `$10\,000$`, `10 000`},
 		{"braced comma", `$100{,}000$`, `100,000`},
+		// A comma between digit groups is a thousands separator, not a
+		// list comma.
+		{"thousands", `$10,000$`, `10,000`},
+		{"thousands bound", `$1 \le N \le 200,000$`, `1 ≤ N ≤ 200,000`},
+		{"millions", `$1,000,000$`, `1,000,000`},
+		{"thousands then decimal", `$12,345.5$`, `12,345.5`},
+		{"digit list", `$1,2,3$`, `1, 2, 3`},
+		{"digit list ellipsis", `$1,2,\ldots,n$`, `1, 2, …, n`},
+		{"pair", `$(0,1)$`, `(0, 1)`},
+		{"four digits after", `$1,2345$`, `1, 2345`},
+		{"spaced list of thousands", `$1, 000$`, `1, 000`},
 		{"pmod", `$a \equiv b \pmod{m}$`, `a ≡ b (mod m)`},
 		{"bmod", `$a \bmod m$`, `a mod m`},
 		{"greek", `$\alpha + \beta = \pi$`, `α + β = π`},

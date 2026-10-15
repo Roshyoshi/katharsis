@@ -7,6 +7,7 @@ package hud
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -386,8 +387,10 @@ func (m *Model) View() tea.View {
 		if m.prob != nil {
 			name = m.prob.Name
 		}
-		clock := m.clockText()
-		line(bold.Render(name) + strings.Repeat(" ", max(w-len(name)-len(clock)-2, 1)) + "⏱ " + clock)
+		// Pad by cells, not bytes: a boot's clock carries ♥ and 🦆, several
+		// bytes each for one or two cells.
+		clock := "⏱ " + m.clockText()
+		line(bold.Render(name) + strings.Repeat(" ", max(w-ansi.StringWidth(name)-ansi.StringWidth(clock), 1)) + clock)
 		header, help = 1, 1
 	}
 	line(m.statusLine())
@@ -409,7 +412,7 @@ func (m *Model) View() tea.View {
 	if m.build != nil && !m.build.OK {
 		line(red.Render("CE") + faint.Render("  compile error"))
 		rule()
-		for _, l := range firstLines(m.build.Log, max(m.height-4-header-help, 4)) {
+		for _, l := range firstLines(m.compilerLog(m.build.Log), max(m.height-4-header-help, 4)) {
 			line(l)
 		}
 	} else {
@@ -579,6 +582,26 @@ func fmtClock(d time.Duration) string {
 		return fmt.Sprintf("%d:%02d:%02d", h, mnt, s)
 	}
 	return fmt.Sprintf("%02d:%02d", mnt, s)
+}
+
+// compilerLog is the compiler's log with the source's directory cut from
+// every path in it (see relLog).
+func (m *Model) compilerLog(log string) string {
+	if m.prob == nil {
+		return log
+	}
+	return relLog(log, m.prob.Source)
+}
+
+// relLog cuts source's directory from the paths in a compiler log. The
+// compiler names the file by its absolute path, which in a boot is a deep
+// temp directory; a pane 40 columns wide would show only that prefix,
+// truncated, and none of the error.
+func relLog(log, source string) string {
+	if source == "" {
+		return log
+	}
+	return strings.ReplaceAll(log, filepath.Dir(source)+string(filepath.Separator), "")
 }
 
 func firstLines(s string, n int) []string {

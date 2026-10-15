@@ -143,7 +143,14 @@ func (m *Merge) View(width, height int) string {
 	head := m.env.header("merge window", width)
 	// The sections read as one form, so they share a column; on a wide
 	// terminal it sits under the centered map instead of hugging the left.
-	cw := min(width, 76)
+	// The column grows past 76 cells when an option needs it, so a long
+	// description is cut only when the terminal itself is too narrow.
+	opts := daemonOptions(st.DaemonOffers, st.Rules)
+	need := listWidth(opts)
+	if st.PendingUpgrade {
+		need = max(need, listWidth(upgradeOptions(st.UpgradeOffers, st.Rules)))
+	}
+	cw := min(width, max(76, 4+need))
 	var secs []string
 
 	label := func(s string) string { return "  " + sBold.Render(fmt.Sprintf("%-9s", s)) }
@@ -156,7 +163,11 @@ func (m *Merge) View(width, height int) string {
 	}
 
 	if st.PendingUpgrade && len(st.UpgradeOffers) > 0 {
-		secs = append(secs, "", label("upgrade")+sFaint.Render("a clear earned one; pick it before you leave"))
+		note := sFaint.Render("a clear earned one; pick it before you leave")
+		if n, o3 := owedPicks(st); n >= 2 || n == 1 && o3 {
+			note = picksNote(n, o3) + sFaint.Render("; pick before you leave")
+		}
+		secs = append(secs, "", label("upgrade")+note)
 		secs = append(secs, indent(4, m.up.List(cw-4, cur.kind == rowUpgrade))...)
 	}
 
@@ -170,7 +181,6 @@ func (m *Merge) View(width, height int) string {
 			note += ": " + strings.Join(held, ", ")
 		}
 		secs = append(secs, "", label("daemon")+sFaint.Render(note))
-		opts := daemonOptions(st.DaemonOffers, st.Rules)
 		if m.canPickDaemon() {
 			c := -1
 			if cur.kind == rowDaemon {

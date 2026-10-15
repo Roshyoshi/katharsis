@@ -371,7 +371,7 @@ func (p *texParser) seq(depth int, script, text bool) string {
 		case !script && (c == '=' || c == '<' || c == '>'):
 			p.pos++
 			b.WriteString(" " + string(c) + " ")
-		case !script && c == ',' && depth == 0:
+		case !script && c == ',' && depth == 0 && !digitGroups(b.String(), p.src[p.pos+1:]):
 			p.pos++
 			b.WriteString(", ")
 		default:
@@ -512,6 +512,25 @@ func (p *texParser) letters() string {
 }
 
 func isLetter(c byte) bool { return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' }
+
+func isDigit(c byte) bool { return c >= '0' && c <= '9' }
+
+// digitGroups reports whether a comma between before and after separates
+// the digit groups of one number, as in $10,000$: a digit before it and
+// exactly three digits after. Statements write thousands that way although
+// TeX would set it as a list; a real list of digits ($1,2,3$) keeps the
+// space a list gets.
+func digitGroups(before, after string) bool {
+	if before == "" || !isDigit(before[len(before)-1]) || len(after) < 3 {
+		return false
+	}
+	for i := range 3 {
+		if !isDigit(after[i]) {
+			return false
+		}
+	}
+	return len(after) == 3 || !isDigit(after[3])
+}
 
 // arg reads and renders one macro argument: a braced group or a single
 // token.

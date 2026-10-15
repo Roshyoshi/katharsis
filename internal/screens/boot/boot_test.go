@@ -114,6 +114,14 @@ func env(st *game.State) Env {
 	return Env{State: st, Meta: fixture.Meta(), Lookup: fixture.Lookup, Now: fixture.Now}
 }
 
+// crashEnv is the boot crashed by cause, with the core dump the crash left
+// in Meta.
+func crashEnv(cause game.Outcome) Env {
+	e := env(fixture.Crash(cause))
+	e.Meta = fixture.CrashMeta(cause)
+	return e
+}
+
 type screenCase struct {
 	name string
 	make func() screens.Screen
@@ -135,9 +143,9 @@ func cases() []screenCase {
 		{"map_crashed", func() screens.Screen { return NewMap(env(fixture.Crash(game.TimedOut))) }},
 		{"merge", func() screens.Screen { return NewMerge(env(fixture.Merge())) }},
 		{"upgrade", func() screens.Screen { return NewUpgradeScreen(env(fixture.Upgrade())) }},
-		{"crash_timer", func() screens.Screen { return NewCrash(env(fixture.Crash(game.TimedOut))) }},
-		{"crash_lives", func() screens.Screen { return NewCrash(env(fixture.Crash(game.OutOfLives))) }},
-		{"crash_quit", func() screens.Screen { return NewCrash(env(fixture.Crash(game.GaveUp))) }},
+		{"crash_timer", func() screens.Screen { return NewCrash(crashEnv(game.TimedOut)) }},
+		{"crash_lives", func() screens.Screen { return NewCrash(crashEnv(game.OutOfLives)) }},
+		{"crash_quit", func() screens.Screen { return NewCrash(crashEnv(game.GaveUp)) }},
 		{"cleared", func() screens.Screen {
 			e := env(fixture.Cleared())
 			e.Meta = fixture.ClearedMeta()
@@ -427,10 +435,73 @@ func TestUpgradePicker(t *testing.T) {
 	}
 }
 
+// An -O3 clear owes two picks of the same kind of cards; the count is what
+// tells the second pick from the first.
+func TestUpgradePicksOwed(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		picks     int
+		o3        bool
+		screen    string // the upgrade screen's ask
+		mergeNote string
+	}{
+		{"one pick", 1, false, "Pick an upgrade.", "a clear earned one; pick it before you leave"},
+		{"legacy save", 0, false, "Pick an upgrade.", "a clear earned one; pick it before you leave"},
+		{"-O3, first", 2, true, "Pick an upgrade · 2 to pick (-O3 earned an extra)",
+			"2 to pick (-O3 earned an extra); pick before you leave"},
+		{"-O3, second", 1, true, "Pick another upgrade · 1 left (-O3 earned an extra)",
+			"1 left (-O3 earned an extra); pick before you leave"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := fixture.Upgrade()
+			st.UpgradePicks = tc.picks
+			st.History[len(st.History)-1].O3 = tc.o3
+			if v := ansi.Strip(NewUpgradeScreen(env(st)).View(100, 30)); !strings.Contains(v, tc.screen) {
+				t.Errorf("upgrade screen: want %q in:\n%s", tc.screen, v)
+			}
+
+			ms := fixture.Merge()
+			ms.UpgradePicks = tc.picks
+			ms.History[len(ms.History)-1].O3 = tc.o3
+			if v := ansi.Strip(NewMerge(env(ms)).View(140, 40)); !strings.Contains(v, tc.mergeNote) {
+				t.Errorf("merge window: want %q in:\n%s", tc.mergeNote, v)
+			}
+		})
+	}
+}
+
+// A daemon's description is cut only when the terminal is too narrow for
+// it, not at a fixed column.
+func TestMergeLongDescriptions(t *testing.T) {
+	long := "One free door swap per biome; a swap normally costs a life, and this sentence runs on."
+	fl.DaemonText = func(d game.Daemon, r rules.Rules) (string, string) {
+		if d == game.Kexec {
+			return "kexec", long
+		}
+		return stubFlavor.DaemonText(d, r)
+	}
+	defer func() { fl = stubFlavor }()
+
+	st := fixture.Merge()
+	st.DaemonOffers = []game.Daemon{game.Nice, game.Kexec, game.DevRandom}
+	m := NewMerge(env(st))
+	for _, w := range []int{120, 200} {
+		if v := ansi.Strip(m.View(w, 50)); !strings.Contains(v, long) {
+			t.Errorf("at %d columns the description should be whole:\n%s", w, v)
+		}
+	}
+	v := m.View(80, 40)
+	checkFits(t, "merge", v, 80, 40)
+	if !strings.Contains(ansi.Strip(v), "One free door swap per biome; a swap normally") {
+		t.Errorf("at 80 columns the description should use the width there is:\n%s", ansi.Strip(v))
+	}
+}
+
 func TestCrashKeys(t *testing.T) {
-	c := NewCrash(env(fixture.Crash(game.TimedOut)))
+	c := NewCrash(crashEnv(game.TimedOut))
 	for k, want := range map[string]tea.Msg{
 		"u": screens.Upsolve{Problem: "usaco:644"},
+		"e": screens.OpenEditorial{Problem: "usaco:644"},
 		"r": screens.StartBoot{Prestige: 1, Preset: "standard"},
 		"l": screens.OpenLog{},
 		"q": screens.Quit{},
@@ -442,8 +513,81 @@ func TestCrashKeys(t *testing.T) {
 	}
 }
 
+// The editorial is a key on the panic, offered only when the problem has
+// one; a problem the lookup does not know is left for the app to judge.
+func TestCrashEditorialKey(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		lookup Lookup
+		want   tea.Msg // nil: e does nothing and the footer omits it
+	}{
+		{"has editorial", fixture.Lookup, screens.OpenEditorial{Problem: "usaco:644"}},
+		{"no editorial", func(id catalog.ID) (catalog.Problem, bool) {
+			p, ok := fixture.Lookup(id)
+			p.HasEditorial = false
+			return p, ok
+		}, nil},
+		{"unknown problem", func(catalog.ID) (catalog.Problem, bool) { return catalog.Problem{}, false },
+			screens.OpenEditorial{Problem: "usaco:644"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := crashEnv(game.TimedOut)
+			e.Lookup = tc.lookup
+			c := NewCrash(e)
+			_, cmd := c.Update(press("e"))
+			if got := emitted(cmd); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("e: got %#v, want %#v", got, tc.want)
+			}
+			v := ansi.Strip(c.View(120, 40))
+			if shown := strings.Contains(v, "[e] editorial"); shown != (tc.want != nil) {
+				t.Errorf("footer shows [e] = %v, want %v:\n%s", shown, tc.want != nil, v)
+			}
+		})
+	}
+}
+
+// The core dump line follows Meta, not Crash.Lost: an upsolve from the
+// crash screen banks the dump, and the line must stop offering it.
+func TestCrashCoreDump(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup func(e *Env)
+		want  string
+	}{
+		{"dump held", func(*Env) {}, `core dumped: 96 B on "Closing the Farm" · [u] upsolve`},
+		{"upsolved", func(e *Env) {
+			got := game.Upsolve(&e.Meta, "usaco:644", game.Editorial, time.Minute, e.State.Crash.At.Add(time.Hour))
+			if got != 96 {
+				t.Fatalf("game.Upsolve recovered %d, want 96", got)
+			}
+		}, "core dump recovered: +96 B banked · [u] upsolve"},
+		{"trial", func(e *Env) {
+			e.Meta.CoreDump = nil
+			e.State.Trial = &game.TrialState{}
+		}, "no core dump: a trial loses its 96 B outright"},
+		{"dump gone", func(e *Env) { e.Meta.CoreDump = nil }, "no core dump left to recover"},
+		{"dump on another door", func(e *Env) { e.Meta.CoreDump.Problem = "usaco:764" }, "no core dump left to recover"},
+		{"nothing lost", func(e *Env) {
+			e.Meta.CoreDump = nil
+			e.State.Crash.Lost = 0
+		}, "no core dump: nothing was uncommitted"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := crashEnv(game.TimedOut)
+			tc.setup(&e)
+			v := ansi.Strip(NewCrash(e).View(120, 40))
+			if !strings.Contains(v, tc.want) {
+				t.Errorf("want %q in:\n%s", tc.want, v)
+			}
+			if tc.name != "dump held" && strings.Contains(v, "core dumped") {
+				t.Errorf("offers a core dump Meta does not hold:\n%s", v)
+			}
+		})
+	}
+}
+
 func TestCrashContent(t *testing.T) {
-	v := ansi.Strip(NewCrash(env(fixture.Crash(game.TimedOut))).View(100, 40))
+	v := ansi.Strip(NewCrash(crashEnv(game.TimedOut)).View(100, 40))
 	for _, want := range []string{
 		`[ 4650.337] Kernel panic - not syncing: timer expired in "Closing the Farm"`,
 		"Comm: you Tainted: B (blind) C (cursed)",
@@ -455,7 +599,7 @@ func TestCrashContent(t *testing.T) {
 		"[ 4650.337] ---[ end Kernel panic ]---",
 		`"It always takes longer than you expect`,
 		"— Douglas Hofstadter, GEB (1979)",
-		`core dumped: 96 B on "Closing the Farm" · [u] upsolve  [r] reboot  [l] git log`,
+		`core dumped: 96 B on "Closing the Farm" · [u] upsolve  [e] editorial  [r] reboot  [l] git log`,
 		`[ 2642.000] door_4: AC "Moocast" +96 B`,
 	} {
 		if !strings.Contains(v, want) {
@@ -490,7 +634,7 @@ func TestCrashContent(t *testing.T) {
 }
 
 func TestCrashElidesTraceWhenShort(t *testing.T) {
-	v := ansi.Strip(NewCrash(env(fixture.Crash(game.TimedOut))).View(80, 16))
+	v := ansi.Strip(NewCrash(crashEnv(game.TimedOut)).View(80, 16))
 	for _, want := range []string{"door_5+", "older doors", "boot_42+", "end Kernel panic", "core dumped"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("short crash missing %q:\n%s", want, v)
@@ -579,7 +723,7 @@ func TestCrashTailSkipsEngineEchoes(t *testing.T) {
 		fatal  string // the fatal submit's line, "" if none
 	}{
 		{game.OutOfLives, false, ": WA 3/10, -1 life, 0 left"},
-		{game.OutOfLives, true, ": WA 3/10, -1 life, 2 left"},
+		{game.OutOfLives, true, ": WA 3/10 on a cursed door, 3 lives left"},
 		{game.TimedOut, false, ""},
 		{game.GaveUp, false, ""},
 	} {
@@ -611,6 +755,11 @@ func TestCrashTailSkipsEngineEchoes(t *testing.T) {
 		}
 		if want := map[bool]string{false: "Out of lives: Killed", true: "Cursed door: Killed"}[tc.cursed]; tc.cause == game.OutOfLives && !strings.Contains(v, want) {
 			t.Errorf("%s cursed=%v: want precursor %q:\n%s", tc.cause, tc.cursed, want, v)
+		}
+		// The curse crashes with lives left, so the panic must not blame
+		// the lives.
+		if want := map[bool]string{false: "not syncing: out of lives in", true: "not syncing: curse triggered in"}[tc.cursed]; tc.cause == game.OutOfLives && !strings.Contains(v, want) {
+			t.Errorf("%s cursed=%v: want panic %q:\n%s", tc.cause, tc.cursed, want, v)
 		}
 	}
 }
@@ -734,13 +883,20 @@ func TestHUDBar(t *testing.T) {
 		}},
 		{"blind, one quack", func() *game.State {
 			st := fixture.Problem()
-			st.Current.Door.Blind, st.Current.Quacks = true, 1
+			st.Current.Door.Blind, st.Current.Quacks, st.Current.Hint = true, 1, 1
 			return st
 		}},
 		{"two quacks, regression boss", func() *game.State {
 			st := fixture.Problem()
-			st.Current.Quacks = 2
+			st.Current.Quacks, st.Current.Hint = 2, 2
 			st.Current.Door.Regression, st.Current.Door.Boss = true, "heisenbug"
+			return st
+		}},
+		// Tags are on screen, so the engine spends the one quack on the
+		// technique: Hint runs ahead of Quacks.
+		{"plain, one quack", func() *game.State {
+			st := fixture.Problem()
+			st.Current.Quacks, st.Current.Hint = 1, 2
 			return st
 		}},
 		{"not submitted", func() *game.State {
@@ -787,6 +943,92 @@ func TestHUDBar(t *testing.T) {
 	}
 	if s := ansi.Strip(HUDBar(variants[3].st(), prob, fixture.Now, 48)); !strings.Contains(s, "technique graphs") {
 		t.Errorf("two quacks reveal the technique:\n%s", s)
+	}
+}
+
+// The bar shows what the engine revealed (Attempt.Hint), whatever the duck
+// count says. A real engine drives it: on a plain door one quack reveals
+// the technique, on a blind door one quack reveals only the tags.
+func TestHUDBarFollowsEngineReveal(t *testing.T) {
+	prob, _ := fixture.Lookup("usaco:764")
+	for _, tc := range []struct {
+		name            string
+		blind           bool
+		quacks          int
+		tags, technique bool
+	}{
+		{"plain, no quack", false, 0, true, false},
+		{"plain, one quack", false, 1, true, true},
+		{"blind, no quack", true, 0, false, false},
+		{"blind, one quack", true, 1, true, false},
+		{"blind, two quacks", true, 2, true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := fixture.Problem()
+			st.Current.Door.Blind = tc.blind
+			st.Ducks = 2
+			meta := fixture.Meta()
+			for range tc.quacks {
+				if _, err := game.Step(st, &meta, nil, game.Quack{}, fixture.Now); err != nil {
+					t.Fatalf("quack: %v", err)
+				}
+			}
+			s := ansi.Strip(HUDBar(st, prob, fixture.Now, 48))
+			if got := strings.Contains(s, "Functional Graphs"); got != tc.tags {
+				t.Errorf("tags shown = %v, want %v (Quacks %d, Hint %d):\n%s", got, tc.tags, st.Current.Quacks, st.Current.Hint, s)
+			}
+			if got := strings.Contains(s, "technique graphs"); got != tc.technique {
+				t.Errorf("technique shown = %v, want %v (Quacks %d, Hint %d):\n%s", got, tc.technique, st.Current.Quacks, st.Current.Hint, s)
+			}
+		})
+	}
+}
+
+func TestBiomeLabel(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		b    game.BiomeState
+		want string
+	}{
+		{"engine name", game.BiomeState{Name: "Userland", Topic: "mixed", Kind: rules.Fixed}, "Userland"},
+		{"topic", game.BiomeState{Topic: "dp", Kind: rules.Choice}, "The Cache"},
+		{"topic without flavor", game.BiomeState{Topic: "geometry", Kind: rules.Choice}, "geometry"},
+		// A boss biome's topic is mixed, whose flavor name is the first
+		// biome's: the boss names it instead.
+		{"boss", game.BiomeState{Topic: "mixed", Kind: rules.Boss, Boss: "heisenbug"}, "Heisenbug"},
+		{"final boss", game.BiomeState{Topic: "mixed", Kind: rules.Boss, Boss: game.FinalBoss}, "The Halting Problem"},
+		{"boss without flavor", game.BiomeState{Topic: "mixed", Kind: rules.Boss, Boss: "oom-killer"}, "oom-killer"},
+		{"boss named by preset", game.BiomeState{Name: "Ring 0", Topic: "mixed", Kind: rules.Boss, Boss: "heisenbug"}, "Ring 0"},
+		{"boss without key", game.BiomeState{Kind: rules.Boss}, "boss"},
+		{"choice not taken", game.BiomeState{Kind: rules.Choice}, "?"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := &game.State{Biomes: []game.BiomeState{tc.b}}
+			if got := biomeLabel(st, 0); got != tc.want {
+				t.Errorf("biomeLabel = %q, want %q", got, tc.want)
+			}
+		})
+	}
+
+	// Where QA saw "Userland" for the boss: the map, the merge window's
+	// leave row, and the boss room's header.
+	if v := ansi.Strip(NewMerge(env(fixture.Merge())).View(140, 40)); !strings.Contains(v, "leave → biome 3: route choice") {
+		t.Errorf("merge before biome 3 should lead to the route choice:\n%s", v)
+	}
+	st := fixture.Route3()
+	st.Phase, st.Biome, st.Room = game.PhaseMerge, 3, 0
+	st.Biomes[2].Topic = "graphs"
+	if v := ansi.Strip(NewMerge(env(st)).View(140, 40)); !strings.Contains(v, "leave → boss: Heisenbug") {
+		t.Errorf("merge before the boss should name it:\n%s", v)
+	}
+	v := ansi.Strip(NewDoors(env(fixture.Boss())).View(140, 40))
+	for _, want := range []string{"Silver · ⚔ Heisenbug", "─ Heisenbug ─"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("boss doors missing %q:\n%s", want, v)
+		}
+	}
+	if strings.Count(v, "Userland") != 1 {
+		t.Errorf("only the first biome is Userland:\n%s", v)
 	}
 }
 
