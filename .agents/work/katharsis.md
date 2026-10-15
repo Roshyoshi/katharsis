@@ -209,7 +209,11 @@ and :Debug; samples clang ASan on libstdc++ + _GLIBCXX_ASSERTIONS; cin 1e6 ints
 38 ms vs 967 ms on libc++; clang 21 out; package closure 2013 -> 1989 MiB;
 binary 28.4 MB). Main tests green (judge TLE timing flaked at load 23; passed
 alone); nix build ok.
-Running (workspaces): s10-engine. Agents keep .agents/work/progress-<ws>.md for
+Running (workspaces): s10-engine (RT0 now treats the CF 800 floor as a clamp:
+an "800" problem is <= 800, per the user), d-end (debrief, core dump, goal bar,
+presets, session nudge, motd, nightly, GRUB story page, end-of-boot text), d-boot
+(dmesg strip, onboarding lines, :Submit! and R R, statement-first pane, door
+readiness, D36, in-boot text), s9-wire (scene flow, motion settings, ui styles). Agents keep .agents/work/progress-<ws>.md for
 restarts (spamming esc stops every agent).
 For B (from the GCC report): qa/judge expects ASan wording on the libstdc++
 sample profile (re_heap_oob, re_container_oob, re_after_20KB_debug_stderr) and
