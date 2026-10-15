@@ -22,10 +22,10 @@ func upgradeOptions(us []game.Upgrade, r rules.Rules) []option {
 	return out
 }
 
-func daemonOptions(ds []game.Daemon, r rules.Rules) []option {
+func daemonOptions(ds []game.Daemon, st *game.State) []option {
 	out := make([]option, len(ds))
 	for i, d := range ds {
-		out[i].name, out[i].desc = daemonText(d, r)
+		out[i].name, out[i].desc = daemonText(d, st)
 	}
 	return out
 }

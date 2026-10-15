@@ -1262,3 +1262,22 @@ func TestSourceLabel(t *testing.T) {
 		}
 	}
 }
+
+// fork says how many doors a room has without it, which is more with tmux
+// installed: the engine does not stack fork on tmux's door.
+func TestForkSaysTheUsualRoomSize(t *testing.T) {
+	fl = realFlavor
+	defer func() { fl = stubFlavor }()
+	st := fixture.Merge()
+	usual := st.Rules.DoorsPerRoom
+	for _, c := range []struct {
+		pkgs []string
+		want int
+	}{{nil, usual}, {[]string{"tmux"}, usual + st.Rules.Grants([]string{"tmux"}).Doors}} {
+		st.Packages = c.pkgs
+		v := ansi.Strip(NewMerge(env(st)).View(140, 40))
+		if want := fmt.Sprintf("(normally %d)", c.want); !strings.Contains(v, want) {
+			t.Errorf("packages %v: fork should say %q:\n%s", c.pkgs, want, v)
+		}
+	}
+}

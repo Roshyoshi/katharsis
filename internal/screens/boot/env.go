@@ -122,7 +122,15 @@ func upgradeText(u game.Upgrade, r rules.Rules) (string, string) {
 	return name, desc
 }
 
-func daemonText(d game.Daemon, r rules.Rules) (string, string) {
+// daemonText is a daemon's name and effect in the boot's numbers. A
+// room's usual size counts the doors packages add (tmux) outside a trial,
+// as the engine does (game roomSize), so fork says what it adds over the
+// rooms this boot actually has: "(normally 4)" with tmux installed.
+func daemonText(d game.Daemon, st *game.State) (string, string) {
+	r := st.Rules
+	if st.Trial == nil {
+		r.DoorsPerRoom += r.Grants(st.Packages).Doors
+	}
 	name, desc := fl.DaemonText(d, r)
 	if name == "" {
 		name = string(d)
@@ -300,7 +308,7 @@ func (e Env) header(where string, width int) []string {
 		units.Bytes(st.Committed) + ui.Muted.Render(" committed")
 	var ds []string
 	for _, d := range st.Daemons {
-		n, _ := daemonText(d, st.Rules)
+		n, _ := daemonText(d, st)
 		ds = append(ds, n)
 	}
 	daemons := ""

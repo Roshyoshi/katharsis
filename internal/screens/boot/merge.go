@@ -9,6 +9,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -138,7 +139,7 @@ func (m *Merge) View(width, height int) string {
 	// terminal it sits under the centered map instead of hugging the left.
 	// The column grows past 76 cells when an option needs it, so a long
 	// description is cut only when the terminal itself is too narrow.
-	opts := daemonOptions(st.DaemonOffers, st.Rules)
+	opts := daemonOptions(st.DaemonOffers, st)
 	need := listWidth(opts)
 	need = max(need, listWidth(itemOptions(st)))
 	if st.PendingUpgrade {
@@ -147,19 +148,21 @@ func (m *Merge) View(width, height int) string {
 	cw := min(width, max(76, 4+need))
 	var secs []string
 
-	label := func(s string) string { return "  " + sBold.Render(fmt.Sprintf("%-9s", s)) }
+	label := func(s string) string { return "  " + ui.Strong.Render(fmt.Sprintf("%-9s", s)) }
+	// The bytes at stake are plain: a crash loses them. The footer has the
+	// c key, so the line does not repeat it (C2).
 	if st.Uncommitted > 0 {
-		secs = append(secs, label("commit")+sGreen.Bold(true).Render(units.Bytes(st.Uncommitted))+
-			sFaint.Render(" uncommitted: a crash loses it, the bank keeps it  ")+hint("c", "commit"))
+		secs = append(secs, label("commit")+units.Bytes(st.Uncommitted)+
+			ui.Muted.Render(" uncommitted: a crash loses it, the bank keeps it"))
 	} else {
-		secs = append(secs, label("commit")+sFaint.Render("nothing uncommitted · ")+
-			units.Bytes(st.Committed)+sFaint.Render(" committed this boot · bank ")+units.Bytes(m.env.Meta.Bank))
+		secs = append(secs, label("commit")+ui.Muted.Render("nothing uncommitted"+ui.G.Sep)+
+			units.Bytes(st.Committed)+ui.Muted.Render(" committed this boot"+ui.G.Sep+"bank ")+units.Bytes(m.env.Meta.Bank))
 	}
 
 	if st.PendingUpgrade && len(st.UpgradeOffers) > 0 {
-		note := sFaint.Render("a clear earned one; pick it before you leave")
+		note := ui.Muted.Render("a clear earned one; pick it before you leave")
 		if n, o3 := owedPicks(st); n >= 2 || n == 1 && o3 {
-			note = picksNote(n, o3) + sFaint.Render("; pick before you leave")
+			note = picksNote(n, o3) + ui.Muted.Render("; pick before you leave")
 		}
 		secs = append(secs, "", label("upgrade")+note)
 		secs = append(secs, indent(4, m.up.list(cw-4, cur.kind == rowUpgrade))...)
@@ -172,21 +175,21 @@ func (m *Merge) View(width, height int) string {
 		}
 		note := "uncommitted bytes, for this boot only"
 		if st.Rerolls > 0 {
-			note += fmt.Sprintf(" · %d shuf held", st.Rerolls)
+			note += ui.G.Sep + fmt.Sprintf("%d shuf held", st.Rerolls)
 		}
 		if st.AtTime > 0 {
-			note += " · next door +" + units.Clock(st.AtTime)
+			note += ui.G.Sep + "next door +" + units.Clock(st.AtTime)
 		}
-		secs = append(secs, "", label("spend")+sFaint.Render(note))
+		secs = append(secs, "", label("spend")+ui.Muted.Render(note))
 		secs = append(secs, indent(4, optionList(items, c, cw-4))...)
 	}
 
 	if len(st.DaemonOffers) > 0 {
 		held := make([]string, len(st.Daemons))
 		for i, d := range st.Daemons {
-			held[i], _ = daemonText(d, st.Rules)
+			held[i], _ = daemonText(d, st)
 		}
-		note := fmt.Sprintf("pick one · held %d/%d", len(st.Daemons), st.Rules.MaxDaemons)
+		note := fmt.Sprintf("pick one%sheld %d/%d", ui.G.Sep, len(st.Daemons), st.Rules.MaxDaemons)
 		if len(held) > 0 {
 			note += ": " + strings.Join(held, ", ")
 		}
@@ -194,22 +197,23 @@ func (m *Merge) View(width, height int) string {
 		if cur.kind == rowDaemon {
 			c = m.dmn
 		}
-		secs = append(secs, "", label("daemon")+sFaint.Render(note))
+		secs = append(secs, "", label("daemon")+ui.Muted.Render(note))
 		secs = append(secs, indent(4, optionList(opts, c, cw-4))...)
 	}
 
-	leave := "  " + sBold.Render("leave") + sFaint.Render(" → "+m.next())
+	mark := "  "
 	if cur.kind == rowLeave {
-		leave = sCyan.Bold(true).Render("▸ leave") + sFaint.Render(" → "+m.next())
+		mark = ui.Focus.Render(ui.G.Cursor) + " "
 	}
+	leave := mark + ui.Strong.Render("leave") + ui.Muted.Render(" "+ui.G.Arrow+" "+m.next())
 	secs = indent((width-cw)/2, append(secs, "", leave))
 
 	block := secs
 	if mp := centerBlock(renderMap(st, width), width); len(head)+2+len(mp)+1+len(secs) <= height-1 {
 		block = append(append(mp, ""), secs...)
 	}
-	footer := hint("↑/↓", "move", "enter", "pick, buy or leave", "c", "commit")
-	return layout(width, height, centered(head, block, height), footer)
+	footer := ui.Footer(width, "↑/↓", "move", "enter", "pick, buy or leave", "c", "commit")
+	return ui.Layout(width, height, centered(head, block, height), footer)
 }
 
 // onSale lists the items this boot's merge windows sell.
@@ -233,12 +237,12 @@ func itemOptions(st *game.State) []option {
 			game.Dup:  "+1 rubber duck",
 			game.Shuf: "re-roll one room's doors (s at the doors)",
 			game.At:   "+" + units.Clock(st.Rules.AtTime.Duration) + " on the next door's timer",
-		}[it] + " · " + units.Bytes(st.Price(it))
+		}[it] + ui.G.Sep + units.Bytes(st.Price(it))
 		switch {
 		case it == game.Fsck && st.Lives >= st.MaxLives:
-			desc += " · lives full"
+			desc += ui.G.Sep + "lives full"
 		case st.Uncommitted < st.Price(it):
-			desc += fmt.Sprintf(" · %s short", units.Bytes(st.Price(it)-st.Uncommitted))
+			desc += ui.G.Sep + units.Bytes(st.Price(it)-st.Uncommitted) + " short"
 		}
 		out = append(out, option{name: string(it), desc: desc})
 	}
