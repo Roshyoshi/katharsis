@@ -269,6 +269,10 @@ D56 settled 10-15  Achievements: "w spoiler ones as well"; like Star of Providen
       Achievements design on main: docs/design/achievements.md (61 setuid bits,
       the Trial ending "Dull Reality"); awaiting the user's calls.
 
+10-15 setuid contract (unyqlolx) duplicated onto main as rlkkunsy, green. Lanes:
+      setuid-engine (61 conditions, the Trial, backfill, sim) and setuid-ui (screen,
+      unlock moment, Trial cards and ending scene, story text, SamplesRun wiring).
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
