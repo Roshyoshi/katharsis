@@ -153,7 +153,7 @@
             # NOTE: changes whenever go.mod, go.sum or the module's imports do;
             #       `nix build .#default.goModules --rebuild` prints the new
             #       hash.
-            vendorHash = "sha256-TFpvHC7t0UoKXG3uFS8GviLnJ1RTcqSQBLh7/LWRams=";
+            vendorHash = "sha256-YiCm0qtBtBgI9GhAdwm9bWQFfzVlXf/+YFJuFRz/mFM=";
             subPackages = [ "cmd/katharsis" ];
             env.CGO_ENABLED = 0;
             ldflags = [ "-s" "-w" ];
