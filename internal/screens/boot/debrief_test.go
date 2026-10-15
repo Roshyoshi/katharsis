@@ -87,6 +87,19 @@ func endCases() []screenCase {
 			e.End.Firsts = []string{"first Heisenbug kill", "fastest clear: 2:29:52"}
 			return NewCleared(e)
 		}},
+		// The easing the boot ran with, in kept with its numbers (RT8).
+		{"crash_eased", func() screens.Screen {
+			e := crashEnv(game.OutOfLives)
+			e.State.Ease = fixture.Userland().Ease
+			e.End = end()
+			return NewCrash(e)
+		}},
+		{"cleared_declined", func() screens.Screen {
+			e := clearedEnv()
+			e.State.Ease, e.State.Declined = fixture.Userland().Ease, true
+			e.End = end()
+			return NewCleared(e)
+		}},
 		{"merge_goal", func() screens.Screen {
 			e := env(fixture.Merge())
 			e.End = End{Goal: &Goal{Name: "strace", Price: 2300, Per: 140}}

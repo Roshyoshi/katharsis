@@ -477,6 +477,43 @@ func TestUserlandTimeoutCostsALife(t *testing.T) {
 	}
 }
 
+// x at the first room declines the boot's easing (RT8, GR9): the engine
+// takes back the lives it added and draws the room again, the doors say
+// "declined", and the decline is saved; a second x does nothing.
+func TestDeclineEaseKey(t *testing.T) {
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "eased"})
+	h.toDoors()
+	s := h.m.state
+	if len(s.Ease) == 0 {
+		t.Fatalf("a cold start on the fake catalog is not eased: forecast %.2f", s.Forecast)
+	}
+	added := 0
+	for _, es := range s.Ease {
+		added += es.Lives
+	}
+	lives := s.Lives
+	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "x decline the easing") {
+		t.Fatalf("no decline key on the first room:\n%s", v)
+	}
+	h.send(key("x"))
+	s = h.m.state
+	if !s.Declined || s.Lives != max(1, lives-added) {
+		t.Fatalf("declined %v, lives %d (was %d, the easing added %d)", s.Declined, s.Lives, lives, added)
+	}
+	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "· declined") || strings.Contains(v, "x decline") {
+		t.Errorf("the doors after a decline:\n%s", v)
+	}
+	h.send(key("x"))
+	if h.m.state.Lives != s.Lives {
+		t.Errorf("a second x moved lives to %d", h.m.state.Lives)
+	}
+	h.restart()
+	if !h.m.state.Declined {
+		t.Error("the decline was not saved")
+	}
+}
+
 // A second app on the same store resumes the boot and reopens the door.
 func TestResumeMidDoor(t *testing.T) {
 	h := newHarness(t)

@@ -72,7 +72,7 @@ const (
 	EvTimer      = "timer" // 5:00 or 1:00 left on the open door
 	EvLives      = "lives" // lives changed for a reason the strip has no line for
 	EvTip        = "tip"   // a one-time onboarding line
-	EvEase       = "ease"  // an easing the engine made (RT8), announced
+	EvEase       = "ease"  // an easing the engine made (RT8), announced, or declined
 )
 
 // keepEvents is how many events a Tracker keeps; the strip shows at most
@@ -111,7 +111,7 @@ type snapshot struct {
 	uncommitted, committed, spent int64
 	upgrades, daemons, rerolls    int
 	at                            time.Duration
-	kexec                         bool
+	kexec, declined               bool
 	libs                          map[string]string
 	biome, room                   int
 	offered                       string
@@ -123,7 +123,7 @@ func snap(st *game.State, m *game.Meta, now time.Time) snapshot {
 		boot: st.Boot, phase: st.Phase, lives: st.Lives, ducks: st.Ducks, hist: len(st.History),
 		uncommitted: st.Uncommitted, committed: st.Committed, spent: st.Spent,
 		upgrades: len(st.Upgrades), daemons: len(st.Daemons), rerolls: st.Rerolls, at: st.AtTime,
-		kexec: st.KexecUsed, biome: st.Biome, room: st.Room, libs: map[string]string{},
+		kexec: st.KexecUsed, declined: st.Declined, biome: st.Biome, room: st.Room, libs: map[string]string{},
 	}
 	if c := st.Current; c != nil {
 		s.door, s.opened, s.submits, s.quacks = c.Door.Problem, c.Opened, c.Submits, c.Quacks
@@ -285,6 +285,20 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 				livesSeen = true
 			}
 		}
+	}
+
+	// The easing turned down before the first door (RT8): what it took
+	// back, and the room drawn again without it.
+	if n.declined && !p.declined {
+		text := "easing declined"
+		if lost := p.lives - n.lives; lost > 0 {
+			text += ui.Muted.Render(ui.G.Sep) + livesLost(lost, n.lives)
+			livesSeen = true
+		}
+		if n.phase == game.PhaseDoors {
+			text += ui.Muted.Render(ui.G.Sep + "new doors")
+		}
+		add(EvEase, text, "")
 	}
 
 	// A shuf spent on the doors screen: the same room, other doors.

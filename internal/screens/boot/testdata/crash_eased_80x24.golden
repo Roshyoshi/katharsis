@@ -1,0 +1,24 @@
+[ 3968.000] CPU: 0 PID: 1 Comm: you Not tainted
+[ 3968.000] Call Trace:
+[ 3968.000]  do_exit+0x3a/0xc0
+[ 3968.000]  door_5+0x12/0x1e [The Heap]
+[ 3968.000]  ... 4 older doors
+[ 3968.000]  boot_42+0x42/0x69
+[ 3968.000] ---[ end Kernel panic ]---
+
+  "Program testing can be used to show the presence of bugs, but
+   never to show their absence!"
+                — Edsger W. Dijkstra, Notes on Structured Programming (1970)
+
+  core dumped: 96 B on "The Bovine Shuffle"
+  kept   rating 1214 → 1180 ▼34 · graphs 1240 → 1210 ▼30 · bank 2.1 KiB
+         ↺ back as a door Oct 17
+         eased: Userland aim 90% → 95% (first boot in 5 days)
+         eased: +1 ♥ (Userland's easiest doors in the pool are rated 800)
+         apt strace ▓▓▓▓▓▓░░ 2.1 KiB/2.4 KiB · ≈3 boots
+         Gold ▓▓░░░░░░ 22/60 rated doors, then a clear
+  lever  2 failed submits, the best WA 37/52 tests → a case the samples missed;
+         an upsolve shows the failing test · ≈74% predicted
+  next ▸ u upsolve "The Bovine Shuffle" untimed: +144 B (96 B after the
+         editorial) → strace 2.2 KiB/2.4 KiB
+  [e] editorial  [r] reboot ≈1h41  [s] short ≈1h02  [p] patch  [g] GRUB

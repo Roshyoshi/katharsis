@@ -141,8 +141,14 @@ func cases() []screenCase {
 		{"doors", func() screens.Screen { return NewDoors(env(fixture.Doors())) }},
 		{"doors_fork", func() screens.Screen { return NewDoors(env(fixture.DoorsFork())) }},
 		{"doors_boss", func() screens.Screen { return NewDoors(env(fixture.Boss())) }},
-		// Userland at the boot's start: D44's line on every card.
+		// Userland at the boot's start: its easing over the cards (RT8), D44's
+		// line on every card.
 		{"doors_userland", func() screens.Screen { return NewDoors(env(fixture.Userland())) }},
+		{"doors_declined", func() screens.Screen {
+			st := fixture.Userland()
+			st.Declined, st.Lives = true, 3
+			return NewDoors(env(st))
+		}},
 		{"doors_map", func() screens.Screen {
 			d := NewDoors(env(fixture.Doors()))
 			d.Update(press("m"))

@@ -354,14 +354,22 @@ func regressionItem(g *game.Regression, now time.Time) string {
 	return ui.Warn.Render(ui.G.Regression) + " back as a door " + g.Due.In(loc).Format("Jan 2")
 }
 
-// easeItems is what easing the boot ran with (retention RT8): listed in
-// kept, so a clear on an eased boot is not read as more skill than it
-// shows.
-//
-// NOTE: the engine lane adds State.Ease (each with a Why naming the
-// doors or boots behind it). Once it lands, this returns one item per
-// easing, "eased: +1 ♥ · <Why>", and "declined" when State.Declined.
-func easeItems(*game.State) []string { return nil }
+// easeItems is what easing the boot ran with (retention RT8), one item per
+// State.Ease with its numbers and why: "eased: Userland aim 92% → 95%
+// (first boot in 5 days)". It is listed in kept, so a clear on an eased
+// boot is not read as more skill than it shows; a declined one says so,
+// as the boot ran without it.
+func easeItems(st *game.State) []string {
+	label := "eased: "
+	if st.Declined {
+		label = "declined: "
+	}
+	var out []string
+	for _, es := range st.Ease {
+		out = append(out, ui.Muted.Render(label)+strings.Join(easeTerms(st, es, true), ", ")+ui.Muted.Render(" ("+es.Why+")"))
+	}
+	return out
+}
 
 // ---- lever -----------------------------------------------------------------------
 

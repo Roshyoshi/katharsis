@@ -179,6 +179,31 @@ func TestTrackerTimeoutCostsLife(t *testing.T) {
 	}
 }
 
+// The strip opens a boot with its easing, one line each (RT8), and says
+// what a decline took back, without the generic lives line.
+func TestTrackerEasing(t *testing.T) {
+	b := newEngineBoot(t, rules.Standard())
+	var said []string
+	for _, ev := range b.tr.Events() {
+		if ev.Kind == EvEase {
+			said = append(said, ansi.Strip(ev.Text))
+		}
+	}
+	lines, _ := easing(b.st)
+	if len(b.st.Ease) == 0 || !slices.Equal(said, stripAll(lines)) {
+		t.Fatalf("boot #1 eased %+v; the strip said %q", b.st.Ease, said)
+	}
+	lives := b.st.Lives
+	evs := b.step(game.DeclineEase{})
+	want := "ease: easing declined · new doors"
+	if lost := lives - b.st.Lives; lost > 0 {
+		want = fmt.Sprintf("ease: easing declined · -%d ♥, %d left · new doors", lost, b.st.Lives)
+	}
+	if plain(evs) != want {
+		t.Errorf("decline: got\n%s\nwant %q", plain(evs), want)
+	}
+}
+
 // The timer warns once at 5:00 and once at 1:00, and not on a resume that
 // is already past them.
 func TestTrackerTimerWarns(t *testing.T) {
@@ -203,7 +228,8 @@ func TestTrackerTimerWarns(t *testing.T) {
 	}
 }
 
-// A new boot empties the strip.
+// A new boot empties the strip of the last one's events; it opens on its
+// own easing, if it has any.
 func TestTrackerNewBootClears(t *testing.T) {
 	b := newEngineBoot(t, rules.Standard())
 	b.toDoors()
@@ -216,8 +242,13 @@ func TestTrackerNewBootClears(t *testing.T) {
 	}
 	b.st = st
 	b.observe()
-	if evs := b.tr.Events(); len(evs) != 0 {
-		t.Errorf("new boot kept the last one's strip:\n%s", plain(evs))
+	lines, _ := easing(st)
+	var said []string
+	for _, ev := range b.tr.Events() {
+		said = append(said, ansi.Strip(ev.Text))
+	}
+	if !slices.Equal(said, stripAll(lines)) {
+		t.Errorf("new boot's strip, want only its easing %q:\n%s", stripAll(lines), plain(b.tr.Events()))
 	}
 }
 

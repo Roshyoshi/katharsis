@@ -331,6 +331,14 @@ func (e *engine) saveTimeout() bool {
 	return true
 }
 
+// BeforeFirstDoor reports whether no door of the boot has opened yet and
+// one is still to be chosen (a route or a room on offer): the only time
+// its easing can be declined (DeclineEase), and so the time the screens
+// announce it.
+func (s *State) BeforeFirstDoor() bool {
+	return len(s.History) == 0 && s.Current == nil && (s.Phase == PhaseDoors || s.Phase == PhaseRoute)
+}
+
 // declineEase turns the boot's easing off before its first door: the
 // lives and ducks it added go (one life is always left), and the room on
 // offer is drawn again, aimed and timed without it.
@@ -341,7 +349,7 @@ func (e *engine) declineEase() error {
 		return invalid("no easing to decline")
 	case s.Declined:
 		return invalid("easing already declined")
-	case len(s.History) > 0 || s.Current != nil || s.Phase != PhaseDoors && s.Phase != PhaseRoute:
+	case !s.BeforeFirstDoor():
 		return invalid("easing can only be declined before the first door")
 	}
 	lives, ducks := 0, 0

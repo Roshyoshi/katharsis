@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -157,16 +158,88 @@ func TestTimeoutNote(t *testing.T) {
 	}
 }
 
-// The engine has no easing yet (notice.go): no boot shows one and x does
-// nothing.
-func TestNoticesWaitForTheEngine(t *testing.T) {
-	st := fixture.Doors()
-	if lines, decline := easing(st); lines != nil || decline != nil {
-		t.Errorf("an easing before the engine made one: %q %v", lines, decline)
+// RT8: before the first door, each easing is a line above the cards in
+// task terms with its reason, and x declines them all; once declined each
+// line says so and x does nothing. Past the first door, and in a boot
+// with no easing, nothing shows.
+func TestEasing(t *testing.T) {
+	st := fixture.Userland()
+	lines, decline := easing(st)
+	want := []string{
+		"Userland aim retuned (first boot in 5 days)",
+		"+1 ♥ (Userland's easiest doors in the pool are rated 800)",
+	}
+	if got := stripAll(lines); !slices.Equal(got, want) || decline != (game.DeclineEase{}) {
+		t.Fatalf("easing = %q, %#v; want %q and DeclineEase", got, decline, want)
+	}
+	d := NewDoors(env(st))
+	v := ansi.Strip(d.View(80, 24))
+	for _, w := range append(want, "x decline the easing") {
+		if !strings.Contains(v, w) {
+			t.Errorf("doors screen lacks %q:\n%s", w, v)
+		}
+	}
+	if _, cmd := d.Update(press("x")); emitted(cmd) != (game.DeclineEase{}) {
+		t.Errorf("x emitted %#v, want DeclineEase", emitted(cmd))
+	}
+
+	st.Declined = true
+	lines, decline = easing(st)
+	if decline != nil || len(lines) != 2 || !strings.HasSuffix(ansi.Strip(lines[0]), " · declined") {
+		t.Errorf("declined: %q, %#v", stripAll(lines), decline)
 	}
 	if _, cmd := NewDoors(env(st)).Update(press("x")); cmd != nil {
-		t.Errorf("x emitted %#v with nothing to decline", emitted(cmd))
+		t.Errorf("x after the decline emitted %#v", emitted(cmd))
 	}
+	for name, st := range map[string]*game.State{"past the first door": fixture.UserlandTimeout(), "no easing": fixture.Doors()} {
+		if lines, decline := easing(st); lines != nil || decline != nil {
+			t.Errorf("%s: %q, %#v", name, stripAll(lines), decline)
+		}
+	}
+}
+
+// GR9 and D36 over every easing the engine can make: the lines name what
+// changed, never the player and never "easy", "assist" or "mercy", and
+// carry no clear chance before a door; the kept block carries the aims'
+// numbers.
+func TestEasingCopy(t *testing.T) {
+	banned := regexp.MustCompile(`(?i)\b(easy|assist|mercy|you)\b`)
+	st := fixture.Userland()
+	st.Ease = []game.Ease{
+		{Kind: game.EaseFirst, Why: "boot #1", FirstDoor: true, Editorial: true},
+		{Kind: game.EaseComeback, Why: "first boot in 5 days", Clear: []float64{0.95, 0, 0, 0}},
+		{Kind: game.EaseGovernor, Why: "the last 2 boots ended in Userland", Clear: []float64{0.95, 0.78, 0.65, 0.55}, Lives: 1},
+		{Kind: game.EaseFloor, Why: "Userland's easiest doors in the pool are rated 800", Lives: 2, Ducks: 1, Buyback: true},
+	}
+	lines, _ := easing(st)
+	items := easeItems(st)
+	if len(lines) != len(st.Ease) || len(items) != len(st.Ease) {
+		t.Fatalf("%d lines, %d kept items for %d easings", len(lines), len(items), len(st.Ease))
+	}
+	for i, l := range stripAll(lines) {
+		if banned.MatchString(l) || strings.Contains(l, "%") {
+			t.Errorf("line %d: %q", i, l)
+		}
+	}
+	for _, l := range stripAll(items) {
+		if banned.MatchString(l) || !strings.HasPrefix(l, "eased: ") {
+			t.Errorf("kept item %q", l)
+		}
+	}
+	if got, want := ansi.Strip(items[2]), "eased: aims 90%/70%/60%/50% → 95%/78%/65%/55%, +1 ♥ (the last 2 boots ended in Userland)"; got != want {
+		t.Errorf("governor kept item\n got %q\nwant %q", got, want)
+	}
+	if got, want := ansi.Strip(items[3]), "eased: +2 ♥, +1 🦆, longer timers on Userland's floor doors (Userland's easiest doors in the pool are rated 800)"; got != want {
+		t.Errorf("floor kept item\n got %q\nwant %q", got, want)
+	}
+}
+
+func stripAll(ls []string) []string {
+	var out []string
+	for _, l := range ls {
+		out = append(out, ansi.Strip(l))
+	}
+	return out
 }
 
 // The White Queen's block shows over the first room that offers a
