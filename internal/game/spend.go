@@ -13,14 +13,14 @@ import (
 // dump, so it is the way to cash in bytes a crash would cost.
 
 // AllItems is what a merge window sells, in shelf order.
-var AllItems = []Item{Fsck, Dup, Shuf}
+var AllItems = []Item{Fsck, Dup, Shuf, At}
 
 // Price is what it costs in this boot's merge windows, 0 when it is not
-// for sale: the rules price it at 0, or the boot is a trial, which sells
-// nothing, as it offers no daemons: a trial is practice, not a run to
-// equip.
+// for sale: the rules price it at 0, the package that sells it was not
+// installed, or the boot is a trial, which sells nothing, as it offers no
+// daemons: a trial is practice, not a run to equip.
 func (s *State) Price(it Item) int64 {
-	if s.Trial != nil {
+	if s.Trial != nil || s.ItemLocked(it) {
 		return 0
 	}
 	switch it {
@@ -30,6 +30,8 @@ func (s *State) Price(it Item) int64 {
 		return s.Rules.DupPrice
 	case Shuf:
 		return s.Rules.ShufPrice
+	case At:
+		return s.Rules.AtPrice
 	}
 	return 0
 }
@@ -67,17 +69,21 @@ func (e *engine) spend(it Item) error {
 		s.Ducks++
 	case Shuf:
 		s.Rerolls++
+	case At:
+		s.AtTime += s.Rules.AtTime.Duration
 	}
-	e.logf("%s: -%s, %s uncommitted (lives %d/%d, ducks %d, shufs %d)",
-		it, units.Bytes(price), units.Bytes(s.Uncommitted), s.Lives, s.MaxLives, s.Ducks, s.Rerolls)
+	e.logf("%s: -%s, %s uncommitted (lives %d/%d, ducks %d, shufs %d, at +%s)",
+		it, units.Bytes(price), units.Bytes(s.Uncommitted), s.Lives, s.MaxLives, s.Ducks, s.Rerolls,
+		units.Clock(s.AtTime))
 	return nil
 }
 
 // reroll spends a shuf on the room on offer: fresh doors, drawn as a
 // retreat's are but none of those on offer while the pool has others. A
-// regression door on offer stays, since a boot offers it once. A boss room cannot be re-rolled: a boss is one door with no choice,
-// and the boss tier's calibration counts on that (a player who skips the
-// bosses they fear would clear more of the rest than they are aimed at).
+// regression door on offer stays, since a boot offers it once. A boss room
+// cannot be re-rolled: a boss is one door with no choice, and the boss
+// tier's calibration counts on that (a player who skips the bosses they
+// fear would clear more of the rest than they are aimed at).
 func (e *engine) reroll() error {
 	s := e.s
 	if err := e.need(PhaseDoors, "shuf"); err != nil {

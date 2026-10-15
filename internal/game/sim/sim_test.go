@@ -32,16 +32,25 @@ func taught(rep sim.Report, i int) (observed, expected float64) {
 // rating, the plain doors of each biome (the ones the aim controls; blind
 // and cursed doors are the player's risk) must clear at its TargetClear,
 // and the calibration must stay near zero, since there is no shape to fix.
+//
+// It plays without packages: which daemons and upgrades a boot meets is
+// beside the aim, and the default model's test plays with them. The
+// rating is the mean over the last 200 boots: Elo at K 40 wanders by more
+// than 100 points from boot to boot (seeds 1 to 8 end between 1516 and
+// 1776 with packages, 1561 and 1739 without), and the mean does not.
 func TestIdealPlayerHitsTargets(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
 		t.Skip("slow")
 	}
 	r := rules.Standard()
+	r.Packages = nil
+	p := ideal(1600)
+	p.Install = nil
 	rep := sim.Run(sim.Config{
 		Rules:  r,
 		Pool:   sim.SyntheticPool(20000, 1),
-		Player: ideal(1600),
+		Player: p,
 		Boots:  500, Warmup: 100, Seed: 3,
 	})
 	t.Logf("ideal 1600:\n%s", rep)
@@ -54,8 +63,13 @@ func TestIdealPlayerHitsTargets(t *testing.T) {
 			t.Errorf("biome %d: calibrated by %+.0f for a logistic player", i, off)
 		}
 	}
-	if math.Abs(rep.FinalRating-1600) > 120 {
-		t.Errorf("engine rating %.0f, true 1600", rep.FinalRating)
+	tail := rep.Ratings[len(rep.Ratings)-200:]
+	mean := 0.0
+	for _, x := range tail {
+		mean += x / float64(len(tail))
+	}
+	if math.Abs(mean-1600) > 120 {
+		t.Errorf("engine rating %.0f over the last 200 boots, true 1600", mean)
 	}
 }
 
@@ -63,10 +77,13 @@ func TestIdealPlayerHitsTargets(t *testing.T) {
 // than the logistic and has ceilings (timers, wrong submits, ducks), which
 // is what the calibration is for. Its plain doors must clear at what the
 // engine expects of them in every tier, within binomial noise (3 standard
-// errors, plus 2 points of calibration lag), and the expectation must be
+// errors, plus 2 points of calibration lag), and the aim must be
 // TargetClear at prestige 0 and, at prestige 2, the logistic chance
-// 2·PrestigeOffset above the aim (or the biome's MinClear, where that
-// binds): a higher prestige stays harder by exactly what the offset says.
+// 2·PrestigeOffset above it (or the biome's MinClear, where that binds): a
+// higher prestige stays harder by exactly what the offset says. The aim is
+// read off every plain door on offer, not the ones the model took: with
+// fork's fourth door and shufs to spend, the model's pick leans to the
+// easier doors by a few points, which is its choice, not the aim.
 func TestCalibrationHitsTargets(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -93,9 +110,10 @@ func TestCalibrationHitsTargets(t *testing.T) {
 			}
 			want := game.Expected(0, aim)
 			tol := 3*math.Sqrt(exp*(1-exp)/float64(max(rep.Taught[i], 1))) + 0.02
-			if math.Abs(got-exp) > tol || math.Abs(exp-want) > 0.03 {
-				t.Errorf("prestige %d biome %d: plain doors clear %.3f (±%.3f), engine expected %.3f, want both near %.3f",
-					prestige, i, got, tol, exp, want)
+			aimed := rep.OfferedP[i] / float64(max(rep.Offered[i], 1))
+			if math.Abs(got-exp) > tol || math.Abs(aimed-want) > 0.03 {
+				t.Errorf("prestige %d biome %d: plain doors clear %.3f (±%.3f), engine expected %.3f, aimed %.3f, want near %.3f",
+					prestige, i, got, tol, exp, aimed, want)
 			}
 		}
 	}

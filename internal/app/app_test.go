@@ -307,10 +307,16 @@ func (h *harness) enterDoor() *game.Attempt {
 	return h.m.state.Current
 }
 
-// toDoors plays the boot up to a room of doors.
+// toDoors plays the boot up to a room of doors. Only a route stands
+// between: any other phase refuses ChooseRoute, so it fails rather than
+// loop forever (a merge window left with a pick still owed stays open).
 func (h *harness) toDoors() {
 	h.t.Helper()
-	for h.m.state.Phase != game.PhaseDoors {
+	for i := 0; h.m.state.Phase != game.PhaseDoors; i++ {
+		if i > 0 && h.m.state.Phase != game.PhaseRoute || i > 5 {
+			h.t.Fatalf("no doors after %d routes, phase %q (pending upgrade %v)",
+				i, h.m.state.Phase, h.m.state.PendingUpgrade)
+		}
 		h.send(game.ChooseRoute{})
 	}
 }

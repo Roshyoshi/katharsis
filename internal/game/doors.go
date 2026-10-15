@@ -150,11 +150,15 @@ func (e *engine) roomSize(b *BiomeState) int {
 	if b.Kind == rules.Boss {
 		return r.BossDoors
 	}
+	n := r.DoorsPerRoom
+	if e.s.Trial == nil { // a trial's rooms hold its plan's one door
+		n += r.Grants(e.s.Packages).Doors
+	}
 	h := e.s.History
 	if slices.Contains(e.s.Daemons, Fork) && len(h) > 0 && h[len(h)-1].Outcome == Cleared {
-		return max(r.ForkDoors, r.DoorsPerRoom)
+		n += max(r.ForkDoors-r.DoorsPerRoom, 0)
 	}
-	return r.DoorsPerRoom
+	return n
 }
 
 // rollRoom offers the current room's doors. fresh is false for the re-roll
@@ -306,7 +310,9 @@ func mastered(r *rules.Rules, m *Meta, topic string, rating int) bool {
 // expected payout the same at every difficulty (BaseBytes/2), so harder
 // doors pay for their risk and the modifiers decide between doors. Mystery
 // pays MysteryMult instead of BlindMult (it implies blind, and stacking would
-// make a hidden title worth more than a curse).
+// make a hidden title worth more than a curse). The daemons that pay more
+// (dev-random, cron, chrt) multiply whole doors, so the payout stays flat
+// across difficulty.
 func (e *engine) doorBytes(d Door) int64 {
 	r := &e.s.Rules
 	mult := min(max(0.5/d.SolveP, r.MinBytesMult), r.MaxBytesMult)
@@ -324,6 +330,12 @@ func (e *engine) doorBytes(d Door) int64 {
 	}
 	if d.Boss != "" {
 		mult *= r.BossMult
+	}
+	if d.Regression && slices.Contains(e.s.Daemons, Cron) {
+		mult *= r.CronMult
+	}
+	if slices.Contains(e.s.Daemons, Chrt) {
+		mult *= r.ChrtBytesMult
 	}
 	return max(1, int64(math.Round(float64(r.BaseBytes)*mult)))
 }
@@ -392,7 +404,7 @@ func (e *engine) layout() {
 				b.Boss = FinalBoss
 			}
 		case rules.Choice:
-			b.Offers = e.routeOffers(rb, rb.Choices, used)
+			b.Offers = e.routeOffers(rb, rb.Choices+r.Grants(s.Packages).RouteOffers, used)
 			for _, t := range b.Offers {
 				used[t] = true
 			}

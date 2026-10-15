@@ -41,13 +41,24 @@ type Player struct {
 	UpsolveProb float64       // chance it upsolves the crash between boots
 	Overhead    time.Duration // clock time per choice outside a door
 
-	// Spend has the model buy in merge windows before it commits: an fsck
-	// for each life lost below the boot's start, a dup when out of ducks,
-	// and a shuf to hold while rooms are left before the boss, which it
-	// spends on a room whose best door it expects to clear RerollMargin
-	// below the biome's target or worse.
+	// Spend has the model buy in merge windows before it commits, by what
+	// the boot needs: an fsck for each life lost below the boot's start, a
+	// dup when out of ducks, a shuf to hold while rooms are left before the
+	// boss (spent on a room whose best door it expects to clear
+	// RerollMargin below the biome's target or worse), and at before the
+	// boss.
 	Spend        bool
 	RerollMargin float64
+	// SpendShare, when above 0, replaces Spend with a fixed policy: each
+	// merge window it spends up to this share of the bytes it found
+	// uncommitted, buying whatever is on sale in shelf order, round and
+	// round, and commits the rest. 1 spends while anything is affordable.
+	SpendShare float64
+
+	// Install lists the packages (rules.Package) the model buys at GRUB
+	// between boots, in this order, each once the bank covers it; nil buys
+	// none.
+	Install []string
 }
 
 // DefaultPlayer is the model the reports in this package's tests use.
@@ -66,7 +77,23 @@ func DefaultPlayer(rating float64) Player {
 
 		Spend:        true,
 		RerollMargin: 0.2,
+
+		// The whole standard catalog, cheapest first, as retention RT3
+		// prices it: the next package is the nearest goal.
+		Install: CheapestFirst(rules.Standard()),
 	}
+}
+
+// CheapestFirst lists r's packages by price, cheapest first (ties in the
+// rules' order).
+func CheapestFirst(r rules.Rules) []string {
+	ps := slices.Clone(r.Packages)
+	slices.SortStableFunc(ps, func(a, b rules.Package) int { return cmp.Compare(a.Price, b.Price) })
+	names := make([]string, len(ps))
+	for i, p := range ps {
+		names[i] = p.Name
+	}
+	return names
 }
 
 // Config is one simulation.
@@ -97,6 +124,7 @@ type Config struct {
 type Block struct {
 	Boots, FullClears int
 	Opened, OffTarget int                // doors opened, and how many off target
+	Installed         int                // packages installed at the end
 	Rating            float64            // the engine's rating at the end
 	Offsets           map[string]float64 // calibration offsets at the end
 }
@@ -123,6 +151,11 @@ type Report struct {
 	// TaughtP/Taught is the calibration's observed against expected.
 	Taught, TaughtClears []int
 	TaughtP              []float64
+	// Offered counts the plain, aimed doors on offer when the model chose
+	// (or re-rolled), and OfferedP sums their SolveP: OfferedP/Offered is
+	// where the engine aimed, before the model's choice among them.
+	Offered  []int
+	OfferedP []float64
 
 	MeanUptime, MeanClearUptime, MeanCrashUptime time.Duration
 
@@ -130,6 +163,10 @@ type Report struct {
 	Rerolls                                        int     // shufs used
 	Recovered                                      int64   // core-dump bytes upsolved back
 	DumpsLost                                      int64   // core-dump bytes crashed away
+
+	// InstalledAt is the boot (counted from 1, warm-up included) after
+	// which each package of Player.Install was bought, 0 if never.
+	InstalledAt []int
 
 	Prestige   int     // highest unlocked at the end
 	PrestigeAt []int   // boot that unlocked level i+1, 0 if never
@@ -167,6 +204,7 @@ func Run(c Config) Report {
 	clock := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
 
 	warm, main := newSums(nb), newSums(nb)
+	main.rep.InstalledAt = make([]int, len(c.Player.Install))
 	var ratings []float64
 	var blocks []Block
 	for i := range c.Warmup + c.Boots {
@@ -187,7 +225,7 @@ func Run(c Config) Report {
 			main.rep.Errors++
 			break
 		}
-		b := &boot{c: &c, p: c.Player, s: s, m: m, rng: rng, clock: clock, sums: sm, lives0: s.Lives}
+		b := &boot{c: &c, p: c.Player, s: s, m: m, rng: rng, clock: clock, sums: sm, lives0: s.Lives, window: -1}
 		b.play()
 
 		rep.Boots++
@@ -210,6 +248,16 @@ func Run(c Config) Report {
 				rep.Recovered += game.Upsolve(m, d.Problem, game.Editorial, 45*time.Minute, b.clock.Add(time.Hour))
 			}
 		}
+		for j, name := range c.Player.Install {
+			if main.rep.InstalledAt[j] != 0 || game.Installed(m, name) {
+				continue
+			}
+			p, ok := c.Rules.Package(name)
+			if !ok || game.Install(m, p) != nil {
+				break // saving up for it
+			}
+			main.rep.InstalledAt[j] = i + 1
+		}
 		for lvl := 1; lvl <= m.Prestige; lvl++ {
 			if main.rep.PrestigeAt[lvl-1] == 0 {
 				main.rep.PrestigeAt[lvl-1] = i + 1
@@ -229,6 +277,7 @@ func Run(c Config) Report {
 			bl.Opened += b.opened
 			bl.OffTarget += b.off
 			bl.Rating = m.Rating
+			bl.Installed = len(m.Installed)
 			bl.Offsets = map[string]float64{}
 			for k, v := range m.Calibration {
 				bl.Offsets[k] = v.Offset
@@ -238,6 +287,7 @@ func Run(c Config) Report {
 	main.rep.Errors += warm.rep.Errors
 
 	rep := main.finish()
+	rep.InstalledAt = main.rep.InstalledAt
 	rep.Prestige = m.Prestige
 	rep.FinalRating = m.Rating
 	rep.Meta = m
@@ -266,6 +316,8 @@ func newSums(nb int) *sums {
 			Taught:       make([]int, nb),
 			TaughtClears: make([]int, nb),
 			TaughtP:      make([]float64, nb),
+			Offered:      make([]int, nb),
+			OfferedP:     make([]float64, nb),
 			PrestigeAt:   make([]int, game.MaxPrestige),
 			ByPrestige:   make([]Tally, game.MaxPrestige+1),
 		},
@@ -309,6 +361,13 @@ type boot struct {
 
 	opened, off int // doors opened this boot, and how many off target
 	lives0      int // lives at the boot's start
+
+	// The fixed spend policy's merge window: which biome it closes (-1
+	// before the first), what is left of its budget, and where on the
+	// shelf the next buy starts.
+	window int
+	budget int64
+	shelf  int
 }
 
 func (b *boot) step(a game.Action) {
@@ -329,6 +388,14 @@ func (b *boot) play() {
 			return
 		}
 		b.clock = b.clock.Add(b.p.Overhead)
+		if s.Phase == game.PhaseDoors && !s.PendingUpgrade {
+			for _, d := range s.Doors {
+				if d.Tier != "" {
+					b.sums.rep.Offered[s.Biome]++
+					b.sums.rep.OfferedP[s.Biome] += d.SolveP
+				}
+			}
+		}
 		switch {
 		case s.PendingUpgrade:
 			b.step(game.PickUpgrade{Upgrade: b.upgrade()})
@@ -359,9 +426,9 @@ func (b *boot) play() {
 				}
 			}
 		case s.Phase == game.PhaseMerge:
-			switch {
-			case b.buy() != "":
-				b.step(game.Spend{Item: b.buy()})
+			switch it := b.buy(); {
+			case it != "":
+				b.step(game.Spend{Item: it})
 			case s.Uncommitted > 0:
 				b.step(game.Commit{})
 			case len(s.DaemonOffers) > 0:
@@ -414,6 +481,9 @@ func (b *boot) door() int {
 // buy is what the model buys next in a merge window, "" for nothing.
 func (b *boot) buy() game.Item {
 	s := b.s
+	if b.p.SpendShare > 0 {
+		return b.buyFixed()
+	}
 	if !b.p.Spend {
 		return ""
 	}
@@ -425,9 +495,31 @@ func (b *boot) buy() game.Item {
 		{game.Fsck, s.Lives < b.lives0},
 		{game.Dup, s.Ducks == 0},
 		{game.Shuf, s.Rerolls == 0 && !bossNext},
+		{game.At, s.AtTime == 0 && bossNext},
 	} {
 		if want.ok && s.CanSpend(want.it) == nil {
 			return want.it
+		}
+	}
+	return ""
+}
+
+// buyFixed is the SpendShare policy: the next item on the shelf, from
+// where the last buy left off, that the window's budget covers.
+func (b *boot) buyFixed() game.Item {
+	s := b.s
+	if b.window != s.Biome {
+		b.window, b.shelf = s.Biome, 0
+		b.budget = int64(b.p.SpendShare * float64(s.Uncommitted))
+	}
+	n := len(game.AllItems)
+	for k := range n {
+		i := (b.shelf + k) % n
+		it := game.AllItems[i]
+		if s.CanSpend(it) == nil && s.Price(it) <= b.budget {
+			b.budget -= s.Price(it)
+			b.shelf = i + 1
+			return it
 		}
 	}
 	return ""
@@ -466,7 +558,8 @@ func (b *boot) upgrade() game.Upgrade {
 }
 
 func (b *boot) daemon() game.Daemon {
-	for _, d := range []game.Daemon{game.Fork, game.Kexec, game.DevRandom, game.Strace, game.Nice} {
+	// chrt last: most of the model's crashes are timeouts.
+	for _, d := range []game.Daemon{game.Fork, game.Kexec, game.DevRandom, game.Cron, game.Strace, game.Nice, game.Chrt} {
 		if slices.Contains(b.s.DaemonOffers, d) {
 			return d
 		}
@@ -611,6 +704,9 @@ func (r Report) String() string {
 		r.MeanClearUptime.Round(time.Minute), r.MeanCrashUptime.Round(time.Minute))
 	fmt.Fprintf(&w, "bytes/boot: earned %.0f, committed %.0f, spent %.0f, lost %.0f; recovered %d, dumps lost %d; %d shufs used\n",
 		r.MeanEarned, r.MeanCommitted, r.MeanSpent, r.MeanLost, r.Recovered, r.DumpsLost, r.Rerolls)
+	if len(r.InstalledAt) > 0 {
+		fmt.Fprintf(&w, "packages installed after boots %v\n", r.InstalledAt)
+	}
 	fmt.Fprintf(&w, "prestige %d, unlocked at boots %v; by prestige:", r.Prestige, r.PrestigeAt)
 	for i, t := range r.ByPrestige {
 		if t.Boots > 0 {

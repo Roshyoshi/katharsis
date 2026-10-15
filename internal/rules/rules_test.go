@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -222,5 +223,43 @@ func TestLoadStrictKeysAndFileName(t *testing.T) {
 	}
 	if r, err := rules.Load(write("x.toml", "name = \"speed\"\n")); err != nil || r.Name != "speed" {
 		t.Errorf("named preset: %q, %v; want speed", r.Name, err)
+	}
+}
+
+// The standard packages are a goal ladder (retention RT3): bought cheapest
+// first, the first costs at most one boot's bank, every next one at most
+// three, and the catalog lasts at least 40 boots. A capstone above three
+// boots may come only once the ladder under it has lasted 40 boots of the
+// weaker player. Boots are counted at what the sim's model players bank
+// per boot at prestige 0 (committed plus recovered dumps; sim
+// TestAptLadder measures them and holds the catalog to this against the
+// real rates).
+func TestPackageLadder(t *testing.T) {
+	t.Parallel()
+	const (
+		weak   = 134 // B a boot, the 1000-rated model
+		strong = 220 // B a boot, the 1600-rated model
+	)
+	ps := rules.Standard().Packages
+	if len(ps) < 14 {
+		t.Errorf("%d packages, want at least 14", len(ps))
+	}
+	prices := make([]int64, len(ps))
+	for i, p := range ps {
+		prices[i] = p.Price
+	}
+	slices.Sort(prices)
+	if prices[0] > weak {
+		t.Errorf("the first package costs %d B, more than a boot (%d B)", prices[0], weak)
+	}
+	var sum int64
+	for _, p := range prices {
+		if p > 3*weak && sum < 40*weak {
+			t.Errorf("a %d B package after %d B of the ladder: more than three boots before boot 40", p, sum)
+		}
+		sum += p
+	}
+	if sum < 40*strong {
+		t.Errorf("the catalog costs %d B, under 40 boots of the stronger player (%d B)", sum, 40*strong)
 	}
 }

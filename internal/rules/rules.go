@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -159,6 +160,9 @@ type Rules struct {
 	FsckPrice int64 `toml:"fsck_price"` // +1 life, up to MaxLives
 	DupPrice  int64 `toml:"dup_price"`  // +1 duck
 	ShufPrice int64 `toml:"shuf_price"` // a re-roll of a room's doors, kept until used
+	// at is sold only once its package is installed.
+	AtPrice int64    `toml:"at_price"` // AtTime more on the next door's timer
+	AtTime  Duration `toml:"at_time"`
 
 	// ---- daemons -----------------------------------------------------------
 
@@ -166,6 +170,9 @@ type Rules struct {
 	NiceTimerFrac float64 `toml:"nice_timer_frac"` // timer bonus
 	NiceLifeCost  int     `toml:"nice_life_cost"`  // lives per failed submit
 	DevRandomMult float64 `toml:"dev_random_mult"` // extra pay on mystery doors
+	CronMult      float64 `toml:"cron_mult"`       // extra pay on a regression door
+	ChrtTimerFrac float64 `toml:"chrt_timer_frac"` // timer cut
+	ChrtBytesMult float64 `toml:"chrt_bytes_mult"` // extra pay on every door
 
 	// ---- timer fitting -----------------------------------------------------
 
@@ -237,6 +244,11 @@ type Rules struct {
 	// Ascensions add difficulty per prestige level on top of the rating
 	// offset; a boot at prestige p applies every entry with Level <= p.
 	Ascensions []Ascension `toml:"ascension"`
+
+	// ---- packages ----------------------------------------------------------
+
+	// Packages are what the bank buys at GRUB (see Package).
+	Packages []Package `toml:"package"`
 }
 
 // Ascension is the extra difficulty of one prestige level. Levels stack like
@@ -269,6 +281,79 @@ func (r Rules) Ascend(prestige int) Ascension {
 		}
 	}
 	return sum
+}
+
+// Package is a permanent unlock bought at GRUB with banked bytes (D25),
+// the way apt installs one: once, for every later boot. Packages are
+// rules so a preset can price or remove them, but they are bought outside
+// a boot, so GRUB sells the standard preset's. Each grants options or
+// comfort more than power; the counts add up over installed packages.
+type Package struct {
+	Name     string   `toml:"name"`
+	Price    int64    `toml:"price"`    // banked bytes
+	Requires []string `toml:"requires"` // packages to install first
+
+	// Daemon, Item and Upgrade are locked out of every boot (the merge
+	// windows' daemon offers and shelf, the upgrade picks) until this
+	// package is installed.
+	Daemon  string `toml:"daemon"`
+	Item    string `toml:"item"`
+	Upgrade string `toml:"upgrade"`
+
+	LinkSlots     int    `toml:"link_slots"`     // more libs linked per boot
+	Ducks         int    `toml:"ducks"`          // more ducks at boot start
+	DaemonOffers  int    `toml:"daemon_offers"`  // more daemons offered per merge window
+	UpgradeOffers int    `toml:"upgrade_offers"` // more upgrades offered per pick
+	RouteOffers   int    `toml:"route_offers"`   // more topics offered at each route
+	Doors         int    `toml:"doors"`          // more doors per room, but a boss's
+	Theme         string `toml:"theme"`          // a GRUB banner theme, cosmetic
+}
+
+// Package returns the package named name.
+func (r Rules) Package(name string) (Package, bool) {
+	for _, p := range r.Packages {
+		if p.Name == name {
+			return p, true
+		}
+	}
+	return Package{}, false
+}
+
+// Grants sums what the installed packages among r's give a boot: link
+// slots, ducks, doors, daemon, route and upgrade offers. Its Name and the
+// rest are empty.
+func (r Rules) Grants(installed []string) Package {
+	var sum Package
+	for _, p := range r.Packages {
+		if slices.Contains(installed, p.Name) {
+			sum.LinkSlots += p.LinkSlots
+			sum.Ducks += p.Ducks
+			sum.DaemonOffers += p.DaemonOffers
+			sum.RouteOffers += p.RouteOffers
+			sum.UpgradeOffers += p.UpgradeOffers
+			sum.Doors += p.Doors
+		}
+	}
+	return sum
+}
+
+// Locked lists the daemons, items and upgrades (by name; they are distinct
+// types in game) that a package of r provides and that is not installed.
+func (r Rules) Locked(installed []string) (daemons, items, upgrades []string) {
+	for _, p := range r.Packages {
+		if slices.Contains(installed, p.Name) {
+			continue
+		}
+		for _, l := range []struct {
+			name string
+			to   *[]string
+		}{{p.Daemon, &daemons}, {p.Item, &items}, {p.Upgrade, &upgrades}} {
+			if l.name != "" {
+				*l.to = append(*l.to, l.name)
+			}
+		}
+	}
+	return daemons, items, upgrades
 }
 
 // WithDefaults fills fields whose zero value means nothing (counts, scales,
@@ -307,6 +392,7 @@ func (r Rules) WithDefaults() Rules {
 		{&r.CursedMult, &d.CursedMult}, {&r.BossMult, &d.BossMult},
 		{&r.MinBytesMult, &d.MinBytesMult}, {&r.MaxBytesMult, &d.MaxBytesMult},
 		{&r.DevRandomMult, &d.DevRandomMult}, {&r.TimerGapScale, &d.TimerGapScale},
+		{&r.CronMult, &d.CronMult}, {&r.ChrtBytesMult, &d.ChrtBytesMult},
 		{&r.TimerHeadroom, &d.TimerHeadroom}, {&r.TimerFitLo, &d.TimerFitLo},
 		{&r.TimerFitHi, &d.TimerFitHi}, {&r.BossTimerMult, &d.BossTimerMult},
 		{&r.TimerQuantile, &d.TimerQuantile}, {&r.RatingK, &d.RatingK},
@@ -320,6 +406,9 @@ func (r Rules) WithDefaults() Rules {
 	}
 	if r.BaseBytes <= 0 {
 		r.BaseBytes = d.BaseBytes
+	}
+	if r.AtTime.Duration <= 0 {
+		r.AtTime = d.AtTime
 	}
 	if r.OnExpire == "" {
 		r.OnExpire = ExpireCrash
@@ -379,11 +468,16 @@ func Standard() Rules {
 		FsckPrice: 64,
 		DupPrice:  48,
 		ShufPrice: 32,
+		AtPrice:   40,
+		AtTime:    Duration{5 * time.Minute},
 
 		ForkDoors:     4,
 		NiceTimerFrac: 0.2,
 		NiceLifeCost:  2,
 		DevRandomMult: 2,
+		CronMult:      2,
+		ChrtTimerFrac: 0.2,
+		ChrtBytesMult: 1.5,
 
 		// 200 points per doubling makes the default 15/30/50 min timers
 		// roughly the 0.85 quantile of one lognormal (sigma 0.5, median
@@ -417,6 +511,41 @@ func Standard() Rules {
 			{Level: 2, Ducks: -1, MysteryChance: 0.05, CursedChance: 0.04},
 			{Level: 3, CursedChance: 0.05, TimerMult: 0.9},
 			{Level: 4, Lives: -1, CursedChance: 0.04, TimerMult: 0.9},
+		},
+
+		// What the bank buys at GRUB (D25, retention RT3): mostly options
+		// (a daemon, an item or an upgrade joins its pool; one more route,
+		// daemon or upgrade is on offer) and cosmetic themes, a duck, and
+		// one capstone. The 1000-rated sim player banks about 134 B a boot at
+		// prestige 0 (committed plus recovered dumps), so bought cheapest
+		// first the next package is never more than three boots away, and
+		// the catalog lasts about 58 boots (42 for the 1600 player). The
+		// ladder is checked in rules_test.go and against the sim in
+		// sim_test.go; prices are settings like any other (D2).
+		//
+		// binutils is the one package of raw power: a lib slot pastes more
+		// of the player's own code, which the door model does not see. It
+		// is the capstone, after the ladder, and the only one of its kind.
+		Packages: []Package{
+			{Name: "cowsay", Price: 64, Theme: "cowsay"},
+			{Name: "tux", Price: 128, Theme: "tux"},
+			{Name: "sl", Price: 256, Theme: "sl"},
+			{Name: "rng-tools", Price: 256, Daemon: "dev-random"},
+			{Name: "at", Price: 320, Item: "at"},
+			{Name: "cron", Price: 384, Daemon: "cron"},
+			{Name: "strace", Price: 400, Daemon: "strace"},
+			{Name: "coreutils", Price: 400, Upgrade: "shuf"},
+			{Name: "aptitude", Price: 400, UpgradeOffers: 1, Requires: []string{"coreutils"}},
+			{Name: "rubber-duck", Price: 400, Ducks: 1},
+			{Name: "git", Price: 400, RouteOffers: 1},
+			{Name: "neofetch", Price: 400, Theme: "neofetch"},
+			{Name: "util-linux", Price: 400, Daemon: "chrt"},
+			{Name: "figlet", Price: 400, Theme: "figlet"},
+			{Name: "tmux", Price: 400, Doors: 1},
+			// A fourth daemon on offer means nothing while the pool holds
+			// three, so procps waits on two of the locked ones.
+			{Name: "procps", Price: 400, DaemonOffers: 1, Requires: []string{"rng-tools", "strace"}},
+			{Name: "binutils", Price: 4096, LinkSlots: 1},
 		},
 	}
 }
@@ -471,6 +600,9 @@ func Load(path string) (Rules, error) {
 	if _, ok := keys["ascension"]; ok {
 		r.Ascensions = nil
 	}
+	if _, ok := keys["package"]; ok {
+		r.Packages = nil
+	}
 	md, err := toml.Decode(string(b), &r)
 	if err != nil {
 		return r, fmt.Errorf("%s: %w", path, err)
@@ -517,8 +649,11 @@ func (r Rules) Validate() error {
 	if r.OnExpire != "" && r.OnExpire != ExpireCrash && r.OnExpire != ExpireOvertime {
 		return fmt.Errorf("rules %q: on_expire %q is not %q or %q", r.Name, r.OnExpire, ExpireCrash, ExpireOvertime)
 	}
-	if r.FsckPrice < 0 || r.DupPrice < 0 || r.ShufPrice < 0 {
-		return fmt.Errorf("rules %q: need fsck_price, dup_price, shuf_price >= 0", r.Name)
+	if r.FsckPrice < 0 || r.DupPrice < 0 || r.ShufPrice < 0 || r.AtPrice < 0 {
+		return fmt.Errorf("rules %q: need fsck_price, dup_price, shuf_price, at_price >= 0", r.Name)
+	}
+	if r.ChrtTimerFrac < 0 || r.ChrtTimerFrac >= 1 {
+		return fmt.Errorf("rules %q: need 0 <= chrt_timer_frac < 1", r.Name)
 	}
 	if r.MasteryAttempts < 0 {
 		return fmt.Errorf("rules %q: need mastery_attempts >= 0", r.Name)
@@ -529,6 +664,16 @@ func (r Rules) Validate() error {
 	for _, a := range r.Ascensions {
 		if a.Level < 1 {
 			return fmt.Errorf("rules %q: ascension level %d < 1", r.Name, a.Level)
+		}
+	}
+	for i, p := range r.Packages {
+		if p.Name == "" || p.Price < 0 || slices.ContainsFunc(r.Packages[:i], func(q Package) bool { return q.Name == p.Name }) {
+			return fmt.Errorf("rules %q: package %d needs a unique name and price >= 0", r.Name, i)
+		}
+		for _, req := range p.Requires {
+			if _, ok := r.Package(req); !ok || req == p.Name {
+				return fmt.Errorf("rules %q: package %q requires %q, which is not another package", r.Name, p.Name, req)
+			}
 		}
 	}
 	return r.validateBytes()

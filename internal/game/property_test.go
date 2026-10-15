@@ -40,6 +40,8 @@ type checker struct {
 	phase     game.Phase
 	lives     int
 	spent     int64
+	installed []string // meta.Installed when the boot began
+	theme     string
 }
 
 // newChecker is called right after NewBoot or NewTrial, before the first
@@ -49,6 +51,7 @@ func newChecker(t testing.TB, s *game.State, m *game.Meta) *checker {
 	c := &checker{
 		t: t, bank0: m.Bank, lifetime0: m.LifetimeBytes, rated0: m.Rated, solves0: len(m.Solves),
 		dump0: mustJSON(t, m.CoreDump), phase: s.Phase, lives: s.Lives,
+		installed: slices.Clone(m.Installed), theme: m.Theme,
 	}
 	if m.CoreDump != nil {
 		c.dumpLost = m.CoreDump.Bytes
@@ -127,6 +130,16 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	}
 	if len(s.Daemons) > s.Rules.MaxDaemons || len(slices.Compact(slices.Sorted(slices.Values(s.Daemons)))) != len(s.Daemons) {
 		fail("daemons %v", s.Daemons)
+	}
+	// A boot plays with the packages installed when it began, and nothing
+	// in it installs any: no daemon a missing package locks runs or is
+	// offered, and offers stop at the rules' count plus the packages'.
+	if !slices.Equal(s.Packages, c.installed) || !slices.Equal(m.Installed, c.installed) || m.Theme != c.theme {
+		fail("packages %v, installed %v theme %q, want %v and %q", s.Packages, m.Installed, m.Theme, c.installed, c.theme)
+	}
+	if slices.ContainsFunc(s.Daemons, s.DaemonLocked) || slices.ContainsFunc(s.DaemonOffers, s.DaemonLocked) ||
+		len(s.DaemonOffers) > s.Rules.DaemonOffers+s.Rules.Grants(s.Packages).DaemonOffers {
+		fail("daemons %v, offers %v with packages %v", s.Daemons, s.DaemonOffers, s.Packages)
 	}
 
 	// Bytes are conserved: every byte a clear paid is committed, still
@@ -244,6 +257,9 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	c.spent = s.Spent
 	if s.Rerolls < 0 {
 		fail("%d shufs", s.Rerolls)
+	}
+	if m.Bank < 0 {
+		fail("bank %d", m.Bank)
 	}
 	if m.Bank != c.bank0+s.Committed || m.LifetimeBytes != c.lifetime0+s.Earned() {
 		fail("bank %d lifetime %d, want %d + committed %d and %d + earned %d",
@@ -468,6 +484,7 @@ func TestFuzzBoots(t *testing.T) {
 			f := &fuzzer{rng: rand.New(rand.NewPCG(11, 12)), now: t0}
 			ends := map[game.Phase]int{}
 			bought := map[string]int{} // accepted actions by type
+			installs := 0
 			boots := 3000
 			if testing.Short() {
 				boots = 300
@@ -483,18 +500,55 @@ func TestFuzzBoots(t *testing.T) {
 				if f.rng.IntN(3) == 0 && m.CoreDump != nil {
 					game.Upsolve(m, m.CoreDump.Problem, game.Editorial, time.Hour, f.now)
 				}
+				installs += fuzzInstall(t, r, m, f)
 				f.now = f.now.Add(time.Duration(f.rng.IntN(int(72 * time.Hour))))
 			}
-			t.Logf("%s: boot ends %v, meta rating %.0f, %d solves, %d regressions, %d spends, %d shufs",
-				name, ends, m.Rating, len(m.Solves), len(m.Regressions), bought["game.Spend"], bought["game.Reroll"])
+			t.Logf("%s: boot ends %v, meta rating %.0f, %d solves, %d regressions, %d spends, %d shufs, installed %v",
+				name, ends, m.Rating, len(m.Solves), len(m.Regressions), bought["game.Spend"], bought["game.Reroll"], m.Installed)
 			if ends[game.PhaseCleared] == 0 || ends[game.PhaseCrashed] == 0 {
 				t.Errorf("ends %v: the fuzzer should reach both", ends)
 			}
 			if bought["game.Spend"] == 0 || bought["game.Reroll"] == 0 {
 				t.Errorf("accepted %v: the fuzzer should buy and use items", bought)
 			}
+			if installs == 0 {
+				t.Errorf("no package installed in %d boots", boots)
+			}
 		})
 	}
+}
+
+// fuzzInstall tries, between boots, to install a few packages of r at
+// random (one already installed, one not yet allowed or affordable) and to
+// switch banner themes. A refusal changes nothing; an install takes the
+// price, once, and the bank never goes negative. It returns how many
+// installs went through.
+func fuzzInstall(t *testing.T, r rules.Rules, m *game.Meta, f *fuzzer) int {
+	t.Helper()
+	n := 0
+	for range f.rng.IntN(3) {
+		p := r.Packages[f.rng.IntN(len(r.Packages))]
+		before, bank, count := mustJSON(t, m), m.Bank, len(m.Installed)
+		err := game.Install(m, p)
+		switch {
+		case err != nil && (!errors.Is(err, game.ErrInvalid) || mustJSON(t, m) != before):
+			t.Fatalf("refused Install(%s) (%v) changed meta", p.Name, err)
+		case err == nil && (m.Bank != bank-p.Price || len(m.Installed) != count+1 || m.Installed[count] != p.Name):
+			t.Fatalf("Install(%s): bank %d -> %d, installed %v", p.Name, bank, m.Bank, m.Installed)
+		case err == nil:
+			n++
+		}
+		if themes := []string{"", "cowsay", "tux", "bogus"}; f.rng.IntN(4) == 0 {
+			theme := m.Theme
+			if game.UseTheme(r, m, themes[f.rng.IntN(len(themes))]) != nil && m.Theme != theme {
+				t.Fatalf("refused theme changed %q to %q", theme, m.Theme)
+			}
+		}
+	}
+	if m.Bank < 0 || len(slices.Compact(slices.Sorted(slices.Values(m.Installed)))) != len(m.Installed) {
+		t.Fatalf("bank %d, installed %v", m.Bank, m.Installed)
+	}
+	return n
 }
 
 // TestModelInvariants runs the sim's model player through thousands of

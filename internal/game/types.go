@@ -101,6 +101,12 @@ type Meta struct {
 	// TrialsPassed lists the modules (TrialSpec.Module) whose trial was
 	// cleared, each once, in the order first passed.
 	TrialsPassed []string
+
+	// Installed lists the packages (rules.Package) bought with the bank,
+	// each once, in the order installed; Theme is the installed banner theme
+	// in use, "" for the default.
+	Installed []string
+	Theme     string
 }
 
 // Calibration is what one tier of biomes (see CalibrationTier) has learned
@@ -231,6 +237,7 @@ const (
 	Overclock Upgrade = "overclock" // +OverclockFrac timer on later doors
 	ECC       Upgrade = "ecc"       // +1 life
 	Duck      Upgrade = "duck"      // +1 duck
+	ShufPick  Upgrade = "shuf"      // +1 shuf (locked until coreutils)
 )
 
 // Daemon is a passive perk picked at a merge window.
@@ -242,6 +249,8 @@ const (
 	Fork      Daemon = "fork"       // 4 doors per room after an AC
 	DevRandom Daemon = "dev-random" // mystery doors pay 2x
 	Kexec     Daemon = "kexec"      // one free door swap per biome
+	Cron      Daemon = "cron"       // a regression door pays 2x
+	Chrt      Daemon = "chrt"       // -20% timer, every door pays 1.5x
 )
 
 // Item is what a merge window sells for uncommitted bytes (D25): bought
@@ -252,6 +261,8 @@ const (
 	Fsck Item = "fsck" // +1 life, up to MaxLives
 	Dup  Item = "dup"  // +1 duck
 	Shuf Item = "shuf" // one re-roll of a room's doors (Reroll), kept until used
+
+	At Item = "at" // more time on the next door's timer; sold once installed
 )
 
 type Crash struct {
@@ -319,6 +330,10 @@ type State struct {
 	Spent int64
 	// Rerolls is how many shufs are bought and not yet used.
 	Rerolls int
+	// AtTime is the time at bought for the next door that opens.
+	AtTime time.Duration
+	// Packages is Meta.Installed when the boot began: what it plays with.
+	Packages []string
 
 	// Trial is set when this boot is a learn-mode trial (NewTrial).
 	Trial *TrialState
@@ -392,7 +407,7 @@ type Spend struct{ Item Item }
 type Reroll struct{}
 
 // Link chooses the libs (by name, from Meta.Libs) pasted into this boot's
-// templates. Allowed until the first door opens, up to rules.LinkSlots.
+// templates. Allowed until the first door opens, up to State.LinkSlots.
 type Link struct{ Libs []string }
 
 func (ChooseRoute) isAction()  {}

@@ -27,7 +27,7 @@ func (e *engine) doorTimer(b rules.Biome, boss bool, gap float64) time.Duration 
 }
 
 // timerMult is the product of every timer modifier this boot runs with:
-// ascension, each Overclock (compounding), and nice.
+// ascension, each Overclock (compounding), nice and chrt.
 func (e *engine) timerMult() float64 {
 	r := &e.s.Rules
 	m := r.Ascend(e.s.Prestige).TimerMult
@@ -38,6 +38,9 @@ func (e *engine) timerMult() float64 {
 	}
 	if slices.Contains(e.s.Daemons, Nice) {
 		m *= 1 + r.NiceTimerFrac
+	}
+	if slices.Contains(e.s.Daemons, Chrt) {
+		m *= 1 - r.ChrtTimerFrac
 	}
 	return m
 }

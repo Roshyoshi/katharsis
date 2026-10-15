@@ -227,5 +227,5 @@ func (m *Model) offerLink() tea.Cmd {
 		return nil
 	}
 	all := slices.Clone(m.meta.Libs)
-	return m.push(newLinkScreen(all, m.state.Rules.LinkSlots))
+	return m.push(newLinkScreen(all, m.state.LinkSlots()))
 }

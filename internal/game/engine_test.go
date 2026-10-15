@@ -949,27 +949,34 @@ func TestMergeWindow(t *testing.T) {
 	}
 }
 
+// A merge window offers daemons not yet running, never one a package not
+// installed locks (strace and /dev/random in the standard rules), and one
+// more with procps.
 func TestDaemonOffers(t *testing.T) {
 	t.Parallel()
 	ps := dense(catalog.Topics, 800, 2600, 20)
+	daemons := []string{"rng-tools", "strace"}
 	tests := []struct {
-		held []game.Daemon
-		want int
+		installed []string
+		held      []game.Daemon
+		want      int
 	}{
-		{nil, 3},
-		{[]game.Daemon{game.Fork, game.Kexec}, 3},
-		{[]game.Daemon{game.Fork, game.Kexec, game.Nice}, 0}, // MaxDaemons
+		{nil, nil, 3},
+		{nil, []game.Daemon{game.Fork, game.Kexec}, 1},
+		{daemons, []game.Daemon{game.Fork, game.Kexec}, 3},
+		{append(daemons, "procps"), nil, 4},
+		{append(daemons, "procps"), []game.Daemon{game.Fork, game.Kexec, game.Nice}, 0}, // MaxDaemons
 	}
 	for _, tc := range tests {
-		h := newHarness(t, plain(), nil, ps, 0, 1)
+		h := newHarness(t, plain(), &game.Meta{Installed: tc.installed}, ps, 0, 1)
 		h.s.Daemons = tc.held
 		h.toMerge()
 		if len(h.s.DaemonOffers) != tc.want {
-			t.Errorf("held %v: offers %v, want %d", tc.held, h.s.DaemonOffers, tc.want)
+			t.Errorf("%v held %v: offers %v, want %d", tc.installed, tc.held, h.s.DaemonOffers, tc.want)
 		}
 		for _, d := range h.s.DaemonOffers {
-			if slices.Contains(tc.held, d) {
-				t.Errorf("held %v: offered %q again", tc.held, d)
+			if slices.Contains(tc.held, d) || h.s.DaemonLocked(d) {
+				t.Errorf("%v held %v: offered %q", tc.installed, tc.held, d)
 			}
 		}
 	}

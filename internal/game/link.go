@@ -10,8 +10,8 @@ func (e *engine) link(names []string) error {
 	if s.Current != nil || len(s.History) > 0 {
 		return invalid("libs link only before the first door")
 	}
-	if len(names) > s.Rules.LinkSlots {
-		return invalid("%d libs, %d slots", len(names), s.Rules.LinkSlots)
+	if len(names) > s.LinkSlots() {
+		return invalid("%d libs, %d slots", len(names), s.LinkSlots())
 	}
 	var linked []string
 	for _, n := range names {

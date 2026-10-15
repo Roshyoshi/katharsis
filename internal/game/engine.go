@@ -23,8 +23,8 @@ func invalid(format string, args ...any) error {
 
 // AllUpgrades and AllDaemons are what picks draw from.
 var (
-	AllUpgrades = []Upgrade{Overclock, ECC, Duck}
-	AllDaemons  = []Daemon{Strace, Nice, Fork, DevRandom, Kexec}
+	AllUpgrades = []Upgrade{Overclock, ECC, Duck, ShufPick}
+	AllDaemons  = []Daemon{Strace, Nice, Fork, DevRandom, Kexec, Cron, Chrt}
 )
 
 // engine is one call's worth of context. Handlers validate first and mutate
@@ -79,9 +79,9 @@ func NewBoot(r rules.Rules, meta *Meta, pool []catalog.Problem, prestige int, se
 	return s, e.fx, nil
 }
 
-// begin numbers the boot and deals its lives and ducks. It is the first
-// write to Meta, so NewBoot and NewTrial call it once their arguments have
-// checked out.
+// begin numbers the boot, takes a snapshot of its packages and deals its
+// lives and ducks. It is the first write to Meta, so NewBoot and NewTrial
+// call it once their arguments have checked out.
 func (e *engine) begin() {
 	s, m, r := e.s, e.meta, &e.s.Rules
 	m.Boots++
@@ -91,7 +91,10 @@ func (e *engine) begin() {
 	s.Boot = m.Boots
 	s.Lives = max(1, r.Lives+r.Ascend(s.Prestige).Lives)
 	s.MaxLives = max(r.MaxLives, s.Lives)
-	s.Ducks = e.baseDucks()
+	s.Packages = slices.Clone(m.Installed)
+	// A package's ducks come once, at the start; merge windows refill to
+	// the base.
+	s.Ducks = e.baseDucks() + r.Grants(s.Packages).Ducks
 }
 
 // baseDucks is what the boot starts with and merge windows refill to,
@@ -189,6 +192,11 @@ func (e *engine) chooseDoor(i int) error {
 		return invalid("door %d of %d", i, len(s.Doors))
 	}
 	d := s.Doors[i]
+	if s.AtTime > 0 { // bought with at: the next door, whichever it is
+		d.Timer += s.AtTime
+		e.logf("at: +%s on the next door", units.Clock(s.AtTime))
+		s.AtTime = 0
+	}
 	s.Current = &Attempt{Door: d, Opened: e.now, Deadline: e.now.Add(d.Timer), Biome: s.Biome}
 	s.Doors = nil
 	s.Phase = PhaseProblem
@@ -541,16 +549,17 @@ func (e *engine) owe(n int) {
 }
 
 // offerUpgrades draws the pick. ECC is left out at full lives, where it
-// would do nothing, so the pick can be one short.
+// would do nothing, so the pick can be one short, and so is an upgrade a
+// package not installed locks. Packages can add offers.
 func (e *engine) offerUpgrades() {
 	s := e.s
 	var pool []Upgrade
 	for _, u := range AllUpgrades {
-		if u != ECC || s.Lives < s.MaxLives {
+		if (u != ECC || s.Lives < s.MaxLives) && !s.UpgradeLocked(u) {
 			pool = append(pool, u)
 		}
 	}
-	s.UpgradeOffers = sample(e.rng, pool, s.Rules.UpgradeOffers)
+	s.UpgradeOffers = sample(e.rng, pool, s.Rules.UpgradeOffers+s.Rules.Grants(s.Packages).UpgradeOffers)
 }
 
 // pickUpgrade takes one owed pick. Picks are owed only outside a problem:
@@ -575,8 +584,10 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 		s.Lives = min(s.Lives+1, s.MaxLives)
 	case Duck:
 		s.Ducks++
+	case ShufPick:
+		s.Rerolls++
 	}
-	e.logf("upgrade: %s (lives %d, ducks %d)", u, s.Lives, s.Ducks)
+	e.logf("upgrade: %s (lives %d, ducks %d, shufs %d)", u, s.Lives, s.Ducks, s.Rerolls)
 	s.UpgradeOffers = nil
 	e.owe(-1)
 	return nil
@@ -585,9 +596,11 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 // ---- merge window ----------------------------------------------------------
 
 // enterMerge opens the window between biomes: ducks refill to the boot's
-// base plus Duck upgrades, and daemons not yet running are offered. A
-// trial offers none: fork and kexec need rooms that re-roll, which a
-// trial's do not, and the rest are boot perks.
+// base plus Duck upgrades, and daemons not yet running are offered, but
+// not those a package not installed locks (rules.Package.Daemon), and
+// more with packages that add offers. A trial offers none: fork and kexec
+// need rooms that re-roll, which a trial's do not, and the rest are boot
+// perks.
 func (e *engine) enterMerge() {
 	s, r := e.s, &e.s.Rules
 	s.Phase = PhaseMerge
@@ -601,11 +614,11 @@ func (e *engine) enterMerge() {
 	if len(s.Daemons) < r.MaxDaemons && s.Trial == nil {
 		var pool []Daemon
 		for _, d := range AllDaemons {
-			if !slices.Contains(s.Daemons, d) {
+			if !slices.Contains(s.Daemons, d) && !s.DaemonLocked(d) {
 				pool = append(pool, d)
 			}
 		}
-		s.DaemonOffers = sample(e.rng, pool, r.DaemonOffers)
+		s.DaemonOffers = sample(e.rng, pool, r.DaemonOffers+r.Grants(s.Packages).DaemonOffers)
 	}
 	e.logf("merge window: %s uncommitted, ducks %d, daemons on offer %v",
 		units.Bytes(s.Uncommitted), s.Ducks, s.DaemonOffers)

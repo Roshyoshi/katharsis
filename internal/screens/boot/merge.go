@@ -174,6 +174,9 @@ func (m *Merge) View(width, height int) string {
 		if st.Rerolls > 0 {
 			note += fmt.Sprintf(" · %d shuf held", st.Rerolls)
 		}
+		if st.AtTime > 0 {
+			note += " · next door +" + units.Clock(st.AtTime)
+		}
 		secs = append(secs, "", label("spend")+sFaint.Render(note))
 		secs = append(secs, indent(4, optionList(items, c, cw-4))...)
 	}
@@ -229,6 +232,7 @@ func itemOptions(st *game.State) []option {
 			game.Fsck: "+1 life now",
 			game.Dup:  "+1 rubber duck",
 			game.Shuf: "re-roll one room's doors (s at the doors)",
+			game.At:   "+" + units.Clock(st.Rules.AtTime.Duration) + " on the next door's timer",
 		}[it] + " · " + units.Bytes(st.Price(it))
 		switch {
 		case it == game.Fsck && st.Lives >= st.MaxLives:

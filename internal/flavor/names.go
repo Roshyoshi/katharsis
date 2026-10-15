@@ -55,6 +55,8 @@ func UpgradeTextFor(u game.Upgrade, r rules.Rules) (name, desc string) {
 		return "ECC", "+1 life."
 	case game.Duck:
 		return "Rubber Duck", "+1 duck (one hint charge)."
+	case game.ShufPick:
+		return "shuf", "+1 shuf: re-roll one room's doors."
 	}
 	return string(u), ""
 }
@@ -76,6 +78,10 @@ func DaemonTextFor(d game.Daemon, r rules.Rules) (name, desc string) {
 		return "/dev/random", "Mystery doors pay " + mult(r.DevRandomMult) + " bytes."
 	case game.Kexec:
 		return "kexec", "One free door swap per biome; a swap normally costs a life."
+	case game.Cron:
+		return "cron", "A regression door pays " + mult(r.CronMult) + " bytes."
+	case game.Chrt:
+		return "chrt -f 99", "-" + pct(r.ChrtTimerFrac) + " timer; every door pays " + mult(r.ChrtBytesMult) + " bytes."
 	}
 	return string(d), ""
 }
