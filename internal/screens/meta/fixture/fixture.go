@@ -82,6 +82,7 @@ func GrubConfig() meta.GrubConfig {
 		Now:          Now,
 		PrestigeName: PrestigeName,
 		Banner:       func(string) string { return "" }, // flavor's art stays out of goldens
+		Gate:         game.PrestigeGate{Next: 3, Rated: 34, Need: 60},
 	}
 }
 

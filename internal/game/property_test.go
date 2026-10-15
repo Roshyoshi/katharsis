@@ -42,6 +42,7 @@ type checker struct {
 	spent     int64
 	installed []string // meta.Installed when the boot began
 	theme     string
+	prestige0 int // meta.Prestige when the boot began
 }
 
 // newChecker is called right after NewBoot or NewTrial, before the first
@@ -52,6 +53,7 @@ func newChecker(t testing.TB, s *game.State, m *game.Meta) *checker {
 		t: t, bank0: m.Bank, lifetime0: m.LifetimeBytes, rated0: m.Rated, solves0: len(m.Solves),
 		dump0: mustJSON(t, m.CoreDump), phase: s.Phase, lives: s.Lives,
 		installed: slices.Clone(m.Installed), theme: m.Theme,
+		prestige0: m.Prestige,
 	}
 	if m.CoreDump != nil {
 		c.dumpLost = m.CoreDump.Bytes
@@ -140,6 +142,28 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	if slices.ContainsFunc(s.Daemons, s.DaemonLocked) || slices.ContainsFunc(s.DaemonOffers, s.DaemonLocked) ||
 		len(s.DaemonOffers) > s.Rules.DaemonOffers+s.Rules.Grants(s.Packages).DaemonOffers {
 		fail("daemons %v, offers %v with packages %v", s.Daemons, s.DaemonOffers, s.Packages)
+	}
+	if slices.ContainsFunc(s.UpgradeOffers, s.UpgradeLocked) || slices.ContainsFunc(s.Upgrades, s.UpgradeLocked) ||
+		len(s.UpgradeOffers) > s.Rules.UpgradeOffers+s.Rules.Grants(s.Packages).UpgradeOffers {
+		fail("upgrades %v, offers %v with packages %v", s.Upgrades, s.UpgradeOffers, s.Packages)
+	}
+	for _, it := range game.AllItems {
+		if s.ItemLocked(it) && (s.Price(it) != 0 || s.CanSpend(it) == nil) {
+			fail("%s is for sale without its package (%v)", it, s.Packages)
+		}
+	}
+	if s.AtTime < 0 || s.AtTime > 0 && s.ItemLocked(game.At) {
+		fail("at time %v with packages %v", s.AtTime, s.Packages)
+	}
+	// Prestige climbs one level, only by a clear at the top unlocked one
+	// past the gate (D31), and the boot says so.
+	switch g := game.NextPrestige(s.Rules, m); {
+	case s.Unlocked == 0 && m.Prestige != c.prestige0:
+		fail("prestige %d -> %d with nothing unlocked", c.prestige0, m.Prestige)
+	case s.Unlocked != 0 && (s.Phase != game.PhaseCleared || s.Trial != nil || s.Prestige != c.prestige0 ||
+		m.Prestige != c.prestige0+1 || s.Unlocked != m.Prestige || g.Rated < s.Rules.CalibAfter):
+		fail("unlocked %d at prestige %d (top %d -> %d, %d rated of %d) in phase %s",
+			s.Unlocked, s.Prestige, c.prestige0, m.Prestige, g.Rated, s.Rules.CalibAfter, s.Phase)
 	}
 
 	// Bytes are conserved: every byte a clear paid is committed, still

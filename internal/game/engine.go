@@ -716,14 +716,14 @@ func (e *engine) finish() {
 	switch {
 	case s.Trial != nil:
 		e.passTrial()
-	// No unlock while the engine is still learning the player: before
-	// calibration starts, a strong newcomer's early boots are easy and
-	// would climb every prestige in a handful of clears.
-	case s.Prestige == m.Prestige && m.Prestige < MaxPrestige && rated(m) >= s.Rules.CalibAfter:
+	// Not before the engine knows the player (PrestigeGate).
+	case s.Prestige == m.Prestige && NextPrestige(s.Rules, m).Open():
 		m.Prestige++
+		s.Unlocked = m.Prestige
 		e.logf("prestige %d unlocked", m.Prestige)
 	case s.Prestige == m.Prestige && m.Prestige < MaxPrestige:
-		e.logf("prestige %d locked until %d rated doors (%d so far)", m.Prestige+1, s.Rules.CalibAfter, rated(m))
+		g := NextPrestige(s.Rules, m)
+		e.logf("prestige %d locked until %d rated doors (%d so far)", g.Next, g.Need, g.Rated)
 	}
 	e.logf("boot #%d: cleared in %s, %s committed", s.Boot, units.Clock(e.now.Sub(s.Started)), units.Bytes(s.Committed))
 	e.emit(Sound{Name: "cleared"}, ShowCleared{})

@@ -12,9 +12,10 @@ import (
 )
 
 // Cleared is the victory screen after the last boss: how long the boot ran,
-// what it banked, what it solved, and the prestige it unlocked. r or enter
-// emits screens.StartBoot at the highest unlocked prestige, l
-// screens.OpenLog, q screens.Quit.
+// what it banked, what it solved, and the prestige it unlocked or what
+// unlocking the next still needs (D31). r or enter emits
+// screens.StartBoot at the highest unlocked prestige, l screens.OpenLog,
+// q screens.Quit.
 type Cleared struct{ env Env }
 
 func NewCleared(env Env) *Cleared { return &Cleared{env: env} }
@@ -113,11 +114,13 @@ func (c *Cleared) View(width, height int) string {
 	}
 	body = append(body, centerBlock(table, width)...)
 
-	switch {
-	case c.env.Meta.Prestige == st.Prestige+1:
-		body = append(body, "", center(sYellow.Bold(true).Render("★ prestige unlocked: "+prestigeLabel(c.env.Meta.Prestige)), width))
+	switch g := game.NextPrestige(st.Rules, &c.env.Meta); {
+	case st.Unlocked > 0:
+		body = append(body, "", center(sYellow.Bold(true).Render("★ prestige unlocked: "+prestigeLabel(st.Unlocked)), width))
 	case st.Prestige >= game.MaxPrestige:
 		body = append(body, "", center(sYellow.Bold(true).Render("★ highest prestige cleared"), width))
+	case g.Next > 0 && st.Trial == nil:
+		body = append(body, "", center(sFaint.Render(screens.GateText(g, c.env.Meta.Prestige, prestigeLabel)), width))
 	}
 
 	if mp := centerBlock(renderMap(st, width), width); len(body)+1+len(mp) <= height-1 {

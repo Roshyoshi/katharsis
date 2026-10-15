@@ -72,6 +72,7 @@ func (m *Model) grub() screens.Screen {
 		Presets: presets,
 		Lookup:  m.d.Catalog.Get,
 		Now:     m.d.Now(),
+		Gate:    game.NextPrestige(m.d.Presets["standard"], &m.meta),
 	})
 }
 

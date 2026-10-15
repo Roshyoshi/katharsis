@@ -1,6 +1,7 @@
 package meta
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strconv"
@@ -28,6 +29,9 @@ type GrubConfig struct {
 	// Now decides which regressions are due and, by its date in its own
 	// location, the nightly build; zero means time.Now().
 	Now time.Time
+	// Gate is what unlocking the next prestige still needs (D31), from
+	// game.NextPrestige; its zero value shows nothing.
+	Gate game.PrestigeGate
 
 	// PrestigeName and Banner default to the flavor package. Tests pin them
 	// so goldens do not churn whenever flavor text changes.
@@ -45,7 +49,8 @@ type Menu struct {
 	nameOf  func(int) string
 	banner  string
 	status  string
-	lastH   int // box rows at the last View, for page up/down
+	gate    string // the prestige gate line under the status, "" for none
+	lastH   int    // box rows at the last View, for page up/down
 }
 
 type page struct {
@@ -99,6 +104,9 @@ func NewGrub(c GrubConfig) *Menu {
 	}
 	m.status = fmt.Sprintf("bank %s · rating %.0f · next boot #%d",
 		units.Bytes(c.Meta.Bank), c.Meta.Rating, c.Meta.Boots+1)
+	m.gate = screens.GateText(c.Gate, m.maxP, func(p int) string {
+		return cmp.Or(m.nameOf(p), fmt.Sprintf("prestige %d", p))
+	})
 
 	var es []entry
 	for p := m.maxP; p >= 0; p-- {
@@ -373,6 +381,9 @@ func (m *Menu) View(width, height int) string {
 		foot[i] = strings.Repeat(" ", max((w-helpW)/2, 1)) + foot[i]
 	}
 	foot = append(foot, "", center(faint.Render(m.status), w))
+	if m.gate != "" {
+		foot = append(foot, center(faint.Render(m.gate), w))
+	}
 	head := []string{center(grubVersion, w), ""}
 
 	// The box takes what is left. Drop the help, then the header, when the

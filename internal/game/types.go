@@ -334,6 +334,8 @@ type State struct {
 	AtTime time.Duration
 	// Packages is Meta.Installed when the boot began: what it plays with.
 	Packages []string
+	// Unlocked is the prestige this boot unlocked by its clear, 0 if none.
+	Unlocked int
 
 	// Trial is set when this boot is a learn-mode trial (NewTrial).
 	Trial *TrialState

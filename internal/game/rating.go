@@ -105,3 +105,30 @@ func rated(m *Meta) int {
 	}
 	return max(m.Rated, t)
 }
+
+// PrestigeGate is what unlocking the next prestige still needs (D31). A
+// boot cleared at the highest unlocked prestige unlocks the next, but only
+// once Need doors are rated: before calibration starts, a strong
+// newcomer's early boots are easy and would climb every prestige in a
+// handful of clears.
+type PrestigeGate struct {
+	Next  int // the prestige the next unlock opens; 0 when all are open
+	Rated int // rated doors so far
+	Need  int // rated doors an unlock needs (rules.CalibAfter)
+}
+
+// NextPrestige is m's gate under r.
+func NextPrestige(r rules.Rules, m *Meta) PrestigeGate {
+	g := PrestigeGate{Rated: rated(m), Need: r.CalibAfter}
+	if m.Prestige < MaxPrestige {
+		g.Next = m.Prestige + 1
+	}
+	return g
+}
+
+// Open reports whether clearing a boot at the highest unlocked prestige
+// unlocks Next now.
+func (g PrestigeGate) Open() bool { return g.Next > 0 && g.Rated >= g.Need }
+
+// Left is how many more doors must be rated before the gate opens.
+func (g PrestigeGate) Left() int { return max(g.Need-g.Rated, 0) }

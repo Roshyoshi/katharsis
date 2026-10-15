@@ -1027,3 +1027,44 @@ func TestMergeSpend(t *testing.T) {
 		t.Fatalf("resumed boot lost the spending: %+v", s)
 	}
 }
+
+// A door's deadline is absolute, so quitting with one open asks first
+// (D31): ctrl+c warns, any other key takes the warning back, and a second
+// ctrl+c in a row quits. The resumed door says how long it has left.
+func TestQuitMidDoorConfirms(t *testing.T) {
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.enterDoor()
+	ctrlC := tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
+	if _, cmd := h.m.Update(ctrlC); cmd != nil || !strings.Contains(h.m.flash, "keeps running") {
+		t.Fatalf("first ctrl+c: cmd %v, flash %q; want a warning and no quit", cmd != nil, h.m.flash)
+	}
+	h.m.Update(key("j"))
+	if _, cmd := h.m.Update(ctrlC); cmd != nil {
+		t.Fatal("ctrl+c after another key quit without warning again")
+	}
+	_, cmd := h.m.Update(ctrlC)
+	if cmd == nil {
+		t.Fatal("second ctrl+c in a row did not quit")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatal("second ctrl+c: not tea.Quit")
+	}
+	h.clock.t = h.clock.t.Add(10 * time.Minute)
+	h.restart()
+	if !strings.Contains(h.m.flash, "kept running") || !strings.Contains(h.m.flash, "left") {
+		t.Errorf("resumed door: flash %q, want how long it has left", h.m.flash)
+	}
+}
+
+// Outside a door ctrl+c quits at once.
+func TestQuitOutsideDoor(t *testing.T) {
+	h := newHarness(t)
+	_, cmd := h.m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	if cmd == nil {
+		t.Fatal("ctrl+c at GRUB did not quit")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatal("ctrl+c at GRUB: not tea.Quit")
+	}
+}

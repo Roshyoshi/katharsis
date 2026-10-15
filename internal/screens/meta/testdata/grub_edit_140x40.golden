@@ -30,7 +30,6 @@
  │                                                                                                                                        │
  │                                                                                                                                        │
  │                                                                                                                                        │
- │                                                                                                                                        │
  └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
                                    Minimum Emacs-like screen editing is supported. ↑ and ↓ pick a line,
@@ -38,3 +37,4 @@
                                    F10 to boot, or ESC to discard edits and return to the GRUB menu.
 
                                                  bank 1.3 KiB · rating 1432 · next boot #43
+                                   Platinum unlocks after 60 rated doors (34 so far) and a clear at Gold

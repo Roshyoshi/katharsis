@@ -1216,3 +1216,32 @@ func TestCrashRevealEndsWithScreen(t *testing.T) {
 		t.Error("u after the reveal should upsolve")
 	}
 }
+
+// A clear that unlocks nothing says what the next prestige still needs
+// (D31): rated doors first, then a clear at the highest unlocked. A boot
+// played below the top names the top as the one to clear.
+func TestClearedGate(t *testing.T) {
+	need := fixture.Cleared().Rules.CalibAfter
+	tests := []struct {
+		prestige, top, rated int
+		want                 string
+	}{
+		{1, 1, need - 26, fmt.Sprintf("Gold unlocks after %d rated doors (%d so far) and a clear at Silver", need, need-26)},
+		{0, 1, need, "Gold unlocks with a clear at Silver"},
+	}
+	for _, tc := range tests {
+		st := fixture.Cleared()
+		st.Prestige, st.Unlocked = tc.prestige, 0
+		m := fixture.ClearedMeta()
+		m.Prestige, m.Rated, m.TopicAttempts = tc.top, tc.rated, nil
+		e := env(st)
+		e.Meta = m
+		v := ansi.Strip(NewCleared(e).View(100, 30))
+		if strings.Contains(v, "prestige unlocked") {
+			t.Errorf("%+v: claims an unlock:\n%s", tc, v)
+		}
+		if tc.want != "" && !strings.Contains(v, tc.want) {
+			t.Errorf("%+v: missing %q:\n%s", tc, tc.want, v)
+		}
+	}
+}

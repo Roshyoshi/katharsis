@@ -358,6 +358,7 @@ func Cleared() *game.State {
 	st.Biome, st.Room = 3, 1
 	st.Doors = nil
 	st.Committed, st.Uncommitted = 1240, 0
+	st.Unlocked = 2 // Gold, as ClearedMeta has it
 	rebase(st, at(150, 30))
 	return st
 }

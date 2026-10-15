@@ -93,6 +93,9 @@ type Model struct {
 	// game could not write played a whole boot and kept none of it.
 	saveErr    error
 	saveFailed time.Time // when saveErr happened
+	// quitArmed is set by a ctrl+c that asked to confirm quitting with a
+	// door open; the next key clears it, and a second ctrl+c quits.
+	quitArmed bool
 
 	// editorials are the problems whose editorial was opened this session,
 	// such as from the crash screen before any upsolve exists.
@@ -160,9 +163,31 @@ func (m *Model) Init() tea.Cmd {
 		} else if !m.d.Now().Before(s.Current.Deadline) && !s.SoftTimer() {
 			return tea.Batch(tick(), m.step(game.Tick{}))
 		}
+		if left, ok := m.doorLeft(); ok {
+			m.flash = "the door's timer kept running while katharsis was closed: " + leftText(left)
+		}
 		return tea.Batch(tick(), m.initTop(), m.openDoor(s.Current.Door, false))
 	}
 	return tea.Batch(tick(), m.initTop())
+}
+
+// doorLeft is the time left on the boot's open door, ok false when no
+// timed door is open. A soft timer (a trial) also keeps running; past its
+// deadline it is overtime, shown as negative.
+func (m *Model) doorLeft() (time.Duration, bool) {
+	s := m.state
+	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil {
+		return 0, false
+	}
+	return s.Current.Deadline.Sub(m.d.Now()), true
+}
+
+// leftText is "12:34 left", or "overtime" past a soft deadline.
+func leftText(left time.Duration) string {
+	if left <= 0 {
+		return "overtime"
+	}
+	return units.Countdown(left) + " left"
 }
 
 // reset rebuilds the screen stack from scratch for the current phase.
@@ -197,7 +222,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 	case tea.KeyPressMsg:
 		m.flash = ""
+		armed := m.quitArmed
+		m.quitArmed = false
 		if msg.String() == "ctrl+c" {
+			// The door's deadline is absolute (D31): quitting does not
+			// pause it, so a quit with a door open asks twice.
+			if left, ok := m.doorLeft(); ok && !armed {
+				m.quitArmed = true
+				m.flash = "the door's timer keeps running while katharsis is closed (" +
+					leftText(left) + ") · ctrl+c again to quit"
+				return m, nil
+			}
 			return m, m.quit()
 		}
 	case tickMsg:

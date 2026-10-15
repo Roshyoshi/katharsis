@@ -1349,3 +1349,27 @@ func TestMasteredTopicHidesTags(t *testing.T) {
 		}
 	}
 }
+
+// The prestige gate (D31) counts rated doors against CalibAfter and names
+// the next level, none past the highest.
+func TestNextPrestige(t *testing.T) {
+	t.Parallel()
+	r := rules.Standard()
+	tests := []struct {
+		prestige, rated int
+		next, left      int
+		open            bool
+	}{
+		{0, r.CalibAfter - 26, 1, 26, false},
+		{0, r.CalibAfter, 1, 0, true},
+		{2, r.CalibAfter + 5, 3, 0, true},
+		{game.MaxPrestige, r.CalibAfter + 5, 0, 0, false},
+	}
+	for _, tc := range tests {
+		g := game.NextPrestige(r, &game.Meta{Prestige: tc.prestige, Rated: tc.rated})
+		if g.Next != tc.next || g.Left() != tc.left || g.Open() != tc.open || g.Rated != tc.rated || g.Need != r.CalibAfter {
+			t.Errorf("prestige %d, %d rated: %+v (left %d, open %v), want next %d left %d open %v",
+				tc.prestige, tc.rated, g, g.Left(), g.Open(), tc.next, tc.left, tc.open)
+		}
+	}
+}
