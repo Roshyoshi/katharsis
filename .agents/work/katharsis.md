@@ -182,6 +182,14 @@ D49 proposed       Trial by fire back: "over the past couple of changes where we
                    most a partial refill between acts, bosses 1-2 retry -20, final
                    one-shot. User numbers fixed (D47).
 
+D50 settled 10-15  Time is bought, the base clock is tight: "keep the prevous time ... 10
+                   min for Userland"; "some multiplier and some perk makes it higher at
+                   some tradeoff". D46's kinder timers reverted (short/patch Userland 10,
+                   TimerFitLo 0.5, TimerHeadroom 1.25; apt prices back); uptime in doors
+                   and nice's byte cost kept. The map build adds timer_mult, Userland 10
+                   in standard too, 10 -> 9 -> 8 by prestige, and prices every time source
+                   (nice, at, overclock, ECC). Supersedes D47's 12/10/8.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
