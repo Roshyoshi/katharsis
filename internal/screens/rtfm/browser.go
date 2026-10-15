@@ -10,6 +10,8 @@ import (
 	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
+	"katharsis/internal/units"
 )
 
 // Browser is the RTFM index: the guide's divisions, chapters and modules in
@@ -499,13 +501,13 @@ func (c columns) width() int {
 func (c columns) cells(title, biome, capc, unit, freq string) string {
 	var s strings.Builder
 	s.WriteString(strings.Repeat(" ", modIndent))
-	s.WriteString(pad(title, c.title))
+	s.WriteString(ui.Fit(title, c.title))
 	for _, col := range []struct {
 		w    int
 		text string
 	}{{c.biome, biome}, {c.capw, capc}, {c.unit, unit}, {c.stars, freq}} {
 		if col.w > 0 {
-			s.WriteString(strings.Repeat(" ", colGap) + pad(col.text, col.w))
+			s.WriteString(strings.Repeat(" ", colGap) + ui.Fit(col.text, col.w))
 		}
 	}
 	return strings.TrimRight(s.String(), " ")
@@ -518,7 +520,7 @@ func (c columns) header() string {
 		}
 		return short
 	}
-	return faint.Render(c.cells("MODULE", "BIOME", label("CAPABILITY", "CAP", c.capw),
+	return ui.Muted.Render(c.cells("MODULE", "BIOME", label("CAPABILITY", "CAP", c.capw),
 		"TRIAL", "FREQ"))
 }
 
@@ -539,9 +541,9 @@ func (b *Browser) View(width, height int) string {
 	switch {
 	case len(b.all) == 0:
 		body = []string{"No manual entry for rtfm", "",
-			faint.Render("The USACO Guide snapshot has no modules to list.")}
+			ui.Muted.Render("The USACO Guide snapshot has no modules to list.")}
 	case len(b.rows) == 0:
-		body = []string{faint.Render("Pattern not found: " + b.active)}
+		body = []string{ui.Muted.Render("Pattern not found: " + b.active)}
 	default:
 		lines := b.lines(cols, w)
 		total = len(lines)
@@ -564,12 +566,7 @@ func (b *Browser) View(width, height int) string {
 	if len(b.all) > 0 {
 		out = append(out, cols.header())
 	}
-	out = append(out, body...)
-	for len(out) < h-1 {
-		out = append(out, "")
-	}
-	out = append(out[:h-1], b.bar(w, total))
-	return frame(out, w, h)
+	return ui.Layout(w, h, append(out, body...), b.bar(w, total))
 }
 
 // lines renders every visible row, then the colophon; row i is line i.
@@ -593,21 +590,21 @@ func (b *Browser) lines(cols columns, w int) []string {
 			if e.mod.Topic == "" {
 				// No topic: the "trial" is Userland filler, not a test of
 				// the module, so its size is not worth the eye.
-				unit = faint.Render(ansi.Strip(unit))
+				unit = ui.Muted.Render(ansi.Strip(unit))
 			}
 			line = cols.cells(title, e.biome, capCell(e.trial.Capability, b.caps[e.trial.Capability]),
 				unit, stars(e.mod.Frequency))
 		}
 		if i == b.sel {
-			line = reverse.Render(pad(ansi.Strip(line), w))
+			line = ui.Select.Render(ui.Fit(ansi.Strip(line), w))
 		}
 		out = append(out, line)
 	}
-	out = append(out, "", bold.Render("COLOPHON"))
+	out = append(out, "", ui.Strong.Render("COLOPHON"))
 	for _, l := range wrap(curriculum.Attribution(), modIndent, min(w, 80)) {
-		out = append(out, faint.Render(l))
+		out = append(out, ui.Muted.Render(l))
 	}
-	out = append(out, "", spread("katharsis", manName, min(cols.width(), w)))
+	out = append(out, "", ui.Spread("katharsis", manName, min(cols.width(), w)))
 	return out
 }
 
@@ -617,28 +614,28 @@ func (b *Browser) divLine(r row, cols columns, w int) string {
 	for _, c := range d.chaps {
 		es = append(es, c.mods...)
 	}
-	note := plural(len(es), "module")
+	note := units.Plural(len(es), "module")
 	if held, total := distinctCaps(es, b.caps); total > 0 {
-		note += fmt.Sprintf(" · %s %d/%d", heldMark, held, total)
+		note += fmt.Sprintf("%s%s %d/%d", ui.G.Sep, ui.G.Cap, held, total)
 	}
-	head := foldMark(d.folded, b.active) + bold.Render(strings.ToUpper(d.title))
-	return spread(head, faint.Render(note), min(max(cols.width(), 40), w))
+	head := foldMark(d.folded, b.active) + ui.Strong.Render(strings.ToUpper(d.title))
+	return ui.Spread(head, ui.Muted.Render(note), min(max(cols.width(), 40), w))
 }
 
 func (b *Browser) chapLine(r row) string {
 	c := b.divs[r.d].chaps[r.c]
 	s := "   " + foldMark(c.folded, b.active) + c.title
 	if c.folded && b.active == "" {
-		s += faint.Render("  · " + plural(len(c.mods), "module"))
+		s += ui.Muted.Render(" " + ui.G.Sep + units.Plural(len(c.mods), "module"))
 	}
 	return s
 }
 
 func foldMark(folded bool, filter string) string {
 	if folded && filter == "" {
-		return "▸ "
+		return ui.Muted.Render(ui.G.FoldShut) + " "
 	}
-	return "▾ "
+	return ui.Muted.Render(ui.G.FoldOpen) + " "
 }
 
 // bar is less's prompt line: where the page is, how many capabilities are
@@ -653,30 +650,29 @@ func (b *Browser) bar(w, lines int) string {
 	}
 	switch {
 	case b.typing:
-		return spread("/"+b.input+"█", faint.Render(plural(n, "match")), w)
+		return ui.Spread("/"+b.input+"█", ui.Muted.Render(units.Plural(n, "match")), w)
 	case b.query != "":
-		left := " /" + b.query + ": " + plural(n, "match")
+		left := "/" + b.query + ": " + units.Plural(n, "match")
 		if n == 0 {
-			left = " Pattern not found: /" + b.query
+			left = "Pattern not found: /" + b.query
 		}
-		return reverse.Render(pad(spread(left, "esc clear · enter open · q quit ", w), w))
+		return ui.StatusBar(w, left, "esc", "clear", "enter", "open", "q", "quit")
 	}
 	if len(b.all) == 0 {
-		return reverse.Render(pad(" Manual page rtfm(7) (press q to quit)", w))
+		return ui.StatusBar(w, "Manual page rtfm(7) (press q to quit)")
 	}
 	held, total := distinctCaps(b.all, b.caps)
-	lines = max(lines, 1)
-	pos := fmt.Sprintf("line %d/%d", min(b.top+1, lines), lines)
-	caps := fmt.Sprintf("%s %d/%d held", heldMark, held, total)
-	keys := "enter open · tab fold · / filter · q quit "
+	pos := ui.PagerLine(b.top, b.h, lines)
+	caps := fmt.Sprintf("%s %d/%d held", ui.G.Cap, held, total)
+	keys := []string{"enter", "open", "tab", "fold", "/", "filter", "q", "quit"}
 	for _, left := range []string{
-		" Manual page rtfm(7) " + pos + " · " + caps,
-		" rtfm(7) " + pos + " · " + caps,
-		" " + caps,
+		"Manual page rtfm(7) " + pos + ui.G.Sep + caps,
+		"rtfm(7) " + pos + ui.G.Sep + caps,
+		pos + ui.G.Sep + caps,
 	} {
-		if ansi.StringWidth(left)+1+ansi.StringWidth(keys) <= w {
-			return reverse.Render(spread(left, keys, w))
+		if ui.StatusBarFits(w, left, keys...) {
+			return ui.StatusBar(w, left, keys...)
 		}
 	}
-	return reverse.Render(pad(" "+caps+" · / filter · q quit", w))
+	return ui.StatusBar(w, caps, keys...)
 }

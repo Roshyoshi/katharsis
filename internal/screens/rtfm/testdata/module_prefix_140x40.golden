@@ -1,16 +1,16 @@
-RTFM ▸ Silver ▸ Prefix Sums                                                                                                     ◇ CAP_PREFIX
+RTFM › Silver › Prefix Sums                                                                                                     □ CAP_PREFIX
 
 NAME
        prefix-sums - Introduction to Prefix Sums              ★★★★ very frequent
        Computing range sum queries in constant time over a fixed 1D array.
 
 TRIAL                         unit: Easy → Hard, tags shown · integration: blind
-       1  Breed Counting                    Very Easy  1250  2015 December, Silver P3
-       2  Hoof, Paper, Scissors             Very Easy  1300  2017 January, Silver P2
-       3  Subsequences Summing to Sevens    Easy       1450  2016 January, Silver P2
-       4  Farmer John's Favorite Operation  Medium     1600
-       +  2 blind integration doors · The Accumulator · 1350–1650
-       ◇  pass → ◆ CAP_PREFIX: The Accumulator joins your route choices
+       1  Breed Counting                    Very Easy  ◆1250  2015 December, Silver P3
+       2  Hoof, Paper, Scissors             Very Easy  ◆1300  2017 January, Silver P2
+       3  Subsequences Summing to Sevens    Easy       ◆1450  2016 January, Silver P2
+       4  Farmer John's Favorite Operation  Medium     ◆1600
+       +  2 blind integration doors · The Accumulator · ◆1350–1650
+       □  pass → ■ CAP_PREFIX: The Accumulator joins your route choices
 
 SEE ALSO
        requires  nothing
@@ -37,4 +37,4 @@ Markdown.
 
 
 
-[r] read  [t] start trial  [o] usaco.guide  [q] back
+ prefix-sums(7) line 1/20 (END)                                                             r read · t start trial · o usaco.guide · q back

@@ -19,7 +19,6 @@ import (
 	"slices"
 	"strings"
 
-	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/catalog"
@@ -27,6 +26,7 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
+	"katharsis/internal/ui"
 )
 
 // Judgeable reports whether the catalog can serve and judge a problem; it
@@ -70,26 +70,21 @@ func capSet(m game.Meta) map[string]bool {
 
 // ---- formatting -------------------------------------------------------------
 
-const (
-	heldMark   = "◆"
-	lockedMark = "◇"
-)
-
-// capCell renders a capability with its status mark: green ◆ held, faint ◇
-// locked. Modules that teach no gated topic have none and get "".
+// capCell renders a capability with its status mark: ■ held (OK), □ not
+// yet (Muted). Modules that teach no gated topic have none and get "".
 func capCell(c string, held bool) string {
 	switch {
 	case c == "":
 		return ""
 	case held:
-		return green.Render(heldMark + " " + c)
+		return ui.OK.Render(ui.G.Cap + " " + c)
 	}
-	return faint.Render(lockedMark + " " + c)
+	return ui.Muted.Render(ui.G.CapLocked + " " + c)
 }
 
 // unitLabel says how big a trial's unit is: "4 doors", or "2+2 topped up"
 // when the module has too few judgeable problems and the catalog fills the
-// rest; the topped-up part is faint, since it is the catalog's and not the
+// rest; the topped-up part is muted, since it is the catalog's and not the
 // module's. compact drops the words for narrow terminals: "4", "2+2".
 func unitLabel(have, short int, compact bool) string {
 	switch {
@@ -98,9 +93,9 @@ func unitLabel(have, short int, compact bool) string {
 	case short == 0:
 		return fmt.Sprintf("%d doors", have)
 	case compact:
-		return fmt.Sprint(have) + faint.Render(fmt.Sprintf("+%d", short))
+		return fmt.Sprint(have) + ui.Muted.Render(fmt.Sprintf("+%d", short))
 	}
-	return fmt.Sprint(have) + faint.Render(fmt.Sprintf("+%d topped up", short))
+	return fmt.Sprint(have) + ui.Muted.Render(fmt.Sprintf("+%d topped up", short))
 }
 
 // stars draws the guide's 0-4 "how often in contests" as four stars; an
@@ -110,7 +105,7 @@ func stars(freq int) string {
 		return ""
 	}
 	f := min(freq, 4)
-	return yellow.Render(strings.Repeat("★", f)) + faint.Render(strings.Repeat("☆", 4-f))
+	return ui.Warn.Render(strings.Repeat(ui.G.Star, f)) + ui.Muted.Render(strings.Repeat(ui.G.StarOff, 4-f))
 }
 
 // frequencyText is the guide's label for each frequency level.
@@ -122,14 +117,8 @@ func frequencyText(freq int) string {
 	return labels[freq]
 }
 
-// band formats a rating band in the colour of its middle.
-func band(b [2]int) string {
-	return ratingStyle(float64(b[0]+b[1]) / 2).Render(fmt.Sprintf("%d–%d", b[0], b[1]))
-}
-
-// highlight reverses each case-insensitive occurrence of q in s, a plain
-// string. Search hits must stand out in a list that is otherwise mostly
-// unstyled.
+// highlight underlines each case-insensitive occurrence of q in s, a plain
+// string, as the reader marks search hits.
 func highlight(s, q string) string {
 	if q == "" {
 		return s
@@ -146,73 +135,20 @@ func highlight(s, q string) string {
 			return b.String()
 		}
 		b.WriteString(s[:i])
-		b.WriteString(reverse.Render(s[i : i+len(lq)]))
+		b.WriteString(ui.Hit.Render(s[i : i+len(lq)]))
 		s, low = s[i+len(lq):], low[i+len(lq):]
 	}
 }
 
-// ---- styles and layout (as in screens/meta) ---------------------------------
-
-var (
-	bold    = lipgloss.NewStyle().Bold(true)
-	faint   = lipgloss.NewStyle().Faint(true)
-	reverse = lipgloss.NewStyle().Reverse(true)
-	red     = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	green   = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
-	yellow  = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
-	blue    = lipgloss.NewStyle().Foreground(lipgloss.Color("4"))
-	magenta = lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
-	cyan    = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
-	gray    = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-)
-
-// frame makes exactly h lines, each cut to w cells, so a screen never
-// scrolls the terminal or wraps.
-func frame(lines []string, w, h int) string {
-	out := make([]string, h)
-	for i := range out {
-		if i < len(lines) {
-			out[i] = ansi.Truncate(lines[i], w, "…")
-		}
-	}
-	return strings.Join(out, "\n")
-}
-
-// pad right-pads s with spaces to w cells, cutting it when longer.
-func pad(s string, w int) string {
-	n := ansi.StringWidth(s)
-	if n > w {
-		return ansi.Truncate(s, w, "…")
-	}
-	return s + strings.Repeat(" ", w-n)
-}
-
-// padLeft right-aligns s in w cells.
-func padLeft(s string, w int) string {
-	n := ansi.StringWidth(s)
-	if n >= w {
-		return s
-	}
-	return strings.Repeat(" ", w-n) + s
-}
-
-// spread puts left and right on one line of w cells, cutting left first.
-func spread(left, right string, w int) string {
-	rw := ansi.StringWidth(right)
-	if rw >= w {
-		return ansi.Truncate(right, w, "…")
-	}
-	left = ansi.Truncate(left, max(w-rw-1, 0), "…")
-	gap := w - ansi.StringWidth(left) - rw
-	return left + strings.Repeat(" ", max(gap, 1)) + right
-}
+// ---- man page layout --------------------------------------------------------
 
 // manHeader is a man page's first line: the page name at both ends and the
-// manual's name centred. The centre gives way first on narrow terminals.
+// manual's name centred. The centre gives way first on narrow terminals,
+// then the right-hand name.
 func manHeader(side, centre string, w int) string {
 	sw, cw := ansi.StringWidth(side), ansi.StringWidth(centre)
 	if 2*sw+cw+4 > w {
-		return spread(side, side, w)
+		return ui.Spread(side, side, w)
 	}
 	left := (w - cw) / 2
 	return side + strings.Repeat(" ", left-sw) + centre +
@@ -222,30 +158,10 @@ func manHeader(side, centre string, w int) string {
 // wrap word-wraps s to w cells and indents every line by indent spaces.
 func wrap(s string, indent, w int) []string {
 	var out []string
-	for _, l := range strings.Split(ansi.Wordwrap(s, max(w-indent, 10), ""), "\n") {
+	for _, l := range ui.WrapN(s, max(w-indent, 10), 0) {
 		out = append(out, strings.Repeat(" ", indent)+l)
 	}
 	return out
-}
-
-// ratingStyle colours a rating by Codeforces rank, the scale every rating
-// in the game is on: gray newbie through red grandmaster.
-func ratingStyle(r float64) lipgloss.Style {
-	switch {
-	case r < 1200:
-		return gray
-	case r < 1400:
-		return green
-	case r < 1600:
-		return cyan
-	case r < 1900:
-		return blue
-	case r < 2100:
-		return magenta
-	case r < 2400:
-		return yellow
-	}
-	return red
 }
 
 // distinctCaps counts the distinct capabilities es teach and how many of
@@ -263,15 +179,4 @@ func distinctCaps(es []entry, caps map[string]bool) (held, total int) {
 		}
 	}
 	return held, len(seen)
-}
-
-// plural is "1 module", "2 modules"; "match" takes "es".
-func plural(n int, noun string) string {
-	if n == 1 {
-		return fmt.Sprintf("%d %s", n, noun)
-	}
-	if strings.HasSuffix(noun, "ch") {
-		return fmt.Sprintf("%d %ses", n, noun)
-	}
-	return fmt.Sprintf("%d %ss", n, noun)
 }

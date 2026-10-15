@@ -12,6 +12,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/reader"
+	"katharsis/internal/ui"
 )
 
 // Module is one module's page, set as a man page: NAME (id, title, what it
@@ -89,8 +90,8 @@ func (p *Module) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 func (p *Module) View(width, height int) string {
 	w, h := max(width, 1), max(height, 1)
 	m := p.e.mod
-	crumb := bold.Render("RTFM") + " ▸ " + m.DivisionTitle + " ▸ " + m.Chapter
-	head := spread(crumb, capCell(p.e.trial.Capability, p.caps[p.e.trial.Capability]), w)
+	crumb := strings.Join([]string{ui.Strong.Render("RTFM"), m.DivisionTitle, m.Chapter}, ui.Muted.Render(ui.G.Crumb))
+	head := ui.Spread(crumb, capCell(p.e.trial.Capability, p.caps[p.e.trial.Capability]), w)
 
 	body := p.body(w)
 	rows := max(h-3, 0)
@@ -98,12 +99,7 @@ func (p *Module) View(width, height int) string {
 	p.top = max(min(p.top, len(body)-rows), 0)
 	shown := body[p.top:min(p.top+rows, len(body))]
 
-	out := append([]string{head, ""}, shown...)
-	for len(out) < h-1 {
-		out = append(out, "")
-	}
-	out = append(out[:h-1], p.footer(w, len(body), rows))
-	return frame(out, w, h)
+	return ui.Layout(w, h, append([]string{head, ""}, shown...), p.footer(w, len(body), rows))
 }
 
 func (p *Module) body(w int) []string {
@@ -112,28 +108,28 @@ func (p *Module) body(w int) []string {
 	text := min(w, 80) // prose measure; the trial table may use more
 
 	var out []string
-	out = append(out, bold.Render("NAME"))
-	name := ind + m.ID + " - " + bold.Render(m.Title)
+	out = append(out, ui.Strong.Render("NAME"))
+	name := ind + m.ID + " - " + ui.Strong.Render(m.Title)
 	if f := m.Frequency; f >= 0 {
-		name = spread(name, stars(f)+" "+faint.Render(frequencyText(f)), text)
+		name = ui.Spread(name, stars(f)+" "+ui.Muted.Render(frequencyText(f)), text)
 	}
 	out = append(out, name)
 	if m.Description != "" {
 		out = append(out, wrap(m.Description, modIndent, text)...)
 	}
 
-	out = append(out, "", spread(bold.Render("TRIAL"),
-		faint.Render("unit: Easy → Hard, tags shown · integration: blind"), text))
+	out = append(out, "", ui.Spread(ui.Strong.Render("TRIAL"),
+		ui.Muted.Render("unit: Easy → Hard, tags shown · integration: blind"), text))
 	out = append(out, p.unitLines(w)...)
 	t := p.e.trial
-	where := p.e.biome + " · " + band(t.IntegBand)
+	where := p.e.biome + ui.G.Sep + ui.RatingBand(t.IntegBand[0], t.IntegBand[1])
 	if n := p.e.short(); n > 0 {
 		out = append(out, ind+fmt.Sprintf("+  %d topped up from the catalog · %s", n, where))
 	}
 	out = append(out, ind+fmt.Sprintf("+  %d blind integration doors · %s", integrationDoors, where))
 	out = append(out, ind+p.passLine())
 
-	out = append(out, "", bold.Render("SEE ALSO"))
+	out = append(out, "", ui.Strong.Render("SEE ALSO"))
 	req := "nothing"
 	if len(p.prereq) > 0 {
 		req = strings.Join(p.prereq, ", ")
@@ -145,7 +141,7 @@ func (p *Module) body(w int) []string {
 
 	out = append(out, "")
 	for _, l := range wrap(m.Attribution(), 0, text) {
-		out = append(out, faint.Render(l))
+		out = append(out, ui.Muted.Render(l))
 	}
 	return out
 }
@@ -155,7 +151,7 @@ func (p *Module) body(w int) []string {
 func facts(label, value string, w int) []string {
 	const labelW = 10
 	lines := wrap(value, modIndent+labelW, w)
-	lines[0] = strings.Repeat(" ", modIndent) + pad(label, labelW) + strings.TrimLeft(lines[0], " ")
+	lines[0] = strings.Repeat(" ", modIndent) + ui.Fit(label, labelW) + strings.TrimLeft(lines[0], " ")
 	return lines
 }
 
@@ -185,20 +181,20 @@ func (p *Module) unitLines(w int) []string {
 		ds = append(ds, d)
 		titleW = max(titleW, ansi.StringWidth(d.title))
 	}
-	const labelW, ratingW = 9, 4
+	const labelW, ratingW = 9, 5 // ratingW fits "◆3500"
 	fixed := modIndent + 3 + colGap + labelW + colGap + ratingW
 	titleW = max(min(titleW, w-fixed-colGap), 8)
 	var out []string
 	for i, d := range ds {
 		rating := ""
 		if d.rating > 0 {
-			rating = ratingStyle(float64(d.rating)).Render(fmt.Sprint(d.rating))
+			rating = ui.Rating(d.rating)
 		}
-		line := strings.Repeat(" ", modIndent) + pad(fmt.Sprint(i+1), 3) + pad(d.title, titleW) +
-			strings.Repeat(" ", colGap) + pad(d.label, labelW) +
-			strings.Repeat(" ", colGap) + padLeft(rating, ratingW)
+		line := strings.Repeat(" ", modIndent) + ui.Fit(fmt.Sprint(i+1), 3) + ui.Fit(d.title, titleW) +
+			strings.Repeat(" ", colGap) + ui.Fit(d.label, labelW) +
+			strings.Repeat(" ", colGap) + ui.AlignRight(rating, ratingW)
 		if d.contest != "" {
-			line += strings.Repeat(" ", colGap) + faint.Render(d.contest)
+			line += strings.Repeat(" ", colGap) + ui.Muted.Render(d.contest)
 		}
 		out = append(out, strings.TrimRight(line, " "))
 	}
@@ -222,33 +218,28 @@ func (p *Module) passLine() string {
 	c := p.e.trial.Capability
 	switch {
 	case c == "":
-		return faint.Render("·  grants no capability: " + p.e.biome + " is open to every boot")
+		return ui.Muted.Render("·  grants no capability: " + p.e.biome + " is open to every boot")
 	case p.caps[c]:
-		return green.Render(heldMark+"  "+c+" held") + ": " + p.e.biome + " is already on your routes"
+		return ui.OK.Render(ui.G.Cap+"  "+c+" held") + ": " + p.e.biome + " is already on your routes"
 	}
-	return lockedMark + "  pass → " + green.Render(heldMark+" "+c) + ": " + p.e.biome + " joins your route choices"
+	return ui.G.CapLocked + "  pass " + ui.G.Arrow + " " + ui.OK.Render(ui.G.Cap+" "+c) + ": " + p.e.biome + " joins your route choices"
 }
 
-// footer is the action line, crash-screen style, with vim's ruler at the
-// right when the page scrolls.
+// footer is the pager's status bar, as on the index: the page and the line
+// on the left, the page's keys on the right. The page name goes first when
+// the bar is short.
 func (p *Module) footer(w, lines, rows int) string {
-	keys := "[r] read"
+	keys := []string{"r", "read"}
 	if p.e.mod.Topic != "" {
-		keys += "  [t] start trial"
+		keys = append(keys, "t", "start trial")
 	}
 	if p.e.mod.URL != "" {
-		keys += "  [o] usaco.guide"
+		keys = append(keys, "o", "usaco.guide")
 	}
-	keys += "  [q] back"
-	if lines <= rows {
-		return keys
+	keys = append(keys, "q", "back")
+	pos := ui.PagerLine(p.top, rows, lines)
+	if page := p.e.mod.ID + "(7) " + pos; ui.StatusBarFits(w, page, keys...) {
+		pos = page
 	}
-	pos := fmt.Sprintf("%d%%", 100*p.top/max(lines-rows, 1))
-	switch {
-	case p.top == 0:
-		pos = "Top"
-	case p.top >= lines-rows:
-		pos = "Bot"
-	}
-	return spread(keys, faint.Render("j/k scroll ")+pos, w)
+	return ui.StatusBar(w, pos, keys...)
 }

@@ -1,4 +1,4 @@
-RTFM ▸ General ▸ Language-Specific
+RTFM › General › Language-Specific
 
 NAME
        fast-io - Fast Input & Output
@@ -6,8 +6,8 @@ NAME
 
 TRIAL                         unit: Easy → Hard, tags shown · integration: blind
        1  Robotic Cow Herd  Insane
-       +  3 topped up from the catalog · Userland · 1000–1300
-       +  2 blind integration doors · Userland · 1000–1300
+       +  3 topped up from the catalog · Userland · ◆1000–1300
+       +  2 blind integration doors · Userland · ◆1000–1300
        ·  grants no capability: Userland is open to every boot
 
 SEE ALSO
@@ -37,4 +37,4 @@ Markdown.
 
 
 
-[r] read  [o] usaco.guide  [q] back
+ fast-io(7) line 1/18 (END)                                                                                 r read · o usaco.guide · q back

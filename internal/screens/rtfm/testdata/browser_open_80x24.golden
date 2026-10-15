@@ -1,4 +1,4 @@
-RTFM ▸ Bronze ▸ Additional
+RTFM › Bronze › Additional
 
 NAME
        casework - Casework                                     ★★☆☆ not frequent
@@ -9,7 +9,7 @@ TRIAL                         unit: Easy → Hard, tags shown · integration: bl
        2  Fence Painting      Medium
        3  Leaders             Hard
        4  Spaced Out          Very Hard
-       +  2 blind integration doors · Userland · 1000–1300
+       +  2 blind integration doors · Userland · ◆1000–1300
        ·  grants no capability: Userland is open to every boot
 
 SEE ALSO
@@ -21,4 +21,4 @@ CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/); converted
 from MDX to Markdown.
 
 
-[r] read  [t] start trial  [o] usaco.guide  [q] back
+ casework(7) line 1/19 (END)    r read · t start trial · o usaco.guide · q back

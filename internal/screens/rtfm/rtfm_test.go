@@ -368,13 +368,13 @@ func TestBrowserFolds(t *testing.T) {
 	// h on a module folds its chapter and moves to the chapter heading.
 	press(t, b, "h")
 	v := plain(b.View(80, 24))
-	if strings.Contains(v, "Fast Input & Output") || !strings.Contains(v, "▸ Language-Specific  · 1 module") {
+	if strings.Contains(v, "Fast Input & Output") || !strings.Contains(v, "▹ Language-Specific  · 1 module") {
 		t.Errorf("h should fold Language-Specific:\n%s", v)
 	}
 	// h again steps out to the division; h there folds it.
 	press(t, b, "h", "h")
 	v = plain(b.View(80, 24))
-	if strings.Contains(v, "Language-Specific") || !strings.Contains(v, "▸ GENERAL") {
+	if strings.Contains(v, "Language-Specific") || !strings.Contains(v, "▹ GENERAL") {
 		t.Errorf("h, h should fold GENERAL:\n%s", v)
 	}
 	// l unfolds the division, l unfolds... the chapter is still folded.
@@ -448,7 +448,7 @@ func TestCapabilityMarks(t *testing.T) {
 	}
 	b := browser(t)
 	v := plain(b.View(140, 40))
-	for _, want := range []string{"◆ " + two, "◇ " + pre} {
+	for _, want := range []string{"■ " + two, "□ " + pre} {
 		if !strings.Contains(v, want) {
 			t.Errorf("index lacks %q:\n%s", want, v)
 		}
@@ -456,16 +456,16 @@ func TestCapabilityMarks(t *testing.T) {
 	// Refresh: passing prefix sums flips its mark, here and on its page.
 	press(t, b, "j", "j", "j", "j", "j", "j", "enter")
 	b.Refresh(game.Meta{Capabilities: []string{two, pre}})
-	if v := plain(b.View(140, 40)); !strings.Contains(v, "◆  "+pre+" held") {
+	if v := plain(b.View(140, 40)); !strings.Contains(v, "■  "+pre+" held") {
 		t.Errorf("open page should show %s held after Refresh:\n%s", pre, v)
 	}
 	press(t, b, "q")
-	if v := plain(b.View(140, 40)); strings.Contains(v, "◇ "+pre) {
+	if v := plain(b.View(140, 40)); strings.Contains(v, "□ "+pre) {
 		t.Errorf("index should show %s held after Refresh:\n%s", pre, v)
 	}
 	// Modules teaching no gated topic show no capability at all.
 	for _, l := range strings.Split(v, "\n") {
-		if strings.Contains(l, "Casework") && strings.ContainsAny(l, "◆◇") {
+		if strings.Contains(l, "Casework") && strings.ContainsAny(l, "■□") {
 			t.Errorf("casework teaches no gated topic, but shows a mark: %q", l)
 		}
 	}
@@ -492,11 +492,11 @@ func TestModulePlan(t *testing.T) {
 	// The unit in trial order, with guide labels, fixture ratings and
 	// contests; then integration doors in the module's biome and band.
 	for _, want := range []string{
-		"1  Breed Counting", "Very Easy", "1250", "2015 December, Silver P3",
+		"1  Breed Counting", "Very Easy", "◆1250", "2015 December, Silver P3",
 		"4  Farmer John's Favorite Operation",
-		"+  2 blind integration doors · The Accumulator · 1350–1650",
+		"+  2 blind integration doors · The Accumulator · ◆1350–1650",
 		"“Introduction to Prefix Sums” by Darren Yao, Dustin Miao, USACO Guide",
-		"RTFM ▸ Silver ▸ Prefix Sums",
+		"RTFM › Silver › Prefix Sums",
 		"requires  nothing",
 	} {
 		if !strings.Contains(v, want) {
@@ -508,7 +508,7 @@ func TestModulePlan(t *testing.T) {
 	}
 
 	v = plain(module(t, "hashmaps").View(140, 40))
-	for _, want := range []string{"1  Farmer John Solves 3SUM", "+  3 topped up from the catalog · The Heap · 1700–2000"} {
+	for _, want := range []string{"1  Farmer John Solves 3SUM", "+  3 topped up from the catalog · The Heap · ◆1700–2000"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("hashmaps page lacks %q:\n%s", want, v)
 		}
@@ -518,12 +518,12 @@ func TestModulePlan(t *testing.T) {
 func TestModuleScrolls(t *testing.T) {
 	m := module(t, "prefix-sums")
 	top := plain(m.View(80, 12))
-	if !strings.Contains(top, "Top") || !strings.Contains(top, "NAME") {
+	if !strings.Contains(top, "line 1/") || !strings.Contains(top, "NAME") {
 		t.Fatalf("a 12-row page should start at the top with a ruler:\n%s", top)
 	}
 	m.Update(key("G")) // not press: it renders at 80x24, where all fits
 	bot := plain(m.View(80, 12))
-	if !strings.Contains(bot, "Bot") || !strings.Contains(bot, "CC BY-NC-SA") {
+	if !strings.Contains(bot, "(END)") || !strings.Contains(bot, "CC BY-NC-SA") {
 		t.Errorf("G should reach the attribution:\n%s", bot)
 	}
 	m.Update(key("g"))

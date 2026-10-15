@@ -138,11 +138,11 @@ Quotes are matched to the cause of the crash and must have a known source.
 ## Learn mode (RTFM)
 
 ```
-RTFM ▸ Silver ▸ Prefix Sums                         CAP_PREFIX ◇
+RTFM › Silver › Prefix Sums                         □ CAP_PREFIX
   read   USACO Guide module in the TUI (o = open in browser)
   unit   4 doors from the module list, Easy→Hard, tags shown, soft timer
   integ  2 blind doors at the same difficulty
-  pass   CAP_PREFIX ◆ → topic biomes join route choices; lib unlocked
+  pass   ■ CAP_PREFIX → topic biomes join route choices; lib unlocked
 ```
 
 ## Content
