@@ -116,6 +116,9 @@ type Model struct {
 	// while judging it (Attempt.SubmitAt). Zero otherwise.
 	resumed resumedSubmit
 	flash   string // one-line error shown over the screen until the next key
+	// resumeFlash is the resume note (resumeNote) while it is the flash:
+	// it is about the door that resumed, so it goes with the screen.
+	resumeFlash string
 	// saveErr is the last save that failed. It shows on every screen
 	// until a save succeeds: as a flash the next key cleared, a store the
 	// game could not write played a whole boot and kept none of it.
@@ -217,6 +220,7 @@ func (m *Model) Init() tea.Cmd {
 			return tea.Batch(tick(), m.step(game.Tick{}))
 		}
 		m.flash = resumeNote(c.Deadline.Sub(m.d.Now())) // debrief.go
+		m.resumeFlash = m.flash
 		return tea.Batch(tick(), m.initTop(), m.openDoor(c.Door, false))
 	}
 	return tea.Batch(tick(), m.initTop(), m.storyResume())
@@ -250,10 +254,15 @@ func leftText(left time.Duration) string {
 	return units.Countdown(left) + " left"
 }
 
-// reset rebuilds the screen stack from scratch for the current phase.
+// reset rebuilds the screen stack from scratch for the current phase. The
+// resume note leaves with the screen it was about.
 func (m *Model) reset() {
 	m.dropped(m.stack...)
 	m.stack = []screens.Screen{m.baseScreen()}
+	if m.resumeFlash != "" && m.flash == m.resumeFlash {
+		m.flash = ""
+	}
+	m.resumeFlash = ""
 	m.screenShown()
 }
 

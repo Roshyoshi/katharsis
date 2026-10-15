@@ -1717,3 +1717,28 @@ func TestRefusalFlashHasNoPrefix(t *testing.T) {
 		}
 	})
 }
+
+// The resume note is about the door that resumed: it goes when the screen
+// changes, here to the crash its timer ran into, and does not linger over
+// the panic until a key.
+func TestResumeNoteLeavesWithTheDoor(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		cur := h.enterDoor()
+		h.clock.t = cur.Deadline.Add(-time.Minute)
+		h.restart()
+		note := h.m.flash
+		if !strings.Contains(note, "left") { // resume.note
+			t.Fatalf("resumed door: flash %q, want the resume note", note)
+		}
+		h.clock.t = cur.Deadline.Add(time.Second)
+		h.send(tickMsg(h.clock.t))
+		if h.m.state.Phase != game.PhaseCrashed {
+			t.Fatalf("phase %q, want the timeout crash", h.m.state.Phase)
+		}
+		if h.m.flash == note || strings.Contains(ansi.Strip(h.m.View().Content), ansi.Strip(note)) {
+			t.Errorf("the resume note %q lingers on the crash screen", note)
+		}
+	})
+}
