@@ -9,10 +9,10 @@
  │ katharsis (custom preset…)                                                                                                             │
  │ upsolve core dump: Bovine Shuffle (312 B)                                                                                              │
  │ regressions due: 2                                                                                                                     │
+ │ apt install rng-tools (256 B, affordable)                                                                                              │
  │ git log                                                                                                                                │
  │ top                                                                                                                                    │
  │ poweroff                                                                                                                               │
- │                                                                                                                                        │
  │                                                                                                                                        │
  │                                                                                                                                        │
  │                                                                                                                                        │

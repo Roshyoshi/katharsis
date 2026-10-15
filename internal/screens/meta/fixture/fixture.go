@@ -83,6 +83,7 @@ func GrubConfig() meta.GrubConfig {
 		PrestigeName: PrestigeName,
 		Banner:       func(string) string { return "" }, // flavor's art stays out of goldens
 		Gate:         game.PrestigeGate{Next: 3, Rated: 34, Need: 60},
+		Packages:     Packages(),
 	}
 }
 
@@ -370,4 +371,24 @@ while (!q.empty()) {
 }
 %s
 `, "```cpp", "```"),
+}
+
+// Packages is apt's shelf for Meta, cheapest first: two themes installed
+// (cowsay in use), the next one 1331 B covers, one short of the bank, one
+// waiting on a requirement, and a capstone.
+func Packages() []meta.Package {
+	return []meta.Package{
+		{Name: "cowsay", Price: 64, Grants: "GRUB banner theme cowsay", Theme: "cowsay", Installed: true},
+		{Name: "tux", Price: 128, Grants: "GRUB banner theme tux", Theme: "tux", Installed: true},
+		{Name: "rng-tools", Price: 256, Grants: "daemon /dev/random joins the merge windows: Mystery doors pay 2x bytes."},
+		{Name: "strace", Price: 400, Grants: "daemon strace joins the merge windows: A failed submit shows the failing test's input."},
+		{Name: "procps", Price: 400, Grants: "+1 daemon on offer per merge window", Requires: []string{"rng-tools", "strace"}},
+		{Name: "binutils", Price: 4096, Grants: "+1 lib link slot"},
+	}
+}
+
+// ShopConfig is the shop for Meta.
+func ShopConfig() meta.ShopConfig {
+	m := Meta()
+	return meta.ShopConfig{Packages: Packages(), Bank: m.Bank, Theme: "cowsay"}
 }

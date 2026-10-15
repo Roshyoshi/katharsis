@@ -3,9 +3,11 @@ package flavor
 import (
 	"math"
 	"strconv"
+	"strings"
 
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
+	"katharsis/internal/units"
 )
 
 type named struct{ name, blurb string }
@@ -99,4 +101,58 @@ func plural(n int, one, many string) string {
 		return "1 " + one
 	}
 	return strconv.Itoa(n) + " " + many
+}
+
+// ItemTextFor is a merge-window item's name and effect in r's numbers.
+func ItemTextFor(it game.Item, r rules.Rules) (name, desc string) {
+	switch it {
+	case game.Fsck:
+		return "fsck", "+1 life now."
+	case game.Dup:
+		return "dup", "+1 rubber duck."
+	case game.Shuf:
+		return "shuf", "Re-roll one room's doors."
+	case game.At:
+		return "at", "+" + units.Clock(r.AtTime.Duration) + " on the next door's timer."
+	}
+	return string(it), ""
+}
+
+// PackageText says in one line what an apt package grants every boot
+// after it is installed, in r's numbers: "daemon cron joins the merge
+// windows: A regression door pays 2x bytes." Effects a package stacks
+// are joined with " · ".
+func PackageText(p rules.Package, r rules.Rules) string {
+	var parts []string
+	if p.Daemon != "" {
+		name, desc := DaemonTextFor(game.Daemon(p.Daemon), r)
+		parts = append(parts, "daemon "+name+" joins the merge windows: "+desc)
+	}
+	if p.Item != "" {
+		name, desc := ItemTextFor(game.Item(p.Item), r)
+		parts = append(parts, "merge windows sell "+name+": "+desc)
+	}
+	if p.Upgrade != "" {
+		name, desc := UpgradeTextFor(game.Upgrade(p.Upgrade), r)
+		parts = append(parts, "upgrade "+name+" joins the picks: "+desc)
+	}
+	for _, c := range []struct {
+		n         int
+		one, many string
+	}{
+		{p.LinkSlots, "lib link slot", "lib link slots"},
+		{p.Ducks, "rubber duck at boot start", "rubber ducks at boot start"},
+		{p.DaemonOffers, "daemon on offer per merge window", "daemons on offer per merge window"},
+		{p.UpgradeOffers, "upgrade on offer per pick", "upgrades on offer per pick"},
+		{p.RouteOffers, "topic on offer per route", "topics on offer per route"},
+		{p.Doors, "door per room (not a boss's)", "doors per room (not a boss's)"},
+	} {
+		if c.n > 0 {
+			parts = append(parts, "+"+plural(c.n, c.one, c.many))
+		}
+	}
+	if p.Theme != "" {
+		parts = append(parts, "GRUB banner theme "+p.Theme)
+	}
+	return strings.Join(parts, " · ")
 }

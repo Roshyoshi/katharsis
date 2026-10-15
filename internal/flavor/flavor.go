@@ -151,6 +151,11 @@ func PrestigeName(p int) string {
 	return "Prestige " + strconv.Itoa(p)
 }
 
-// Banner is ASCII art for "ac", "boot", "cleared", "grub"; "" for any other
-// kind.
-func Banner(kind string) string { return banners[kind] }
+// Banner is ASCII art for "ac", "boot", "cleared", "grub", and "grub:" plus
+// a package's theme (see themes); "" for any other kind.
+func Banner(kind string) string {
+	if art, ok := themes[kind]; ok {
+		return art
+	}
+	return banners[kind]
+}

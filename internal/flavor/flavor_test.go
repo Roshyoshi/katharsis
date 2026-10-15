@@ -237,13 +237,13 @@ func TestPrestige(t *testing.T) {
 
 func TestUpgradesAndDaemons(t *testing.T) {
 	r := rules.Standard()
-	for _, u := range []game.Upgrade{game.Overclock, game.ECC, game.Duck} {
+	for _, u := range game.AllUpgrades {
 		name, desc := UpgradeTextFor(u, r)
 		if name == "" || desc == "" {
 			t.Errorf("UpgradeTextFor(%q) = %q, %q", u, name, desc)
 		}
 	}
-	for _, d := range []game.Daemon{game.Strace, game.Nice, game.Fork, game.DevRandom, game.Kexec} {
+	for _, d := range game.AllDaemons {
 		name, desc := DaemonTextFor(d, r)
 		if name == "" || desc == "" {
 			t.Errorf("DaemonTextFor(%q) = %q, %q", d, name, desc)
@@ -400,5 +400,42 @@ func checkLine(t *testing.T, what, s string) {
 	}
 	if n := utf8.RuneCountInString(s); n > 72 {
 		t.Errorf("%s is %d runes, want <= 72: %q", what, n, s)
+	}
+}
+
+// Every standard package says what it grants, in the rules' numbers, and
+// every theme it installs has a GRUB banner carrying GRUB's version line
+// once.
+func TestPackages(t *testing.T) {
+	r := rules.Standard()
+	for _, p := range r.Packages {
+		if PackageText(p, r) == "" {
+			t.Errorf("%s: no text", p.Name)
+		}
+		if p.Theme != "" {
+			art := Banner("grub:" + p.Theme)
+			if strings.Count(art, "GNU GRUB  version 2.12") != 1 || strings.Count(art, "\n") < 2 {
+				t.Errorf("%s: theme %q banner %q", p.Name, p.Theme, art)
+			}
+			for _, l := range strings.Split(art, "\n") {
+				if len([]rune(l)) > 60 {
+					t.Errorf("%s: banner line %d wide: %q", p.Name, len([]rune(l)), l)
+				}
+			}
+		}
+	}
+	for _, c := range []struct {
+		p    rules.Package
+		want string
+	}{
+		{rules.Package{Daemon: string(game.Cron)}, "daemon cron joins the merge windows: A regression door pays 2x bytes."},
+		{rules.Package{Item: string(game.At)}, "merge windows sell at: +05:00 on the next door's timer."},
+		{rules.Package{Upgrade: string(game.ShufPick)}, "upgrade shuf joins the picks"},
+		{rules.Package{LinkSlots: 1, Doors: 2}, "+1 lib link slot · +2 doors per room"},
+		{rules.Package{Theme: "tux"}, "GRUB banner theme tux"},
+	} {
+		if got := PackageText(c.p, r); !strings.Contains(got, c.want) {
+			t.Errorf("PackageText(%+v) = %q, want %q in it", c.p, got, c.want)
+		}
 	}
 }

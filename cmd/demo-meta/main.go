@@ -1,5 +1,5 @@
 // demo-meta shows every out-of-boot screen with fixture data so a human can
-// eyeball them: the GRUB menu, git log, top and the reader. It routes the
+// eyeball them: the GRUB menu, git log, top, apt and the reader. It routes the
 // screens' intents the way the app will (git log and top push, q/esc pop)
 // and prints anything it cannot act on, a StartBoot or an OpenURL, in the
 // status line instead.
@@ -34,6 +34,7 @@ var stops = []struct {
 	{"grub", func() screens.Screen { return grub() }},
 	{"log", func() screens.Screen { return meta.NewLog(fixture.Boots(), nil) }},
 	{"top", func() screens.Screen { return meta.NewTop(fixture.Stats()) }},
+	{"shop", func() screens.Screen { return meta.NewShop(fixture.ShopConfig()) }},
 	{"statement", func() screens.Screen { return page(fixture.Statement) }},
 	{"editorial", func() screens.Screen { return page(fixture.Editorial) }},
 	{"learn", func() screens.Screen { return page(fixture.Learn) }},
@@ -101,11 +102,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.note(msg)
 		m.push(page(fixture.Learn))
 		return m, nil
+	case screens.OpenShop:
+		m.note(msg)
+		m.push(meta.NewShop(fixture.ShopConfig()))
+		return m, nil
 	case screens.Upsolve:
 		m.note(msg)
 		m.push(page(fixture.Statement))
 		return m, nil
-	case screens.OpenStatement, screens.OpenEditorial, screens.StartBoot, reader.OpenURL:
+	case screens.OpenStatement, screens.OpenEditorial, screens.StartBoot, reader.OpenURL,
+		screens.Install, screens.UseTheme:
 		m.note(msg)
 		return m, nil
 	}

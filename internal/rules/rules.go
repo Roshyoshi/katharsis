@@ -5,6 +5,7 @@
 package rules
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -307,6 +308,14 @@ type Package struct {
 	RouteOffers   int    `toml:"route_offers"`   // more topics offered at each route
 	Doors         int    `toml:"doors"`          // more doors per room, but a boss's
 	Theme         string `toml:"theme"`          // a GRUB banner theme, cosmetic
+}
+
+// Ladder is r's packages cheapest first, ties in the rules' order: the
+// order GRUB shelves them in and the goal ladder they make (RT3).
+func (r Rules) Ladder() []Package {
+	ps := slices.Clone(r.Packages)
+	slices.SortStableFunc(ps, func(a, b Package) int { return cmp.Compare(a.Price, b.Price) })
+	return ps
 }
 
 // Package returns the package named name.

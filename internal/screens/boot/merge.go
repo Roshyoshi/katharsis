@@ -150,7 +150,7 @@ func (m *Merge) View(width, height int) string {
 	label := func(s string) string { return "  " + sBold.Render(fmt.Sprintf("%-9s", s)) }
 	if st.Uncommitted > 0 {
 		secs = append(secs, label("commit")+sGreen.Bold(true).Render(units.Bytes(st.Uncommitted))+
-			sFaint.Render(" uncommitted, lost if you crash  ")+hint("c", "commit"))
+			sFaint.Render(" uncommitted: a crash loses it, the bank keeps it  ")+hint("c", "commit"))
 	} else {
 		secs = append(secs, label("commit")+sFaint.Render("nothing uncommitted · ")+
 			units.Bytes(st.Committed)+sFaint.Render(" committed this boot · bank ")+units.Bytes(m.env.Meta.Bank))

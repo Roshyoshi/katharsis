@@ -46,3 +46,51 @@ func trimArt(s string) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// themes are the GRUB banners that apt packages install (rules.Package
+// Theme), keyed "grub:" + theme. Each carries GRUB's version line, so it
+// replaces the header as the default banner does.
+var themes = map[string]string{
+	"grub:cowsay": trimArt(`
+ ________________________
+< GNU GRUB  version 2.12 >
+ ------------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+`),
+	"grub:tux": trimArt(`
+    .--.
+   |o_o |    katharsis
+   |:_/ |    GNU GRUB  version 2.12
+  //   \ \
+ (|     | )
+/'\_   _/ \
+\___)=(___/
+`),
+	"grub:sl": trimArt(`
+      ====        ________
+  _D _|  |_______/        \__I_I_____
+   |(_)---  |   H\________/ |   |
+   /     |  |   H  |  |     |   |
+  |      |  |   H  |__-----------
+ GNU GRUB  version 2.12 · sl: did you mean ls?
+`),
+	"grub:neofetch": trimArt(`
+   _____      root@katharsis
+  /     \     --------------
+ | () () |    OS: katharsis
+  \  ^  /     Bootloader: GNU GRUB  version 2.12
+   |||||      Shell: vim
+`),
+	"grub:figlet": strings.Join([]string{
+		" _                _     _                     _",
+		"| | __  __ _  _  | |__    __ _  _ __  ___  (_) ___",
+		"| |/ / / _` || |_| '_ \\  / _` || '__|/ __| | |/ __|",
+		"|   < | (_| ||  _| | | || (_| || |   \\__ \\ | |\\__ \\",
+		"|_|\\_\\ \\__,_| \\__|_| |_| \\__,_||_|   |___/ |_||___/",
+		"                GNU GRUB  version 2.12",
+	}, "\n"),
+}

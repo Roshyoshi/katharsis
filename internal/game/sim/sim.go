@@ -84,11 +84,9 @@ func DefaultPlayer(rating float64) Player {
 	}
 }
 
-// CheapestFirst lists r's packages by price, cheapest first (ties in the
-// rules' order).
+// CheapestFirst names r's packages in r.Ladder's order, cheapest first.
 func CheapestFirst(r rules.Rules) []string {
-	ps := slices.Clone(r.Packages)
-	slices.SortStableFunc(ps, func(a, b rules.Package) int { return cmp.Compare(a.Price, b.Price) })
+	ps := r.Ladder()
 	names := make([]string, len(ps))
 	for i, p := range ps {
 		names[i] = p.Name

@@ -1,0 +1,24 @@
+apt · packages for every boot after                 bank 1.3 KiB · 2/6 installed
+
+    PACKAGE       PRICE  STATUS
+ ii cowsay         64 B  in use
+ ii tux           128 B  installed
+    rng-tools     256 B  enter installs
+    strace        400 B  enter installs
+    procps        400 B  needs rng-tools, strace
+    binutils      4 KiB  2.7 KiB short
+
+
+
+
+
+
+
+
+
+
+
+
+ rng-tools: daemon /dev/random joins the merge windows: Mystery doors pay 2x
+ bytes.
+j/kMove  enterInstall  tTheme  qBack

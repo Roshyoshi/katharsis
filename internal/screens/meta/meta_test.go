@@ -122,6 +122,7 @@ func TestGoldens(t *testing.T) {
 		{"log_crashed", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, []string{"f", "f", "j", "enter"}},
 		{"top", func() screens.Screen { return meta.NewTop(fixture.Stats()) }, nil},
 		{"top_sorted", func() screens.Screen { return meta.NewTop(fixture.Stats()) }, []string{"s", "j", "j"}},
+		{"shop", func() screens.Screen { return meta.NewShop(fixture.ShopConfig()) }, []string{"j", "j"}},
 	}
 	for _, c := range cases {
 		for _, sz := range sizes {
@@ -206,15 +207,16 @@ func TestGrubEntries(t *testing.T) {
 		// oldest due first, without usaco:740, which is not due.
 		{"regressions submenu lists only regressions", append(down(7), "enter", "enter"), screens.Upsolve{Problem: "usaco:891"}},
 		{"regression due last", append(down(7), "enter", "G", "enter"), screens.Upsolve{Problem: "usaco:1205"}},
-		{"git log", append(down(8), "enter"), screens.OpenLog{}},
-		{"top", append(down(9), "enter"), screens.OpenTop{}},
-		{"poweroff", append(down(10), "enter"), screens.Quit{}},
+		{"apt", append(down(8), "enter"), screens.OpenShop{}},
+		{"git log", append(down(9), "enter"), screens.OpenLog{}},
+		{"top", append(down(10), "enter"), screens.OpenTop{}},
+		{"poweroff", append(down(11), "enter"), screens.Quit{}},
 		{"end is poweroff", []string{"G", "enter"}, screens.Quit{}},
 		{"down stops at the end", append(down(30), "enter"), screens.Quit{}},
 		{"ctrl+x boots like enter", []string{"ctrl+x"}, screens.StartBoot{Prestige: 2, Preset: "standard"}},
 		{"esc leaves submenu, keeping its entry highlighted", append(down(5), "enter", "esc", "down", "enter"), screens.Upsolve{Problem: "usaco:1014"}},
 		{"esc at root does nothing", []string{"esc"}, nil},
-		{"e on a non-boot entry does nothing", append(down(8), "e", "enter"), screens.OpenLog{}},
+		{"e on a non-boot entry does nothing", append(down(9), "e", "enter"), screens.OpenLog{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -306,37 +308,45 @@ func TestGrubBannerWhenItFits(t *testing.T) {
 	}
 }
 
-// TestGrubFlavorBanner uses flavor's real art, which carries its own
-// version line: it must replace the header, not repeat it, and its lines
-// must share one left edge.
+// TestGrubFlavorBanner uses flavor's real art, the default and each apt
+// theme's, which carries its own version line: it must replace the
+// header, not repeat it, and its lines must share one left edge.
 func TestGrubFlavorBanner(t *testing.T) {
-	c := fixture.GrubConfig()
-	c.Banner = nil
-	s := plain(meta.NewGrub(c).View(80, 24))
-	if n := strings.Count(s, "GNU GRUB"); n != 1 {
-		t.Errorf("want one GNU GRUB line, got %d:\n%s", n, s)
-	}
-	art := strings.Split(flavor.Banner("grub"), "\n")
-	if len(art) < 2 {
-		t.Skip("flavor has no multi-line grub banner")
-	}
-	lines := strings.Split(s, "\n")
-	var offs []int
-	for _, a := range art {
-		for _, l := range lines {
-			if a != "" && strings.TrimLeft(l, " ") == strings.TrimLeft(a, " ") {
-				offs = append(offs, len(l)-len(a))
-				break
+	for _, theme := range []string{"", "cowsay", "tux", "sl", "neofetch", "figlet"} {
+		c := fixture.GrubConfig()
+		c.Banner, c.Meta.Theme = nil, theme
+		s := plain(meta.NewGrub(c).View(80, 30))
+		if n := strings.Count(s, "GNU GRUB"); n != 1 {
+			t.Errorf("theme %q: want one GNU GRUB line, got %d:\n%s", theme, n, s)
+		}
+		kind := "grub"
+		if theme != "" {
+			kind = "grub:" + theme
+		}
+		art := strings.Split(flavor.Banner(kind), "\n")
+		if len(art) < 2 {
+			t.Errorf("flavor has no multi-line %s banner", kind)
+			continue
+		}
+		lines := strings.Split(s, "\n")
+		var offs []int
+		for _, a := range art {
+			for _, l := range lines {
+				if a != "" && strings.TrimLeft(l, " ") == strings.TrimLeft(a, " ") {
+					offs = append(offs, len(l)-len(a))
+					break
+				}
 			}
 		}
-	}
-	if len(offs) != len(art) {
-		t.Fatalf("banner lines missing:\n%s", s)
-	}
-	for _, o := range offs {
-		if o != offs[0] {
-			t.Errorf("banner lines shifted relative to each other (%v):\n%s", offs, s)
-			break
+		if len(offs) != len(art) {
+			t.Errorf("theme %q: banner lines missing:\n%s", theme, s)
+			continue
+		}
+		for _, o := range offs {
+			if o != offs[0] {
+				t.Errorf("theme %q: banner lines shifted relative to each other (%v):\n%s", theme, offs, s)
+				break
+			}
 		}
 	}
 }
@@ -416,5 +426,66 @@ func TestGrubConfigDefaults(t *testing.T) {
 	}
 	if !strings.Contains(v, "upsolve core dump: usaco:1014") {
 		t.Errorf("nil Lookup should show catalog IDs:\n%s", v)
+	}
+}
+
+// ---- shop ----------------------------------------------------------------------
+
+// enter installs the selected package unless it is installed; t puts an
+// installed theme in use and, on the one in use, goes back to the default;
+// q leaves.
+func TestShopKeys(t *testing.T) {
+	shop := func() screens.Screen { return meta.NewShop(fixture.ShopConfig()) }
+	tests := []struct {
+		name string
+		keys []string
+		want tea.Msg
+	}{
+		{"enter on installed does nothing", []string{"enter"}, nil},
+		{"install", []string{"j", "j", "enter"}, screens.Install{Package: "rng-tools"}},
+		{"i installs too", []string{"G", "i"}, screens.Install{Package: "binutils"}},
+		{"t on the theme in use goes back to the default", []string{"t"}, screens.UseTheme{}},
+		{"t on another installed theme", []string{"j", "t"}, screens.UseTheme{Theme: "tux"}},
+		{"t on a package that is not a theme", []string{"j", "j", "t"}, nil},
+		{"q leaves", []string{"q"}, screens.Back{}},
+		{"esc leaves", []string{"esc"}, screens.Back{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			wantMsg(t, press(t, shop(), tt.keys...), tt.want)
+		})
+	}
+}
+
+// The goal is the first package on the shelf not installed whose
+// requirements are; GRUB's apt entry names it and what it still costs.
+func TestShopGoal(t *testing.T) {
+	ps := fixture.Packages()
+	p, short, ok := meta.Goal(ps, 100)
+	if !ok || p.Name != "rng-tools" || short != 156 {
+		t.Errorf("Goal: %s short %d ok %v, want rng-tools short 156", p.Name, short, ok)
+	}
+	for i := range ps {
+		if ps[i].Name != "procps" && ps[i].Name != "binutils" {
+			ps[i].Installed = true
+		}
+	}
+	if p, _, _ := meta.Goal(ps, 0); p.Name != "procps" {
+		t.Errorf("Goal with its requirements installed: %s, want procps", p.Name)
+	}
+	for i := range ps {
+		ps[i].Installed = true
+	}
+	if _, _, ok := meta.Goal(ps, 0); ok {
+		t.Error("Goal with everything installed")
+	}
+	c := fixture.GrubConfig()
+	c.Meta.Bank = 100
+	if s := plain(meta.NewGrub(c).View(100, 30)); !strings.Contains(s, "apt install rng-tools (256 B, 156 B to go)") {
+		t.Errorf("GRUB's apt entry:\n%s", s)
+	}
+	c.Packages = nil
+	if s := plain(meta.NewGrub(c).View(100, 30)); strings.Contains(s, "apt") {
+		t.Errorf("GRUB lists apt with no packages:\n%s", s)
 	}
 }

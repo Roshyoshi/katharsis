@@ -35,6 +35,12 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 		return m.openTop(), true
 	case screens.OpenLearn:
 		return m.openLearn(), true
+	case screens.OpenShop:
+		return m.openShop(), true
+	case screens.Install:
+		return m.install(msg.Package), true
+	case screens.UseTheme:
+		return m.useTheme(msg.Theme), true
 	case screens.OpenModule:
 		return m.openModule(msg.Module), true
 	case screens.StartTrial:
@@ -68,11 +74,12 @@ func (m *Model) grub() screens.Screen {
 	}
 	slices.Sort(presets)
 	return meta.NewGrub(meta.GrubConfig{
-		Meta:    m.meta,
-		Presets: presets,
-		Lookup:  m.d.Catalog.Get,
-		Now:     m.d.Now(),
-		Gate:    game.NextPrestige(m.d.Presets["standard"], &m.meta),
+		Meta:     m.meta,
+		Presets:  presets,
+		Lookup:   m.d.Catalog.Get,
+		Now:      m.d.Now(),
+		Gate:     game.NextPrestige(m.aptRules(), &m.meta),
+		Packages: m.packages(),
 	})
 }
 

@@ -22,6 +22,7 @@ import (
 	"katharsis/internal/hud"
 	"katharsis/internal/judge"
 	"katharsis/internal/screens"
+	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/session"
 	"katharsis/internal/store"
@@ -1066,5 +1067,36 @@ func TestQuitOutsideDoor(t *testing.T) {
 	}
 	if _, ok := cmd().(tea.QuitMsg); !ok {
 		t.Fatal("ctrl+c at GRUB: not tea.Quit")
+	}
+}
+
+// apt at GRUB buys a package with the bank and saves it; a refused buy
+// says why and changes nothing; installing a theme puts it in use, and
+// UseTheme goes back to the default.
+func TestShopInstall(t *testing.T) {
+	h := newHarness(t)
+	h.m.meta.Bank = 100
+	h.send(screens.OpenShop{})
+	if _, ok := h.m.top().(*meta.Shop); !ok {
+		t.Fatalf("top is %T, want the shop", h.m.top())
+	}
+	h.send(screens.Install{Package: "tux"}) // 128 B
+	if game.Installed(&h.m.meta, "tux") || h.m.meta.Bank != 100 || !strings.Contains(h.m.flash, "costs") {
+		t.Fatalf("unaffordable install: installed %v, bank %d, flash %q", h.m.meta.Installed, h.m.meta.Bank, h.m.flash)
+	}
+	h.send(screens.Install{Package: "cowsay"}) // 64 B
+	if !game.Installed(&h.m.meta, "cowsay") || h.m.meta.Bank != 36 || h.m.meta.Theme != "cowsay" {
+		t.Fatalf("install: installed %v, bank %d, theme %q", h.m.meta.Installed, h.m.meta.Bank, h.m.meta.Theme)
+	}
+	if !strings.Contains(h.m.stack[0].View(100, 30), "36 B") {
+		t.Errorf("GRUB under the shop still shows the old bank:\n%s", h.m.stack[0].View(100, 30))
+	}
+	h.send(screens.UseTheme{})
+	if h.m.meta.Theme != "" {
+		t.Errorf("theme %q after going back to the default", h.m.meta.Theme)
+	}
+	h.restart()
+	if !game.Installed(&h.m.meta, "cowsay") || h.m.meta.Bank != 36 {
+		t.Errorf("after a restart: installed %v, bank %d", h.m.meta.Installed, h.m.meta.Bank)
 	}
 }

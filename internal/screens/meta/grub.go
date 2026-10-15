@@ -32,6 +32,9 @@ type GrubConfig struct {
 	// Gate is what unlocking the next prestige still needs (D31), from
 	// game.NextPrestige; its zero value shows nothing.
 	Gate game.PrestigeGate
+	// Packages are apt's, in shelf order; GRUB lists apt with the next
+	// one to buy (Goal) when there are any.
+	Packages []Package
 
 	// PrestigeName and Banner default to the flavor package. Tests pin them
 	// so goldens do not churn whenever flavor text changes.
@@ -96,6 +99,11 @@ func NewGrub(c GrubConfig) *Menu {
 		nameOf: c.PrestigeName,
 		banner: strings.TrimRight(c.Banner("grub"), "\n"),
 	}
+	if c.Meta.Theme != "" {
+		if art := c.Banner("grub:" + c.Meta.Theme); art != "" {
+			m.banner = strings.TrimRight(art, "\n")
+		}
+	}
 	m.presets = []string{standardPreset}
 	for _, p := range c.Presets {
 		if p != "" && p != standardPreset {
@@ -139,6 +147,9 @@ func NewGrub(c GrubConfig) *Menu {
 			})
 		}
 		es = append(es, entry{label: fmt.Sprintf("regressions due: %d", len(regs)), sub: sub})
+	}
+	if len(c.Packages) > 0 {
+		es = append(es, entry{label: aptLabel(c.Packages, c.Meta.Bank), msg: screens.OpenShop{}})
 	}
 	es = append(es,
 		entry{label: "git log", msg: screens.OpenLog{}},
@@ -479,4 +490,17 @@ func (m *Menu) menuLines(inner, rows int) []string {
 		out = append(out, " "+e.label)
 	}
 	return out
+}
+
+// aptLabel is GRUB's apt entry, with the next package to buy and what it
+// still costs: "apt install procps (400 B, 88 B to go)".
+func aptLabel(ps []Package, bank int64) string {
+	p, short, ok := Goal(ps, bank)
+	switch {
+	case !ok:
+		return "apt (every package installed)"
+	case short > 0:
+		return fmt.Sprintf("apt install %s (%s, %s to go)", p.Name, units.Bytes(p.Price), units.Bytes(short))
+	}
+	return fmt.Sprintf("apt install %s (%s, affordable)", p.Name, units.Bytes(p.Price))
 }
