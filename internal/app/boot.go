@@ -3,6 +3,9 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
+	"sync"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -90,27 +93,47 @@ func (m *Model) abandon() error {
 // step feeds one action to the engine, saves, and applies the effects. A
 // refused action leaves the state untouched and is shown, not fatal.
 func (m *Model) step(a game.Action) tea.Cmd {
+	cmd, err := m.try(a)
+	if err != nil {
+		return func() tea.Msg { return errMsg{err} }
+	}
+	return cmd
+}
+
+// try is step for a caller that reports a refusal itself: the editor's
+// commands answer in vim, where the player is looking, not over the game.
+func (m *Model) try(a game.Action) (tea.Cmd, error) {
 	if m.state == nil {
-		return nil
+		return nil, nil
 	}
 	before := m.state.Phase
 	effs, err := game.Step(m.state, &m.meta, m.pool, a, m.d.Now())
 	if errors.Is(err, game.ErrInvalid) {
-		return fail("%v", err)
+		return nil, err
 	}
 	if err != nil {
-		return fail("engine: %v", err)
+		return nil, fmt.Errorf("engine: %w", err)
 	}
+	// The step happened whether or not it was saved, so its effects run
+	// either way: a door the engine opened must open on screen too.
+	var cmds []tea.Cmd
 	if err := m.d.Store.Checkpoint(m.meta, m.state); err != nil {
-		return fail("save: %v", err)
+		cmds = append(cmds, fail("save: %v", err))
 	}
-	cmd := m.effects(effs)
+	cmds = append(cmds, m.effects(effs))
 	if m.state.Phase != before || needsRebuild(a) {
 		m.reset()
-		return tea.Batch(cmd, m.initTop())
+		cmds = append(cmds, m.initTop())
+	} else {
+		m.refresh()
 	}
-	m.refresh()
-	return cmd
+	return tea.Batch(cmds...), nil
+}
+
+// refusal is an engine refusal as the player reads it, without the
+// "invalid action" prefix.
+func refusal(err error) string {
+	return strings.TrimPrefix(err.Error(), game.ErrInvalid.Error()+": ")
 }
 
 // needsRebuild: actions that change which screen a phase shows without
@@ -141,12 +164,22 @@ func (m *Model) onTick() tea.Cmd {
 		return nil
 	}
 	// No Tick while a submit is being judged: the engine grants a grace
-	// period for submits past the deadline, but not for Tick.
-	if m.state.Phase == game.PhaseProblem && !m.judging {
+	// period for submits past the deadline, but not for Tick. The grace
+	// also bounds the wait, so a judge that never reports back (it failed,
+	// or the editor closed and took the HUD's pass with it) cannot stop
+	// the clock.
+	if m.state.Phase == game.PhaseProblem && (!m.judging || m.pastGrace()) {
 		return m.step(game.Tick{})
 	}
 	m.refresh()
 	return nil
+}
+
+// pastGrace reports whether the open door's deadline plus the submit grace
+// has passed, after which no judge result can save it.
+func (m *Model) pastGrace() bool {
+	c := m.state.Current
+	return c == nil || !m.d.Now().Before(c.Deadline.Add(m.state.Rules.SubmitGrace.Duration))
 }
 
 // effects carries out what the engine asked for.
@@ -198,6 +231,10 @@ func (m *Model) onFetched(f fetchedMsg) tea.Cmd {
 	}
 	p, _ := m.d.Catalog.Get(f.door.Problem)
 	d := &Door{Door: f.door, Problem: p, Assets: f.assets, Upsolve: f.upsolve, Opened: m.d.Now()}
+	if f.upsolve {
+		d.ReadEditorial = m.sawEditorial(f.door.Problem)
+		d.Sub, d.SeedBoot = m.upsolveFiles(f.door.Problem)
+	}
 	if m.state != nil && !f.upsolve {
 		d.Boot = m.state.Boot
 		if m.state.Current != nil {
@@ -226,14 +263,22 @@ func (m *Model) closeDoor() {
 
 // prefetch warms the cache for doors on offer so opening one is instant.
 // Failures are ignored here; opening the door reports them.
+//
+// The doors fetch in parallel: one after another, a cold USACO problem
+// took 1-2 s each in play, so the third door was ready about 6 s after the
+// room appeared, and a Codeforces one can take 8 s. The sources share one
+// download per problem (opening a door mid-prefetch joins it) and limit
+// requests per host themselves, so this stays polite.
 func (m *Model) prefetch(ids []catalog.ID) tea.Cmd {
 	cat := m.d.Catalog
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
+		var wg sync.WaitGroup
 		for _, id := range ids {
-			cat.Fetch(ctx, id)
+			wg.Go(func() { cat.Fetch(ctx, id) })
 		}
+		wg.Wait()
 		return nil
 	}
 }
@@ -246,17 +291,18 @@ type judgedMsg struct {
 
 // submit judges the open door's full tests in the background.
 func (m *Model) submit() tea.Cmd {
-	if m.open == nil || m.judging {
+	if m.open == nil {
 		return nil
 	}
 	if r, ok := m.d.Runner.(hudRunner); ok && r.HUD() != nil {
-		// The HUD judges and reports back with a SubmittedMsg.
+		// The HUD judges and reports back with a SubmittedMsg. A submit
+		// while one runs replaces it, as :Submit from the editor does.
 		m.judging = true
 		req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
 		_, cmd := r.HUD().Update(req)
 		return guard(cmd)
 	}
-	if m.d.Judge == nil {
+	if m.d.Judge == nil || m.judging {
 		return nil
 	}
 	m.judging = true

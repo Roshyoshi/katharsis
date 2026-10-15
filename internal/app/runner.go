@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"os"
@@ -111,6 +112,7 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 			Output:         judge.DefaultOutputLimit,
 			Scale:          r.Scale,
 			FloatTolerance: d.Problem.FloatTolerance,
+			AnyCase:        d.Problem.AnyCase,
 		},
 		SubmitProfile: judge.Full,
 		FullTests:     d.Assets.Tests,
@@ -198,11 +200,12 @@ func (r *TmuxRunner) Shutdown() {
 
 // materialize lays out a door's directory and returns it and the source
 // path. A source already there (a resumed door, a second attempt at a
-// regression) is kept; samples and statement are rewritten.
+// regression) is kept; samples and statement are rewritten. A new upsolve
+// source starts from the seed boot's attempt when there is one.
 func (r *TmuxRunner) materialize(d Door) (dir, src string, err error) {
 	sub := fmt.Sprintf("boot-%d", d.Boot)
 	if d.Upsolve {
-		sub = "upsolve"
+		sub = cmp.Or(d.Sub, "upsolve")
 	}
 	name := slug(d)
 	dir = filepath.Join(r.Root, sub, name)
@@ -211,7 +214,11 @@ func (r *TmuxRunner) materialize(d Door) (dir, src string, err error) {
 	}
 	src = filepath.Join(dir, name+".cpp")
 	if _, err := os.Stat(src); os.IsNotExist(err) {
-		if err := os.WriteFile(src, []byte(r.template(d.Problem)), 0o644); err != nil {
+		body, ok := r.seed(d)
+		if !ok {
+			body = []byte(r.template(d.Problem))
+		}
+		if err := os.WriteFile(src, body, 0o644); err != nil {
 			return "", "", err
 		}
 	}
@@ -231,6 +238,25 @@ func (r *TmuxRunner) materialize(d Door) (dir, src string, err error) {
 		return "", "", err
 	}
 	return dir, src, nil
+}
+
+// seed reads the source an upsolve starts from: the player's attempt in
+// boot d.SeedBoot, under either name the door could have had there (the
+// titled one, or the mystery one).
+func (r *TmuxRunner) seed(d Door) ([]byte, bool) {
+	if !d.Upsolve || d.SeedBoot <= 0 {
+		return nil, false
+	}
+	boot := filepath.Join(r.Root, fmt.Sprintf("boot-%d", d.SeedBoot))
+	for _, mystery := range []bool{false, true} {
+		e := d
+		e.Door.Mystery = mystery
+		name := slug(e)
+		if b, err := os.ReadFile(filepath.Join(boot, name, name+".cpp")); err == nil {
+			return b, true
+		}
+	}
+	return nil, false
 }
 
 var nonWord = regexp.MustCompile(`[^a-z0-9]+`)

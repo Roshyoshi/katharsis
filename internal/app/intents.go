@@ -4,6 +4,7 @@ import (
 	"context"
 	"os/exec"
 	"slices"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -114,9 +115,16 @@ type docMsg struct{ doc reader.Doc }
 // it first if needed.
 func (m *Model) openDoc(id catalog.ID, editorial bool) tea.Cmd {
 	cat := m.d.Catalog
-	if m.open != nil && m.open.Door.Problem == id && editorial {
-		m.open.ReadEditorial = true
+	if editorial {
+		m.editorials[id] = true
+		if m.open != nil && m.open.Door.Problem == id {
+			m.open.ReadEditorial = true
+		}
 	}
+	// A mystery door hides its title on the door and in the directory
+	// name; the statement must not give it away either.
+	mystery := !editorial && m.state != nil && m.state.Phase == game.PhaseProblem &&
+		m.state.Current != nil && m.state.Current.Door.Problem == id && m.state.Current.Door.Mystery
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
@@ -136,8 +144,36 @@ func (m *Model) openDoc(id catalog.ID, editorial bool) tea.Cmd {
 		if err != nil {
 			return errMsg{err}
 		}
+		if mystery {
+			// The page online names it too, so `o` is off.
+			return docMsg{reader.Doc{Title: "???", Source: "mystery door · " + kind, Markdown: redact(md, p)}}
+		}
 		return docMsg{reader.Doc{Title: p.Title, Source: p.Contest + " · " + kind, URL: p.URL, Markdown: md}}
 	}
+}
+
+// redact hides a mystery door's identity in its statement: the headings
+// and emphasized lines before the first paragraph (USACO statements open
+// with "# Title" and "*USACO 2021 January, Bronze, Problem 1*"), and the
+// title anywhere else it appears.
+func redact(md string, p catalog.Problem) string {
+	lines := strings.Split(md, "\n")
+	for i, l := range lines {
+		t := strings.TrimSpace(l)
+		if t == "" {
+			continue
+		}
+		emph := len(t) > 1 && strings.ContainsRune("*_", rune(t[0])) && t[len(t)-1] == t[0]
+		if !strings.HasPrefix(t, "#") && !emph {
+			break // the statement proper
+		}
+		lines[i] = ""
+	}
+	md = strings.TrimLeft(strings.Join(lines, "\n"), "\n")
+	if p.Title != "" {
+		md = strings.ReplaceAll(md, p.Title, "???")
+	}
+	return md
 }
 
 // startUpsolve opens a core dump or regression problem outside a boot:
@@ -152,6 +188,44 @@ func (m *Model) startUpsolve(id catalog.ID) tea.Cmd {
 	}
 	door := game.Door{Problem: id, Topic: p.Topic, Rating: p.Rating}
 	return tea.Batch(m.push(newUpsolveScreen(m, door)), m.openDoor(door, true))
+}
+
+// sawEditorial reports whether the player has had id's editorial in front
+// of them: opened this session, or opened by a :q! on it (the engine opens
+// it on every :q!) that no solve has come after. The second survives a
+// restart, so a core dump upsolved from GRUB the next day still counts.
+func (m *Model) sawEditorial(id catalog.ID) bool {
+	if m.editorials[id] {
+		return true
+	}
+	atts, err := m.d.Store.Attempts(store.AttemptFilter{Problem: id, Limit: 1})
+	if err != nil || len(atts) == 0 || atts[0].Outcome != game.GaveUp {
+		return false
+	}
+	return !slices.ContainsFunc(m.meta.Solves, func(s game.Solve) bool {
+		return s.Problem == id && s.At.After(atts[0].Closed)
+	})
+}
+
+// upsolveFiles picks where an upsolve of id is kept and what a new one
+// starts from. A due regression is a recall test: it gets a directory per
+// due date and a blank file, because the shared upsolve directory may hold
+// last time's accepted solution. Any other upsolve shares that directory,
+// and a new one starts from the attempt that crashed the boot, so a core
+// dump picks up where the boot left off.
+func (m *Model) upsolveFiles(id catalog.ID) (sub string, seedBoot int) {
+	for _, g := range game.DueRegressions(&m.meta, m.d.Now()) {
+		if g.Problem == id {
+			return "regression-" + g.Due.Local().Format(time.DateOnly), 0
+		}
+	}
+	switch {
+	case m.state != nil && m.state.Crash != nil && m.state.Crash.Door.Problem == id:
+		return "", m.state.Boot
+	case m.meta.CoreDump != nil && m.meta.CoreDump.Problem == id:
+		return "", m.meta.CoreDump.Boot
+	}
+	return "", 0
 }
 
 // onUpsolveJudged records an accepted upsolve; anything else just shows.

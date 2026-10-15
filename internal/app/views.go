@@ -1,10 +1,12 @@
 package app
 
 import (
+	"cmp"
 	"slices"
 
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/store"
 )
@@ -32,11 +34,47 @@ func (m *Model) bootRow(b store.BootSummary, atts []store.AttemptRecord) meta.Bo
 		a := atts[i]
 		row.Attempts = append(row.Attempts, m.attemptRow(a.Attempt))
 	}
-	if n := len(atts); n > 0 && !row.Cleared {
-		last := atts[0].Attempt
-		row.Biome = flavor.BiomeName(last.Door.Topic)
+	if len(atts) > 0 && !row.Cleared {
+		row.Biome = m.lastBiome(b.Rules, atts)
 	}
 	return row
+}
+
+// lastBiome names the biome a boot ended in, from its attempts (newest
+// first). A door's topic names a topic biome, but not Userland, whose doors
+// each keep their own topic, nor a boss room; so the biome is found by
+// counting clears through the preset's rooms, as the engine walked them.
+func (m *Model) lastBiome(preset string, atts []store.AttemptRecord) string {
+	last := atts[0].Door
+	if last.Boss != "" {
+		return flavor.BossName(last.Boss)
+	}
+	r, ok := m.d.Presets[preset]
+	if !ok {
+		return flavor.BiomeName(last.Topic)
+	}
+	clears := 0
+	for _, a := range atts[1:] {
+		if a.Outcome == game.Cleared {
+			clears++
+		}
+	}
+	for i, rb := range r.Biomes {
+		rooms := rb.Rooms
+		if rb.Kind == rules.Boss {
+			rooms = 1 // the engine gives a boss biome one room whatever the preset says
+		}
+		if clears >= rooms {
+			clears -= rooms
+			continue
+		}
+		topic := last.Topic
+		if rb.Kind == rules.Fixed && i == 0 {
+			topic = game.Mixed // the engine's first fixed biome draws every topic
+		}
+		return cmp.Or(rb.Name, flavor.BiomeName(topic))
+	}
+	return flavor.BiomeName(last.Topic)
 }
 
 func (m *Model) attemptRow(a game.Attempt) meta.AttemptRow {

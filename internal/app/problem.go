@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"strings"
@@ -163,23 +164,29 @@ func (s *problemScreen) View(w, h int) string {
 	if s.closed {
 		top = append(top, red.Render("editor closed · e reopens it"))
 	}
-	help := "s submit · t statement · ? duck · R retreat · Q :q!"
+	help := "s submit · t statement · ? duck · R retreat · Q :q! · r rerun · j/k"
+	vimHelp := "vim  :w samples · :Submit · :Debug n · :Quack · :Retreat · :q!"
 	if s.upsolve {
-		help = "s submit · t statement · e editorial · Q leave"
+		help = "s submit · t statement · e editorial · Q leave · r rerun · j/k"
+		vimHelp = "vim  :w samples · :Submit · :Debug n"
 	}
 
 	var b strings.Builder
 	for _, l := range top {
 		b.WriteString(ansi.Truncate(l, w, "…") + "\n")
 	}
-	room := h - len(top) - 1
-	if hm := s.hud(); hm != nil && room > 2 {
+	// Two footer rows: the editor's commands, then this pane's keys. The
+	// HUD runs embedded (no header or key help of its own) and is exactly
+	// as tall as the room it is given.
+	room := h - len(top) - 2
+	if hm := s.hud(); hm != nil && room > 1 {
 		// The HUD sizes itself from WindowSizeMsg; give it the room left.
 		if s.hudSize != [2]int{w, room} {
 			s.hudSize = [2]int{w, room}
 			hm.Update(tea.WindowSizeMsg{Width: w, Height: room})
 		}
-		b.WriteString(hm.View().Content + "\n")
+		b.WriteString(strings.TrimSuffix(hm.View().Content, "\n") + "\n")
+		b.WriteString(ansi.Truncate(faint.Render(vimHelp), w, "…") + "\n")
 	} else {
 		b.WriteString(s.headless(w))
 		for i := strings.Count(b.String(), "\n"); i < h-1; i++ {
@@ -232,6 +239,11 @@ func (m *Model) onRequest(req session.Request) tea.Cmd {
 			req.Answer(session.Reply{Text: "no door open"})
 			return nil
 		}
+		if req.Cmd == session.CmdSubmit && m.open != nil {
+			// The submit most players make, so it must hold the clock
+			// for the grace the way the s key does.
+			m.judging = true
+		}
 		_, cmd := h.Update(req)
 		return guard(cmd)
 	}
@@ -239,20 +251,52 @@ func (m *Model) onRequest(req session.Request) tea.Cmd {
 		req.Answer(session.Reply{Text: req.Cmd + " needs an open door in a boot"})
 		return nil
 	}
-	cmd := m.step(a)
-	req.Answer(session.Reply{OK: true, Text: m.statusLine()})
+	hint := m.state.Current.Hint
+	cmd, err := m.try(a)
+	if err != nil {
+		req.Answer(session.Reply{Text: refusal(err)})
+		return nil
+	}
+	text := m.statusLine()
+	if c := m.state.Current; c != nil && c.Hint > hint {
+		text = m.reveal(c.Hint) + " · " + text
+	}
+	req.Answer(session.Reply{OK: true, Text: text})
 	return cmd
 }
 
-// statusLine is the one-line boot state for the editor and its border:
-// countdown, lives, ducks.
+// reveal is what a quack to level showed, for the editor's message line:
+// the player asked from vim, so the answer belongs there and not only in
+// the HUD.
+func (m *Model) reveal(level int) string {
+	p, _ := m.d.Catalog.Get(m.state.Current.Door.Problem)
+	if level >= 2 {
+		return "technique: " + cmp.Or(p.Topic, "unknown")
+	}
+	if len(p.Tags) == 0 {
+		return "tags: none listed"
+	}
+	return "tags: " + strings.Join(p.Tags, " · ")
+}
+
+// statusLine is the one-line boot state for the editor's message line:
+// countdown, lives, ducks. It has no ⏱: vim counts that glyph two columns
+// wide and tmux draws it in one, so vim leaves a stale character after it.
 func (m *Model) statusLine() string {
 	s := m.state
 	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil {
 		return "no door open"
 	}
 	left := max(s.Current.Deadline.Sub(m.d.Now()), 0)
-	return fmt.Sprintf("⏱ %s · %s · 🦆%d", countdown(left), strings.Repeat("♥", s.Lives), s.Ducks)
+	return fmt.Sprintf("%s left · %s · %s", countdown(left), strings.Repeat("♥", s.Lives), ducks(s))
+}
+
+// ducks is the duck count, or ✗ on a cursed door, which takes none.
+func ducks(s *game.State) string {
+	if s.Current != nil && s.Current.Door.Cursed {
+		return "🦆✗"
+	}
+	return fmt.Sprintf("🦆%d", s.Ducks)
 }
 
 func countdown(d interface{ Seconds() float64 }) string {

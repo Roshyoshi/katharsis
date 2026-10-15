@@ -43,6 +43,12 @@ type Door struct {
 	// ReadEditorial marks an upsolve whose editorial was opened, so the
 	// solve is recorded as editorial-assisted.
 	ReadEditorial bool
+	// Sub, for an upsolve, is its directory under the runner's root; ""
+	// is the shared upsolve directory.
+	Sub string
+	// SeedBoot, for an upsolve, is the boot whose attempt at the problem
+	// a new upsolve source starts from; 0 starts from the template.
+	SeedBoot int
 }
 
 // Judge runs the full tests of an open door. The app calls it on :Submit;
@@ -73,6 +79,10 @@ type Model struct {
 	judging bool
 	flash   string // one-line error shown over the screen until the next key
 
+	// editorials are the problems whose editorial was opened this session,
+	// including the one a :q! opens before any upsolve exists.
+	editorials map[catalog.ID]bool
+
 	width, height int
 }
 
@@ -93,7 +103,7 @@ func New(d Deps) (*Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := &Model{d: d, meta: meta, pool: d.Catalog.All()}
+	m := &Model{d: d, meta: meta, pool: d.Catalog.All(), editorials: map[catalog.ID]bool{}}
 	st, err := d.Store.ActiveBoot()
 	if err != nil {
 		return nil, err
@@ -110,13 +120,17 @@ func tick() tea.Cmd {
 }
 
 func (m *Model) Init() tea.Cmd {
-	cmds := []tea.Cmd{tick(), m.initTop()}
 	// A boot resumed in the middle of a door reopens it; its deadline is
-	// absolute, so time spent away still counted.
+	// absolute, so time spent away still counted. A door that ran out while
+	// the game was closed crashes now, rather than opening the editor only
+	// for the first tick to close it again.
 	if m.state != nil && m.state.Phase == game.PhaseProblem && m.state.Current != nil {
-		cmds = append(cmds, m.openDoor(m.state.Current.Door, false))
+		if !m.d.Now().Before(m.state.Current.Deadline) {
+			return tea.Batch(tick(), m.step(game.Tick{}))
+		}
+		return tea.Batch(tick(), m.initTop(), m.openDoor(m.state.Current.Door, false))
 	}
-	return tea.Batch(cmds...)
+	return tea.Batch(tick(), m.initTop())
 }
 
 // reset rebuilds the screen stack from scratch for the current phase.
@@ -171,6 +185,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				p.closed = true
 			}
 		}
+		// The HUD cancels its submit pass when it quits; no result comes.
+		m.judging = false
 		return m, nil
 	case fetchedMsg:
 		return m, m.onFetched(msg)
@@ -262,5 +278,5 @@ func (m *Model) Clock() string {
 		return "untimed"
 	}
 	left := max(s.Current.Deadline.Sub(m.d.Now()), 0)
-	return fmt.Sprintf("%s · %s · 🦆%d", countdown(left), strings.Repeat("♥", s.Lives), s.Ducks)
+	return fmt.Sprintf("%s · %s · %s", countdown(left), strings.Repeat("♥", s.Lives), ducks(s))
 }
