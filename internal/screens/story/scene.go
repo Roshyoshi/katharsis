@@ -1,9 +1,9 @@
 // Package story holds the story's own screens (docs/story/story-bible.md,
-// "How the story unfolds"): the prologue, boss intro cards, the Cheshire
-// Cat's beat on the first crash, biome transitions, the first door's
-// inscription, the first merge window, the ACCEPTED beat, and a page for
-// any one-time beat. Each is a screens.Screen that plays internal/anim
-// clips and leaves with Done.
+// "How the story unfolds"): the prologue, the boot splash, boss intro
+// cards, the Cheshire Cat's beat on the first crash, biome transitions, the
+// first door's inscription, the first merge window, the ACCEPTED beat, and
+// a page for any one-time beat. Each is a screens.Screen that plays
+// internal/anim clips and leaves with Done.
 //
 // The screens decide nothing about when they show. The app picks the
 // moment, checks game.HasSeen for one-time scenes, and records Done.Scene
@@ -67,7 +67,7 @@ func newScene(id string, auto time.Duration, pages ...page) *Scene {
 	s := &Scene{id: id, pages: pages, auto: auto, motion: anim.CurrentMotion(), size: defaultSize}
 	// Built fully drawn, like the crash screen: Init plays it.
 	s.i = len(pages) - 1
-	s.p = anim.NewWith(s.pages[s.i](s.size[0], s.size[1]), s.motion)
+	s.p = anim.New(s.pages[s.i](s.size[0], s.size[1]), s.motion)
 	s.p.Skip()
 	return s
 }
@@ -81,7 +81,7 @@ func (s *Scene) Init() tea.Cmd { return s.open(0) }
 func (s *Scene) open(i int) tea.Cmd {
 	s.i = i
 	s.gen++
-	s.p = anim.NewWith(s.pages[i](s.size[0], s.size[1]), s.motion)
+	s.p = anim.New(s.pages[i](s.size[0], s.size[1]), s.motion)
 	return tea.Batch(s.p.Start(), s.afterward())
 }
 
@@ -213,7 +213,7 @@ func (s *Scene) Pages() int { return len(s.pages) }
 func (s *Scene) Seek(i int, t time.Duration) {
 	s.i = min(max(i, 0), len(s.pages)-1)
 	s.gen++
-	s.p = anim.NewWith(s.pages[s.i](s.size[0], s.size[1]), s.motion)
+	s.p = anim.New(s.pages[s.i](s.size[0], s.size[1]), s.motion)
 	s.p.Seek(t)
 }
 

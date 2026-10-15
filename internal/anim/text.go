@@ -46,7 +46,7 @@ func paint(s string, at func(i int) Level, base lipgloss.Style, salt uint64) str
 		if l == Gone {
 			flush()
 			cur = Gone
-			b.WriteString(strings.Repeat(" ", max(ansi.StringWidth(string(r)), 0)))
+			b.WriteString(strings.Repeat(" ", ansi.StringWidth(string(r))))
 			continue
 		}
 		if l != cur {

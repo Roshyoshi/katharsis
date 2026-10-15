@@ -81,8 +81,9 @@ func ParseMotion(motion string, fps int) (Motion, error) {
 
 var motion atomic.Value // Motion
 
-// SetMotion sets the motion every new Player starts with. The app sets it
-// once from the settings, before the program starts, like ui.SetPalette.
+// SetMotion sets the motion CurrentMotion reports, for screens to build
+// their Players with. The app sets it once from the settings, before the
+// program starts, like ui.SetPalette.
 func SetMotion(m Motion) { motion.Store(m) }
 
 // CurrentMotion is the motion SetMotion last set; full motion at
@@ -110,12 +111,9 @@ type Player struct {
 	wait time.Duration // the tick in flight, added to at when it lands
 }
 
-// New is a Player for c with the current motion setting. It shows the
-// first frame until Start.
-func New(c Clip) *Player { return NewWith(c, CurrentMotion()) }
-
-// NewWith is New with an explicit motion setting.
-func NewWith(c Clip, m Motion) *Player {
+// New is a Player for c under motion m. It shows the first frame until
+// Start.
+func New(c Clip, m Motion) *Player {
 	return &Player{clip: c, m: m, id: ids.Add(1)}
 }
 
@@ -199,9 +197,6 @@ func (p *Player) Swap(c Clip) {
 
 // Done reports whether the clip is on its last frame.
 func (p *Player) Done() bool { return p.at >= p.clip.Len() }
-
-// At is the time into the clip.
-func (p *Player) At() time.Duration { return p.at }
 
 // Frame is the clip's lines now.
 func (p *Player) Frame() []string { return p.clip.Frame(p.at) }

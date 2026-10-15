@@ -52,14 +52,15 @@ func (c Card) name() []rune {
 	return []rune(ansi.Truncate(up, c.inner(), ui.G.Ellipsis))
 }
 
-// body is the card's rows inside the border: a blank, the name, then each
-// paragraph after a blank, then a blank. Name rows are -1; paragraph rows
-// carry their paragraph index.
+// cardRow is one row inside the border: a paragraph's line, the name or a
+// blank.
 type cardRow struct {
-	para int // -1 for the name row, -2 for a blank
+	para int // the paragraph's index, -1 for the name row, -2 for a blank
 	text string
 }
 
+// body is the card's rows inside the border: a blank, the name, then each
+// paragraph after a blank, then a blank.
 func (c Card) body() []cardRow {
 	rows := []cardRow{{-2, ""}, {-1, ""}}
 	for i, p := range c.Paras {
@@ -101,17 +102,19 @@ func (c Card) stamped(t time.Duration) int {
 	return min(int(int64(t-from)*int64(n+1)/int64(to-from)), n)
 }
 
-// fade is paragraph i's fade, over its share of the last phase.
-func (c Card) fade(i int) Fade {
-	from, to := c.at(cardStamp), c.D
+// fade is a paragraph's fade: the last phase, split evenly between them.
+func (c Card) fade() Fade {
 	n := max(len(c.Paras), 1)
-	slot := (to - from) / time.Duration(n)
-	return Fade{From: Gone, To: Normal, D: slot, Salt: uint64(i) * 977}
+	return Fade{From: Gone, To: Normal, D: (c.D - c.at(cardStamp)) / time.Duration(n)}
+}
+
+// paraStart is when paragraph i starts to fade in.
+func (c Card) paraStart(i int) time.Duration {
+	return c.at(cardStamp) + c.fade().D*time.Duration(i)
 }
 
 func (c Card) paraLevel(i int, t time.Duration) Level {
-	from := c.at(cardStamp) + c.fade(0).D*time.Duration(i)
-	return c.fade(i).LevelAt(t - from)
+	return c.fade().LevelAt(t - c.paraStart(i))
 }
 
 func (c Card) Len() time.Duration { return c.D }
@@ -194,11 +197,10 @@ func (c Card) marks() []time.Duration {
 	for k := 1; k <= n; k++ {
 		ms = append(ms, from+time.Duration((int64(to-from)*int64(k)+int64(n))/int64(n+1)))
 	}
+	f := c.fade()
 	for i := range c.Paras {
-		start := c.at(cardStamp) + c.fade(0).D*time.Duration(i)
-		f := c.fade(i)
 		for t := time.Duration(0); t < f.D; t = f.Next(t) {
-			ms = append(ms, start+f.Next(t))
+			ms = append(ms, c.paraStart(i)+f.Next(t))
 		}
 	}
 	slices.Sort(ms)

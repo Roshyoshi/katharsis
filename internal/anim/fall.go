@@ -35,7 +35,7 @@ func (f Fall) rows() []string {
 	h := max(f.H, 1)
 	out := make([]string, 0, 3*h)
 	out = append(out, pad(f.From, f.W, h)...)
-	out = append(out, pad(Shaft(f.W, h+h/2, f.Label, f.Salt), f.W, h+h/2)...)
+	out = append(out, pad(shaft(f.W, h+h/2, f.Label, f.Salt), f.W, h+h/2)...)
 	return append(out, pad(f.To, f.W, h)...)
 }
 
@@ -104,9 +104,9 @@ var furniture = []string{
 	"|=|=|=|",
 }
 
-// Shaft is n rows of the rabbit-hole, w cells wide: two walls and, every
+// shaft is n rows of the rabbit-hole, w cells wide: two walls and, every
 // few rows, something on a shelf. label, if set, goes on the middle row.
-func Shaft(w, n int, label string, salt uint64) []string {
+func shaft(w, n int, label string, salt uint64) []string {
 	inner := max(min(w-2, 44), 4)
 	left := max((w-inner-2)/2, 0)
 	out := make([]string, n)

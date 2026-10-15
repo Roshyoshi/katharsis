@@ -175,7 +175,7 @@ func widest(ls []string) int {
 
 // over centers c's rows over a block wide cells across.
 func over(c anim.Clip, wide int) anim.Clip {
-	return indent((wide-widest(c.Frame(c.Len())))/2, c)
+	return indent((wide-widest(last(c)))/2, c)
 }
 
 // NewBiome is the drop into a biome: from (the screen being left, nil for

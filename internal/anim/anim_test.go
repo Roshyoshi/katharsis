@@ -293,7 +293,7 @@ func TestFall(t *testing.T) {
 	if !sawShaft || !sawLabel {
 		t.Errorf("the fall never showed the shaft (%v) or the label (%v)", sawShaft, sawLabel)
 	}
-	for _, l := range Shaft(80, 30, "a label far too long for a narrow shaft, longer than forty-four", 1) {
+	for _, l := range shaft(80, 30, "a label far too long for a narrow shaft, longer than forty-four", 1) {
 		if w := ansi.StringWidth(l); w > 80 {
 			t.Errorf("shaft row %d cells wide: %q", w, l)
 		}
@@ -321,7 +321,7 @@ func run(t *testing.T, p *Player, cmd tea.Cmd) []time.Duration {
 
 func TestPlayerCapsTheFrameRate(t *testing.T) {
 	c := Typewriter{Lines: lines, CPS: 1000} // a rune a millisecond
-	p := NewWith(c, Motion{FPS: 20})
+	p := New(c, Motion{FPS: 20})
 	steps := run(t, p, p.Start())
 	if !p.Done() || !slices.Equal(p.Frame(), c.Frame(c.Len())) {
 		t.Fatal("the player did not end on the last frame")
@@ -341,7 +341,7 @@ func TestPlayerCapsTheFrameRate(t *testing.T) {
 func TestPlayerIdlesBetweenChanges(t *testing.T) {
 	c := Then(Hold{Lines: []string{"wait"}, D: 2 * time.Second},
 		Reveal{Lines: []string{"a", "b"}, Total: 200 * time.Millisecond})
-	p := NewWith(c, Motion{})
+	p := New(c, Motion{})
 	steps := run(t, p, p.Start())
 	if want := []time.Duration{2100 * time.Millisecond, 100 * time.Millisecond}; !slices.Equal(steps, want) {
 		t.Errorf("ticks %v, want %v", steps, want)
@@ -353,7 +353,7 @@ func TestPlayerIdlesBetweenChanges(t *testing.T) {
 
 func TestPlayerReducedMotion(t *testing.T) {
 	c := Cheshire{D: time.Second, KeepGrin: true}
-	p := NewWith(c, Motion{Reduced: true})
+	p := New(c, Motion{Reduced: true})
 	if cmd := p.Start(); cmd != nil {
 		t.Error("reduced motion still ticks")
 	}
@@ -362,14 +362,14 @@ func TestPlayerReducedMotion(t *testing.T) {
 	}
 	SetMotion(Motion{Reduced: true})
 	defer SetMotion(Motion{})
-	if q := New(c); q.Start() != nil || !q.Done() {
-		t.Error("New ignores the motion setting")
+	if !CurrentMotion().Reduced {
+		t.Error("CurrentMotion ignores SetMotion")
 	}
 }
 
 func TestPlayerInput(t *testing.T) {
 	c := Typewriter{Lines: lines}
-	p := NewWith(c, Motion{})
+	p := New(c, Motion{})
 	if p.Start() == nil {
 		t.Fatal("no first tick")
 	}
@@ -388,16 +388,16 @@ func TestPlayerInput(t *testing.T) {
 	// not ours.
 	old := p.gen
 	p.Start()
-	if cmd, used := p.Update(frameMsg{id: p.id, gen: old}); !used || cmd != nil || p.At() != 0 {
+	if cmd, used := p.Update(frameMsg{id: p.id, gen: old}); !used || cmd != nil || p.at != 0 {
 		t.Error("a tick from before the restart moved the clip")
 	}
-	q := NewWith(c, Motion{})
+	q := New(c, Motion{})
 	if _, used := p.Update(frameMsg{id: q.id, gen: p.gen}); used {
 		t.Error("a player took another player's tick")
 	}
 	p.Seek(c.Len() / 2)
-	if p.Done() || p.At() != c.Len()/2 {
-		t.Errorf("Seek: at %v", p.At())
+	if p.Done() || p.at != c.Len()/2 {
+		t.Errorf("Seek: at %v", p.at)
 	}
 }
 
@@ -433,14 +433,14 @@ func TestParseMotion(t *testing.T) {
 func TestPlayerSwapKeepsAFinishedClipFinished(t *testing.T) {
 	short := Typewriter{Lines: lines[:1]}
 	long := Typewriter{Lines: lines}
-	p := NewWith(short, Motion{})
+	p := New(short, Motion{})
 	run(t, p, p.Start())
 	p.Swap(long)
 	if !p.Done() || !slices.Equal(p.Frame(), long.Frame(long.Len())) {
 		t.Errorf("after the swap: done %v, frame %q", p.Done(), plain(p.Frame()))
 	}
 	// Mid-play, the swap keeps the time and the tick in flight plays on.
-	q := NewWith(short, Motion{})
+	q := New(short, Motion{})
 	cmd := q.Start()
 	q.Swap(long)
 	if q.Done() || cmd == nil {
