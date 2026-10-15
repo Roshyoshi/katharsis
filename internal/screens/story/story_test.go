@@ -287,3 +287,21 @@ func TestPaletteAndGlyphs(t *testing.T) {
 		t.Errorf("the ASCII boss card's top edge:\n%s", card)
 	}
 }
+
+// TestResizeKeepsAShownPageShown: a page that has played stays whole when
+// the pane narrows and its text rewraps into more lines. Before, the
+// rebuilt clip was longer than the time played, nothing ticked, and the
+// page froze part-typed under a "show all" footer.
+func TestResizeKeepsAShownPageShown(t *testing.T) {
+	s := NewFirstMerge()
+	s.View(80, 24)
+	s.Init()
+	press(s, "x") // show all
+	if !s.p.Done() {
+		t.Fatal("a key did not show the page")
+	}
+	v := ansi.Strip(s.View(40, 24))
+	if !s.p.Done() || strings.Contains(v, "show all") || !strings.Contains(v, "Time to") {
+		t.Errorf("after narrowing, done %v:\n%s", s.p.Done(), v)
+	}
+}

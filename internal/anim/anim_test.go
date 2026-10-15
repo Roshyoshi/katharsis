@@ -425,3 +425,29 @@ func TestParseMotion(t *testing.T) {
 		}
 	}
 }
+
+// TestPlayerSwapKeepsAFinishedClipFinished: a screen rebuilds its clip on
+// a resize, and a narrower pane rewraps text into more lines, so the new
+// clip runs longer. A clip that had finished must stay finished: nothing
+// is in flight to play the rest, so it would freeze part-typed.
+func TestPlayerSwapKeepsAFinishedClipFinished(t *testing.T) {
+	short := Typewriter{Lines: lines[:1]}
+	long := Typewriter{Lines: lines}
+	p := NewWith(short, Motion{})
+	run(t, p, p.Start())
+	p.Swap(long)
+	if !p.Done() || !slices.Equal(p.Frame(), long.Frame(long.Len())) {
+		t.Errorf("after the swap: done %v, frame %q", p.Done(), plain(p.Frame()))
+	}
+	// Mid-play, the swap keeps the time and the tick in flight plays on.
+	q := NewWith(short, Motion{})
+	cmd := q.Start()
+	q.Swap(long)
+	if q.Done() || cmd == nil {
+		t.Fatal("a swap mid-play ended the clip")
+	}
+	run(t, q, cmd)
+	if !q.Done() || !slices.Equal(q.Frame(), long.Frame(long.Len())) {
+		t.Errorf("mid-play swap ends on %q", plain(q.Frame()))
+	}
+}

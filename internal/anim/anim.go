@@ -186,10 +186,13 @@ func (p *Player) Seek(t time.Duration) tea.Cmd {
 }
 
 // Swap replaces the clip and keeps the time, for a screen that rebuilt its
-// clip at a new size. The tick in flight keeps running.
+// clip at a new size. The tick in flight keeps running. A finished clip
+// stays finished even when the new one is longer: no tick is in flight to
+// play the rest.
 func (p *Player) Swap(c Clip) {
+	done := p.Done()
 	p.clip = c
-	if p.at >= c.Len() {
+	if done || p.at >= c.Len() {
 		p.Skip()
 	}
 }
