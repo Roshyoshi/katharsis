@@ -7,10 +7,12 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -42,8 +44,19 @@ func main() {
 		os.Exit(0) // -h printed the usage; that is not a failure
 	} else if err != nil {
 		fmt.Fprintln(os.Stderr, "katharsis:", err)
+		if session.OwnSession() {
+			waitEnter(os.Stdin, os.Stderr)
+		}
 		os.Exit(1)
 	}
+}
+
+// waitEnter holds the error on screen until the player presses enter. In
+// the session ExecInTmux made, the session ends with the game, and the
+// player's terminal showed only "[exited]".
+func waitEnter(in io.Reader, out io.Writer) {
+	fmt.Fprint(out, "press enter to close")
+	_, _ = bufio.NewReader(in).ReadString('\n')
 }
 
 // usage prints the commands and the flags of fs, the command's own flag
@@ -107,6 +120,9 @@ func runPractice(args []string) error {
 		argv := append([]string{self, "practice"}, args[:len(args)-1]...)
 		return session.ExecInTmux("katharsis-"+prob.Name, append(argv, dir))
 	}
+	// Best effort: unmarked, a relaunch after this HUD dies attaches to
+	// its orphan editor, as it always did.
+	_ = session.MarkGame()
 
 	// tmux sends SIGHUP when the HUD's pane or window is killed. Bubble Tea
 	// handles SIGINT and SIGTERM itself; without this the process would die

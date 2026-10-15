@@ -3,6 +3,7 @@ package session
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -75,5 +76,68 @@ func TestSweepOrphans(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(path); string(b) != "int main() {}\nunsaved\n" {
 		t.Errorf("file = %q, want the orphan's edit saved", b)
+	}
+}
+
+// A session whose game died is told apart from one whose game runs, so a
+// relaunch starts a new game in it instead of attaching to the orphan
+// editor alone (qa/chaos r03); newWindow carries this process's
+// environment, not the server's.
+func TestGoneGame(t *testing.T) {
+	privateTmux(t)
+	if _, err := tmux("new-session", "-d", "-s", "katharsis", "sleep", "300"); err != nil {
+		t.Fatal(err)
+	}
+	if gone("katharsis") {
+		t.Error("a session with no game pid is gone")
+	}
+	if gone("nosuchsession") {
+		t.Error("a missing session is gone")
+	}
+	mark := func(pid int) {
+		t.Helper()
+		if _, err := tmux("set-option", "-t", "katharsis:", pidOption, strconv.Itoa(pid)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mark(os.Getppid())
+	if gone("katharsis") {
+		t.Error("a session whose game runs is gone")
+	}
+	mark(deadPid(t))
+	if !gone("katharsis") {
+		t.Error("a session whose game died is not gone")
+	}
+
+	out := filepath.Join(t.TempDir(), "env")
+	t.Setenv("KATHARSIS_TEST_ENV", "from the relaunch")
+	if err := newWindow("katharsis", []string{"sh", "-c", `printf %s "$KATHARSIS_TEST_ENV" >` + shellQuote(out)}); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the new window's command", func() bool {
+		b, _ := os.ReadFile(out)
+		return string(b) == "from the relaunch"
+	})
+}
+
+// MarkGame sets the pid only in a session ExecInTmux made.
+func TestMarkGame(t *testing.T) {
+	pane := privateTmux(t)
+	t.Setenv("TMUX", "/tmp/private,1,0") // InTmux; calls still go by tmuxArgs
+	show := func() string {
+		t.Helper()
+		v, err := tmux("show-options", "-v", "-q", "-t", pane, pidOption)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+	t.Setenv(ownSessionEnv, "")
+	if err := MarkGame(); err != nil || show() != "" {
+		t.Fatalf("MarkGame outside its own session = %v, set %q", err, show())
+	}
+	t.Setenv(ownSessionEnv, "1")
+	if err := MarkGame(); err != nil || show() != strconv.Itoa(os.Getpid()) {
+		t.Fatalf("MarkGame = %v, set %q, want %d", err, show(), os.Getpid())
 	}
 }

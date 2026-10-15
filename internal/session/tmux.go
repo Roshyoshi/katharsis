@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -113,6 +114,11 @@ func paneDead(pane string) (dead, ok bool) {
 // The session gets a server of its own (-L name). A session added to a
 // server that is already running inherits that server's environment, not
 // ours, and the judge finds the dev shell's pinned clang++ through PATH.
+//
+// argv runs with $KATHARSIS_OWN_SESSION set (OwnSession). A session whose
+// game is gone (MarkGame's pid is dead: a kill -9, a panic) is not merely
+// attached, which showed the game's orphan vim and no game: argv starts in
+// a new window of it, and the game it starts sweeps the orphan.
 func ExecInTmux(name string, argv []string) error {
 	if len(argv) == 0 {
 		return errors.New("session: no command for the tmux session")
@@ -124,13 +130,77 @@ func ExecInTmux(name string, argv []string) error {
 	if err != nil {
 		return err
 	}
-	return syscall.Exec(bin, execArgs(name, argv), os.Environ())
+	argv = append([]string{"env", ownSessionEnv + "=1"}, argv...)
+	args := execArgs(name, argv)
+	if gone(name) {
+		if err := newWindow(name, argv); err == nil {
+			args = append(serverArgs(name), "attach-session", "-t", name)
+		}
+	}
+	return syscall.Exec(bin, args, os.Environ())
 }
 
-// execArgs is the argv ExecInTmux hands to exec. tmuxArgs follows -L name so
-// a test's -L wins (tmux keeps the last one).
+// ownSessionEnv marks the game ExecInTmux started in a session of its own.
+const ownSessionEnv = "KATHARSIS_OWN_SESSION"
+
+// OwnSession reports whether this process is the game ExecInTmux started:
+// its session ends with it, taking with it whatever it printed last.
+func OwnSession() bool { return os.Getenv(ownSessionEnv) == "1" && InTmux() }
+
+// pidOption, a session option, holds the pid of the game playing in a
+// session ExecInTmux made (MarkGame).
+const pidOption = "@katharsis_pid"
+
+// MarkGame records this process as the game of its own session, for the
+// next ExecInTmux to tell a running game from a dead one. Outside its own
+// session (the player's tmux) it does nothing.
+func MarkGame() error {
+	if !OwnSession() {
+		return nil
+	}
+	_, err := tmux("set-option", "-t", os.Getenv("TMUX_PANE"), pidOption, strconv.Itoa(os.Getpid()))
+	return err
+}
+
+// serverArgs is tmux's argv up to the subcommand for the server of the
+// session called name. tmuxArgs follows -L name so a test's -L wins (tmux
+// keeps the last one).
+func serverArgs(name string) []string {
+	return append([]string{"tmux", "-L", name}, tmuxArgs...)
+}
+
+// gone reports whether session name exists with a game, as MarkGame
+// recorded it, that is no longer running. No server, no session or no pid
+// is not gone: new-session -A makes or attaches as it always did.
+func gone(name string) bool {
+	args := append(serverArgs(name)[1:], "show-options", "-v", "-q", "-t", name+":", pidOption)
+	out, err := exec.Command("tmux", args...).Output()
+	if err != nil {
+		return false
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	return err == nil && pid > 0 && errors.Is(syscall.Kill(pid, 0), syscall.ESRCH)
+}
+
+// newWindow starts argv in a new window of session name, with this
+// process's environment: the server's own is that of the game that died.
+func newWindow(name string, argv []string) error {
+	args := append(serverArgs(name)[1:], "new-window", "-t", name+":")
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "TMUX=") && !strings.HasPrefix(kv, "TMUX_PANE=") {
+			args = append(args, "-e", kv)
+		}
+	}
+	out, err := exec.Command("tmux", append(append(args, "--"), argv...)...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("tmux new-window: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// execArgs is the argv ExecInTmux hands to exec.
 func execArgs(name string, argv []string) []string {
-	args := append([]string{"tmux", "-L", name}, tmuxArgs...)
+	args := serverArgs(name)
 	args = append(args, "new-session", "-A", "-s", name, "--")
 	if len(argv) == 1 {
 		// tmux runs a lone word with `$SHELL -c`; quote it so a path with

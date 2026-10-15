@@ -102,6 +102,10 @@ func runGame(args []string) error {
 		return err
 	}
 	defer lock.Close()
+	// After the lock, so a second game that is refused never claims the
+	// session. Best effort: unmarked, a relaunch after this game dies
+	// attaches to its orphan editor, as it always did.
+	_ = session.MarkGame()
 	st, err := store.Open(path)
 	if err != nil {
 		return err
