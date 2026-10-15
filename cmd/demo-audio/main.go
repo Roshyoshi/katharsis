@@ -132,7 +132,9 @@ func analyze(lib *audio.Library, args []string) error {
 			a.Clipped, a.LeadSilence, a.TailSilence, a.SeamJump, a.SeamStepDB, math.Round(a.DecodeSpeed), a.Trimmed)
 	}
 	fmt.Println("\nseam× is the loop's wrap-around step over the median step (≈1 seamless, >10 a click);",
-		"seamdB the last 100 ms against the first (≈0 a loop, very negative a fade-out).")
+		"seamdB the last 100 ms against the first (≈0 a loop, very negative a fade-out).",
+		"\nAn .mml song's seam is its decoder carrying on from the loop mark, the same samples the",
+		"arranger's player makes, so its seam× is the music's own step there (a square wave's edge), not a cut.")
 	return nil
 }
 
