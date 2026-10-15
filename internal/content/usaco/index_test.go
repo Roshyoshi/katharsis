@@ -3,14 +3,17 @@ package usaco
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/content/guide"
 )
 
 // testdata/guide is a miniature guide snapshot: real file shapes, a
@@ -159,6 +162,37 @@ func TestIndexCached(t *testing.T) {
 	}
 }
 
+// An index the previous schema wrote, against the same guide commit and
+// facts.json, holds topics from the old rules: it is rebuilt, not served.
+func TestIndexOldSchemaRebuilt(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	openTest(t, root)
+	p := filepath.Join(root, "index.json")
+	idx, ok := loadIndex(p)
+	if !ok {
+		t.Fatal("no index written")
+	}
+	cur := fmt.Sprintf("schema=%d ", schema)
+	idx.Key = strings.Replace(idx.Key, cur, fmt.Sprintf("schema=%d ", schema-1), 1)
+	if !strings.Contains(indexKey(), cur) || idx.Key == indexKey() {
+		t.Fatalf("key %q does not carry the schema", indexKey())
+	}
+	for i := range idx.Entries {
+		idx.Entries[i].Topic = "two-pointers" // what the old rules said
+	}
+	if err := saveIndex(p, idx); err != nil {
+		t.Fatal(err)
+	}
+	c, calls := openTest(t, root)
+	if *calls != 1 {
+		t.Errorf("old-schema index: %d snapshot calls, want 1 (a rebuild)", *calls)
+	}
+	if got, _ := c.Get("usaco:1059"); got.Topic != "dp" {
+		t.Errorf("usaco:1059 topic = %s, want dp from the rebuilt index", got.Topic)
+	}
+}
+
 // Get must hand out copies: the engine must not be able to edit the
 // catalog through a returned slice.
 func TestGetCopies(t *testing.T) {
@@ -235,10 +269,51 @@ func TestTopicFor(t *testing.T) {
 		{nil, []string{"conclusion", "knapsack"}, "dp"},
 		{nil, []string{"merging"}, "trees"}, // the guide files it under Trees
 		{nil, nil, "mixed"},
+		// Real rows: each sits in its module's biome, the topic that
+		// module's trial grants.
+		{[]string{"Sweep Line"}, []string{"sweep-line"}, "geometry"},                       // 943
+		{[]string{"Set", "Sliding Window"}, []string{"sliding-window"}, "data-structures"}, // 767
+		{[]string{"Bitset", "PIE"}, []string{"bitsets", "PIE", "combo"}, "math"},           // 862
+		{[]string{"2D Prefix Sums", "Max Subarray Sum", "Sliding Window"},
+			[]string{"more-prefix-sums", "sliding-window"}, "prefix-sums"}, // 923
+		{[]string{"Indexed Set", "Merging"}, []string{"merging"}, "trees"}, // 696
 	}
 	for _, tc := range tests {
 		if got := topicFor(tc.tags, tc.modules); got != tc.want {
 			t.Errorf("topicFor(%v, %v) = %s, want %s", tc.tags, tc.modules, got, tc.want)
+		}
+	}
+}
+
+// A tag that names a guide module must map to the topic that module
+// teaches (guide.ModuleTopic), or the module's own problems sit in another
+// biome than the one its trial grants. Four once disagreed: Sliding
+// Window, Sweep Line, Merging and Bitset.
+func TestTagsAgreeWithModules(t *testing.T) {
+	t.Parallel()
+	for tag, module := range map[string]string{
+		"Sliding Window": "sliding-window", "Sweep Line": "sweep-line",
+		"Merging": "merging", "Small to Large": "merging", "Bitset": "bitsets",
+		"Prefix Sums": "prefix-sums", "Two Pointers": "two-pointers",
+		"Binary Search": "binary-search", "Ternary Search": "ternary-search",
+		"Stack": "stacks", "Priority Queue": "priority-queues", "PURS": "PURS",
+		"DSU": "dsu", "MST": "mst", "TopoSort": "toposort", "SCC": "SCC",
+		"Euler Tour": "tree-euler", "Binary Jumping": "binary-jump", "HLD": "hld",
+		"Centroid": "centroid", "Hashing": "hashing", "Knapsack": "knapsack",
+		"Slope Trick": "slope-trick", "PIE": "PIE", "Matrix": "matrix-expo",
+		"Meet in the Middle": "meet-in-the-middle", "Simulation": "simulation",
+	} {
+		want, ok := guide.ModuleTopic(module)
+		if !ok {
+			t.Errorf("guide.ModuleTopic(%q) unknown", module)
+			continue
+		}
+		got, ok := tagTopic[tag]
+		if !ok {
+			got = catalog.Mixed
+		}
+		if got != want {
+			t.Errorf("tag %q -> %s, but module %s teaches %s", tag, got, module, want)
 		}
 	}
 }

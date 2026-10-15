@@ -7,9 +7,13 @@ import (
 	"katharsis/internal/content/guide"
 )
 
-// tagTopic maps USACO Guide tags onto catalog.Topics. Tags that name no
-// technique (Casework, Constructive, Amortized Analysis, Divide and
-// Conquer) are left out so they never decide a topic.
+// tagTopic maps USACO Guide tags onto catalog.Topics. A tag that names a
+// guide module maps where the module does (guide.ModuleTopic), so the
+// module's own problems sit in the biome its trial grants: Sliding Window
+// is data-structures, Sweep Line geometry, Merging trees. Tags that name
+// no technique (Casework, Constructive, Amortized Analysis, Divide and
+// Conquer, and Bitset, a speed-up the guide files under no topic) are left
+// out so they never decide a topic.
 var tagTopic = map[string]string{
 	"Complete Search": "complete-search", "Recursion": "complete-search",
 	"Subsets": "complete-search", "Permutation": "complete-search",
@@ -26,7 +30,7 @@ var tagTopic = map[string]string{
 
 	"Binary Search": "binary-search", "Ternary Search": "binary-search",
 
-	"Two Pointers": "two-pointers", "Sliding Window": "two-pointers",
+	"Two Pointers": "two-pointers",
 
 	"Graphs": "graphs", "DFS": "graphs", "BFS": "graphs",
 	"Flood Fill": "graphs", "Connected Components": "graphs",
@@ -38,6 +42,7 @@ var tagTopic = map[string]string{
 	"Tree": "trees", "LCA": "trees", "Binary Jumping": "trees",
 	"Euler Tour": "trees", "HLD": "trees", "Centroid": "trees",
 	"Rerooting": "trees", "Diameter": "trees", "Small to Large": "trees",
+	"Merging": "trees",
 
 	"Shortest Path": "shortest-paths", "APSP": "shortest-paths",
 
@@ -64,13 +69,13 @@ var tagTopic = map[string]string{
 	"BIT": "data-structures", "PURS": "data-structures",
 	"1DRQ": "data-structures", "2DRQ": "data-structures",
 	"Sqrt": "data-structures", "Treap": "data-structures",
-	"Bitset": "data-structures", "Sweep Line": "data-structures",
-	"Merging": "data-structures", "Inversions": "data-structures",
+	"Sliding Window": "data-structures", "Inversions": "data-structures",
 
 	// "Convex" covers convex hulls, the convex hull trick and convexity
 	// (Aliens). It only decides when nothing more specific is tagged: dp
 	// outranks geometry, so "Convex, DP" is a DP problem.
 	"Geometry": "geometry", "Rectangle": "geometry", "Convex": "geometry",
+	"Sweep Line": "geometry",
 }
 
 // topicRank breaks ties when a problem's tags map to several topics: the
