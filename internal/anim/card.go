@@ -9,7 +9,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// Para is a paragraph of plain text and the style it is drawn in.
+// Para is a paragraph of plain text and the style it is drawn in. A "\n"
+// in Text starts a new line, for verse.
 type Para struct {
 	Text  string
 	Style lipgloss.Style
@@ -59,8 +60,10 @@ func (c Card) body() []cardRow {
 	rows := []cardRow{{-2, ""}, {-1, ""}}
 	for i, p := range c.Paras {
 		rows = append(rows, cardRow{-2, ""})
-		for _, l := range strings.Split(ansi.Wrap(p.Text, c.inner(), ""), "\n") {
-			rows = append(rows, cardRow{i, l})
+		for _, line := range strings.Split(p.Text, "\n") { // a poem keeps its lines
+			for _, l := range strings.Split(ansi.Wrap(line, c.inner(), ""), "\n") {
+				rows = append(rows, cardRow{i, l})
+			}
 		}
 	}
 	return append(rows, cardRow{-2, ""})

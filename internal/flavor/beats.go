@@ -100,7 +100,7 @@ type LogEntry struct {
 func StoryLog(m *game.Meta) []LogEntry {
 	var out []LogEntry
 	for _, s := range m.Seen {
-		t := beatTitle(s.ID)
+		t := BeatTitle(s.ID)
 		if t == "" {
 			continue
 		}
@@ -208,8 +208,8 @@ func gateOpen(st *game.State, m *game.Meta) bool {
 	return m.Prestige == 0 && need > 0 && game.RatedDoors(m) >= need
 }
 
-// beatTitle is id's heading in the reread log, "" when id is no beat.
-func beatTitle(id string) string {
+// BeatTitle is id's heading in the reread log, "" when id is no beat.
+func BeatTitle(id string) string {
 	hook, arg, family := strings.Cut(id, ":")
 	for _, list := range [][]beat{scenes, triggered, milestones} {
 		for _, b := range list {
