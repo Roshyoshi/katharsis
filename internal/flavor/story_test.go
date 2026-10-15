@@ -1,6 +1,7 @@
 package flavor
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"slices"
@@ -11,7 +12,10 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/game"
+	"katharsis/internal/judge"
+	"katharsis/internal/rules"
 )
 
 // placeholderWidths is text.md's placeholder table: the widest value each
@@ -561,5 +565,47 @@ func TestRing(t *testing.T) {
 	}
 	if r, p := Ring(5); r != -2 || p != "" {
 		t.Errorf("Ring(5) = %d, %q", r, p)
+	}
+}
+
+// TestStoryFamilies: each hook the screens build from a key ("boss.enter."
+// + boss, "daemon." + daemon, "verdict." + verdict, ...) has text for every
+// key. notYet are the keys text.md has no line for, where the screens show
+// no flavor; a line written for one takes it off the list.
+func TestStoryFamilies(t *testing.T) {
+	notYet := map[string]bool{"daemon.cron": true, "daemon.chrt": true, "upgrade.shuf": true, "verdict.OLE": true}
+	var hooks []string
+	add := func(prefix string, keys ...string) {
+		for _, k := range keys {
+			hooks = append(hooks, prefix+k)
+		}
+	}
+	add("biome.intro.", catalog.Topics...)
+	bosses := append(slices.Clone(game.BossKeys), game.FinalBoss)
+	add("boss.enter.", bosses...)
+	add("boss.defeat.", bosses...)
+	add("crash.epitaph.", string(game.TimedOut), string(game.OutOfLives), string(game.GaveUp), "cursed")
+	for p := 0; p <= game.MaxPrestige; p++ {
+		add("", fmt.Sprintf("cleared.%d", p), fmt.Sprintf("grub.subtitle.prestige.%d", p))
+	}
+	for _, d := range game.AllDaemons {
+		add("daemon.", string(d))
+	}
+	for _, u := range game.AllUpgrades {
+		add("upgrade.", string(u))
+	}
+	for _, v := range []judge.Verdict{judge.AC, judge.WA, judge.TLE, judge.MLE, judge.OLE, judge.RE, judge.CE} {
+		add("verdict.", string(v))
+	}
+	for i := range rules.Standard().RegressionDays {
+		add("", fmt.Sprintf("regression.stage.%d", i+1))
+	}
+	for _, h := range hooks {
+		switch _, ok := story[h]; {
+		case !ok && !notYet[h]:
+			t.Errorf("%s has no text", h)
+		case ok && notYet[h]:
+			t.Errorf("%s has text now: take it off notYet", h)
+		}
 	}
 }
