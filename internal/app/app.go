@@ -215,9 +215,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case session.Request:
 		return m, m.onRequest(msg)
 	case hudQuitMsg:
+		// An editor that died as it opened could not start; say so, with
+		// the command, rather than only that it closed.
+		failed := ""
+		if r, ok := m.d.Runner.(interface{ EditorFailed() string }); ok {
+			failed = r.EditorFailed()
+		}
 		for _, s := range m.stack {
 			if p, ok := s.(*problemScreen); ok {
-				p.closed = true
+				p.closed, p.editorErr = true, failed
 			}
 		}
 		// The HUD cancels its submit pass when it quits; no result comes.

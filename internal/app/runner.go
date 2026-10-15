@@ -29,9 +29,9 @@ import (
 // on every save and judges the full tests on :Submit. The app calls it from
 // its Update only, so it needs no lock.
 type TmuxRunner struct {
-	Root      string   // solutions root, e.g. ~/cp/runs
-	Editor    []string // e.g. ["vim"]
-	Split     int      // editor width in percent
+	Root      string // solutions root, e.g. ~/cp/runs
+	Editor    string // a shell command line, e.g. "vim"; the file is appended
+	Split     int    // editor width in percent
 	Templates Templates
 	Scale     float64 // CPU limit multiplier (judge.Limits.Scale)
 
@@ -46,6 +46,7 @@ type TmuxRunner struct {
 	reaping sync.WaitGroup // closed editors' panes on their way out (reap)
 
 	pane   string
+	opened time.Time // when the editor pane opened (EditorFailed)
 	border *session.Border
 	stop   context.CancelFunc
 	hud    *hud.Model
@@ -111,6 +112,7 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 	if err != nil {
 		return fmt.Errorf("open editor: %w", err)
 	}
+	r.opened = time.Now()
 
 	opt := hud.Options{
 		Dir:     dir,
@@ -164,6 +166,21 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 	r.hud = hud.New(opt)
 	return nil
 }
+
+// EditorFailed says why the editor pane is gone when it died within
+// editorGrace of opening: the command could not start (not found, a bad
+// flag) and its pane took the error with it. It is "" for an editor that
+// ran, or one still open.
+func (r *TmuxRunner) EditorFailed() string {
+	if r.pane == "" || time.Since(r.opened) > editorGrace || session.PaneAlive(r.pane) {
+		return ""
+	}
+	return fmt.Sprintf("the editor exited at once: %s (see --editor)", r.Editor)
+}
+
+// editorGrace is how soon an editor must die for EditorFailed to blame its
+// command: 2 s, plus the HUD's 1 s poll that notices.
+const editorGrace = 3 * time.Second
 
 // Reopen brings the editor back after the player closed vim mid-door.
 func (r *TmuxRunner) Reopen() error {

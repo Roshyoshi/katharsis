@@ -11,8 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"katharsis/internal/game"
+	"katharsis/internal/hud"
 	"katharsis/internal/screens"
+	"katharsis/internal/session"
 	"katharsis/internal/store"
 )
 
@@ -160,4 +164,42 @@ func TestTickRetriesAFailedSave(t *testing.T) {
 	if h.m.saveErr != nil {
 		t.Fatalf("save error %v after a tick past saveRetry, want the retry to have saved", h.m.saveErr)
 	}
+}
+
+// An editor pane that dies as it opens is a command that could not start.
+// The problem screen used to say only "editor closed · e reopens it"
+// (qa/chaos r13); it now names the command.
+func TestEditorThatCannotStart(t *testing.T) {
+	tmux := privateTmux(t)
+	dead := tmux("new-window", "-P", "-F", "#{pane_id}", "--", "true")
+	for deadline := time.Now().Add(5 * time.Second); session.PaneAlive(dead); {
+		if time.Now().After(deadline) {
+			t.Fatal("pane running true never exited")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	r := &TmuxRunner{Editor: "nosuchvim -p", pane: dead, opened: time.Now()}
+	if got := r.EditorFailed(); !strings.Contains(got, "nosuchvim -p") {
+		t.Errorf("EditorFailed = %q, want it to name the command", got)
+	}
+	r.opened = time.Now().Add(-time.Minute)
+	if got := r.EditorFailed(); got != "" {
+		t.Errorf("EditorFailed = %q for an editor that ran a minute, want none", got)
+	}
+
+	h := newHarnessWith(t, func(f *fakeRunner) Runner {
+		return &failedEditorRunner{hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: t.TempDir()}}}
+	})
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.enterDoor()
+	h.send(hudQuitMsg{})
+	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "exited at once: nosuchvim") {
+		t.Errorf("problem screen after the editor died at once:\n%s", v)
+	}
+}
+
+type failedEditorRunner struct{ hudFakeRunner }
+
+func (r *failedEditorRunner) EditorFailed() string {
+	return "the editor exited at once: nosuchvim (see --editor)"
 }

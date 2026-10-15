@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -31,7 +30,7 @@ func runGame(args []string) error {
 	home, _ := os.UserHomeDir()
 	fs := flag.NewFlagSet("katharsis", flag.ContinueOnError)
 	root := fs.String("root", filepath.Join(home, "cp", "runs"), "where door solutions are kept")
-	editor := fs.String("editor", "vim", "editor command; the source path is appended")
+	editor := fs.String("editor", "vim", "editor command line, run by sh; the source path is appended")
 	split := fs.Int("split", 65, "editor width in percent")
 	scale := fs.Float64("scale", 1, "multiply CPU time limits (below 1 is stricter than the judge)")
 	quiet := fs.Bool("quiet", false, "no sounds")
@@ -62,6 +61,12 @@ func runGame(args []string) error {
 	}
 	dir, err := presetDir()
 	if err != nil {
+		return err
+	}
+
+	// Before tmux, so a missing editor is said in the player's terminal
+	// instead of as a pane that dies.
+	if err := session.CheckEditor(*editor); err != nil {
 		return err
 	}
 
@@ -129,7 +134,7 @@ func runGame(args []string) error {
 
 	runner := &app.TmuxRunner{
 		Root:      *root,
-		Editor:    strings.Fields(*editor),
+		Editor:    *editor,
 		Split:     *split,
 		Templates: app.Templates{Stdio: *stdioT, FileIO: *fileT},
 		Scale:     *scale,

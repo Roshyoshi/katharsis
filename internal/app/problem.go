@@ -72,7 +72,9 @@ type problemScreen struct {
 	last    judgedMsg // the headless judge's last result
 	confirm bool      // Q asked once; the next Q confirms :q!
 	closed  bool      // the player closed the editor
-	hudSize [2]int
+	// editorErr, with closed, is why the editor could not start.
+	editorErr string
+	hudSize   [2]int
 }
 
 func newProblemScreen(m *Model) *problemScreen {
@@ -165,7 +167,13 @@ func (s *problemScreen) View(w, h int) string {
 	if s.confirm {
 		top = append(top, red.Render(":q! crashes the boot. Q again to confirm."))
 	}
-	if s.closed {
+	switch {
+	case s.closed && s.editorErr != "":
+		// Wrapped, not cut: the command is the point.
+		for _, l := range strings.Split(ansi.Wrap(s.editorErr+" · e retries", max(w, 10), ""), "\n") {
+			top = append(top, red.Render(l))
+		}
+	case s.closed:
 		top = append(top, red.Render("editor closed · e reopens it"))
 	}
 	help := "s submit · t statement · ? duck · R retreat · Q :q! · r rerun · j/k"

@@ -1,7 +1,10 @@
 package session
 
 import (
+	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -58,16 +61,54 @@ func (o Overlay) Write(path string) error {
 	return os.Rename(tmp.Name(), path)
 }
 
-// EditorArgv is the editor command to hand SplitEditor: the editor under
-// env(1) with $KATHARSIS_SOCK set, because the pane gets the tmux server's
-// environment rather than ours, plus `-S overlay` when the editor is vim
-// (neovim's job API differs; it gets the variable only).
-func EditorArgv(editor []string, sock, overlay string) []string {
-	argv := append([]string{"env", sockEnv + "=" + sock}, editor...)
-	if overlay != "" && len(editor) > 0 && isVim(editor[0]) {
+// EditorArgv is the editor command to hand SplitEditor. editor is a shell
+// command line, as --editor takes it (`vim -c "set nu"`): sh runs it with
+// `-S overlay` (for vim) and the file SplitEditor appends as its last
+// arguments, and its exec leaves the editor the pane's own process. Split
+// on spaces instead, a quoted argument broke apart and vim opened its
+// pieces as files. It all runs under env(1) with $KATHARSIS_SOCK set,
+// because the pane gets the tmux server's environment rather than ours.
+// neovim gets no overlay (its job API differs), only the variable.
+func EditorArgv(editor, sock, overlay string) []string {
+	argv := []string{"env", sockEnv + "=" + sock, "sh", "-c", "exec " + editor + ` "$@"`, "katharsis"}
+	if overlay != "" && isVim(EditorName(editor)) {
 		argv = append(argv, "-S", overlay)
 	}
 	return argv
+}
+
+// EditorName is the program an editor command line runs: its first word,
+// unquoted.
+func EditorName(editor string) string {
+	s := strings.TrimLeft(editor, " \t")
+	if s == "" {
+		return ""
+	}
+	if q := s[0]; q == '\'' || q == '"' {
+		name, _, _ := strings.Cut(s[1:], string(q))
+		return name
+	}
+	name, _, _ := strings.Cut(s, " ")
+	name, _, _ = strings.Cut(name, "\t")
+	return name
+}
+
+// CheckEditor reports an editor command line whose program is not there.
+// Started anyway, its pane dies at once, taking sh's "not found" with it.
+func CheckEditor(editor string) error {
+	name := EditorName(editor)
+	if name == "" {
+		return errors.New("the editor command is empty")
+	}
+	if rest, ok := strings.CutPrefix(name, "~/"); ok {
+		if home, err := os.UserHomeDir(); err == nil {
+			name = filepath.Join(home, rest)
+		}
+	}
+	if _, err := exec.LookPath(name); err != nil {
+		return fmt.Errorf("editor %q: %w", editor, err)
+	}
+	return nil
 }
 
 func isVim(cmd string) bool {

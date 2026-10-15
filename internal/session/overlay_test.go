@@ -30,17 +30,54 @@ func TestOverlayScript(t *testing.T) {
 }
 
 func TestEditorArgv(t *testing.T) {
+	sh := []string{"env", "KATHARSIS_SOCK=/s", "sh", "-c"}
 	for _, tc := range []struct {
-		editor []string
+		editor string
 		want   []string
 	}{
-		{[]string{"vim"}, []string{"env", "KATHARSIS_SOCK=/s", "vim", "-S", "/o.vim"}},
-		{[]string{"/usr/local/bin/vim", "-p"}, []string{"env", "KATHARSIS_SOCK=/s", "/usr/local/bin/vim", "-p", "-S", "/o.vim"}},
-		{[]string{"nvim"}, []string{"env", "KATHARSIS_SOCK=/s", "nvim"}},
-		{[]string{"code", "-w"}, []string{"env", "KATHARSIS_SOCK=/s", "code", "-w"}},
+		{"vim", append(sh, `exec vim "$@"`, "katharsis", "-S", "/o.vim")},
+		{"/usr/local/bin/vim -p", append(sh, `exec /usr/local/bin/vim -p "$@"`, "katharsis", "-S", "/o.vim")},
+		{`'/Applications/My Vim/vim' -c "set nu"`, append(sh, `exec '/Applications/My Vim/vim' -c "set nu" "$@"`, "katharsis", "-S", "/o.vim")},
+		{"nvim", append(sh, `exec nvim "$@"`, "katharsis")},
+		{"code -w", append(sh, `exec code -w "$@"`, "katharsis")},
 	} {
 		if got := EditorArgv(tc.editor, "/s", "/o.vim"); !slices.Equal(got, tc.want) {
 			t.Errorf("EditorArgv(%q) = %q, want %q", tc.editor, got, tc.want)
+		}
+	}
+}
+
+// The editor command line runs as the shell would run it: a quoted
+// argument stays one (qa/chaos r13: vim used to open `nu"` as a file),
+// and the file comes last.
+func TestEditorArgvQuoting(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "args")
+	editor := `printf '%s\n' -c "set nu" >` + shellQuote(out) + ` x`
+	argv := append(EditorArgv(editor, "/s", ""), "/door/sol.cpp")
+	if err := exec.Command(argv[0], argv[1:]...).Run(); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := string(b), "-c\nset nu\nx\n/door/sol.cpp\n"; got != want {
+		t.Errorf("editor got args %q, want %q", got, want)
+	}
+}
+
+func TestCheckEditor(t *testing.T) {
+	for _, tc := range []struct {
+		editor string
+		ok     bool
+	}{
+		{"sh -c true", true},
+		{`'sh' -c "set nu"`, true},
+		{"nosuchvim-katharsis", false},
+		{"", false},
+	} {
+		if err := CheckEditor(tc.editor); (err == nil) != tc.ok {
+			t.Errorf("CheckEditor(%q) = %v, want ok %v", tc.editor, err, tc.ok)
 		}
 	}
 }
@@ -74,7 +111,7 @@ func startVim(t *testing.T, o Overlay, sock, path string) string {
 	if err := o.Write(ov); err != nil {
 		t.Fatal(err)
 	}
-	argv := EditorArgv([]string{vim, "-u", "NONE", "-i", "NONE", "-N"}, sock, ov)
+	argv := EditorArgv(shellQuote(vim)+" -u NONE -i NONE -N", sock, ov)
 	argv = append(append([]string{"env", ctlEnv + "=1"}, argv...), path)
 	id, err := tmux(append([]string{"new-window", "-P", "-F", "#{pane_id}", "-c", filepath.Dir(path), "--"}, argv...)...)
 	if err != nil {

@@ -14,7 +14,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
@@ -71,7 +70,7 @@ from the standard rules, and is named by its name key or file name.
 func runPractice(args []string) error {
 	fs := flag.NewFlagSet("practice", flag.ContinueOnError)
 	noTmux := fs.Bool("no-tmux", false, "HUD only; edit the source yourself")
-	editor := fs.String("editor", "vim", "editor command; the source path is appended")
+	editor := fs.String("editor", "vim", "editor command line, run by sh; the source path is appended")
 	split := fs.Int("split", 65, "editor width in percent")
 	tl := fs.Duration("tl", problem.DefaultTimeLimit, "time limit per test")
 	scale := fs.Float64("scale", 1, "multiply CPU time limits (below 1 is stricter than the judge)")
@@ -92,6 +91,11 @@ func runPractice(args []string) error {
 		return err
 	}
 
+	if !*noTmux {
+		if err := session.CheckEditor(*editor); err != nil {
+			return err
+		}
+	}
 	// Outside tmux, restart inside a tmux session so the editor and HUD can
 	// sit side by side; a second start attaches to the first. Parsing
 	// stopped at the one argument left, so it is the last one.
@@ -122,7 +126,7 @@ func runPractice(args []string) error {
 	)
 	if !*noTmux {
 		var cleanup func()
-		editorPane, srv, cleanup, err = openEditor(&opt, dir, prob.Source, strings.Fields(*editor), *split)
+		editorPane, srv, cleanup, err = openEditor(&opt, dir, prob.Source, *editor, *split)
 		if err != nil {
 			return err
 		}
@@ -165,7 +169,7 @@ func runPractice(args []string) error {
 // the pane itself, the timer on its border, and :Debug's lldb pane under
 // it. cleanup undoes all of it, best effort: the process is on its way out
 // and has no one left to report to.
-func openEditor(opt *hud.Options, dir, source string, editor []string, split int) (pane string, srv *session.Server, cleanup func(), err error) {
+func openEditor(opt *hud.Options, dir, source, editor string, split int) (pane string, srv *session.Server, cleanup func(), err error) {
 	var undo []func() error
 	undoAll := func() {
 		for i := len(undo) - 1; i >= 0; i-- {
