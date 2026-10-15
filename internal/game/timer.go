@@ -74,10 +74,9 @@ func (e *engine) timerMult() float64 {
 //
 // Only solves that beat their timer are recorded, so the data is censored
 // from above and the raw quantile undershoots; fed back, it would shrink the
-// timer every boot. The headroom gives that loop a fixed point (at 1.5,
-// about the player's own 95th percentile for lognormal solve times with
-// sigma 0.5; rules.Rules.TimerHeadroom), and the caller's clamp bounds
-// what is left.
+// timer every boot. The headroom gives that loop a fixed point near the
+// player's true quantile (for lognormal solve times with sigma about 0.5),
+// and the caller's clamp bounds what is left.
 func fitTimer(r *rules.Rules, solves []Solve, gap float64) (time.Duration, bool) {
 	type obs struct {
 		dist float64

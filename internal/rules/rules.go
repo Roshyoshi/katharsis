@@ -220,16 +220,10 @@ type Rules struct {
 	TimerGapScale float64 `toml:"timer_gap_scale"`
 	// TimerHeadroom multiplies the fitted quantile. Only solves that beat
 	// their timer are ever recorded, so the raw quantile shrinks every boot;
-	// the headroom gives the fit a fixed point instead of a ratchet. For
-	// lognormal solve times (sigma 0.5) and TimerQuantile 0.85, a headroom
-	// of 1.25 holds the timer at the player's own 85th percentile and 1.5
-	// at about their 95th: a fitted door then runs out on one solve in
-	// twenty, not one in seven.
+	// the headroom gives the fit a fixed point instead of a ratchet.
 	TimerHeadroom float64 `toml:"timer_headroom"`
 	// TimerFitLo and TimerFitHi clamp a fitted timer to this fraction of
-	// the biome's default timer. The floor covers what the fit cannot
-	// see: it pools every topic into one curve, so a fast player's slow
-	// topic would run on their fast topics' clock.
+	// the biome's default timer.
 	TimerFitLo float64 `toml:"timer_fit_lo"`
 	TimerFitHi float64 `toml:"timer_fit_hi"`
 	// TimerFitHistory is how many recent solves the fit looks at, so the
@@ -600,8 +594,8 @@ func Standard() Rules {
 		// roughly the 0.85 quantile of one lognormal (sigma 0.5, median
 		// 30 min at gap 0) across the three biome targets.
 		TimerGapScale:   200,
-		TimerHeadroom:   1.5,
-		TimerFitLo:      0.8,
+		TimerHeadroom:   1.25,
+		TimerFitLo:      0.5,
 		TimerFitHi:      1.5, // 2 made calibrated bosses ~3 h; 1.5 keeps clears ~2 h
 		TimerFitHistory: 200,
 		BossTimerMult:   1,
@@ -658,18 +652,17 @@ func Standard() Rules {
 		// (a daemon, an item or an upgrade joins its pool; one more route,
 		// daemon or upgrade is on offer, one more door per room), banner
 		// themes, a starting duck, and one capstone. Over its first 40
-		// boots at prestige 0 the 1000-rated sim player banks about 220 B a
+		// boots at prestige 0 the 1000-rated sim player banks about 200 B a
 		// boot (commits and upsolved core dumps; 140 B before RT0's floor
-		// reading and D44 let most of its boots past Userland, 205 B before
-		// the alpha's longer timers), so bought cheapest first the first
-		// package is one cleared door and every next one is at most three
-		// boots away until binutils, about 44 boots in; the catalog is about
-		// 63 boots of that player's bank and 56 of the 1600-rated one's (245
-		// B a boot). The measured rate moves by a tenth with the prices
-		// themselves (when a package lands changes the boots), so the ladder
-		// holds for 203 to 242 B. rules_test.go checks the ladder at those
-		// rates and sim TestAptLadder against the players; prices are
-		// settings like any other (D2).
+		// reading and D44 let most of its boots past Userland), so bought
+		// cheapest first the first package is one cleared door and every next
+		// one is at most three boots away until binutils, about 42 boots in;
+		// the catalog is about 62 boots of that player's bank and 49 of the
+		// 1600-rated one's (263 B a boot). The measured rate moves by a
+		// tenth with the prices themselves (when a package lands changes the
+		// boots), so the ladder holds for 176 to 212 B. rules_test.go checks
+		// the ladder at those rates and sim TestAptLadder against the
+		// players; prices are settings like any other (D2).
 		//
 		// binutils is the one package of raw power: a lib slot pastes more
 		// of the player's own code, which the door model does not see
@@ -677,25 +670,25 @@ func Standard() Rules {
 		// the capstone, after the ladder, and the only one of its kind.
 		Packages: []Package{
 			{Name: "cowsay", Price: 32, Theme: "cowsay"},
-			{Name: "tux", Price: 288, Theme: "tux"},
-			{Name: "sl", Price: 432, Theme: "sl"},
-			{Name: "rng-tools", Price: 496, Daemon: "dev-random"},
-			{Name: "at", Price: 576, Item: "at"},
-			{Name: "cron", Price: 592, Daemon: "cron"},
-			{Name: "strace", Price: 608, Daemon: "strace"},
-			{Name: "coreutils", Price: 608, Upgrade: "shuf"},
-			{Name: "aptitude", Price: 608, UpgradeOffers: 1, Requires: []string{"coreutils"}},
-			{Name: "rubber-duck", Price: 608, Ducks: 1},
-			{Name: "git", Price: 608, RouteOffers: 1},
-			{Name: "neofetch", Price: 608, Theme: "neofetch"},
-			{Name: "util-linux", Price: 608, Daemon: "chrt"},
-			{Name: "figlet", Price: 608, Theme: "figlet"},
-			{Name: "tmux", Price: 608, Doors: 1},
-			{Name: "cmatrix", Price: 608, Theme: "cmatrix"},
-			{Name: "bastet", Price: 608, Theme: "bastet"},
+			{Name: "tux", Price: 256, Theme: "tux"},
+			{Name: "sl", Price: 384, Theme: "sl"},
+			{Name: "rng-tools", Price: 448, Daemon: "dev-random"},
+			{Name: "at", Price: 512, Item: "at"},
+			{Name: "cron", Price: 528, Daemon: "cron"},
+			{Name: "strace", Price: 544, Daemon: "strace"},
+			{Name: "coreutils", Price: 544, Upgrade: "shuf"},
+			{Name: "aptitude", Price: 544, UpgradeOffers: 1, Requires: []string{"coreutils"}},
+			{Name: "rubber-duck", Price: 544, Ducks: 1},
+			{Name: "git", Price: 544, RouteOffers: 1},
+			{Name: "neofetch", Price: 544, Theme: "neofetch"},
+			{Name: "util-linux", Price: 544, Daemon: "chrt"},
+			{Name: "figlet", Price: 544, Theme: "figlet"},
+			{Name: "tmux", Price: 544, Doors: 1},
+			{Name: "cmatrix", Price: 544, Theme: "cmatrix"},
+			{Name: "bastet", Price: 544, Theme: "bastet"},
 			// A fourth daemon on offer means nothing while the pool holds
 			// three, so procps waits on two of the locked ones.
-			{Name: "procps", Price: 608, DaemonOffers: 1, Requires: []string{"rng-tools", "strace"}},
+			{Name: "procps", Price: 544, DaemonOffers: 1, Requires: []string{"rng-tools", "strace"}},
 			{Name: "binutils", Price: 4096, LinkSlots: 1},
 		},
 	}
@@ -707,10 +700,8 @@ func Standard() Rules {
 // reuse one, so a name in the boots table always means these rules.
 func BuiltIns() []Rules { return []Rules{Standard(), Short(), Patch()} }
 
-// Short is the built-in short preset (retention RT7): four doors, and the
-// shape boot #1 plays (FirstBiomes). Its mid and boss timers are shorter
-// than standard's; Userland keeps standard's 15 min, since an easy door
-// on 10 min was a sprint, not a warm-up (alpha boot #1).
+// Short is the built-in short preset (retention RT7): four doors on
+// shorter timers, and the shape boot #1 plays (FirstBiomes).
 func Short() Rules {
 	r := Standard()
 	r.Name = "short"
@@ -723,19 +714,17 @@ func Short() Rules {
 // (standard's boss at 0.5), on short's timers; every other number is
 // standard's. Its doors are 3 of standard's 5 and short's 4; in the
 // simulator (synthetic pool, prestige 0, the 1000- and 1600-rated model
-// players, 2026-10-15, the alpha's timers) the mean uptimes, time inside
-// doors, were
+// players, 2026-10-15) the mean uptimes were
 //
-//	standard 2h32 / 2h17 · short 1h23 / 1h19 · patch 50m / 55m
+//	standard 2h31 / 2h15 · short 1h26 / 1h21 · patch 1h04 / 1h00
 //
-// and in wall time, a minute a choice between doors, 2h51 / 2h36, 1h40 /
-// 1h36 and 1h04 / 1h09. The timers fit to the player's solve times, so
-// the end screens' ETAs are the player's own medians (GR3), not these.
+// The timers fit to the player's solve times, so the end screens' ETAs
+// are the player's own medians (GR3), not these.
 func Patch() Rules {
 	r := Standard()
 	r.Name = "patch"
 	r.Biomes = []Biome{
-		{Kind: Fixed, Name: "Userland", Rooms: 1, TargetClear: 0.9, Timer: Duration{15 * time.Minute}, EaseClear: 0.95, Plain: 1, TimeoutLife: true},
+		{Kind: Fixed, Name: "Userland", Rooms: 1, TargetClear: 0.9, Timer: Duration{10 * time.Minute}, EaseClear: 0.95, Plain: 1, TimeoutLife: true},
 		{Kind: Choice, Rooms: 1, Choices: 2, TargetClear: 0.7, MinClear: 0.6, Timer: Duration{20 * time.Minute}, EaseClear: 0.78},
 		{Kind: Boss, Rooms: 1, TargetClear: 0.6, Timer: Duration{20 * time.Minute}, EaseClear: 0.65},
 	}
@@ -745,7 +734,7 @@ func Patch() Rules {
 // shortBiomes is the short preset's shape.
 func shortBiomes() []Biome {
 	return []Biome{
-		{Kind: Fixed, Name: "Userland", Rooms: 2, TargetClear: 0.9, Timer: Duration{15 * time.Minute}, EaseClear: 0.95, Plain: 1, TimeoutLife: true},
+		{Kind: Fixed, Name: "Userland", Rooms: 2, TargetClear: 0.9, Timer: Duration{10 * time.Minute}, EaseClear: 0.95, Plain: 1, TimeoutLife: true},
 		{Kind: Choice, Rooms: 1, Choices: 2, TargetClear: 0.7, MinClear: 0.6, Timer: Duration{20 * time.Minute}, EaseClear: 0.78},
 		{Kind: Boss, Rooms: 1, TargetClear: 0.5, Timer: Duration{25 * time.Minute}, EaseClear: 0.55},
 	}

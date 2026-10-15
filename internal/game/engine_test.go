@@ -471,8 +471,8 @@ func TestTimerFit(t *testing.T) {
 		for seed := range uint64(10) {
 			h := newHarness(t, r, &game.Meta{Rating: 1500, Solves: slices.Clone(solves)}, ps, 0, seed)
 			for _, d := range h.s.Doors {
-				// q85 of 20m is 20m, ×TimerHeadroom, ×2^(gap/200).
-				fit := 20 * r.TimerHeadroom * math.Exp2((float64(d.Rating)-1500)/200)
+				// q85 of 20m is 20m, ×1.25 headroom, ×2^(gap/200).
+				fit := 25 * math.Exp2((float64(d.Rating)-1500)/200)
 				lo, hi := 20*r.TimerFitLo, 20*r.TimerFitHi
 				switch {
 				case fit < lo:

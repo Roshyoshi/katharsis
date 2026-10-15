@@ -62,8 +62,8 @@ GRUB ▸ prestige 1 · standard · seed 8f3a
  └─ boss         named bug; at max prestige, The Halting Problem
 ```
 
-- Full clear about 2 h; typical crash about 1 h 15 m (fitted timers stay
-  within 0.8x to 1.5x the biome default).
+- Full clear about 2 h; typical crash about 1 h 15 m (fitted timers cap at
+  1.5x the biome default).
 - Door difficulty is chosen from the player's rating estimate to hit target
   clear rates: about 92% early, 70% mid, 50% boss (about 20% full clears).
 - Default timers: 15 / 30 / 50 min (early / mid / boss), then fitted to the
