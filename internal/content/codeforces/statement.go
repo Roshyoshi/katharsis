@@ -52,9 +52,6 @@ func statementMarkdown(e entry, t text) string {
 	section(&b, "", t.Description)
 	section(&b, "Input", t.Input)
 	section(&b, "Output", t.Output)
-	if e.AnyCase && !e.HasChecker {
-		b.WriteString("*Judged here by exact match: print YES/NO in the case the sample output uses.*\n\n")
-	}
 	section(&b, "Interaction", t.Interaction)
 	for i, ex := range t.Examples {
 		n := i + 1

@@ -58,6 +58,9 @@ type Problem struct {
 	Interactive    bool
 	NeedsChecker   bool
 	FloatTolerance float64 // > 0 when the statement allows abs/rel error
+	// AnyCase: the statement accepts YES/NO-style answers in any letter
+	// case, so the judge folds those words before comparing.
+	AnyCase bool
 
 	HasEditorial bool
 }

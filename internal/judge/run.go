@@ -44,6 +44,10 @@ type Limits struct {
 	// FloatTolerance > 0 checks output with CheckFloat at that absolute or
 	// relative error instead of exactly.
 	FloatTolerance float64
+	// AnyCase folds yes/no answer words to one case on both sides before
+	// checking, for statements that accept them in any case. Other words
+	// still compare exactly.
+	AnyCase bool
 }
 
 // Budget is the CPU time a run may use before it is TLE: Time × Slack ×
@@ -197,6 +201,9 @@ func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result
 	want, err := os.ReadFile(c.Out)
 	if err != nil {
 		return res, err
+	}
+	if lim.AnyCase {
+		want, got = FoldYesNo(want), FoldYesNo(got)
 	}
 	if ok, d := CheckFloat(want, got, lim.FloatTolerance); ok {
 		res.Verdict = AC

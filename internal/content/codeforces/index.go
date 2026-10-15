@@ -56,7 +56,7 @@ type index struct {
 
 // schema changes whenever entry, text.bin or the derivation rules change,
 // so a stale cache is rebuilt rather than misread.
-const schema = 1
+const schema = 2 // 2: catalog.Problem.AnyCase
 
 func indexKey(l layout) string {
 	h := sha256.New()
@@ -224,6 +224,7 @@ func newEntry(r tableRow) (entry, bool) {
 	p.FloatTolerance = floatTolerance(r.OutputFormat, r.Description, r.Note)
 	e.Multi = multiAnswer(r.OutputFormat, r.Description)
 	e.AnyCase = caseInsensitive(r.OutputFormat, r.Note)
+	p.AnyCase = e.AnyCase
 	// A checker written only to compare reals within the stated error is
 	// the judge's built-in float checker; 240 of the 1780 checkers at rev
 	// are that. Anything else (several valid answers, or a reason the

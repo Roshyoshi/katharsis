@@ -128,3 +128,15 @@ func TestBytes(t *testing.T) {
 		}
 	}
 }
+
+func TestFoldYesNo(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{"yes\nNo\nyEs 3\n", "YES\nNO\nYES 3\n"},
+		{"yesterday nothing\n", "yesterday nothing\n"},
+		{"Alice\n", "Alice\n"},
+	} {
+		if got := string(judge.FoldYesNo([]byte(tc.in))); got != tc.want {
+			t.Errorf("FoldYesNo(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}

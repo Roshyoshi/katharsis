@@ -1,7 +1,9 @@
 package judge
 
 import (
+	"bytes"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -116,4 +118,13 @@ func clip(s string) string {
 		return s[:n] + "…"
 	}
 	return s
+}
+
+var yesNo = regexp.MustCompile(`(?i)\b(yes|no)\b`)
+
+// FoldYesNo upper-cases the words yes and no, for problems that accept
+// them in any case ("YES", "yEs"). Only those words change, so the rest of
+// an answer is still compared exactly.
+func FoldYesNo(b []byte) []byte {
+	return yesNo.ReplaceAllFunc(b, bytes.ToUpper)
 }
