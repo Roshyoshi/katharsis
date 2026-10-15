@@ -131,6 +131,12 @@ D43 proposed     Retention funnel (docs/research/retention.md). Guardrails GR1-G
                    first-class; 3 h session nudge; 1.5x upsolve without the editorial;
                    apt catalog >= 40 boots deep.
 
+D45 settled 10-15  Once D (both halves), S9 part 2 and the S10 engine lane are merged,
+                   start the final pass without asking: cleanup by package with the QA
+                   list, then core-loop QA, then ping for alpha: "when D + remaining
+                   engine and UI work finishes then you can get started on finishing
+                   the final pass".
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
