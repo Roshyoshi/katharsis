@@ -28,6 +28,7 @@ import (
 type submission struct {
 	ch      <-chan judge.Event // the pass's events; see eventMsg
 	cancel  context.CancelFunc
+	done    <-chan struct{} // closed once the pass has ended
 	req     session.Request // answered when the pass finishes
 	started bool            // a submit has happened; show the HP bar
 	running bool
@@ -168,7 +169,7 @@ func (m *Model) judgeSubmit(req session.Request, src string) tea.Cmd {
 	}
 	prof := m.opt.SubmitProfile
 	lim := m.limits()
-	ch, cancel := start(func(ctx context.Context, emit func(judge.Event)) {
+	ch, cancel, done := start(func(ctx context.Context, emit func(judge.Event)) {
 		if prof.Name == "" {
 			// Off the update loop: Profiles may wait on the sample probe.
 			prof = judge.Profiles(ctx).Full
@@ -176,7 +177,7 @@ func (m *Model) judgeSubmit(req session.Request, src string) tea.Cmd {
 		judge.Submit(ctx, src, tests, prof, lim, emit)
 	})
 	m.sub = submission{
-		ch: ch, cancel: cancel, req: req, started: true, running: true,
+		ch: ch, cancel: cancel, done: done, req: req, started: true, running: true,
 		tests: tests, src: src, results: make([]judge.Result, len(tests)),
 	}
 	return tea.Batch(next(ch), m.updateBorder())

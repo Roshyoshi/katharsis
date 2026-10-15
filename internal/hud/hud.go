@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -129,8 +130,11 @@ type Model struct {
 	started time.Time
 	now     time.Time
 
-	pass    <-chan judge.Event // the sample pass's events; see eventMsg
-	cancel  context.CancelFunc
+	pass   <-chan judge.Event // the sample pass's events; see eventMsg
+	cancel context.CancelFunc
+	// passes are the sample passes not seen to end, cancelled ones
+	// included, for Cleanup to wait on.
+	passes  []<-chan struct{}
 	running bool
 	build   *judge.Build
 	passErr error
@@ -220,9 +224,11 @@ func (m *Model) rejudge() tea.Cmd {
 	m.running = true
 
 	prob, prof, lim := m.prob, m.opt.Profile, m.limits()
-	m.pass, m.cancel = start(func(ctx context.Context, emit func(judge.Event)) {
+	var done <-chan struct{}
+	m.pass, m.cancel, done = start(func(ctx context.Context, emit func(judge.Event)) {
 		judge.Judge(ctx, prob, prof, lim, emit)
 	})
+	m.passes = append(slices.DeleteFunc(m.passes, ended), done)
 	return next(m.pass)
 }
 
@@ -240,11 +246,13 @@ func (m *Model) load() bool {
 }
 
 // start runs a judge pass in the background and streams its events into
-// the returned channel, which closes when the pass ends.
-func start(pass func(context.Context, func(judge.Event))) (<-chan judge.Event, context.CancelFunc) {
+// the returned channel, which closes when the pass ends; done closes once
+// the pass has returned.
+func start(pass func(context.Context, func(judge.Event))) (_ <-chan judge.Event, _ context.CancelFunc, done <-chan struct{}) {
 	ctx, cancel := context.WithCancel(context.Background())
-	ch := make(chan judge.Event, 8)
+	ch, end := make(chan judge.Event, 8), make(chan struct{})
 	go func() {
+		defer close(end)
 		defer close(ch)
 		pass(ctx, func(ev judge.Event) {
 			select {
@@ -253,7 +261,17 @@ func start(pass func(context.Context, func(judge.Event))) (<-chan judge.Event, c
 			}
 		})
 	}()
-	return ch, cancel
+	return ch, cancel, end
+}
+
+// ended reports whether done is closed.
+func ended(done <-chan struct{}) bool {
+	select {
+	case <-done:
+		return true
+	default:
+		return false
+	}
 }
 
 func next(ch <-chan judge.Event) tea.Cmd {
@@ -379,13 +397,34 @@ func (m *Model) Adopt(prev *Model) {
 // have it closed.
 func (m *Model) EditorLeftOpen() bool { return m.leftOpen }
 
-// Cleanup stops the judge passes and closes the debugger, removing its
-// files. Call it once the HUD is done with: its program exited, or its
-// door closed.
+// Cleanup stops the judge passes, waits for them to end, and closes the
+// debugger, removing its files. Call it once the HUD is done with: its
+// program exited, or its door closed.
+//
+// The wait is what kills them. A pass's compiler or solution runs in a
+// process group of its own, out of reach of tmux's SIGHUP, and the kill a
+// cancel sends goes from a goroutine of this process: a game that exited
+// right after the cancel left a compile running to its end.
 func (m *Model) Cleanup() {
 	m.stop()
+	wait, cancel := context.WithTimeout(context.Background(), cleanupWait)
+	defer cancel()
+	for _, done := range append(m.passes, m.sub.done) {
+		if done != nil {
+			select {
+			case <-done:
+			case <-wait.Done():
+			}
+		}
+	}
+	m.passes = nil
 	m.closeDebugger()
 }
+
+// cleanupWait bounds Cleanup's wait for the passes it cancelled. A killed
+// compiler and its children go at once; one that left the group gets a
+// second more (judge's WaitDelay).
+const cleanupWait = 5 * time.Second
 
 func (m *Model) apply(ev judge.Event) {
 	switch ev := ev.(type) {

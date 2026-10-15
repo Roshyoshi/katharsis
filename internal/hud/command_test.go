@@ -1,12 +1,14 @@
 package hud
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -553,6 +555,37 @@ func TestAdoptMovesTheSubmit(t *testing.T) {
 	}
 	if len(answer) == 0 {
 		t.Error(":Submit was never answered")
+	}
+}
+
+// Cleanup returns once the passes it cancelled have ended, a sample pass a
+// save replaced included. Each pass's compiler or solution runs in a
+// process group of its own, past tmux's SIGHUP, and only a goroutine of
+// this process kills it: a game that exited right after the cancel left
+// a compile running.
+func TestCleanupWaitsForThePasses(t *testing.T) {
+	m := fixture(t, 1)
+	var ended atomic.Int32
+	lagging := func(ctx context.Context, _ func(judge.Event)) {
+		<-ctx.Done()
+		time.Sleep(50 * time.Millisecond) // the kill and the reap
+		ended.Add(1)
+	}
+	for range 2 { // the second replaces the first, as rejudge does
+		var done <-chan struct{}
+		if m.cancel != nil {
+			m.cancel()
+		}
+		m.pass, m.cancel, done = start(lagging)
+		m.passes = append(m.passes, done)
+	}
+	req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
+	ch, cancel, done := start(lagging)
+	m.sub = submission{ch: ch, cancel: cancel, done: done, req: req, started: true, running: true}
+
+	m.Cleanup()
+	if n := ended.Load(); n != 3 {
+		t.Errorf("%d of 3 passes had ended when Cleanup returned", n)
 	}
 }
 
