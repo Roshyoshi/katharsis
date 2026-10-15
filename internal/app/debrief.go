@@ -10,10 +10,12 @@ import (
 	"katharsis/internal/catalog"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/story"
+	"katharsis/internal/store"
 	"katharsis/internal/units"
 )
 
@@ -109,8 +111,48 @@ func (m *Model) computeEnd(st *game.State) bootui.End {
 	}
 	if st.Phase == game.PhaseCleared && st.Trial == nil {
 		e.Firsts = m.firsts(st)
+	} else if st.Trial == nil {
+		e.Learn = m.learnNext(st)
 	}
 	return e
+}
+
+// learnAfter crashes on one topic within learnWindow make RTFM the next
+// step at the end of a boot (retention RT1); learnBoots is how many recent
+// boots learnNext reads for them.
+const (
+	learnAfter  = 2
+	learnWindow = 14 * 24 * time.Hour
+	learnBoots  = 50
+)
+
+// learnNext is End.Learn for a crashed boot: its door's topic has a
+// capability the player lacks, and learnAfter boots crashed on it within
+// learnWindow, this one too. A live core dump is the next step before it
+// (the upsolve), so then there is none. A query that fails counts nothing.
+func (m *Model) learnNext(st *game.State) *bootui.Learn {
+	topic := st.Crash.Door.Topic
+	if game.Debrief(st, &m.meta).Next.Kind != game.NextReboot || game.Unlocked(&m.meta, topic) {
+		return nil
+	}
+	boots, err := m.d.Store.Boots(learnBoots)
+	m.logErr("crashes", err)
+	n, since := 1, st.Crash.At.Add(-learnWindow)
+	for _, b := range boots {
+		if b.Boot == st.Boot || b.Outcome != store.BootCrashed || b.Rules == rules.Trial().Name {
+			continue
+		}
+		// The boot's last attempt is the door it crashed on.
+		atts, err := m.d.Store.Attempts(store.AttemptFilter{Boot: b.Boot, Limit: 1})
+		m.logErr("crashes", err)
+		if len(atts) > 0 && atts[0].Door.Topic == topic && !atts[0].Closed.Before(since) {
+			n++
+		}
+	}
+	if n < learnAfter {
+		return nil
+	}
+	return &bootui.Learn{Topic: topic, Crashes: n}
 }
 
 // firsts are a clear's first-time and personal-best lines (RT1), at most
@@ -180,6 +222,8 @@ func (m *Model) endAction(msg tea.Msg) {
 		action = "grub"
 	case story.Read:
 		action = "story"
+	case screens.OpenLearn:
+		action = "rtfm"
 	default:
 		return
 	}

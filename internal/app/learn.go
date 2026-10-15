@@ -23,15 +23,24 @@ import (
 )
 
 type learnLoadedMsg struct {
-	cur *curriculum.Curriculum
-	err error
+	cur   *curriculum.Curriculum
+	err   error
+	topic string // openLearn's
 }
 
-// openLearn shows the RTFM browser. The curriculum loads from the USACO
+// openLearn shows the RTFM browser, with a topic at the first module
+// whose trial earns its capability. The curriculum loads from the USACO
 // Guide snapshot the USACO source already downloaded, once per session.
-func (m *Model) openLearn() tea.Cmd {
+func (m *Model) openLearn(topic string) tea.Cmd {
 	if m.cur != nil {
-		return m.push(rtfm.NewBrowser(m.cur, m.meta, m.judgeable, m.d.Catalog.Get))
+		b := rtfm.NewBrowser(m.cur, m.meta, m.judgeable, m.d.Catalog.Get)
+		for _, mod := range m.cur.Modules() {
+			if topic != "" && mod.Topic == topic {
+				b.Open(mod.ID)
+				break
+			}
+		}
+		return m.push(b)
 	}
 	return m.background(func(ctx context.Context) tea.Msg {
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
@@ -41,7 +50,7 @@ func (m *Model) openLearn() tea.Cmd {
 			return learnLoadedMsg{err: err}
 		}
 		cur, err := curriculum.Load(dir)
-		return learnLoadedMsg{cur: cur, err: err}
+		return learnLoadedMsg{cur: cur, err: err, topic: topic}
 	})
 }
 
@@ -50,7 +59,7 @@ func (m *Model) onLearnLoaded(msg learnLoadedMsg) tea.Cmd {
 		return fail("RTFM: %v", msg.err)
 	}
 	m.cur = msg.cur
-	return m.openLearn()
+	return m.openLearn(msg.topic)
 }
 
 func (m *Model) judgeable(id catalog.ID) bool {

@@ -14,6 +14,7 @@ import (
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/meta"
+	"katharsis/internal/screens/rtfm"
 	"katharsis/internal/store"
 )
 
@@ -218,6 +219,71 @@ func TestForecastShownAfter(t *testing.T) {
 		want = fmt.Sprintf("Userland crash: ≈%.0f%% forecast, %d/1 boots", 100*f, early)
 		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, want) {
 			t.Errorf("top lacks %q:\n%s", want, v)
+		}
+	})
+}
+
+// oneTopic makes every problem in the harness's catalog topic's, so each
+// door a boot crashes on is on it.
+func oneTopic(h *harness, topic string) {
+	c := h.m.d.Catalog.(*fakeCatalog)
+	all := slices.Clone(c.all)
+	for i := range all {
+		all[i].Topic = topic
+		c.byID[all[i].ID] = all[i]
+	}
+	c.all = all
+}
+
+// A second crash on a topic within 14 days, its capability not earned,
+// makes RTFM the next step (RT1), and m opens RTFM at the module whose
+// trial earns it. Crashes further apart, a live core dump (the upsolve
+// comes first) or the capability held leave the reboot.
+func TestRTFMAfterTwoCrashesOnATopic(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		oneTopic(h, "prefix-sums")
+		crash := func(acFirst int) *bootui.Learn {
+			h.t.Helper()
+			h.send(screens.StartBoot{Preset: "standard"})
+			h.verdict, h.acFirst = "WA", acFirst
+			if got := h.play(); got != game.PhaseCrashed {
+				h.t.Fatalf("boot ended %q, want crashed", got)
+			}
+			return h.m.endInfo().Learn
+		}
+		if l := crash(0); l != nil {
+			t.Fatalf("one crash: RTFM %+v", l)
+		}
+		h.clock.t = h.clock.t.Add(15 * 24 * time.Hour)
+		if l := crash(0); l != nil {
+			t.Fatalf("crashes 15 days apart: RTFM %+v", l)
+		}
+		h.clock.t = h.clock.t.Add(24 * time.Hour)
+		if l := crash(1); l != nil || h.m.meta.CoreDump == nil {
+			t.Fatalf("a live dump: RTFM %+v (dump %+v), want the upsolve", l, h.m.meta.CoreDump)
+		}
+		h.m.meta.CoreDump = nil // given up on
+		l := crash(0)
+		if l == nil || *l != (bootui.Learn{Topic: "prefix-sums", Crashes: 3}) {
+			t.Fatalf("RTFM %+v, want prefix-sums after 3 crashes in 14 days", l)
+		}
+		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "m RTFM prefix-sums") {
+			t.Fatalf("crash screen has no RTFM step:\n%s", v)
+		}
+		loadGuide(h)
+		h.send(key("m"))
+		if b, ok := h.m.top().(*rtfm.Browser); !ok || !strings.Contains(ansi.Strip(b.View(100, 30)), "Prefix Sums") {
+			t.Fatalf("m opened %T, want RTFM at Prefix Sums", h.m.top())
+		}
+		if got := h.answers(eventBootEndAction, "action"); !slices.Contains(got, "rtfm") {
+			t.Errorf("boot_end_action %v, want rtfm among them", got)
+		}
+
+		game.GrantCapability(&h.m.meta, game.CapabilityFor("prefix-sums"))
+		h.send(screens.Back{})
+		if l := crash(0); l != nil {
+			t.Errorf("the capability held: RTFM %+v", l)
 		}
 	})
 }

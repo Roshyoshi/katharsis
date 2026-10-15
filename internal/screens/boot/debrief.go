@@ -38,6 +38,17 @@ type End struct {
 	// Firsts are up to two first-time or personal-best lines for a clear
 	// (RT1): "first Heisenbug kill", "fastest clear: 1:52:10".
 	Firsts []string
+	// Learn makes RTFM the next step after a crash (RT1): the crashed
+	// door's topic crashed boots before in the last 14 days, and the
+	// player lacks the capability its trial earns. nil for none.
+	Learn *Learn
+}
+
+// Learn is the topic RTFM teaches and how many boots crashed on it in the
+// last 14 days, this one too.
+type Learn struct {
+	Topic   string
+	Crashes int
 }
 
 // Goal is the next apt package and the player's own pace toward it.

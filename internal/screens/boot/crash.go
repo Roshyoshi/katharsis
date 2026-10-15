@@ -33,7 +33,8 @@ type revealMsg struct{ gen int }
 // one), r screens.StartBoot, and an offered preset's key (s short, p
 // patch) one on that preset; with a live core dump a reboot key asks
 // twice, since the next crash destroys the dump (RT4). b reads the story
-// beat waiting (story.Read), l opens git log, g and q go to GRUB
+// beat waiting (story.Read), m RTFM when it is the next step
+// (screens.OpenLearn), l opens git log, g and q go to GRUB
 // (screens.OpenGrub, UX J12). The editorial is a key, not opened over the
 // panic, so the panic is seen first even after a :q!.
 type Crash struct {
@@ -116,6 +117,10 @@ func (c *Crash) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		case beatKey:
 			if id := beat(c.env); id != "" {
 				return c, screens.Emit(story.Read{ID: id})
+			}
+		case learnKey:
+			if l := c.env.End.Learn; l != nil {
+				return c, screens.Emit(screens.OpenLearn{Topic: l.Topic})
 			}
 		case "l":
 			return c, screens.Emit(screens.OpenLog{})
@@ -359,8 +364,12 @@ func (c *Crash) end(cr game.Crash, verdict, title string, seed uint64, width int
 	return ps
 }
 
-// next is the one highlighted step (RT1): upsolve a live dump, else
-// reboot. While a reboot key is armed it says what the reboot risks.
+// learnKey opens RTFM when it is the next step.
+const learnKey = "m"
+
+// next is the one highlighted step (RT1): upsolve a live dump, else RTFM
+// on a topic that keeps crashing (End.Learn), else reboot. While a reboot
+// key is armed it says what the reboot risks.
 func (c *Crash) next(b game.Brief, width int) []string {
 	env := c.env
 	var s string
@@ -371,6 +380,10 @@ func (c *Crash) next(b game.Brief, width int) []string {
 			ui.Muted.Render(ui.G.Sep) + ui.Strong.Render("u") + " upsolve first"
 	case b.Next.Kind == game.NextUpsolve:
 		s = upsolveText(env, b.Next, b.Dump)
+	case env.End.Learn != nil:
+		l := env.End.Learn
+		s = ui.Strong.Render(learnKey) + " RTFM " + l.Topic +
+			ui.Muted.Render(ui.G.Sep+fmt.Sprintf("%d crashes on it in 14 days", l.Crashes))
 	default:
 		s = ui.Strong.Render("r") + " reboot at " + prestigeLabel(next(env)) + eta(env.End.ETA)
 	}
@@ -391,7 +404,7 @@ func (c *Crash) keys(b game.Brief, width int) []string {
 		pairs = append(pairs, "e", "editorial")
 	}
 	reb := rebootPairs(env)
-	if b.Next.Kind == game.NextReboot {
+	if b.Next.Kind == game.NextReboot && env.End.Learn == nil {
 		reb = reb[2:]
 	}
 	pairs = append(pairs, reb...)

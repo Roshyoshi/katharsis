@@ -34,7 +34,9 @@ type (
 		Preset   string // rules preset name, "standard" by default
 		Seed     uint64 // 0 means random
 	}
-	OpenLearn     struct{}
+	// OpenLearn shows RTFM; with a Topic, at the first module whose trial
+	// earns its capability.
+	OpenLearn     struct{ Topic string }
 	OpenLog       struct{}                     // git log
 	OpenTop       struct{}                     // stats
 	OpenCredits   struct{}                     // music, licenses, sources
