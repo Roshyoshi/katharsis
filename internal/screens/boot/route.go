@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -224,7 +225,12 @@ func (r *Route) exitCard(e game.Exit) card {
 		c.sub = "any topic"
 	}
 	if !e.Skip {
+		// The engine's clock for this exit, its boss's twist in it; an exit
+		// saved before it had one shows the tier's.
 		c.rooms = units.Plural(e.Rooms, "room") + r.timer(e.Topic)
+		if e.Timer > 0 {
+			c.rooms = units.Plural(e.Rooms, "room") + clockText(e.Timer)
+		}
 		c.band, c.mine = r.band(e.Topic)
 		c.fail = failText(st)
 	}
@@ -312,7 +318,12 @@ func (r *Route) timer(topic string) string {
 	if rb, ok := ruleBiome(st, st.Biome); !ok || rb.Timer.Duration <= 0 {
 		return ""
 	}
-	return ui.Muted.Render(ui.G.Sep) + ui.G.Timer + "~" + units.Clock(st.RouteTimer(&r.env.Meta, topic))
+	return clockText(st.RouteTimer(&r.env.Meta, topic))
+}
+
+// clockText is a card's " · ⏱ ~30:00".
+func clockText(d time.Duration) string {
+	return ui.Muted.Render(ui.G.Sep) + ui.G.Timer + "~" + units.Clock(d)
 }
 
 // band previews the rating the engine aims topic's doors at, widened ±100

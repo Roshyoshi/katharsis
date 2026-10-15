@@ -12,6 +12,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/boot/fixture"
+	"katharsis/internal/units"
 )
 
 // hubEnv is env over a map boot with a core dump from boot #41 in Meta.
@@ -142,6 +143,23 @@ func TestExitCards(t *testing.T) {
 	for _, want := range []string{"skip", "+2 upgrade picks", "→ ⚔ The Halting Problem", "Kernel Space", "The Cache"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("act III exits lack %q:\n%s", want, v)
+		}
+	}
+}
+
+// An exit card's clock is the engine's for that exit (game.Exit.Timer),
+// which carries its boss's twist (Race Condition's fast clock); an exit
+// saved without one (an older save) falls back to the tier's.
+func TestExitCardTimers(t *testing.T) {
+	st := fixture.MapRouteBoss()
+	ex := st.Biomes[st.Biome].Exits
+	ex[0].Timer = 25*time.Minute + 36*time.Second
+	e := env(st)
+	tier := "~" + units.Clock(st.RouteTimer(&e.Meta, ex[1].Topic))
+	for _, sz := range [][2]int{{140, 40}, {80, 24}} {
+		v := ansi.Strip(NewRoute(e).View(sz[0], sz[1]))
+		if !strings.Contains(v, "~25:36") || !strings.Contains(v, tier) {
+			t.Errorf("%dx%d: want the exit's own ~25:36 and the fallback %s:\n%s", sz[0], sz[1], tier, v)
 		}
 	}
 }
