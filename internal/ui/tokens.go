@@ -25,21 +25,22 @@ import (
 type Token uint8
 
 const (
-	FG         Token = iota // body text: the terminal's own foreground
-	Strong                  // names, titles, values, key caps: bold
-	Muted                   // secondary text, labels, idle frames, hidden info: faint
-	Focus                   // cursor, selected frame, "you are here", active filter
-	OK                      // success and gain: AC, ✓, cleared, HP fill, +bytes
-	Warn                    // time pressure, soft caution: TLE/MLE/OLE, regression, retreat
-	Danger                  // failure, loss, lethal: WA/RE/CE, crash, cursed, a timer's last fifth
-	Special                 // boss and mystery doors
-	Life                    // ♥; a lost life is Muted
-	Select                  // a parody list's selected row (GRUB, git log, man): reverse
-	Field                   // htop's cyan bar, top only
-	Hit                     // a search hit
-	HitCurrent              // the search hit the cursor is on
-	Voice                   // the flavor voice: route blurbs, boss lines, quotes, "tags hidden"
-	Alert                   // Danger in reverse, a banner that must stop the eye: the :q! confirm, an error banner
+	FG          Token = iota // body text: the terminal's own foreground
+	Strong                   // names, titles, values, key caps: bold
+	Muted                    // secondary text, labels, idle frames, hidden info: faint
+	Focus                    // cursor, selected frame, "you are here", active filter
+	OK                       // success and gain: AC, ✓, cleared, HP fill, +bytes
+	Warn                     // time pressure, soft caution: TLE/MLE/OLE, regression, retreat
+	Danger                   // failure, loss, lethal: WA/RE/CE, crash, cursed, a timer's last fifth
+	Special                  // boss and mystery doors
+	Life                     // ♥; a lost life is Muted
+	Select                   // a parody list's selected row (GRUB, git log, man): reverse
+	Field                    // htop's cyan bar, top only
+	FieldHeader              // htop's green column header, top only
+	Hit                      // a search hit
+	HitCurrent               // the search hit the cursor is on
+	Voice                    // the flavor voice: route blurbs, boss lines, quotes, "tags hidden"
+	Alert                    // Danger in reverse, a banner that must stop the eye: the :q! confirm, an error banner
 
 	// The countdown's last two tones (calm and warn are OK and Warn) and
 	// the Codeforces rank ramp (newbie is Muted). Callers reach them
@@ -83,21 +84,22 @@ type look struct {
 }
 
 var looks = [numTokens]look{
-	FG:         {},
-	Strong:     {bold: true},
-	Muted:      {faint: true},
-	Focus:      {fg: cyan},
-	OK:         {fg: green},
-	Warn:       {fg: yellow},
-	Danger:     {fg: red},
-	Special:    {fg: magenta},
-	Life:       {fg: red},
-	Select:     {reverse: true},
-	Field:      {fg: black, bg: cyan},
-	Hit:        {underline: true},
-	HitCurrent: {bold: true, reverse: true},
-	Voice:      {italic: true},
-	Alert:      {fg: red, reverse: true},
+	FG:          {},
+	Strong:      {bold: true},
+	Muted:       {faint: true},
+	Focus:       {fg: cyan},
+	OK:          {fg: green},
+	Warn:        {fg: yellow},
+	Danger:      {fg: red},
+	Special:     {fg: magenta},
+	Life:        {fg: red},
+	Select:      {reverse: true},
+	Field:       {fg: black, bg: cyan},
+	FieldHeader: {fg: black, bg: green},
+	Hit:         {underline: true},
+	HitCurrent:  {bold: true, reverse: true},
+	Voice:       {italic: true},
+	Alert:       {fg: red, reverse: true},
 
 	// Low and critical carry a shape cue as well as red, so the timer's
 	// urgency reads without color: bold, then a reverse block. Never

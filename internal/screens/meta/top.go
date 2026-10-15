@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -122,7 +122,7 @@ func (t *Top) View(width, height int) string {
 		if i < len(right) {
 			r = right[i]
 		}
-		out = append(out, pad(l, lw)+"  "+r)
+		out = append(out, ui.Fit(l, lw)+"  "+r)
 	}
 	out = append(out, t.alarmLine(w))
 
@@ -138,28 +138,28 @@ func (t *Top) View(width, height int) string {
 		out = append(out, "")
 	}
 	out = append(out[:h-1], t.keys())
-	return frame(out, w, h)
+	return ui.Layout(w, h, out, "")
 }
 
 func (t *Top) chart(w, h int) []string {
 	vals := t.ratings
-	title := cyan.Render("Rating ") + ratingStyle(t.st.Rating).Bold(true).Render(fmt.Sprintf("%.0f", t.st.Rating))
+	title := ui.Focus.Render("Rating ") + ui.Rank(t.st.Rating).Style().Bold(true).Render(fmt.Sprintf("%.0f", t.st.Rating))
 	if len(vals) > 0 {
 		peak := slices.Max(vals)
-		title += faint.Render(fmt.Sprintf("  peak %.0f · %d rated", peak, len(vals)))
+		title += ui.Muted.Render(fmt.Sprintf("  peak %.0f · %d rated", peak, len(vals)))
 	}
 	if len(vals) < 2 {
-		return []string{title, "", faint.Render("  not enough rated attempts for a trend")}
+		return []string{title, "", ui.Muted.Render("  not enough rated attempts for a trend")}
 	}
-	return append([]string{title}, axisChart(vals, w, h-1, ratingStyle)...)
+	return append([]string{title}, axisChart(vals, w, h-1, ui.Rank)...)
 }
 
 // meters are htop's right-hand column: "Label: value" lines and one
 // multi-colour bar for solves by kind.
 func (t *Top) meters(w int) []string {
 	st := t.st
-	label := func(s string) string { return cyan.Render(s + ": ") }
-	val := func(s string) string { return bold.Render(s) }
+	label := func(s string) string { return ui.Focus.Render(s + ": ") }
+	val := func(s string) string { return ui.Strong.Render(s) }
 
 	crashes := 0
 	for _, n := range st.Crashes {
@@ -172,7 +172,7 @@ func (t *Top) meters(w int) []string {
 
 	ind, hint, ed := st.Solves[game.Independent], st.Solves[game.Hinted], st.Solves[game.Editorial]
 	solveBar := meterBar("Solves", w, []barPart{
-		{ind, green}, {hint, yellow}, {ed, red},
+		{ind, ui.OK}, {hint, ui.Warn}, {ed, ui.Danger},
 	}, fmt.Sprint(ind+hint+ed))
 
 	delta := ""
@@ -180,9 +180,9 @@ func (t *Top) meters(w int) []string {
 		d := st.Rating - t.ratings[max(n-11, 0)]
 		switch {
 		case d > 0:
-			delta = green.Render(fmt.Sprintf(" ▲%.0f", d))
+			delta = ui.OK.Render(fmt.Sprintf(" ▲%.0f", d))
 		case d < 0:
-			delta = red.Render(fmt.Sprintf(" ▼%.0f", -d))
+			delta = ui.Danger.Render(fmt.Sprintf(" ▼%.0f", -d))
 		}
 	}
 
@@ -194,15 +194,15 @@ func (t *Top) meters(w int) []string {
 		legend(w, ind, hint, ed),
 		label("Uptime") + val(uptime(st.Uptime)),
 		label("Bytes") + val(units.Bytes(st.LifetimeBytes)) + " lifetime, " + val(units.Bytes(st.Bank)) + " bank",
-		label("Trend") + cyan.Render(sparkline(t.ratings, max(min(w-20, 30), 0))) + delta + faint.Render(" last 10"),
+		label("Trend") + ui.Focus.Render(sparkline(t.ratings, max(min(w-20, 30), 0))) + delta + ui.Muted.Render(" last 10"),
 	}
 }
 
 // legend explains the solves bar's colours, indented under the bar when
 // there is room.
 func legend(w, ind, hint, ed int) string {
-	s := green.Render(fmt.Sprint(ind)) + " independent · " +
-		yellow.Render(fmt.Sprint(hint)) + " hinted · " + red.Render(fmt.Sprint(ed)) + " editorial"
+	s := ui.OK.Render(fmt.Sprint(ind)) + " independent · " +
+		ui.Warn.Render(fmt.Sprint(hint)) + " hinted · " + ui.Danger.Render(fmt.Sprint(ed)) + " editorial"
 	if indent := len("Solves["); ansi.StringWidth(s)+indent <= w {
 		return strings.Repeat(" ", indent) + s
 	}
@@ -211,7 +211,7 @@ func legend(w, ind, hint, ed int) string {
 
 type barPart struct {
 	n     int
-	style lipgloss.Style
+	style ui.Token
 }
 
 // meterBar is an htop meter: "Name[|||||||||      text]", each part's
@@ -219,7 +219,7 @@ type barPart struct {
 func meterBar(name string, w int, parts []barPart, text string) string {
 	inner := w - len(name) - 2
 	if inner < len(text)+1 {
-		return cyan.Render(name) + " " + text
+		return ui.Focus.Render(name) + " " + text
 	}
 	total := 0
 	for _, p := range parts {
@@ -238,8 +238,8 @@ func meterBar(name string, w int, parts []barPart, text string) string {
 		used += n
 	}
 	fill := inner - used - len(text)
-	return cyan.Render(name) + bold.Render("[") + b.String() + strings.Repeat(" ", max(fill, 0)) +
-		faint.Render(text) + bold.Render("]")
+	return ui.Focus.Render(name) + ui.Strong.Render("[") + b.String() + strings.Repeat(" ", max(fill, 0)) +
+		ui.Muted.Render(text) + ui.Strong.Render("]")
 }
 
 const (
@@ -249,22 +249,22 @@ const (
 )
 
 func (t *Top) tableHeader(w int) string {
-	head := lipgloss.NewStyle().Background(lipgloss.Color("2")).Foreground(lipgloss.Color("0"))
+	head := ui.FieldHeader // htop's green column header
 	cells := []struct {
 		text, key string
 	}{
-		{pad("  TOPIC", colTopic), "TOPIC"},
-		{padLeft("ATT", colNum), "ATT"},
-		{padLeft("CLR", colNum), ""},
-		{padLeft("CLR%", colNum), "CLR%"},
-		{padLeft("RATING", colRating), "RATING"},
+		{ui.Fit("  TOPIC", colTopic), "TOPIC"},
+		{ui.AlignRight("ATT", colNum), "ATT"},
+		{ui.AlignRight("CLR", colNum), ""},
+		{ui.AlignRight("CLR%", colNum), "CLR%"},
+		{ui.AlignRight("RATING", colRating), "RATING"},
 		{"  CLEARS / ATTEMPTS", ""},
 	}
 	var b strings.Builder
 	for _, c := range cells {
 		st := head
 		if c.key != "" && c.key == topSorts[t.sortBy].name {
-			st = field
+			st = ui.Field
 		}
 		b.WriteString(st.Render(c.text))
 	}
@@ -273,7 +273,7 @@ func (t *Top) tableHeader(w int) string {
 
 func (t *Top) table(w, h int) []string {
 	if len(t.rows) == 0 {
-		return []string{faint.Render("  no attempts yet")}
+		return []string{ui.Muted.Render("  no attempts yet")}
 	}
 	if t.sel < t.top {
 		t.top = t.sel
@@ -292,17 +292,17 @@ func (t *Top) table(w, h int) []string {
 	var out []string
 	for i := t.top; i < len(t.rows) && i < t.top+h; i++ {
 		r := t.rows[i]
-		rate := faint.Render(padLeft("-", colNum))
+		rate := ui.Muted.Render(ui.AlignRight("-", colNum))
 		if r.Attempts > 0 {
-			rate = padLeft(fmt.Sprintf("%.0f%%", 100*clearRate(r)), colNum)
+			rate = ui.AlignRight(fmt.Sprintf("%.0f%%", 100*clearRate(r)), colNum)
 		}
-		line := pad("  "+r.Topic, colTopic) +
-			padLeft(fmt.Sprint(r.Attempts), colNum) +
-			padLeft(fmt.Sprint(r.Clears), colNum) + rate +
-			ratingStyle(r.Rating).Render(padLeft(fmt.Sprintf("%.0f", r.Rating), colRating)) +
+		line := ui.Fit("  "+r.Topic, colTopic) +
+			ui.AlignRight(fmt.Sprint(r.Attempts), colNum) +
+			ui.AlignRight(fmt.Sprint(r.Clears), colNum) + rate +
+			ui.Rank(r.Rating).Render(ui.AlignRight(fmt.Sprintf("%.0f", r.Rating), colRating)) +
 			"  " + topicBar(r, maxAtt, barW)
 		if i == t.sel {
-			line = field.Render(pad(ansi.Strip(line), w))
+			line = ui.Field.Render(ui.Fit(ansi.Strip(line), w))
 		}
 		out = append(out, line)
 	}
@@ -321,6 +321,6 @@ func topicBar(r TopicStat, maxAtt, w int) string {
 	if r.Attempts > 0 {
 		clr = (r.Clears*att + r.Attempts/2) / r.Attempts
 	}
-	return bold.Render("[") + green.Render(strings.Repeat("|", clr)) +
-		red.Render(strings.Repeat("|", att-clr)) + strings.Repeat(" ", inner-att) + bold.Render("]")
+	return ui.Strong.Render("[") + ui.OK.Render(strings.Repeat("|", clr)) +
+		ui.Danger.Render(strings.Repeat("|", att-clr)) + strings.Repeat(" ", inner-att) + ui.Strong.Render("]")
 }

@@ -112,7 +112,7 @@ func catalogue() string {
 	}{
 		{"FG", FG}, {"Strong", Strong}, {"Muted", Muted}, {"Focus", Focus}, {"OK", OK},
 		{"Warn", Warn}, {"Danger", Danger}, {"Special", Special}, {"Life", Life},
-		{"Select", Select}, {"Field", Field}, {"Hit", Hit}, {"HitCurrent", HitCurrent},
+		{"Select", Select}, {"Field", Field}, {"FieldHeader", FieldHeader}, {"Hit", Hit}, {"HitCurrent", HitCurrent},
 		{"Voice", Voice}, {"Alert", Alert},
 	} {
 		row(c.name, c.t.Render("text"))

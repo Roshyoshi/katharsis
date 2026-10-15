@@ -6,17 +6,17 @@ import (
 	"slices"
 	"strings"
 
-	"charm.land/lipgloss/v2"
+	"katharsis/internal/ui"
 )
 
 // brailleChart draws vals (oldest first, at least two, within lo < hi) as a
 // line in cols×rows cells. Each cell is a 2×4 braille dot matrix, so the
 // line has 2·cols points across and 4·rows levels up. Values are resampled
 // across the width by linear interpolation, and consecutive columns are
-// joined vertically so steep moves stay one connected line. style colours
+// joined vertically so steep moves stay one connected line. rank colours
 // each cell by the value there, so the line changes colour where it
 // crosses a rank boundary.
-func brailleChart(vals []float64, cols, rows int, lo, hi float64, style func(float64) lipgloss.Style) []string {
+func brailleChart(vals []float64, cols, rows int, lo, hi float64, rank func(float64) ui.Token) []string {
 	if cols <= 0 || rows <= 0 {
 		return nil
 	}
@@ -66,7 +66,7 @@ func brailleChart(vals []float64, cols, rows int, lo, hi float64, style func(flo
 				b.WriteByte(' ')
 				continue
 			}
-			b.WriteString(style((at[cx*2] + at[cx*2+1]) / 2).Render(string(0x2800 + r)))
+			b.WriteString(rank((at[cx*2] + at[cx*2+1]) / 2).Render(string(0x2800 + r)))
 		}
 		out[cy] = b.String()
 	}
@@ -87,7 +87,7 @@ func chartRange(vals []float64) (lo, hi float64) {
 
 // axisChart puts a labelled y axis to the left of a braille chart in a
 // total of cols×rows cells.
-func axisChart(vals []float64, cols, rows int, style func(float64) lipgloss.Style) []string {
+func axisChart(vals []float64, cols, rows int, rank func(float64) ui.Token) []string {
 	lo, hi := chartRange(vals)
 	labels := map[int]string{0: fmt.Sprintf("%.0f", hi), rows - 1: fmt.Sprintf("%.0f", lo)}
 	if rows >= 5 {
@@ -103,14 +103,14 @@ func axisChart(vals []float64, cols, rows int, style func(float64) lipgloss.Styl
 	for _, l := range labels {
 		lw = max(lw, len(l))
 	}
-	lines := brailleChart(vals, cols-lw-1, rows, lo, hi, style)
+	lines := brailleChart(vals, cols-lw-1, rows, lo, hi, rank)
 	for i := range lines {
-		axis := faint.Render("│")
+		axis := ui.Muted.Render("│")
 		l, ok := labels[i]
 		if ok {
-			axis = faint.Render("┤")
+			axis = ui.Muted.Render("┤")
 		}
-		lines[i] = faint.Render(padLeft(l, lw)) + axis + lines[i]
+		lines[i] = ui.Muted.Render(ui.AlignRight(l, lw)) + axis + lines[i]
 	}
 	return lines
 }

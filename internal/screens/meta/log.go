@@ -11,6 +11,7 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -123,12 +124,12 @@ func (l *Log) View(width, height int) string {
 			crashed++
 		}
 	}
-	head := spread(
-		bold.Render("git log --graph --oneline")+
-			faint.Render(fmt.Sprintf("  %d boots · %d cleared · %d crashed", len(l.all), cleared, crashed)),
-		"filter: "+cyan.Render(logFilters[l.filter].name),
+	head := ui.Spread(
+		ui.Strong.Render("git log --graph --oneline")+
+			ui.Muted.Render(fmt.Sprintf("  %d boots · %d cleared · %d crashed", len(l.all), cleared, crashed)),
+		"filter: "+ui.Focus.Render(logFilters[l.filter].name),
 		w)
-	keys := faint.Render("j/k move · enter expand · f filter · g/G ends · q back")
+	keys := ui.Muted.Render("j/k move · enter expand · f filter · g/G ends · q back")
 
 	rows := max(h-2, 0)
 	l.h = rows
@@ -137,7 +138,7 @@ func (l *Log) View(width, height int) string {
 	case len(l.all) == 0:
 		body = []string{"fatal: your current branch 'main' does not have any commits yet"}
 	case len(l.shown) == 0:
-		body = []string{faint.Render("no boots match filter: " + logFilters[l.filter].name)}
+		body = []string{ui.Muted.Render("no boots match filter: " + logFilters[l.filter].name)}
 	default:
 		lines, selAt, selEnd := l.lines(w)
 		// Keep the selected boot on screen, and its expansion too when
@@ -157,7 +158,7 @@ func (l *Log) View(width, height int) string {
 		out = append(out, "")
 	}
 	out = append(out[:h-1], keys)
-	return frame(out, w, h)
+	return ui.Layout(w, h, out, "")
 }
 
 // lines renders every shown boot, with the expansion under the open one.
@@ -172,7 +173,7 @@ func (l *Log) lines(w int) (out []string, selAt, selEnd int) {
 		}
 		line := l.bootLine(b, w, numW, wide)
 		if i == l.sel {
-			line = reverse.Render(pad(ansi.Strip(line), w))
+			line = ui.Select.Render(ui.Fit(ansi.Strip(line), w))
 		}
 		out = append(out, line)
 		if b.Boot == l.open {
@@ -188,27 +189,27 @@ func (l *Log) lines(w int) (out []string, selAt, selEnd int) {
 // bootLine is one boot in at most w cells. Below 100 columns the date drops
 // its time so "crashed in <biome> (<cause>)" keeps room to be read.
 func (l *Log) bootLine(b BootRow, w, numW int, wide bool) string {
-	star := yellow.Render("*")
+	star := ui.Warn.Render("*")
 	switch {
 	case b.Cleared:
-		star = green.Render("*")
+		star = ui.OK.Render("*")
 	case b.Cause != "":
-		star = red.Render("*")
+		star = ui.Danger.Render("*")
 	}
-	hash := yellow.Render(shortHash(b))
+	hash := ui.Warn.Render(shortHash(b))
 	date := b.Started.Format("Jan 02")
 	if wide {
 		date = b.Started.Format("2006-01-02 15:04")
 	}
 	left := fmt.Sprintf("%s %s %s %s P%d %7s ", star, hash,
-		pad(fmt.Sprintf("#%d", b.Boot), numW), faint.Render(date), b.Prestige, units.Clock(b.Uptime))
+		ui.Fit(fmt.Sprintf("#%d", b.Boot), numW), ui.Muted.Render(date), b.Prestige, units.Clock(b.Uptime))
 	const bytesW = 8 // "+1.2 KiB", "+312 KiB"; a boot banking 10-99 KiB runs one over
-	bytes := faint.Render(padLeft("0 B", bytesW))
+	bytes := ui.Muted.Render(ui.AlignRight("0 B", bytesW))
 	if b.Banked > 0 {
-		bytes = green.Render(padLeft("+"+units.Bytes(b.Banked), bytesW))
+		bytes = ui.OK.Render(ui.AlignRight("+"+units.Bytes(b.Banked), bytesW))
 	}
 	room := w - ansi.StringWidth(left) - bytesW - 1
-	return left + pad(outcomeText(b, room), room) + " " + bytes
+	return left + ui.Fit(outcomeText(b, room), room) + " " + bytes
 }
 
 // shortHash stands in for a commit hash: 7 hex digits mixed from the seed
@@ -228,24 +229,24 @@ func shortHash(b BootRow) string {
 func outcomeText(b BootRow, room int) string {
 	switch {
 	case b.Cleared:
-		return green.Render("cleared")
+		return ui.OK.Render("cleared")
 	case b.Cause == "":
-		return yellow.Render("abandoned")
+		return ui.Warn.Render("abandoned")
 	}
 	cause := " (" + causeText(b.Cause) + ")"
 	if b.Biome == "" {
-		return red.Render("crashed" + cause)
+		return ui.Danger.Render("crashed" + cause)
 	}
 	biome := b.Biome
 	if n := len("crashed in ") + ansi.StringWidth(biome) + ansi.StringWidth(cause); n > room {
-		biome = ansi.Truncate(biome, max(ansi.StringWidth(biome)-(n-room), 1), "…")
+		biome = ui.Clip(biome, max(ansi.StringWidth(biome)-(n-room), 1))
 	}
-	return red.Render("crashed in " + biome + cause)
+	return ui.Danger.Render("crashed in " + biome + cause)
 }
 
 // details is the expansion: a summary line, then one line per attempt.
 func (l *Log) details(b BootRow, w int) []string {
-	gutter := faint.Render("│") + "   "
+	gutter := ui.Muted.Render("│") + "   "
 	preset := b.Preset
 	if preset == "" {
 		preset = standardPreset
@@ -260,10 +261,10 @@ func (l *Log) details(b BootRow, w int) []string {
 	}
 	var out []string
 	for _, line := range strings.Split(ansi.Wordwrap(sum, max(w-4, 10), ""), "\n") {
-		out = append(out, gutter+faint.Render(line))
+		out = append(out, gutter+ui.Muted.Render(line))
 	}
 	if len(b.Attempts) == 0 {
-		return append(out, gutter+faint.Render("no doors opened"))
+		return append(out, gutter+ui.Muted.Render("no doors opened"))
 	}
 	lay := narrowAttempt
 	if w >= 100 {
@@ -288,26 +289,26 @@ var (
 )
 
 func attemptLine(a AttemptRow, lay attemptLayout) string {
-	mark := red.Render("✗")
+	mark := ui.Danger.Render("✗")
 	switch a.Outcome {
 	case game.Cleared:
-		mark = green.Render("✓")
+		mark = ui.OK.Render("✓")
 	case game.Retreated:
-		mark = yellow.Render("↩")
+		mark = ui.Warn.Render("↩")
 	case "":
-		mark = yellow.Render("…")
+		mark = ui.Warn.Render("…")
 	}
 	topic := a.Topic
 	if a.Rating > 0 {
-		topic += " " + ratingStyle(float64(a.Rating)).Render(fmt.Sprint(a.Rating))
+		topic += " " + ui.Rank(float64(a.Rating)).Render(fmt.Sprint(a.Rating))
 	}
-	t := padLeft(units.Clock(a.Elapsed), 5)
+	t := ui.AlignRight(units.Clock(a.Elapsed), 5)
 	if lay.timer {
 		tm := ""
 		if a.Timer > 0 {
 			tm = "/" + units.Clock(a.Timer)
 		}
-		t = padLeft(units.Clock(a.Elapsed)+tm, 11)
+		t = ui.AlignRight(units.Clock(a.Elapsed)+tm, 11)
 	}
 	subs := fmt.Sprintf("%d sub", a.Submits)
 	if a.Failed > 0 {
@@ -315,7 +316,7 @@ func attemptLine(a AttemptRow, lay attemptLayout) string {
 	}
 	end := string(a.Kind)
 	if a.Outcome != game.Cleared {
-		end = red.Render(causeText(a.Outcome))
+		end = ui.Danger.Render(causeText(a.Outcome))
 	}
 	var tags []string
 	if a.Boss != "" {
@@ -330,8 +331,8 @@ func attemptLine(a AttemptRow, lay attemptLayout) string {
 		}
 	}
 	if len(tags) > 0 {
-		end += faint.Render(" [" + strings.Join(tags, ", ") + "]")
+		end += ui.Muted.Render(" [" + strings.Join(tags, ", ") + "]")
 	}
-	return fmt.Sprintf("%s %s %s %s %s 🦆%d %s", mark, pad(a.Title, lay.title), pad(topic, lay.topic),
-		t, pad(subs, 8), a.Quacks, end)
+	return fmt.Sprintf("%s %s %s %s %s 🦆%d %s", mark, ui.Fit(a.Title, lay.title), ui.Fit(topic, lay.topic),
+		t, ui.Fit(subs, 8), a.Quacks, end)
 }

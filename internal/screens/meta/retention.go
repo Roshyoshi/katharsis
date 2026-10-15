@@ -5,9 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
-
 	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
@@ -125,7 +122,7 @@ func (t *Top) alarmLine(w int) string {
 	if n := len(r.Alarms) - 1; n > 0 {
 		s += fmt.Sprintf(" (+%d more)", n)
 	}
-	return ansi.Truncate(yellow.Render(s)+faint.Render(" · r retention"), w, "…")
+	return ui.Clip(ui.Warn.Render(s)+ui.Muted.Render(" · r retention"), w)
 }
 
 // keys is top's function-key bar.
@@ -142,7 +139,7 @@ func (t *Top) keys() string {
 }
 
 // retentionHead is the panel's title bar, in the topic table header's colors.
-var retentionHead = lipgloss.NewStyle().Background(lipgloss.Color("2")).Foreground(lipgloss.Color("0"))
+const retentionHead = ui.FieldHeader
 
 // Top's tabs under the meters.
 const (
@@ -162,18 +159,18 @@ func (t *Top) toggleTab() {
 func (t *Top) retention(w, h int) []string {
 	r := t.st.Retention
 	title := " RETENTION  " + LoadText(r.Load)
-	out := []string{retentionHead.Render(pad(title, w))}
+	out := []string{retentionHead.Render(ui.Fit(title, w))}
 	for _, a := range r.Alarms {
-		out = append(out, yellow.Render("! "+r.alarmText(a)))
+		out = append(out, ui.Warn.Render("! "+r.alarmText(a)))
 	}
-	label := func(s string) string { return cyan.Render(s + ": ") }
+	label := func(s string) string { return ui.Focus.Render(s + ": ") }
 	out = append(out,
 		label("Sessions")+fmt.Sprintf("median %s, %s apart, %s ended 00:00–05:00", span(r.MedianSession),
-			span(r.MedianReturn), ratio(r.Late))+faint.Render(" · 30 days"),
+			span(r.MedianReturn), ratio(r.Late))+ui.Muted.Render(" · 30 days"),
 		label("Crashes")+fmt.Sprintf("%s replayed in 10m, %s upsolved in 48h", ratio(r.Replay), ratio(r.Upsolve))+
-			faint.Render(" · 30 days"),
+			ui.Muted.Render(" · 30 days"),
 		label("Worth it")+fmt.Sprintf("%d yes, %d no, %d skipped", r.Worth.Yes, r.Worth.No, r.Worth.Skip)+
-			faint.Render(" · 14 days"),
+			ui.Muted.Render(" · 14 days"),
 	)
 	strip, weeks := t.strip(), t.weeks()
 	for i := range max(len(strip), len(weeks)) {
@@ -184,7 +181,7 @@ func (t *Top) retention(w, h int) []string {
 		if i < len(weeks) {
 			rt = weeks[i]
 		}
-		out = append(out, pad(l, 32)+rt)
+		out = append(out, ui.Fit(l, 32)+rt)
 	}
 	if len(out) > h {
 		out = out[:max(h, 0)]
@@ -219,14 +216,14 @@ func (t *Top) strip() []string {
 		if col < 0 {
 			continue
 		}
-		grid[row][col] = faint.Render(ui.G.Empty)
+		grid[row][col] = ui.Muted.Render(ui.G.Empty)
 		if practiced {
-			grid[row][col] = green.Render(ui.G.Fill)
+			grid[row][col] = ui.OK.Render(ui.G.Fill)
 		}
 	}
-	out := []string{faint.Render("    13 weeks, today last")}
+	out := []string{ui.Muted.Render("    13 weeks, today last")}
 	for i, name := range []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"} {
-		out = append(out, faint.Render(name)+" "+strings.Join(grid[i][:], " "))
+		out = append(out, ui.Muted.Render(name)+" "+strings.Join(grid[i][:], " "))
 	}
 	return out
 }
@@ -238,7 +235,7 @@ func (t *Top) weeks() []string {
 	if len(r.Weeks) == 0 {
 		return nil
 	}
-	out := []string{faint.Render("week of  days  sessions  play")}
+	out := []string{ui.Muted.Render("week of  days  sessions  play")}
 	for i := len(r.Weeks) - 1; i >= 0; i-- {
 		wk := r.Weeks[i]
 		out = append(out, fmt.Sprintf("%s  %4d  %8d  %4s", wk.Start.Format("01-02"), wk.Days, wk.Sessions, hm(wk.Play)))

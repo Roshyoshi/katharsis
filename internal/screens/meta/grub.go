@@ -15,6 +15,7 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -347,13 +348,13 @@ func (m *Menu) editLines() []string {
 	ed := m.edit
 	val := func(field int, s string) string {
 		if ed.field == field {
-			return reverse.Render(s) + "█"
+			return ui.Select.Render(s) + "█"
 		}
 		return s
 	}
 	note := func(field int, s string) string {
 		if ed.field == field {
-			return "   " + faint.Render(s)
+			return "   " + ui.Muted.Render(s)
 		}
 		return ""
 	}
@@ -409,11 +410,11 @@ func (m *Menu) View(width, height int) string {
 			status += " · " + note
 		}
 	}
-	foot = append(foot, "", center(faint.Render(status), w))
+	foot = append(foot, "", ui.Center(ui.Muted.Render(status), w))
 	if m.gate != "" {
-		foot = append(foot, center(faint.Render(m.gate), w))
+		foot = append(foot, ui.Center(ui.Muted.Render(m.gate), w))
 	}
-	head := []string{center(grubVersion, w), ""}
+	head := []string{ui.Center(grubVersion, w), ""}
 
 	// The box takes what is left. Drop the help, then the header, when the
 	// terminal is too short to hold them and a few entries.
@@ -477,14 +478,14 @@ func (m *Menu) View(width, height int) string {
 		if i < len(lines) {
 			l = lines[i]
 		}
-		out = append(out, " │"+pad(l, inner)+"│")
+		out = append(out, " │"+ui.Fit(l, inner)+"│")
 	}
 	out = append(out, " └"+strings.Repeat("─", max(inner-1, 0))+down+"┘")
 	if foot != nil {
 		out = append(out, "")
 		out = append(out, foot...)
 	}
-	return frame(out, w, h)
+	return ui.Layout(w, h, out, "")
 }
 
 // menuLines renders the visible slice of the current page, keeping the
@@ -502,7 +503,7 @@ func (m *Menu) menuLines(inner, rows int) []string {
 	for i := p.top; i < len(p.entries) && i < p.top+rows; i++ {
 		e := p.entries[i]
 		if i == p.sel {
-			out = append(out, reverse.Render(pad("*"+e.label, inner)))
+			out = append(out, ui.Select.Render(ui.Fit("*"+e.label, inner)))
 			continue
 		}
 		out = append(out, " "+e.label)

@@ -11,6 +11,7 @@ Special                text
 Life                   text
 Select                 «v»text«/»
 Field                  «v»text«/»
+FieldHeader            «v»text«/»
 Hit                    «u»«u»t«/»«u»«u»e«/»«u»«u»x«/»«u»«u»t«/»
 HitCurrent             «b»«v»text«/»
 Voice                  «i»text«/»

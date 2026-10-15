@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 )
 
 // PriorAnswer is the rating question's answer (D37): CF is the rating
@@ -53,20 +54,20 @@ func (p *Prior) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 func (p *Prior) View(width, height int) string {
 	w, h := max(width, 1), max(height, 1)
 	body := []string{
-		bold.Render("one question before the first boot"),
+		ui.Strong.Render("one question before the first boot"),
 		"",
 		"What is your Codeforces rating, if you have one?",
-		faint.Render("Your first doors start near it instead of at a guess."),
-		faint.Render("A rating from fewer than 6 contests reads low; skip it then."),
+		ui.Muted.Render("Your first doors start near it instead of at a guess."),
+		ui.Muted.Render("A rating from fewer than 6 contests reads low; skip it then."),
 		"",
-		"rating: " + reverse.Render(p.digits+" "),
+		"rating: " + ui.Select.Render(p.digits+" "),
 		"",
-		faint.Render("enter saves · esc skips · asked once"),
+		ui.Muted.Render("enter saves · esc skips · asked once"),
 	}
 	top := max((h-len(body))/2, 0)
 	lines := make([]string, top, h)
 	for _, l := range body {
-		lines = append(lines, center(l, w))
+		lines = append(lines, ui.Center(l, w))
 	}
-	return frame(lines, w, h)
+	return ui.Layout(w, h, lines, "")
 }

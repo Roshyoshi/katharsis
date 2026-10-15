@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -108,15 +109,15 @@ func (s *Shop) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 func (s *Shop) status(p Package) string {
 	switch {
 	case p.Installed && p.Theme != "" && p.Theme == s.c.Theme:
-		return green.Render("in use")
+		return ui.OK.Render("in use")
 	case p.Installed:
-		return green.Render("installed")
+		return ui.OK.Render("installed")
 	case len(s.missing(p)) > 0:
-		return faint.Render("needs " + strings.Join(s.missing(p), ", "))
+		return ui.Muted.Render("needs " + strings.Join(s.missing(p), ", "))
 	case p.Price > s.c.Bank:
-		return faint.Render(units.Bytes(p.Price-s.c.Bank) + " short")
+		return ui.Muted.Render(units.Bytes(p.Price-s.c.Bank) + " short")
 	}
-	return yellow.Render("enter installs")
+	return ui.Warn.Render("enter installs")
 }
 
 func (s *Shop) View(width, height int) string {
@@ -129,7 +130,7 @@ func (s *Shop) View(width, height int) string {
 		}
 	}
 	out := []string{
-		spread(bold.Render("apt")+faint.Render(" · packages for every boot after"),
+		ui.Spread(ui.Strong.Render("apt")+ui.Muted.Render(" · packages for every boot after"),
 			fmt.Sprintf("bank %s · %d/%d installed", units.Bytes(s.c.Bank), done, len(ps)), w),
 		"",
 	}
@@ -138,7 +139,7 @@ func (s *Shop) View(width, height int) string {
 		nameW = max(nameW, len(p.Name))
 	}
 	head := fmt.Sprintf("    %-*s  %8s  %s", nameW, "PACKAGE", "PRICE", "STATUS")
-	out = append(out, field.Render(pad(head, w)))
+	out = append(out, ui.Field.Render(ui.Fit(head, w)))
 
 	// The list takes what the header, the grants and the key bar leave.
 	rows := max(h-len(out)-5, 1)
@@ -157,7 +158,7 @@ func (s *Shop) View(width, height int) string {
 		}
 		line := fmt.Sprintf(" %s %-*s  %8s  ", mark, nameW, p.Name, units.Bytes(p.Price))
 		if i == s.sel {
-			out = append(out, reverse.Render(pad(line+ansi.Strip(s.status(p)), w)))
+			out = append(out, ui.Select.Render(ui.Fit(line+ansi.Strip(s.status(p)), w)))
 			continue
 		}
 		out = append(out, line+s.status(p))
@@ -169,18 +170,18 @@ func (s *Shop) View(width, height int) string {
 		p := ps[s.sel]
 		// Two lines at most; the name leads the first, in bold.
 		text := strings.Split(ansi.Wordwrap(p.Name+": "+p.Grants, max(w-2, 10), ""), "\n")
-		out = append(out, "", " "+bold.Render(p.Name)+strings.TrimPrefix(text[0], p.Name))
+		out = append(out, "", " "+ui.Strong.Render(p.Name)+strings.TrimPrefix(text[0], p.Name))
 		if len(text) > 1 {
 			out = append(out, " "+text[1])
 		}
 	} else {
-		out = append(out, "", faint.Render(" no packages in these rules"))
+		out = append(out, "", ui.Muted.Render(" no packages in these rules"))
 	}
 	for len(out) < h-1 {
 		out = append(out, "")
 	}
 	out = append(out[:h-1], keyBar("j/k", "Move  ", "enter", "Install  ", "t", "Theme  ", "q", "Back  "))
-	return frame(out, w, h)
+	return ui.Layout(w, h, out, "")
 }
 
 // Goal is the next package on the ladder (D25, retention RT3): the first,

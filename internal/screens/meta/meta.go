@@ -13,11 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
-
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
+	"katharsis/internal/ui"
 )
 
 // BootRow is one boot in git log.
@@ -156,91 +154,9 @@ func prestigeText(p int, name func(int) string) string {
 
 // ---- styles and layout ---------------------------------------------------------
 
-var (
-	bold    = lipgloss.NewStyle().Bold(true)
-	faint   = lipgloss.NewStyle().Faint(true)
-	reverse = lipgloss.NewStyle().Reverse(true)
-	red     = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	green   = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
-	yellow  = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
-	blue    = lipgloss.NewStyle().Foreground(lipgloss.Color("4"))
-	magenta = lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
-	cyan    = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
-	gray    = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-
-	// field is htop's cyan bar: key labels, the sort column, the selection.
-	field = lipgloss.NewStyle().Background(lipgloss.Color("6")).Foreground(lipgloss.Color("0"))
-)
-
-// frame makes exactly h lines, each cut to w cells, so a screen never
-// scrolls the terminal or wraps.
-func frame(lines []string, w, h int) string {
-	out := make([]string, h)
-	for i := range out {
-		if i < len(lines) {
-			out[i] = ansi.Truncate(lines[i], w, "…")
-		}
-	}
-	return strings.Join(out, "\n")
-}
-
-// pad right-pads s with spaces to w cells, cutting it when longer.
-func pad(s string, w int) string {
-	n := ansi.StringWidth(s)
-	if n > w {
-		return ansi.Truncate(s, w, "…")
-	}
-	return s + strings.Repeat(" ", w-n)
-}
-
-// padLeft right-aligns s in w cells.
-func padLeft(s string, w int) string {
-	n := ansi.StringWidth(s)
-	if n >= w {
-		return s
-	}
-	return strings.Repeat(" ", w-n) + s
-}
-
-// center centers s in w cells.
-func center(s string, w int) string {
-	n := ansi.StringWidth(s)
-	if n >= w {
-		return s
-	}
-	return strings.Repeat(" ", (w-n)/2) + s
-}
-
-// spread puts left and right on one line of w cells, cutting left first.
-func spread(left, right string, w int) string {
-	rw := ansi.StringWidth(right)
-	if rw >= w {
-		return ansi.Truncate(right, w, "…")
-	}
-	left = ansi.Truncate(left, max(w-rw-1, 0), "…")
-	gap := w - ansi.StringWidth(left) - rw
-	return left + strings.Repeat(" ", max(gap, 1)) + right
-}
-
-// ratingStyle colours a rating by Codeforces rank, the scale every rating
-// in the game is on: gray newbie through red grandmaster.
-func ratingStyle(r float64) lipgloss.Style {
-	switch {
-	case r < 1200:
-		return gray
-	case r < 1400:
-		return green
-	case r < 1600:
-		return cyan
-	case r < 1900:
-		return blue
-	case r < 2100:
-		return magenta
-	case r < 2400:
-		return yellow
-	}
-	return red
-}
+// The screens paint with internal/ui: its tokens (a parody keeps its tool's
+// look through them, R8), ui.Layout to fill the screen, ui.Rank for
+// ratings.
 
 // keyBar renders key help as htop's function-key bar: the key plain, the
 // label on a cyan field.
@@ -248,7 +164,7 @@ func keyBar(pairs ...string) string {
 	var b strings.Builder
 	for i := 0; i+1 < len(pairs); i += 2 {
 		b.WriteString(pairs[i])
-		b.WriteString(field.Render(pairs[i+1]))
+		b.WriteString(ui.Field.Render(pairs[i+1]))
 	}
 	return b.String()
 }

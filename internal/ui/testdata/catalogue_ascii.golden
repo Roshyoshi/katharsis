@@ -11,6 +11,7 @@ Special                «M»text«/»
 Life                   «R»text«/»
 Select                 «v»text«/»
 Field                  «K»«C-bg»text«/»
+FieldHeader            «K»«G-bg»text«/»
 Hit                    «u»«u»t«/»«u»«u»e«/»«u»«u»x«/»«u»«u»t«/»
 HitCurrent             «b»«v»text«/»
 Voice                  «i»text«/»
