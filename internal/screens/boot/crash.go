@@ -113,6 +113,15 @@ func (c *Crash) View(width, height int) string {
 	for _, e := range els[:n] {
 		body = append(body, e...)
 	}
+	// A console prints at the bottom and scrolls up (§2.6, E16): the keys
+	// sit on the last row, the oldest lines go first, and the reveal
+	// pushes the screen up as it prints.
+	if height > 0 {
+		if over := len(body) - height; over > 0 {
+			body = body[over:]
+		}
+		body = append(make([]string, height-len(body)), body...)
+	}
 	return ui.Layout(width, height, body, "")
 }
 
@@ -232,7 +241,8 @@ func (c *Crash) elements(width, height int) [][]string {
 
 	var pre []dline
 	free := room - lines(body)
-	for i := len(st.Log) - 1; i >= 0 && len(pre) < 4; i-- {
+	// The rows the panic leaves fill with log tail, newest last.
+	for i := len(st.Log) - 1; i >= 0; i-- {
 		l := st.Log[i]
 		if echoes(l, cr, verdict) {
 			continue

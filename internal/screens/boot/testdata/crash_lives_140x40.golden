@@ -1,3 +1,19 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[    0.000] boot: prestige 1, preset standard, seed 8f3a
+[  590.000] door_1: AC "Cow Tipping" +48 B
 [  890.000] door_2: retreat from "Haybale Stacking", -1 life
 [ 1651.000] door_3: AC "Milk Measurement" +64 B
 [ 1750.000] merge: committed 112 B, loaded strace
@@ -22,19 +38,3 @@
                 — Edsger W. Dijkstra, Notes on Structured Programming (1970)
 
   core dumped: 96 B on "The Bovine Shuffle" · [u] upsolve  [e] editorial  [r] reboot  [l] git log
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
