@@ -25,7 +25,7 @@ var (
 	// actually run on this machine.
 	sample        judge.Profile
 	both, samples []judge.Profile
-	full          = []judge.Profile{judge.Full}
+	full          []judge.Profile
 )
 
 func TestMain(m *testing.M) {
@@ -44,9 +44,16 @@ func TestMain(m *testing.M) {
 	haveCompiler = err == nil
 	if haveCompiler {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-		sample = judge.SampleProfile(ctx)
+		tc := judge.Profiles(ctx)
 		cancel()
-		both = []judge.Profile{sample, judge.Full}
+		sample = tc.Samples
+		// Where g++ judges, clang's Full is the fallback elsewhere: keep
+		// judging with it too.
+		full = []judge.Profile{tc.Full}
+		if tc.Full.Name != judge.Full.Name {
+			full = append(full, judge.Full)
+		}
+		both = append([]judge.Profile{sample}, full...)
 		samples = []judge.Profile{sample}
 	}
 	code := m.Run()
@@ -128,7 +135,8 @@ func TestSampleProfile(t *testing.T) {
 	needCompiler(t)
 	t.Parallel()
 	t.Logf("SampleProfile = %q (compiler %q, flags %v)", sample.Name, sample.Compiler, sample.Flags)
-	known := []string{judge.Samples.Name, judge.AppleSamples.Name, judge.HardenedSamples.Name}
+	known := []string{judge.Samples.Name, judge.AppleSamples.Name, judge.HardenedSamples.Name,
+		judge.LibstdcxxSamples.Name, judge.GCCSamples.Name}
 	if !slices.Contains(known, sample.Name) {
 		t.Errorf("SampleProfile = %q, want one of %v", sample.Name, known)
 	}
@@ -152,23 +160,45 @@ func writeCase(t *testing.T, in, out string) judge.Case {
 	return c
 }
 
-// defaultStack drops the -stack_size link flag, as a control for the deep
-// recursion fixture.
-func defaultStack(p judge.Profile) judge.Profile {
-	p.Name += ",8M-stack"
-	p.Flags = slices.DeleteFunc(slices.Clone(p.Flags), func(f string) bool {
-		return strings.Contains(f, "stack_size")
-	})
-	return p
+// defaultStack drops the -stack_size link flag from each profile, as a
+// control for the deep recursion fixture.
+func defaultStack(ps ...judge.Profile) []judge.Profile {
+	var out []judge.Profile
+	for _, p := range ps {
+		p.Name += ",8M-stack"
+		p.Flags = slices.DeleteFunc(slices.Clone(p.Flags), func(f string) bool {
+			return strings.Contains(f, "stack_size")
+		})
+		out = append(out, p)
+	}
+	return out
 }
 
-// withHardened adds the no-ASan fallback, which builds with nix's compiler,
-// unless the sample profile already is it.
+// judged reports whether p is a Full profile, clang's or g++'s.
+func judged(p judge.Profile) bool {
+	return p.Name == judge.Full.Name || p.Name == judge.GCCFull.Name
+}
+
+// trapsUB reports whether p traps on UB instead of reporting it
+// (judge.GCCSamples).
+func trapsUB(p judge.Profile) bool {
+	return slices.Contains(p.Flags, "-fsanitize-trap=undefined")
+}
+
+// withHardened adds the no-ASan fallbacks, clang's and, where g++ judges,
+// g++'s, unless the sample profile already is one.
 func withHardened(ps []judge.Profile) []judge.Profile {
-	if slices.ContainsFunc(ps, func(p judge.Profile) bool { return p.Name == judge.HardenedSamples.Name }) {
-		return ps
+	out := slices.Clone(ps)
+	fallbacks := []judge.Profile{judge.HardenedSamples}
+	if sample.Libstdcxx {
+		fallbacks = append(fallbacks, judge.GCCSamples)
 	}
-	return append(slices.Clone(ps), judge.HardenedSamples)
+	for _, f := range fallbacks {
+		if !slices.ContainsFunc(out, func(p judge.Profile) bool { return p.Name == f.Name }) {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 func anyOf(s string, subs ...string) bool {
@@ -231,18 +261,30 @@ func TestRun(t *testing.T) {
 		{name: "RE heap overflow", src: "heapoob.cpp", in: "10\n", profs: withHardened(samples), want: judge.RE,
 			check: func(t *testing.T, p judge.Profile, r judge.Result) {
 				if sanitizes(p, "address") {
-					if r.Reason != "heap-buffer-overflow at heapoob.cpp:9" {
-						t.Errorf("Reason = %q, want the ASan heap-buffer-overflow summary at heapoob.cpp:9", r.Reason)
+					// libstdc++'s assertion fires before the store
+					// reaches ASan, and ASan's abort report places it.
+					want := "heap-buffer-overflow at heapoob.cpp:9"
+					if p.Libstdcxx {
+						want = "libstdc++: __n < this->size() at heapoob.cpp:9"
+					}
+					if r.Reason != want {
+						t.Errorf("Reason = %q, want %q", r.Reason, want)
 					}
 					return
 				}
-				// Without ASan, libc++'s bounds check must catch it.
-				if !strings.Contains(r.Stderr, "out of bounds") {
-					t.Errorf("Reason = %q, stderr = %q; want libc++'s bounds assertion", r.Reason, r.Stderr)
+				// Without ASan, the library's bounds check must catch it.
+				if !anyOf(r.Stderr, "out of bounds", "__n < this->size()") {
+					t.Errorf("Reason = %q, stderr = %q; want libc++'s or libstdc++'s bounds assertion", r.Reason, r.Stderr)
 				}
 			}},
 		{name: "UB signed overflow", src: "overflow.cpp", in: "2147483647\n", profs: withHardened(samples), want: judge.RE,
-			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
+			check: func(t *testing.T, p judge.Profile, r judge.Result) {
+				if trapsUB(p) {
+					if r.Reason != "undefined behavior (trap)" {
+						t.Errorf("Reason = %q, want the UB trap", r.Reason)
+					}
+					return
+				}
 				if !strings.HasPrefix(r.Reason, "signed integer overflow") || !strings.HasSuffix(r.Reason, " at overflow.cpp:7") {
 					t.Errorf("Reason = %q, want signed integer overflow ... at overflow.cpp:7", r.Reason)
 				}
@@ -329,8 +371,11 @@ func TestRun(t *testing.T) {
 		{name: "RE division by zero", src: "divzero.cpp", in: "1 0\n", profs: withHardened(both), want: judge.RE,
 			check: func(t *testing.T, p judge.Profile, r judge.Result) {
 				want := "division by zero at divzero.cpp:7"
-				if p.Name == judge.Full.Name {
+				switch {
+				case judged(p):
 					want = "integer division by zero" // a trap: no runtime to say where
+				case trapsUB(p):
+					want = "undefined behavior (trap)"
 				}
 				if r.Reason != want {
 					t.Errorf("Reason = %q, want %q", r.Reason, want)
@@ -350,8 +395,12 @@ func TestRun(t *testing.T) {
 			}},
 		{name: "RE report after debug output", src: "noisy_oob.cpp", in: "10\n", profs: samples, want: judge.RE,
 			check: func(t *testing.T, p judge.Profile, r judge.Result) {
-				if sanitizes(p, "address") && r.Reason != "heap-buffer-overflow at noisy_oob.cpp:11" {
-					t.Errorf("Reason = %q, want ASan's report from after 64K of stderr", r.Reason)
+				want := "heap-buffer-overflow at noisy_oob.cpp:11"
+				if p.Libstdcxx {
+					want = "libstdc++: __n < this->size() at noisy_oob.cpp:11"
+				}
+				if sanitizes(p, "address") && r.Reason != want {
+					t.Errorf("Reason = %q, want %q, from the report after 64K of stderr", r.Reason, want)
 				}
 				if !strings.Contains(r.Stderr, "of stderr cut") {
 					t.Errorf("Stderr is %d bytes with no cut; want head and tail", len(r.Stderr))
@@ -379,7 +428,7 @@ func TestRun(t *testing.T) {
 		{name: "AC GNU-isms", src: "gnu.cpp", in: "12 18\n", out: "6 10 12\n", profs: withHardened(both), want: judge.AC},
 		{name: "AC deep recursion", src: "recurse.cpp", in: "1000000\n", out: "1000000\n", profs: both, want: judge.AC},
 		{name: "RE deep recursion on 8M stack", src: "recurse.cpp", in: "1000000\n", out: "1000000\n",
-			profs: []judge.Profile{defaultStack(sample), defaultStack(judge.Full)}, want: judge.RE,
+			profs: defaultStack(both...), want: judge.RE,
 			check: func(t *testing.T, p judge.Profile, r judge.Result) {
 				if sanitizes(p, "address") && !strings.Contains(r.Reason, "stack-overflow") {
 					t.Errorf("Reason = %q, want ASan's stack-overflow", r.Reason)

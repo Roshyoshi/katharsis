@@ -124,7 +124,7 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 			FileIO:         d.Problem.FileIO, // a stem the source hides from detection
 			AnyCase:        d.Problem.AnyCase,
 		},
-		SubmitProfile: judge.Full,
+		SubmitProfile: judge.Profiles(ctx).Full,
 		FullTests:     d.Assets.Tests,
 		EditorAlive:   func() bool { return session.PaneAlive(pane) },
 		CloseEditor:   func() error { return session.CloseEditor(pane) },

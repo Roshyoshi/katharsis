@@ -116,11 +116,12 @@ func (m *Model) submit(req session.Request) tea.Cmd {
 		tests = m.prob.Tests
 	}
 	prof := m.opt.SubmitProfile
-	if prof.Name == "" {
-		prof = judge.Full
-	}
 	src, lim := m.prob.Source, m.limits()
 	ch, cancel := start(func(ctx context.Context, emit func(judge.Event)) {
+		if prof.Name == "" {
+			// Off the update loop: Profiles may wait on the sample probe.
+			prof = judge.Profiles(ctx).Full
+		}
 		judge.Submit(ctx, src, tests, prof, lim, emit)
 	})
 	m.sub = submission{
@@ -275,12 +276,13 @@ func (m *Model) startDebug(req session.Request) tea.Cmd {
 	}
 }
 
-// openDebugger builds src at -O0 -g, gives it a working directory set up
-// for test t, and opens the debugger on it.
+// openDebugger builds src at -O0 -g with the compiler :Submit judges with,
+// gives it a working directory set up for test t, and opens the debugger
+// on it.
 func openDebugger(src string, t problem.Test, open func(DebugTarget) (func(), error)) (dir string, closePane func(), err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	b, err := judge.Compile(ctx, src, judge.Debug)
+	b, err := judge.Compile(ctx, src, judge.Profiles(ctx).Debug)
 	if err == nil && !b.OK {
 		err = fmt.Errorf("CE: %s", firstError(relLog(b.Log, src)))
 	}

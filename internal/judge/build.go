@@ -34,6 +34,11 @@ type Profile struct {
 	// compiler environment, which breaks Apple's toolchain (see probe.go).
 	Compiler string
 	CleanEnv bool
+	// Libstdcxx builds use GCC's libstdc++, which has <bits/stdc++.h>,
+	// std::__gcd and std::__lg itself, so they skip libc++'s shim (see
+	// commonFlags). GNU builds compile with g++ (see gnu.go).
+	Libstdcxx bool
+	GNU       bool
 }
 
 // macOS ld refuses -stack_size above 512 MB; the 8 MB default segfaults on
@@ -117,7 +122,7 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	if err != nil {
 		return Build{}, err
 	}
-	flags := slices.Concat(p.Flags, commonFlags(inc))
+	flags := slices.Concat(p.Flags, commonFlags(p, inc))
 	h := sha256.New()
 	// Key on the resolved compiler path: nix store paths change with the
 	// compiler version, so an upgrade never reuses an old build. The
@@ -142,7 +147,16 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	}
 	defer func() { _ = os.RemoveAll(work) }()
 	out := filepath.Join(work, filepath.Base(bin))
-	args := append(flags, "-fno-color-diagnostics", "-x", "c++", source, "-o", out)
+	in := source
+	if fixed, ok := stripTargetPragmas(src, source); p.GNU && ok {
+		in = filepath.Join(work, filepath.Base(source))
+		if err := os.WriteFile(in, fixed, 0o644); err != nil {
+			return Build{}, err
+		}
+	}
+	// -fdiagnostics-color=never, not clang's -fno-color-diagnostics, which
+	// g++ rejects.
+	args := append(flags, "-fdiagnostics-color=never", "-x", "c++", in, "-o", out)
 	cmd := exec.CommandContext(ctx, p.compiler(), args...)
 	cmd.Env = compileEnv(p)
 	var stderr bytes.Buffer
@@ -175,7 +189,14 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 // commonFlags go into every build after the profile's own; see Compile.
 // -isystem puts the shim headers after the toolchain's (nix's wrapper adds
 // libc++ with -isystem first), so they only fill the gaps libc++ leaves.
-func commonFlags(inc string) []string {
+// libstdc++ leaves none, and the shim breaks it: g++ would take the shim's
+// <bits/stdc++.h> over its own (-isystem comes before the system dirs),
+// and katharsis_gnu.h does not parse under g++ (no __is_integral builtin;
+// its !__GLIBCXX__ guard runs before any header defines that).
+func commonFlags(p Profile, inc string) []string {
+	if p.Libstdcxx {
+		return []string{"-DONLINE_JUDGE"}
+	}
 	return []string{"-DONLINE_JUDGE", "-isystem", inc, "-include", filepath.Join(inc, "katharsis_gnu.h")}
 }
 

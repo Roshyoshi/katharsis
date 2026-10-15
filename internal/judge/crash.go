@@ -41,6 +41,7 @@ var (
 // player's code, which for an overflow inside std::vector is the caller.
 func crashReason(stderr string, ps *os.ProcessState, p Profile) string {
 	var ub, ubAt, summary, summaryAt, asanErr, hardening, uncaught, assertion, frame string
+	gnuWhat := false // libstdc++ named the exception; what() is next
 	for line := range strings.Lines(stderr) {
 		line = strings.TrimSpace(line)
 		if m := frameRE.FindStringSubmatch(line); m != nil && frame == "" && userCode(m[1]) {
@@ -49,21 +50,30 @@ func crashReason(stderr string, ps *os.ProcessState, p Profile) string {
 		switch m := (match{line: line}); {
 		case ub == "" && m.of(runtimeErrorRE):
 			ub, ubAt = m.sub[2], location(m.sub[1])
-		case summary == "" && m.of(summaryRE):
+		// ASan's report of an abort (handle_abort, see Run) only adds the
+		// stack: what aborted, a library assertion or an uncaught
+		// exception, said so before it.
+		case summary == "" && m.of(summaryRE) && m.sub[1] != "ABRT":
 			summary = m.sub[1]
 			if f := strings.Fields(m.sub[2]); len(f) > 0 {
 				summaryAt = location(f[0])
 			}
-		case asanErr == "" && m.of(asanErrorRE):
+		case asanErr == "" && m.of(asanErrorRE) && m.sub[1] != "ABRT":
 			asanErr = m.sub[1]
 		case hardening == "" && strings.Contains(line, "libc++ Hardening assertion "):
 			_, s, _ := strings.Cut(line, "libc++ Hardening assertion ")
 			if _, msg, ok := strings.Cut(s, " failed: "); ok {
 				s = msg
 			}
-			hardening = s
+			hardening = "libc++: " + s
+		case hardening == "" && m.of(gnuAssertRE):
+			hardening = "libstdc++: " + m.sub[1]
 		case uncaught == "" && m.of(uncaughtRE):
 			uncaught = m.sub[1]
+		case uncaught == "" && m.of(gnuUncaughtRE):
+			uncaught, gnuWhat = m.sub[1], true
+		case gnuWhat && m.of(gnuWhatRE):
+			uncaught, gnuWhat = uncaught+": "+m.sub[1], false
 		case assertion == "" && m.of(appleAssertRE):
 			assertion = at("assertion "+m.sub[1]+" failed", filepath.Base(m.sub[2])+":"+m.sub[3])
 		case assertion == "" && m.of(glibcAssertRE):
@@ -78,7 +88,7 @@ func crashReason(stderr string, ps *os.ProcessState, p Profile) string {
 	case asanErr != "":
 		return at(asanErr, frame)
 	case hardening != "":
-		return at("libc++: "+hardening, frame)
+		return at(hardening, frame)
 	case uncaught != "":
 		return "uncaught " + uncaught
 	case assertion != "":
@@ -88,8 +98,11 @@ func crashReason(stderr string, ps *os.ProcessState, p Profile) string {
 		return "killed"
 	}
 	ws, ok := ps.Sys().(syscall.WaitStatus)
+	trap := ok && ws.Signaled() && (ws.Signal() == syscall.SIGTRAP || ws.Signal() == syscall.SIGILL)
 	switch {
-	case ok && ws.Signaled() && p.trapsDivision() && (ws.Signal() == syscall.SIGTRAP || ws.Signal() == syscall.SIGILL):
+	case trap && p.trapsUB():
+		return "undefined behavior (trap)"
+	case trap && p.trapsDivision():
 		// The only trap in the build is the division check (arm64 brk,
 		// x86 ud2).
 		return "integer division by zero"
@@ -125,7 +138,8 @@ func location(s string) string {
 func userCode(path string) bool {
 	switch filepath.Ext(path) {
 	case ".cpp", ".cc", ".cxx", ".c++", ".C", ".c":
-		return !strings.Contains(path, "compiler-rt") && !strings.Contains(path, "/c++/v1/")
+		return !strings.Contains(path, "compiler-rt") && !strings.Contains(path, "/c++/v1/") &&
+			!strings.Contains(path, "libstdc++-v3")
 	}
 	return false
 }

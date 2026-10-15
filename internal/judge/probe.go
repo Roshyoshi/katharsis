@@ -51,8 +51,25 @@ var (
 	probed  *Profile // nil until a probe ran to the end
 )
 
+// Toolchain is the profiles one compiler family judges with.
+type Toolchain struct {
+	Samples, Full, Debug Profile
+}
+
+// Profiles is this machine's toolchain: g++ and libstdc++ when the sample
+// probe settled on libstdc++, which it tries only once g++ has built and
+// run a program here; clang and libc++ otherwise.
+func Profiles(ctx context.Context) Toolchain {
+	s := SampleProfile(ctx)
+	if s.Libstdcxx {
+		return Toolchain{Samples: s, Full: GCCFull, Debug: GCCDebug}
+	}
+	return Toolchain{Samples: s, Full: Full, Debug: Debug}
+}
+
 // SampleProfile returns the first sample profile whose binaries actually
-// run here: nix ASan, then Apple ASan, then HardenedSamples. The answer is
+// run here. Where GCCFull's do: LibstdcxxSamples, then GCCSamples.
+// Elsewhere: nix ASan, then Apple ASan, then HardenedSamples. The answer is
 // cached on disk per compiler and OS release, since a failing ASan probe
 // costs a few seconds of timeout, and kept for the process unless ctx cut
 // the probe short.
@@ -70,27 +87,29 @@ func SampleProfile(ctx context.Context) Profile {
 }
 
 func probeSamples(ctx context.Context) Profile {
-	candidates := []Profile{Samples, AppleSamples}
 	key := probeKey()
 	cache := ""
 	if dir, err := cacheDir(); err == nil {
 		cache = filepath.Join(filepath.Dir(dir), "sample-profile-"+key)
 		if b, err := os.ReadFile(cache); err == nil {
-			for _, p := range append(candidates, HardenedSamples) {
+			for _, p := range []Profile{Samples, AppleSamples, HardenedSamples, LibstdcxxSamples, GCCSamples} {
 				if p.Name == strings.TrimSpace(string(b)) {
 					return p
 				}
 			}
 		}
 	}
+	candidates, fallback := []Profile{Samples, AppleSamples}, HardenedSamples
+	// A missing g++, or Apple's (clang under that name), fails in the
+	// compile, so the second try costs nothing there.
+	if runs(ctx, GCCFull, probeTimeout) || ctx.Err() == nil && runs(ctx, GCCFull, retryTimeout) {
+		candidates, fallback = []Profile{LibstdcxxSamples}, GCCSamples
+	}
 	var present []Profile
 	for _, p := range candidates {
-		if p.Compiler != "" {
-			if _, err := os.Stat(p.Compiler); err != nil {
-				continue
-			}
+		if _, err := exec.LookPath(p.compiler()); err == nil {
+			present = append(present, p)
 		}
-		present = append(present, p)
 	}
 	chosen, ok := firstRunning(ctx, present, probeTimeout)
 	if !ok && ctx.Err() == nil {
@@ -101,7 +120,7 @@ func probeSamples(ctx context.Context) Profile {
 		chosen, ok = firstRunning(ctx, present, retryTimeout)
 	}
 	if !ok {
-		chosen = HardenedSamples
+		chosen = fallback
 	}
 	// A cancelled probe proves nothing; caching its fallback would downgrade
 	// this machine for good.
@@ -127,8 +146,8 @@ func firstRunning(ctx context.Context, ps []Profile, timeout time.Duration) (Pro
 	return Profile{}, false
 }
 
-// runs compiles a trivial program with p and checks it prints within
-// timeout.
+// runs compiles a trivial program with p (probeProgram) and checks it
+// prints within timeout.
 func runs(ctx context.Context, p Profile, timeout time.Duration) bool {
 	dir, err := os.MkdirTemp("", "katharsis-probe-")
 	if err != nil {
@@ -137,8 +156,7 @@ func runs(ctx context.Context, p Profile, timeout time.Duration) bool {
 	defer func() { _ = os.RemoveAll(dir) }()
 	src := filepath.Join(dir, "probe.cpp")
 	bin := filepath.Join(dir, "probe")
-	prog := "#include <cstdio>\nint main() { std::puts(\"ok\"); }\n"
-	if os.WriteFile(src, []byte(prog), 0o644) != nil {
+	if os.WriteFile(src, []byte(probeProgram(p)), 0o644) != nil {
 		return false
 	}
 	cc := exec.CommandContext(ctx, p.compiler(), append(append([]string{}, p.Flags...), src, "-o", bin)...)
@@ -158,7 +176,7 @@ func runs(ctx context.Context, p Profile, timeout time.Duration) bool {
 // only the store path a link points to tells two clangs apart.
 func probeKey() string {
 	h := sha256.New()
-	for _, c := range []string{Compiler, appleClang} {
+	for _, c := range []string{Compiler, appleClang, GXX, ClangLibstdcxx} {
 		path := resolve(c)
 		h.Write([]byte(path + "\x00"))
 		if fi, err := os.Stat(path); err == nil {

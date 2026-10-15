@@ -43,7 +43,8 @@ type Options struct {
 	// exits when it closes. Nil means there is no editor pane to watch.
 	EditorAlive func() bool
 
-	// SubmitProfile judges :Submit; judge.Full when it has no Name.
+	// SubmitProfile judges :Submit; when it has no Name, this machine's
+	// (judge.Profiles), which is g++'s where g++ works.
 	SubmitProfile judge.Profile
 	// FullTests are what :Submit judges. Nil means the problem's own tests,
 	// which in practice mode are the full set.
