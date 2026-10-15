@@ -32,6 +32,20 @@ func fmtMult(m float64) string {
 
 func widthOf(s string) int { return ansi.StringWidth(s) }
 
+// squeeze clips s to the cells w leaves beside the rest of its row, the
+// two-cell gap included, down to a stub: a one-line row cuts its title,
+// never its numbers (§2.6: the text column is cut, numerals never are).
+func squeeze(s string, w int, rest ...string) string {
+	room := w - 2
+	for _, r := range rest {
+		room -= widthOf(r)
+	}
+	if room < 4 {
+		return s
+	}
+	return ui.Clip(s, room)
+}
+
 // centerBlock indents lines as one block centered in width.
 func centerBlock(ls []string, width int) []string {
 	return indent(max((width-maxWidth(ls))/2, 0), ls)

@@ -20,6 +20,7 @@ import (
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/boot/fixture"
 	"katharsis/internal/ui"
+	"katharsis/internal/units"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/*.golden from the current output")
@@ -1313,6 +1314,59 @@ func TestForkSaysTheUsualRoomSize(t *testing.T) {
 		v := ansi.Strip(NewMerge(env(st)).View(140, 40))
 		if want := fmt.Sprintf("(normally %d)", c.want); !strings.Contains(v, want) {
 			t.Errorf("packages %v: fork should say %q:\n%s", c.pkgs, want, v)
+		}
+	}
+}
+
+// An overtime clear pays less (State.Paid, as the strip says): the upgrade
+// screen says what it paid, not the door's full reward.
+func TestUpgradeScreenOvertimePay(t *testing.T) {
+	st := fixture.Upgrade()
+	st.Rules.OnExpire = rules.ExpireOvertime
+	a := &st.History[len(st.History)-1]
+	a.Overtime, a.O3 = true, false
+	paid := st.Paid(*a)
+	if paid == a.Door.Bytes {
+		t.Fatalf("the fixture's overtime clear pays its full %d B", paid)
+	}
+	v := ansi.Strip(NewUpgradeScreen(env(st)).View(140, 40))
+	if want := "+" + units.Bytes(paid) + " uncommitted"; !strings.Contains(v, want) {
+		t.Errorf("an overtime clear should show %q, what it paid:\n%s", want, v)
+	}
+}
+
+// Past a soft timer's deadline (a trial) the door goes on: the vitals say
+// by how much, as the editor pane's border does, not a frozen 00:00.
+func TestHUDBarOvertime(t *testing.T) {
+	st := fixture.Problem()
+	st.Rules.OnExpire = rules.ExpireOvertime
+	prob, _ := fixture.Lookup("usaco:764")
+	now := st.Current.Deadline.Add(3*time.Minute + 12*time.Second)
+	if s := ansi.Strip(HUDBar(st, prob, now, 48)); !strings.Contains(s, ui.G.Timer+"+03:12 over") || strings.Contains(s, "00:00") {
+		t.Errorf("3:12 past a soft deadline should read +03:12 over:\n%s", s)
+	}
+	st.Rules.OnExpire = rules.ExpireCrash
+	if s := ansi.Strip(HUDBar(st, prob, now, 48)); !strings.Contains(s, ui.G.Timer+"00:00") {
+		t.Errorf("a hard timer past its deadline reads 00:00:\n%s", s)
+	}
+}
+
+// The one-line doors and routes, a short terminal's last resort, cut the
+// title before the numbers: every row keeps its rating, timer and reward,
+// or its rating band (§2.6).
+func TestCompactRowsKeepTheNumbers(t *testing.T) {
+	st := fixture.Doors()
+	v := ansi.Strip(NewDoors(env(st)).View(40, 16))
+	for _, d := range st.Doors {
+		if s := ansi.Strip(doorStats(d)); !strings.Contains(v, s) {
+			t.Errorf("door %s lost %q:\n%s", d.Problem, s, v)
+		}
+	}
+	r := NewRoute(env(fixture.Route()))
+	v = ansi.Strip(r.View(36, 10))
+	for _, topic := range r.offers() {
+		if s := ansi.Strip(r.describe(topic).band); !strings.Contains(v, s) {
+			t.Errorf("route %s lost %q:\n%s", topic, s, v)
 		}
 	}
 }

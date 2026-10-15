@@ -31,9 +31,16 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	// Countdown, lives, ducks, bytes; the pending reward goes first when
 	// the pane is too narrow. The bytes at stake are plain: they are lost
 	// on a crash, so they must not read as a gain; the reward is one.
-	timer := ui.Muted.Render(ui.G.Timer + "--:--")
-	if open {
-		timer = ui.Timer(att.Deadline.Sub(now), door.Timer)
+	var timer string
+	switch left := att.Deadline.Sub(now); {
+	case !open:
+		timer = ui.Muted.Render(ui.G.Timer + "--:--")
+	case left < 0 && st.SoftTimer():
+		// A soft timer (a trial) goes on past its deadline at less pay:
+		// how far over, as the editor pane's border says it.
+		timer = ui.Danger.Render(ui.G.Timer + "+" + units.Clock(-left) + " over")
+	default:
+		timer = ui.Timer(left, door.Timer)
 	}
 	ducks := fmt.Sprintf("%s%d", ui.G.Duck, st.Ducks)
 	if door.Cursed {

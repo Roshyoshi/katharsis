@@ -182,7 +182,8 @@ func (r *Route) stackedBody(topic string, cw int) []string {
 	return append(out, ui.Spread(d.rooms, d.mine, cw))
 }
 
-// compact is one line per route, for terminals too short for cards.
+// compact is one line per route, for terminals too short for cards, the
+// name cut before the rating band.
 func (r *Route) compact(width int) []string {
 	var out []string
 	for i, t := range r.offers() {
@@ -191,7 +192,9 @@ func (r *Route) compact(width int) []string {
 		if i == r.sel {
 			mark = ui.Focus.Render(ui.G.Cursor) + " "
 		}
-		out = append(out, ui.Spread(mark+fmt.Sprintf("%d ", i+1)+ui.Strong.Render(d.name), d.band, width))
+		head := mark + fmt.Sprintf("%d ", i+1)
+		name := squeeze(ui.Strong.Render(d.name), width, head, d.band)
+		out = append(out, ui.Spread(head+name, d.band, width))
 	}
 	return out
 }

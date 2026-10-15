@@ -181,7 +181,7 @@ func (u *UpgradeScreen) View(width, height int) string {
 			line += "  " + ui.OK.Render("-O3")
 		}
 		block = append(block, ui.Center(line, width),
-			ui.Center(ui.OK.Render("+"+units.Bytes(a.Door.Bytes))+ui.Muted.Render(" uncommitted"), width), "")
+			ui.Center(ui.OK.Render("+"+units.Bytes(st.Paid(a)))+ui.Muted.Render(" uncommitted"), width), "")
 	}
 	ask := ui.Strong.Render("Pick an upgrade.")
 	switch n, o3 := owedPicks(st); {

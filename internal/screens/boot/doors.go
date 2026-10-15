@@ -500,7 +500,7 @@ func (d *Doors) bossBody(door game.Door, cw int) []string {
 func spaced(s string) string { return strings.Join(strings.Split(s, ""), " ") }
 
 // compact is the last resort for short terminals: one line per door, its
-// modifiers as glyphs, a space apart.
+// modifiers as glyphs, a space apart, and the title cut before the stats.
 func (d *Doors) compact(width int) []string {
 	var out []string
 	for i, door := range d.doors() {
@@ -525,11 +525,12 @@ func (d *Doors) compact(width int) []string {
 		} else if door.Blind {
 			flag(ui.ModBlind)
 		}
-		left := mark + fmt.Sprintf("%d ", i+1) + titleToken(door).Render(t.Title)
+		head, tail, stats := mark+fmt.Sprintf("%d ", i+1), "", doorStats(door)
 		if len(flags) > 0 {
-			left += " " + strings.Join(flags, " ")
+			tail = " " + strings.Join(flags, " ")
 		}
-		out = append(out, ui.Spread(left, doorStats(door), width))
+		title := squeeze(titleToken(door).Render(t.Title), width, head, tail, stats)
+		out = append(out, ui.Spread(head+title+tail, stats, width))
 	}
 	return out
 }
