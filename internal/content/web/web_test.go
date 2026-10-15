@@ -381,3 +381,33 @@ func TestCleanDebris(t *testing.T) {
 		t.Errorf("left %v, want %v", left, want)
 	}
 }
+
+// SyncDir reaches every file under the dir and reports one it cannot sync
+// rather than publish a dir that may not be on disk.
+func TestSyncDir(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	for _, p := range []string{"meta.json", "tests/1.in", "tests/1.out", "samples/1.in"} {
+		p = filepath.Join(dir, filepath.FromSlash(p))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("x\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := SyncDir(dir); err != nil {
+		t.Fatalf("SyncDir = %v", err)
+	}
+	locked := filepath.Join(dir, "tests", "1.out")
+	if err := os.Chmod(locked, 0); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chmod(locked, 0o644) }()
+	if err := SyncDir(dir); err == nil {
+		t.Error("SyncDir over an unreadable file succeeded")
+	}
+	if err := SyncDir(filepath.Join(dir, "missing")); err == nil {
+		t.Error("SyncDir of a missing dir succeeded")
+	}
+}

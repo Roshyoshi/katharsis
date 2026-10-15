@@ -1,9 +1,11 @@
 package web
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -35,6 +37,42 @@ func WriteFile(p string, data []byte) error {
 		return err
 	}
 	return os.Rename(f.Name(), p)
+}
+
+// SyncDir puts everything under dir on disk, for a caller about to publish
+// dir by renaming it into place: without it a power cut soon after the
+// rename can leave a published dir of empty files, which a cache then
+// trusts for good. Each entry gets a plain fsync and dir a File.Sync last.
+// On darwin that last one is F_FULLFSYNC, which flushes the drive's cache
+// for everything written before it; one per file would cost its ~5 ms
+// each (40 test files: 6 ms in all against 150-260 ms, measured).
+func SyncDir(dir string) error {
+	err := filepath.WalkDir(dir, func(p string, _ fs.DirEntry, err error) error {
+		if err != nil || p == dir {
+			return err
+		}
+		return syncPath(p, false)
+	})
+	if err != nil {
+		return err
+	}
+	return syncPath(dir, true)
+}
+
+func syncPath(p string, full bool) error {
+	f, err := os.Open(p)
+	if err != nil {
+		return err
+	}
+	if full {
+		err = f.Sync()
+	} else {
+		err = syscall.Fsync(int(f.Fd()))
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	return err
 }
 
 // DebrisAge is how old a temp entry must be before CleanDebris removes it:

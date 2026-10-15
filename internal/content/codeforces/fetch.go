@@ -158,6 +158,9 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 	if err := os.WriteFile(filepath.Join(tmp, "meta.json"), mb, 0o644); err != nil {
 		return catalog.Assets{}, err
 	}
+	if err := web.SyncDir(tmp); err != nil {
+		return catalog.Assets{}, err
+	}
 	// A dir loadAssets rejects is debris from a crash or another build;
 	// replace it, and so one written before the problem was judgeable.
 	if a, ok := loadAssets(dir); !usable(a, ok, e) {

@@ -191,6 +191,9 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 	if err := os.WriteFile(filepath.Join(tmp, "meta.json"), mb, 0o644); err != nil {
 		return catalog.Assets{}, err
 	}
+	if err := web.SyncDir(tmp); err != nil {
+		return catalog.Assets{}, err
+	}
 
 	// A dir without meta.json is debris from an older crash; replace it.
 	if _, _, ok := loadAssets(dir); !ok {

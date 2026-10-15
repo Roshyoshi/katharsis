@@ -126,6 +126,10 @@ func snapshot(ctx context.Context, c *web.Client, root, url, commit string) (str
 	if err != nil {
 		return "", fmt.Errorf("usaco guide snapshot %.12s: %w", commit, err)
 	}
+	// A snapshot of empty files would fail every start from then on.
+	if err := web.SyncDir(tmp); err != nil {
+		return "", err
+	}
 	if err := os.Rename(tmp, dir); err != nil {
 		// Another process renamed its copy first; theirs is as good.
 		if isDir(dir) {

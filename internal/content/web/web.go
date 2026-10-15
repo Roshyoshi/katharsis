@@ -2,8 +2,10 @@
 // caches. Client is the one HTTP client they share: usaco.org is run by
 // volunteers and Hugging Face rate-limits anonymous reads, so prefetching
 // doors must never look like a crawl, and a connection that stays open and
-// sends nothing must fail instead of holding up the game. WriteFile and
-// CleanDebris keep a cache readable whenever the process is killed.
+// sends nothing must fail instead of holding up the game. Flights shares
+// one download among the callers that want it. WriteFile, SyncDir and
+// CleanDebris keep a cache readable when the process is killed or the
+// power cut.
 package web
 
 import (
