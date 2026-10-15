@@ -161,6 +161,24 @@ func TestTrackerRetreat(t *testing.T) {
 	}
 }
 
+// A Userland timeout that costs a life (D44) says so, and that the room
+// was drawn again; the generic lives line does not repeat it.
+func TestTrackerTimeoutCostsLife(t *testing.T) {
+	b := newEngineBoot(t, rules.Standard())
+	b.toDoors()
+	b.step(game.ChooseDoor{})
+	if !b.st.TimeoutCostsLife() {
+		t.Fatal("the standard Userland door's timeout ends the boot")
+	}
+	lives := b.st.Lives
+	b.now = b.st.Current.Deadline.Add(time.Second)
+	evs := b.step(game.Tick{})
+	want := fmt.Sprintf("timeout: ⏱ timer ran out: -1 ♥, %d left · new doors", lives-1)
+	if b.st.Phase != game.PhaseDoors || plain(evs) != want {
+		t.Errorf("in %s, got\n%s\nwant %q", b.st.Phase, plain(evs), want)
+	}
+}
+
 // The timer warns once at 5:00 and once at 1:00, and not on a resume that
 // is already past them.
 func TestTrackerTimerWarns(t *testing.T) {

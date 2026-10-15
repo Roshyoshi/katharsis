@@ -29,6 +29,7 @@ const (
 	moobuzz      catalog.ID = "usaco:966"
 	cowPoetry    catalog.ID = "usaco:897"
 	pathCounting catalog.ID = "cses:1136"
+	watermelon   catalog.ID = "cf:4A"
 )
 
 var problems = map[catalog.ID]catalog.Problem{}
@@ -53,6 +54,10 @@ func init() {
 	add(moobuzz, "MooBuzz", "2019 December, Silver P1", "silver", 1, 1200, "math", "Math", "Periodicity")
 	add(cowPoetry, "Cow Poetry", "2019 January, Gold P2", "gold", 2, 1700, "dp", "Knapsack DP", "Modular Exponentiation")
 	add(pathCounting, "Path Queries", "Tree Algorithms", "", 0, 1600, "trees", "Euler Tour", "Fenwick Tree")
+	add(watermelon, "Watermelon", "Codeforces Beta Round 4 (Div. 2)", "", 1, 800, "math", "Brute Force", "Math")
+	wm := problems[watermelon]
+	wm.RatingSource = "cf"
+	problems[watermelon] = wm
 }
 
 // Lookup resolves fixture problems; it has the signature of
@@ -253,6 +258,53 @@ func Boss() *game.State {
 	st.Doors = []game.Door{boss}
 	st.Uncommitted, st.Committed = 264, 288
 	rebase(st, at(113, 5))
+	return st
+}
+
+// Userland is the same boot at its start, 40 s in, at the doors of
+// Userland's first room, whose timeout costs a life (D44). The engine
+// eased it two ways (RT8): five days away aim Userland higher, and the
+// pool's floor under that aim added a life (D34); its forecast crash
+// chance there was 26%. The first door sits on Codeforces' floor: rated
+// 800, so that hard or less (Door.Floor).
+func Userland() *game.State {
+	st := base()
+	st.Rules.Biomes[0].TimeoutLife = true
+	st.Rules.Biomes[0].EaseClear = 0.95
+	start := Now.Add(-40 * time.Second)
+	st.Started = start
+	st.Biome, st.Room = 0, 0
+	st.Biomes[1].Topic = ""
+	floor := door(watermelon, 15*time.Minute, 32, 0.94)
+	floor.Floor = true
+	st.Doors = []game.Door{floor, door(cowTipping, 15*time.Minute, 48, 0.91), door(haybales, 15*time.Minute, 48, 0.88)}
+	st.History = nil
+	st.Lives, st.MaxLives, st.Ducks = 4, 5, 1
+	st.Uncommitted, st.Committed = 0, 0
+	st.Upgrades, st.Daemons = nil, nil
+	st.Forecast = 0.26
+	st.Ease = []game.Ease{
+		{Kind: game.EaseComeback, Why: "first boot in 5 days", Clear: []float64{0.95, 0, 0, 0}},
+		{Kind: game.EaseFloor, Why: "Userland's easiest doors in the pool are rated 800", Lives: 1},
+	}
+	st.Log = []game.LogLine{{At: start, Text: "boot: prestige 1, preset standard, seed 8f3a"}}
+	st.AtStart = atStart()
+	return st
+}
+
+// UserlandTimeout is Userland after its first door's timer ran out: the
+// timeout cost a life instead of the boot (D44), and the room was drawn
+// again.
+func UserlandTimeout() *game.State {
+	st := Userland()
+	start := Now.Add(-at(16, 10))
+	st.Started = start
+	timed := attempt(start, st.Doors[0], at(0, 40), at(15, 40), game.TimedOut)
+	timed.Submits, timed.Failed, timed.BestPass, timed.Total, timed.LastVerdict = 1, 1, 7, 12, "WA"
+	st.History = []game.Attempt{timed}
+	st.Doors = []game.Door{door(milkMeasure, 15*time.Minute, 64, 0.86), st.Doors[1], st.Doors[2]}
+	st.Lives = 3
+	st.Log = append(st.Log, game.LogLine{At: start.Add(at(15, 40)), Text: `door_1: timer expired, -1 life, 3 left`})
 	return st
 }
 

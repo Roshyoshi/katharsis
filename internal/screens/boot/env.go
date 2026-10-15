@@ -209,11 +209,11 @@ type step struct {
 	N       int
 }
 
-// steps replays the boot's attempts onto its biomes. Attempt does not
-// record its biome, but rooms only advance on a clear (a retreat swaps the
-// door in the same room; any other outcome ends the boot), so the walk is
-// exact. The open or crashing attempt is included once even if the engine
-// has not yet moved it into History.
+// steps replays the boot's attempts onto its biomes. Rooms only advance
+// on a clear (a retreat, or a timeout that cost a life, draws the same
+// room again; any other outcome ends the boot), so the walk is exact. The
+// open or crashing attempt is included once even if the engine has not
+// yet moved it into History.
 func steps(st *game.State) []step {
 	atts := append([]game.Attempt(nil), st.History...)
 	if c := st.Current; c != nil {

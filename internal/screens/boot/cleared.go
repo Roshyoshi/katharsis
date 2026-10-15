@@ -63,7 +63,7 @@ func (c *Cleared) View(width, height int) string {
 	env := c.env
 	st := env.State
 	b := game.Debrief(st, &env.Meta)
-	var solves, hinted, retreats int
+	var solves, hinted, retreats, timeouts int
 	var boss string
 	end := env.Now
 	for _, s := range steps(st) {
@@ -79,6 +79,8 @@ func (c *Cleared) View(width, height int) string {
 			}
 		case game.Retreated:
 			retreats++
+		case game.TimedOut: // it cost a life, or the boot would not be cleared (D44)
+			timeouts++
 		}
 		if !a.Closed.IsZero() {
 			end = a.Closed
@@ -122,6 +124,9 @@ func (c *Cleared) View(width, height int) string {
 	}
 	if retreats > 0 {
 		sol += ui.G.Sep + units.Plural(retreats, "retreat")
+	}
+	if timeouts > 0 {
+		sol += ui.G.Sep + units.Plural(timeouts, "timeout")
 	}
 	stats := [][2]string{
 		{"uptime", units.Clock(uptime)},

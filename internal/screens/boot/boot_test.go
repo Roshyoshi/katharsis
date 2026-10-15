@@ -141,6 +141,8 @@ func cases() []screenCase {
 		{"doors", func() screens.Screen { return NewDoors(env(fixture.Doors())) }},
 		{"doors_fork", func() screens.Screen { return NewDoors(env(fixture.DoorsFork())) }},
 		{"doors_boss", func() screens.Screen { return NewDoors(env(fixture.Boss())) }},
+		// Userland at the boot's start: D44's line on every card.
+		{"doors_userland", func() screens.Screen { return NewDoors(env(fixture.Userland())) }},
 		{"doors_map", func() screens.Screen {
 			d := NewDoors(env(fixture.Doors()))
 			d.Update(press("m"))
@@ -148,6 +150,8 @@ func cases() []screenCase {
 		}},
 		{"map", func() screens.Screen { return NewMap(env(fixture.Doors())) }},
 		{"map_crashed", func() screens.Screen { return NewMap(env(fixture.Crash(game.TimedOut))) }},
+		// A timeout that cost a life, and the boot went on (D44).
+		{"map_timeout", func() screens.Screen { return NewMap(env(fixture.UserlandTimeout())) }},
 		{"merge", func() screens.Screen { return NewMerge(env(fixture.Merge())) }},
 		{"upgrade", func() screens.Screen { return NewUpgradeScreen(env(fixture.Upgrade())) }},
 		{"crash_timer", func() screens.Screen { return NewCrash(crashEnv(game.TimedOut)) }},
@@ -1017,6 +1021,13 @@ func TestHUDBar(t *testing.T) {
 		{"judging again", func() *game.State {
 			st := fixture.Problem()
 			st.Current.SubmitAt = fixture.Now
+			return st
+		}},
+		// Userland's rule (D44): a timeout here costs a life, not the boot.
+		{"Userland, a spare life", func() *game.State {
+			st := fixture.Problem()
+			st.Biome, st.Lives = 0, 2
+			st.Rules.Biomes[0].TimeoutLife = true
 			return st
 		}},
 	}

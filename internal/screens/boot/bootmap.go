@@ -261,7 +261,7 @@ func historyRows(env Env, width int) []string {
 		return s
 	}
 	out := []string{ui.Muted.Render(row("#", "biome", "door", ui.G.Rating, "result", "time"))}
-	for _, s := range ss {
+	for i, s := range ss {
 		a := s.Attempt
 		p := env.problem(a.Door.Problem)
 		tm := units.Clock(elapsed(a, env.Now)) + " / " + units.Clock(a.Door.Timer)
@@ -272,13 +272,19 @@ func historyRows(env Env, width int) []string {
 		if a.Door.Boss != "" {
 			title = ui.G.Boss + " " + title
 		}
+		// The last attempt of a crashed boot is the crash; every other one
+		// left the boot running.
+		last := env.State.Phase == game.PhaseCrashed && i == len(ss)-1
 		out = append(out, row(fmt.Sprint(s.N), biomeLabel(env.State, s.Biome), title,
-			ui.Rank(float64(a.Door.Rating)).Render(fmt.Sprint(a.Door.Rating)), outcomeLabel(a), tm))
+			ui.Rank(float64(a.Door.Rating)).Render(fmt.Sprint(a.Door.Rating)), outcomeLabel(a, last), tm))
 	}
 	return out
 }
 
-func outcomeLabel(a game.Attempt) string {
+// outcomeLabel is how attempt a ended; last is set for the attempt that
+// ended the boot. A timeout that did not end it cost a life (D44), as a
+// retreat does.
+func outcomeLabel(a game.Attempt, last bool) string {
 	switch a.Outcome {
 	case game.Cleared:
 		// Green paints the glyph; the word stays plain (R2).
@@ -288,6 +294,9 @@ func outcomeLabel(a game.Attempt) string {
 		}
 		return s
 	case game.TimedOut:
+		if !last {
+			return ui.Warn.Render(ui.G.Timer+"timer") + " -" + ui.Life.Render(ui.G.Life)
+		}
 		return ui.Danger.Render(ui.G.Crash + " timer")
 	case game.OutOfLives:
 		return ui.Danger.Render(ui.G.Crash + " lives")

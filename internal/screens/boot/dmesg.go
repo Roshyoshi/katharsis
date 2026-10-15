@@ -57,6 +57,7 @@ const (
 	EvAC         = "ac"         // a door cleared
 	EvRegression = "regression" // a regression door cleared
 	EvRetreat    = "retreat"    // a door swapped, for a life or kexec
+	EvTimeout    = "timeout"    // a door's timer ran out and cost a life (D44)
 	EvShuf       = "shuf"       // a room re-rolled with a shuf
 	EvQuack      = "quack"      // a duck spent
 	EvDuckRefuse = "duck-refused"
@@ -247,7 +248,7 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 		add(kind, text, "verdict."+v)
 	}
 
-	// Doors that closed since: a clear, or a swap.
+	// Doors that closed since: a clear, a swap, or a timeout.
 	for _, a := range st.History[min(p.hist, len(st.History)):] {
 		switch a.Outcome {
 		case game.Cleared:
@@ -275,6 +276,14 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 				livesSeen = true
 			}
 			add(EvRetreat, text+ui.Muted.Render(ui.G.Sep+"new doors"), "")
+		case game.TimedOut:
+			// A timeout that ended the boot is the panic's to say; one that
+			// cost a life (D44) left the boot running, on new doors.
+			if n.phase != game.PhaseCrashed {
+				text := ui.Warn.Render(ui.G.Timer+"timer") + " ran out: " + livesLost(p.lives-n.lives, n.lives)
+				add(EvTimeout, text+ui.Muted.Render(ui.G.Sep+"new doors"), "")
+				livesSeen = true
+			}
 		}
 	}
 

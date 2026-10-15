@@ -62,7 +62,7 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	if door.Regression {
 		mods = append(mods, ui.Modifier(ui.ModRegression, ""))
 	}
-	if t, ok := timeoutNote(st, door); ok {
+	if t, ok := timeoutNote(st); ok && open {
 		mods = append(mods, ui.Muted.Render(ui.G.Timer+t))
 	}
 	out = append(out, pack(mods, ui.Muted.Render(ui.G.Sep), width)...)

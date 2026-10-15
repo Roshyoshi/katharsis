@@ -128,13 +128,39 @@ func TestCopyGuardrails(t *testing.T) {
 	}
 }
 
-// The engine has neither notice yet (notice.go): no door gets the D44
-// line and no boot an easing, so nothing shows and x does nothing.
+// D44: while a spare life is left, every door of a biome whose timeout
+// costs a life says so, on its card and in the HUD; on the last life, in a
+// biome without the rule, and in a trial, none does.
+func TestTimeoutNote(t *testing.T) {
+	st := fixture.Userland()
+	const note = "⏱ a timeout costs ♥, not the boot"
+	for _, sz := range goldenSizes {
+		if v := ansi.Strip(NewDoors(env(st)).View(sz[0], sz[1])); strings.Count(v, note) != len(st.Doors) {
+			t.Errorf("%dx%d: want the D44 line on each of %d cards:\n%s", sz[0], sz[1], len(st.Doors), v)
+		}
+	}
+	open := fixture.Userland()
+	a := game.Attempt{Door: open.Doors[0], Opened: fixture.Now, Deadline: fixture.Now.Add(open.Doors[0].Timer)}
+	open.Phase, open.Current, open.Doors = game.PhaseProblem, &a, nil
+	prob, _ := fixture.Lookup(a.Door.Problem)
+	if hud := ansi.Strip(HUDBar(open, prob, fixture.Now, 48)); !strings.Contains(hud, note) {
+		t.Errorf("no D44 line in the HUD:\n%s", hud)
+	}
+	last := fixture.Userland()
+	last.Lives = 1
+	trial := fixture.Userland()
+	trial.Trial = &game.TrialState{}
+	for name, st := range map[string]*game.State{"last life": last, "the Heap": fixture.Doors(), "trial": trial} {
+		if txt, ok := timeoutNote(st); ok {
+			t.Errorf("%s: %q", name, txt)
+		}
+	}
+}
+
+// The engine has no easing yet (notice.go): no boot shows one and x does
+// nothing.
 func TestNoticesWaitForTheEngine(t *testing.T) {
 	st := fixture.Doors()
-	if _, ok := timeoutNote(st, st.Doors[0]); ok {
-		t.Error("a D44 line before the engine marks a door")
-	}
 	if lines, decline := easing(st); lines != nil || decline != nil {
 		t.Errorf("an easing before the engine made one: %q %v", lines, decline)
 	}
