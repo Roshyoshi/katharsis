@@ -21,7 +21,7 @@ import (
 
 // intent handles navigation messages; ok is false for anything else.
 func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
-	if cmd, ok := m.debriefIntent(msg); ok { // GRUB, story beats (debrief.go)
+	if cmd, ok := m.debriefIntent(msg); ok { // GRUB; logs the end screens' choices (debrief.go)
 		return cmd, true
 	}
 	switch msg := msg.(type) {

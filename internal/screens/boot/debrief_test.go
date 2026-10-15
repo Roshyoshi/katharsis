@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/flavor"
@@ -318,5 +319,16 @@ func TestReadBeatLeaves(t *testing.T) {
 	c.Refresh(e)
 	if v := ansi.Strip(c.View(120, 40)); strings.Contains(v, "read on") || strings.Contains(v, "[b] story") {
 		t.Errorf("the read beat is still teased:\n%s", v)
+	}
+}
+
+// A crash reboots at the boot's own prestige, as it always has; a clear
+// at the highest unlocked.
+func TestRebootPrestige(t *testing.T) {
+	e := crashEnv(game.TimedOut)
+	e.Meta.CoreDump, e.State.Crash.Lost = nil, 0
+	e.State.Prestige, e.Meta.Prestige = 0, 2
+	if got := emitted(func() tea.Cmd { _, c := NewCrash(e).Update(press("r")); return c }()); got != (screens.StartBoot{Prestige: 0, Preset: "standard"}) {
+		t.Errorf("crash r: %#v", got)
 	}
 }

@@ -511,9 +511,14 @@ func rebootKey(env Env, key string) (screens.StartBoot, bool) {
 	return screens.StartBoot{}, false
 }
 
-// next is the prestige a reboot starts at: the highest unlocked, which the
-// engine has already raised if this clear unlocked a new one.
+// next is the prestige a reboot starts at. After a crash it is the boot's
+// own: one more try at the same thing. After a clear it is the highest
+// unlocked, which the engine has already raised if this clear unlocked a
+// new one.
 func next(env Env) int {
+	if env.State.Phase == game.PhaseCrashed {
+		return env.State.Prestige
+	}
 	return min(max(env.Meta.Prestige, env.State.Prestige), game.MaxPrestige)
 }
 
