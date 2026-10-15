@@ -117,7 +117,6 @@ func TestGoldens(t *testing.T) {
 		{"grub_presets", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "enter"}},
 		{"grub_regressions", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "down", "enter"}},
 		{"grub_edit", func() screens.Screen { return grub() }, []string{"e", "down", "tab", "down", "8", "f", "3", "a"}},
-		{"upsolve", func() screens.Screen { return meta.NewUpsolve(fixture.Upsolves(), fixture.Now) }, nil},
 		{"log", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, nil},
 		{"log_expanded", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, []string{"enter"}},
 		{"log_crashed", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, []string{"f", "f", "j", "enter"}},
@@ -144,11 +143,14 @@ func TestGoldens(t *testing.T) {
 // from cramped to huge: exactly height lines, none wider than width.
 func TestFits(t *testing.T) {
 	screensUnder := map[string]func() screens.Screen{
-		"grub":    func() screens.Screen { return grub() },
-		"edit":    func() screens.Screen { s := grub(); s.Update(key("e")); return s },
-		"upsolve": func() screens.Screen { return meta.NewUpsolve(fixture.Upsolves(), fixture.Now) },
-		"empty upsolve": func() screens.Screen {
-			return meta.NewUpsolve(nil, fixture.Now)
+		"grub": func() screens.Screen { return grub() },
+		"edit": func() screens.Screen { s := grub(); s.Update(key("e")); return s },
+		"regressions": func() screens.Screen {
+			s := grub()
+			for _, k := range []string{"G", "up", "up", "up", "enter"} {
+				s.Update(key(k))
+			}
+			return s
 		},
 		"log": func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) },
 		"log expanded": func() screens.Screen {
@@ -200,14 +202,17 @@ func TestGrubEntries(t *testing.T) {
 		{"rtfm", append(down(4), "enter"), screens.OpenLearn{}},
 		{"preset submenu", append(down(5), "enter", "down", "enter"), screens.StartBoot{Prestige: 2, Preset: "speedrun"}},
 		{"core dump", append(down(6), "enter"), screens.Upsolve{Problem: "usaco:1014"}},
-		{"regression oldest due", append(down(7), "enter", "down", "enter"), screens.Upsolve{Problem: "usaco:891"}},
+		// The core dump has its own entry; the submenu is regressions only,
+		// oldest due first, without usaco:740, which is not due.
+		{"regressions submenu lists only regressions", append(down(7), "enter", "enter"), screens.Upsolve{Problem: "usaco:891"}},
+		{"regression due last", append(down(7), "enter", "G", "enter"), screens.Upsolve{Problem: "usaco:1205"}},
 		{"git log", append(down(8), "enter"), screens.OpenLog{}},
 		{"top", append(down(9), "enter"), screens.OpenTop{}},
 		{"poweroff", append(down(10), "enter"), screens.Quit{}},
 		{"end is poweroff", []string{"G", "enter"}, screens.Quit{}},
 		{"down stops at the end", append(down(30), "enter"), screens.Quit{}},
 		{"ctrl+x boots like enter", []string{"ctrl+x"}, screens.StartBoot{Prestige: 2, Preset: "standard"}},
-		{"esc leaves submenu", append(down(5), "enter", "esc", "enter"), nil},
+		{"esc leaves submenu, keeping its entry highlighted", append(down(5), "enter", "esc", "down", "enter"), screens.Upsolve{Problem: "usaco:1014"}},
 		{"esc at root does nothing", []string{"esc"}, nil},
 		{"e on a non-boot entry does nothing", append(down(8), "e", "enter"), screens.OpenLog{}},
 	}
@@ -216,13 +221,6 @@ func TestGrubEntries(t *testing.T) {
 			wantMsg(t, press(t, grub(), tt.keys...), tt.want)
 		})
 	}
-}
-
-func TestGrubEscLeavesSubmenuToRoot(t *testing.T) {
-	g := grub()
-	press(t, g, "down", "down", "down", "down", "down", "enter", "esc")
-	// Back at the root with the submenu entry still highlighted.
-	wantMsg(t, press(t, g, "down", "enter"), screens.Upsolve{Problem: "usaco:1014"})
 }
 
 func TestGrubEdit(t *testing.T) {
@@ -246,7 +244,6 @@ func TestGrubEdit(t *testing.T) {
 			screens.StartBoot{Prestige: 2, Preset: "hardcore"}},
 		{"nightly keeps its seed", []string{"down", "down", "down", "e", "ctrl+x"},
 			screens.StartBoot{Prestige: 2, Preset: "standard", Seed: 0x20261014}},
-		{"esc discards", []string{"e", "down", "down", "7", "esc"}, nil},
 		{"esc returns to the menu", []string{"e", "down", "down", "7", "esc", "enter"},
 			screens.StartBoot{Prestige: 2, Preset: "standard"}},
 	}
@@ -344,33 +341,6 @@ func TestGrubFlavorBanner(t *testing.T) {
 	}
 }
 
-func TestUpsolveKeys(t *testing.T) {
-	u := func() screens.Screen { return meta.NewUpsolve(fixture.Upsolves(), fixture.Now) }
-	wantMsg(t, press(t, u(), "enter"), screens.Upsolve{Problem: "usaco:1014"})
-	wantMsg(t, press(t, u(), "down", "down", "enter"), screens.Upsolve{Problem: "usaco:1205"})
-	wantMsg(t, press(t, u(), "esc"), screens.Back{})
-	wantMsg(t, press(t, u(), "q"), screens.Back{})
-	wantMsg(t, press(t, meta.NewUpsolve(nil, fixture.Now), "enter"), nil)
-}
-
-func TestDueUpsolves(t *testing.T) {
-	got := meta.DueUpsolves(fixture.Meta(), fixture.Title, fixture.Now)
-	var ids []string
-	for _, u := range got {
-		ids = append(ids, string(u.Problem))
-	}
-	want := []string{"usaco:1014", "usaco:891", "usaco:1205"} // dump, then oldest due; 740 not due
-	if !reflect.DeepEqual(ids, want) {
-		t.Errorf("got %v, want %v", ids, want)
-	}
-	if got[0].Title != "Bovine Shuffle" || !got[0].CoreDump || got[0].Bytes != 312 {
-		t.Errorf("core dump item: %+v", got[0])
-	}
-	if got := meta.DueUpsolves(fixture.Meta(), nil, fixture.Now); got[0].Title != "usaco:1014" {
-		t.Errorf("nil title func should show the ID, got %q", got[0].Title)
-	}
-}
-
 // ---- git log and top keys -----------------------------------------------------
 
 func TestLogKeys(t *testing.T) {
@@ -439,7 +409,8 @@ func TestTopKeys(t *testing.T) {
 func TestBytes(t *testing.T) {
 	for n, want := range map[int64]string{
 		0: "0 B", 312: "312 B", 1023: "1023 B", 1024: "1.0 KiB", 1331: "1.3 KiB",
-		12698: "12 KiB", 5 << 20: "5.0 MiB", 300 << 20: "300 MiB", -312: "-312 B",
+		12698: "12 KiB", 5 << 20: "5.0 MiB", 300 << 20: "300 MiB", 3 << 30: "3.0 GiB",
+		2048 << 30: "2048 GiB", -312: "-312 B",
 	} {
 		if got := meta.Bytes(n); got != want {
 			t.Errorf("Bytes(%d) = %q, want %q", n, got, want)
@@ -447,11 +418,15 @@ func TestBytes(t *testing.T) {
 	}
 }
 
-func TestNowDefaultsToWallClock(t *testing.T) {
+func TestGrubConfigDefaults(t *testing.T) {
 	c := fixture.GrubConfig()
-	c.Now = time.Time{}
+	c.Now, c.Title = time.Time{}, nil
 	c.Meta.Regressions = []game.Regression{{Problem: "usaco:1205", Due: time.Now().Add(-time.Minute)}}
-	if v := plain(meta.NewGrub(c).View(80, 24)); !strings.Contains(v, "regressions due: 1") {
+	v := plain(meta.NewGrub(c).View(80, 24))
+	if !strings.Contains(v, "regressions due: 1") {
 		t.Errorf("zero Now should mean time.Now():\n%s", v)
+	}
+	if !strings.Contains(v, "upsolve core dump: usaco:1014") {
+		t.Errorf("nil Title should show catalog IDs:\n%s", v)
 	}
 }

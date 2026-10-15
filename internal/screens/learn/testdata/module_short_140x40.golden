@@ -1,4 +1,4 @@
-RTFM ▸ Advanced ▸ Data Structures                                                                                      ◇ CAP_DATA_STRUCTURES
+RTFM ▸ Advanced ▸ Data Structures                                                                                                   ◇ CAP_DS
 
 NAME
        count-min - Counting Minimums with Segment Tree     ☆☆☆☆ has not appeared
@@ -7,7 +7,7 @@ NAME
 TRIAL                         unit: Easy → Hard, tags shown · integration: blind
        +  4 topped up from the catalog · The Heap · 2400–2800
        +  2 blind integration doors · The Heap · 2400–2800
-       ◇  pass → ◆ CAP_DATA_STRUCTURES: The Heap joins your route choices
+       ◇  pass → ◆ CAP_DS: The Heap joins your route choices
 
 SEE ALSO
        requires  RURQ

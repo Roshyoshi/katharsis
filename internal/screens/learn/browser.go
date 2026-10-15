@@ -107,7 +107,7 @@ func (b *Browser) Refresh(m game.Meta) {
 // Typing reports whether the / prompt is open. The prompt wants every
 // printable key for itself, so an app with global keys should pass them
 // through while it is.
-func (b *Browser) Typing() bool { return b.typing && b.page == nil }
+func (b *Browser) Typing() bool { return b.typing }
 
 // Open shows the page of the module with id, as enter on its row would,
 // unfolding and selecting the row so q returns to it. It reports whether
@@ -131,7 +131,7 @@ func (b *Browser) Open(id string) bool {
 func (b *Browser) entry(r row) entry { return b.divs[r.d].chaps[r.c].mods[r.m] }
 
 func (b *Browser) selected() (row, bool) {
-	if b.sel < 0 || b.sel >= len(b.rows) {
+	if len(b.rows) == 0 {
 		return row{}, false
 	}
 	return b.rows[b.sel], true
@@ -188,9 +188,9 @@ func (b *Browser) firstModule() int {
 	return 0
 }
 
-// restore selects r after a rebuild, unfolding what hides it.
+// restore selects r in the unfiltered index, unfolding what hides it.
 func (b *Browser) restore(r row) {
-	if b.active == "" && r.kind != divRow && r.d < len(b.divs) {
+	if r.kind != divRow {
 		d := &b.divs[r.d]
 		if d.folded || (r.kind == modRow && d.chaps[r.c].folded) {
 			d.folded = false
@@ -213,9 +213,6 @@ func (b *Browser) restore(r row) {
 // first match; clearing one selects keep, so the module found by the
 // filter is shown in its place in the index.
 func (b *Browser) applyFilter(q string, keep row) {
-	if prev, ok := b.selected(); ok && b.active == "" && q != "" {
-		b.mark = prev
-	}
 	b.active = q
 	b.build()
 	if q == "" {
@@ -288,6 +285,9 @@ func (b *Browser) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		b.sel = last
 	case "/":
 		b.typing, b.input = true, ""
+		if b.query == "" {
+			b.mark = r // where esc or an emptied prompt returns to
+		}
 	case "enter", "l", "right":
 		if !ok {
 			break

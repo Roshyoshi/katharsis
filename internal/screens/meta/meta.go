@@ -1,16 +1,15 @@
 // Package meta holds the screens outside a boot: the GRUB menu (start
-// screen), git log (boot history), top (stats) and the upsolve picker.
+// screen), git log (boot history) and top (stats).
 //
-// The screens take view models defined here (BootRow, AttemptRow, Stats,
-// UpsolveItem) rather than store records, so they can be built and tested
-// before the store settles; the app maps its records onto these types.
-// Display strings that need the catalog (titles) or flavor (biome names)
-// are resolved by the app when it builds the rows.
+// The screens take view models defined here (BootRow, AttemptRow, Stats)
+// rather than store records, so they can be built and tested before the
+// store settles; the app maps its records onto these types. Display
+// strings that need the catalog (titles) or flavor (biome names) are
+// resolved by the app when it builds the rows.
 package meta
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -97,72 +96,30 @@ type TopicStat struct {
 	Rating   float64
 }
 
-// UpsolveItem is a problem waiting to be upsolved: the core dump, or a
-// regression whose due date has passed.
-type UpsolveItem struct {
-	Problem  catalog.ID
-	Title    string
-	CoreDump bool  // false: a regression
-	Bytes    int64 // core dump bytes; 0 for regressions
-	Boot     int   // the boot it crashed in
-	Due      time.Time
-	Stage    int // regression stage, index into rules.RegressionDays
-}
-
-// DueUpsolves lists what can be upsolved now: the core dump first, then
-// regressions due at or before now, oldest due first. title resolves
-// display titles; nil shows the catalog ID.
-func DueUpsolves(m game.Meta, title func(catalog.ID) string, now time.Time) []UpsolveItem {
-	name := func(id catalog.ID) string {
-		if title != nil {
-			if t := title(id); t != "" {
-				return t
-			}
-		}
-		return string(id)
-	}
-	var out []UpsolveItem
-	if d := m.CoreDump; d != nil {
-		out = append(out, UpsolveItem{
-			Problem: d.Problem, Title: name(d.Problem), CoreDump: true,
-			Bytes: d.Bytes, Boot: d.Boot,
-		})
-	}
-	var regs []UpsolveItem
-	for _, r := range m.Regressions {
-		if r.Due.After(now) {
-			continue
-		}
-		regs = append(regs, UpsolveItem{
-			Problem: r.Problem, Title: name(r.Problem), Due: r.Due, Stage: r.Stage,
-		})
-	}
-	slices.SortStableFunc(regs, func(a, b UpsolveItem) int { return a.Due.Compare(b.Due) })
-	return append(out, regs...)
-}
-
 // ---- formatting ---------------------------------------------------------------
 
-// Bytes formats a byte count the way the game shows currency: B, KiB, MiB.
+// Bytes formats a byte count the way the game shows currency: B, KiB, MiB
+// or GiB, with one decimal under 10.
 func Bytes(n int64) string {
-	neg := ""
+	sign := ""
 	if n < 0 {
-		neg, n = "-", -n
+		sign, n = "-", -n
 	}
 	if n < 1024 {
-		return fmt.Sprintf("%s%d B", neg, n)
+		return fmt.Sprintf("%s%d B", sign, n)
 	}
-	v := float64(n)
-	for _, unit := range []string{"KiB", "MiB", "GiB"} {
-		v /= 1024
-		if v < 1024 || unit == "GiB" {
-			if v < 10 {
-				return fmt.Sprintf("%s%.1f %s", neg, v, unit)
-			}
-			return fmt.Sprintf("%s%.0f %s", neg, v, unit)
+	v, unit := float64(n)/1024, "KiB"
+	for _, u := range []string{"MiB", "GiB"} {
+		if v < 1024 {
+			break
 		}
+		v, unit = v/1024, u
 	}
-	panic("unreachable")
+	prec := 0
+	if v < 10 {
+		prec = 1
+	}
+	return fmt.Sprintf("%s%.*f %s", sign, prec, v, unit)
 }
 
 // clock formats a duration as h:mm:ss, or m:ss under an hour.
@@ -193,25 +150,18 @@ func uptime(d time.Duration) string {
 func ago(t, now time.Time) string {
 	d := now.Sub(t)
 	switch {
-	case d < 0:
-		return "in " + coarse(-d)
 	case d < time.Minute:
 		return "just now"
-	}
-	return coarse(d) + " ago"
-}
-
-func coarse(d time.Duration) string {
-	switch {
 	case d < time.Hour:
-		return fmt.Sprintf("%dm", int(d.Minutes()))
+		return fmt.Sprintf("%dm ago", int(d.Minutes()))
 	case d < 48*time.Hour:
-		return fmt.Sprintf("%dh", int(d.Hours()))
+		return fmt.Sprintf("%dh ago", int(d.Hours()))
 	}
-	return fmt.Sprintf("%dd", int(d.Hours()/24))
+	return fmt.Sprintf("%dd ago", int(d.Hours()/24))
 }
 
-// causeText names a crash cause the way the crash screen does.
+// causeText names how a boot crashed, or how an attempt ended without a
+// clear, the way the crash screen does.
 func causeText(c game.Outcome) string {
 	switch c {
 	case game.TimedOut:
@@ -222,10 +172,17 @@ func causeText(c game.Outcome) string {
 		return ":q!"
 	case game.Retreated:
 		return "retreated"
-	case game.Cleared:
-		return "cleared"
 	}
 	return string(c)
+}
+
+// prestigeText is "prestige 2 (Gold)", or "prestige 2" when name has none.
+func prestigeText(p int, name func(int) string) string {
+	s := fmt.Sprintf("prestige %d", p)
+	if n := name(p); n != "" {
+		s += " (" + n + ")"
+	}
+	return s
 }
 
 // ---- styles and layout ---------------------------------------------------------
@@ -241,6 +198,9 @@ var (
 	magenta = lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
 	cyan    = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
 	gray    = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+
+	// field is htop's cyan bar: key labels, the sort column, the selection.
+	field = lipgloss.NewStyle().Background(lipgloss.Color("6")).Foreground(lipgloss.Color("0"))
 )
 
 // frame makes exactly h lines, each cut to w cells, so a screen never
@@ -316,11 +276,10 @@ func ratingStyle(r float64) lipgloss.Style {
 // keyBar renders key help as htop's function-key bar: the key plain, the
 // label on a cyan field.
 func keyBar(pairs ...string) string {
-	label := lipgloss.NewStyle().Background(lipgloss.Color("6")).Foreground(lipgloss.Color("0"))
 	var b strings.Builder
 	for i := 0; i+1 < len(pairs); i += 2 {
 		b.WriteString(pairs[i])
-		b.WriteString(label.Render(pairs[i+1]))
+		b.WriteString(field.Render(pairs[i+1]))
 	}
 	return b.String()
 }

@@ -50,9 +50,6 @@ func newModule(c *guide.Curriculum, e entry, caps map[string]bool, lookup Lookup
 	return p
 }
 
-// Refresh swaps in the player's Meta, for the capability marks.
-func (p *Module) Refresh(m game.Meta) { p.caps = capSet(m) }
-
 func (p *Module) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	k, ok := msg.(tea.KeyPressMsg)
 	if !ok {
@@ -126,14 +123,14 @@ func (p *Module) body(w int) []string {
 	}
 
 	out = append(out, "", spread(bold.Render("TRIAL"),
-		faint.Render("unit: Easy → Hard, tags shown · integration: blind"), min(w, 80)))
+		faint.Render("unit: Easy → Hard, tags shown · integration: blind"), text))
 	out = append(out, p.unitLines(w)...)
 	t := p.e.trial
 	where := p.e.biome + " · " + band(t.IntegBand)
 	if n := p.e.short(); n > 0 {
 		out = append(out, ind+fmt.Sprintf("+  %d topped up from the catalog · %s", n, where))
 	}
-	out = append(out, ind+fmt.Sprintf("+  %d blind integration doors · %s", IntegrationDoors, where))
+	out = append(out, ind+fmt.Sprintf("+  %d blind integration doors · %s", integrationDoors, where))
 	out = append(out, ind+p.passLine())
 
 	out = append(out, "", bold.Render("SEE ALSO"))

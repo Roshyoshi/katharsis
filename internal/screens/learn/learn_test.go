@@ -260,7 +260,7 @@ func TestBrowserOpensModules(t *testing.T) {
 		want tea.Msg
 	}{
 		{"enter opens the first module; r reads it", []string{"enter", "r"}, screens.OpenModule{Module: "fast-io"}},
-		{"j moves to the next module", cat([]string{"j", "j", "j", "enter", "t"}), screens.StartTrial{Module: "casework"}},
+		{"j moves to the next module", []string{"j", "j", "j", "enter", "t"}, screens.StartTrial{Module: "casework"}},
 		{"G is the last module", []string{"G", "enter", "t"}, screens.StartTrial{Module: "count-min"}},
 		{"g then down", []string{"g", "j", "j", "j", "j", "j", "j", "j", "j", "l", "t"}, screens.StartTrial{Module: "prefix-sums"}},
 		{"o opens the module online", []string{"j", "j", "j", "enter", "o"},
@@ -349,6 +349,18 @@ func TestBrowserFilterCancel(t *testing.T) {
 	if v := plain(b.View(80, 24)); !strings.Contains(v, "Introduction to Prefix Sums") {
 		t.Errorf("backspace should widen the filter back to prefix:\n%s", v)
 	}
+}
+
+// An empty / (opened, then closed with esc or enter) leaves the selection
+// where it is, even after an earlier filter moved it.
+func TestBrowserEmptyFilterKeepsSelection(t *testing.T) {
+	for _, k := range []string{"esc", "enter"} {
+		wantMsg(t, press(t, browser(t), "j", "j", "j", "/", k, "enter", "t"),
+			screens.StartTrial{Module: "casework"})
+	}
+	b := browser(t)
+	press(t, b, cat([]string{"/"}, typed("two"), []string{"enter", "esc"})...)
+	wantMsg(t, press(t, b, "/", "esc", "enter", "t"), screens.StartTrial{Module: "two-pointers"})
 }
 
 func TestBrowserFolds(t *testing.T) {
@@ -455,37 +467,6 @@ func TestCapabilityMarks(t *testing.T) {
 	for _, l := range strings.Split(v, "\n") {
 		if strings.Contains(l, "Casework") && strings.ContainsAny(l, "◆◇") {
 			t.Errorf("casework teaches no gated topic, but shows a mark: %q", l)
-		}
-	}
-}
-
-func TestUnitSizes(t *testing.T) {
-	v := plain(browser(t).View(140, 40))
-	row := func(title string) string {
-		for _, l := range strings.Split(v, "\n") {
-			if strings.Contains(l, title) {
-				return l
-			}
-		}
-		t.Fatalf("no row for %q:\n%s", title, v)
-		return ""
-	}
-	// Casework lists five USACO problems: a full unit.
-	if l := row("Casework"); !strings.Contains(l, "4 doors") {
-		t.Errorf("casework: %q", l)
-	}
-	// Hashmaps lists one USACO problem; the catalog tops up three.
-	if l := row("Hashmaps"); !strings.Contains(l, "1+3 topped up") {
-		t.Errorf("hashmaps: %q", l)
-	}
-	if l := row("Counting Minimums"); !strings.Contains(l, "0+4 topped up") {
-		t.Errorf("count-min: %q", l)
-	}
-	// At 80 columns the words go and the numbers stay.
-	v80 := plain(browser(t).View(80, 24))
-	for _, l := range strings.Split(v80, "\n") {
-		if strings.Contains(l, "Hashmaps") && !strings.Contains(l, "1+3") {
-			t.Errorf("hashmaps at 80: %q", l)
 		}
 	}
 }

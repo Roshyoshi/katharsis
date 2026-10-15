@@ -3,35 +3,31 @@ package meta
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 )
 
-// brailleChart draws vals (oldest first) as a line in cols×rows cells. Each
-// cell is a 2×4 braille dot matrix, so the line has 2·cols points across
-// and 4·rows levels up. Values are resampled across the width by linear
-// interpolation, and consecutive columns are joined vertically so steep
-// moves stay one connected line. style colours each cell by the value
-// there, so the line changes colour where it crosses a rank boundary.
+// brailleChart draws vals (oldest first, at least two, within lo < hi) as a
+// line in cols×rows cells. Each cell is a 2×4 braille dot matrix, so the
+// line has 2·cols points across and 4·rows levels up. Values are resampled
+// across the width by linear interpolation, and consecutive columns are
+// joined vertically so steep moves stay one connected line. style colours
+// each cell by the value there, so the line changes colour where it
+// crosses a rank boundary.
 func brailleChart(vals []float64, cols, rows int, lo, hi float64, style func(float64) lipgloss.Style) []string {
-	if cols <= 0 || rows <= 0 || len(vals) == 0 {
+	if cols <= 0 || rows <= 0 {
 		return nil
 	}
-	if hi <= lo {
-		hi = lo + 1
-	}
-	W, H := cols*2, rows*4
+	W, H, n := cols*2, rows*4, len(vals)
 	at := make([]float64, W) // value at each dot column
 	ys := make([]int, W)     // dot row, 0 at the bottom
 	for x := range W {
-		v := vals[0]
-		if n := len(vals); n > 1 {
-			t := float64(x) * float64(n-1) / float64(max(W-1, 1))
-			i := min(int(t), n-2)
-			f := t - float64(i)
-			v = vals[i]*(1-f) + vals[i+1]*f
-		}
+		t := float64(x) * float64(n-1) / float64(W-1)
+		i := min(int(t), n-2)
+		f := t - float64(i)
+		v := vals[i]*(1-f) + vals[i+1]*f
 		at[x] = v
 		y := int(math.Round((v - lo) / (hi - lo) * float64(H-1)))
 		ys[x] = min(max(y, 0), H-1)
@@ -70,11 +66,7 @@ func brailleChart(vals []float64, cols, rows int, lo, hi float64, style func(flo
 				b.WriteByte(' ')
 				continue
 			}
-			ch := string(0x2800 + r)
-			if style != nil {
-				ch = style((at[cx*2] + at[cx*2+1]) / 2).Render(ch)
-			}
-			b.WriteString(ch)
+			b.WriteString(style((at[cx*2] + at[cx*2+1]) / 2).Render(string(0x2800 + r)))
 		}
 		out[cy] = b.String()
 	}
@@ -84,12 +76,8 @@ func brailleChart(vals []float64, cols, rows int, lo, hi float64, style func(flo
 // chartRange rounds the data range out to multiples of 50, at least 100
 // apart, so the axis labels are numbers a reader can hold.
 func chartRange(vals []float64) (lo, hi float64) {
-	lo, hi = math.Inf(1), math.Inf(-1)
-	for _, v := range vals {
-		lo, hi = math.Min(lo, v), math.Max(hi, v)
-	}
-	lo = math.Floor(lo/50) * 50
-	hi = math.Ceil(hi/50) * 50
+	lo = math.Floor(slices.Min(vals)/50) * 50
+	hi = math.Ceil(slices.Max(vals)/50) * 50
 	if hi-lo < 100 {
 		mid := (hi + lo) / 2
 		lo, hi = math.Floor((mid-50)/50)*50, math.Ceil((mid+50)/50)*50
@@ -135,10 +123,7 @@ func sparkline(vals []float64, width int) string {
 	if len(vals) > width {
 		vals = vals[len(vals)-width:]
 	}
-	lo, hi := math.Inf(1), math.Inf(-1)
-	for _, v := range vals {
-		lo, hi = math.Min(lo, v), math.Max(hi, v)
-	}
+	lo, hi := slices.Min(vals), slices.Max(vals)
 	blocks := []rune("▁▂▃▄▅▆▇█")
 	var b strings.Builder
 	for _, v := range vals {
@@ -146,7 +131,7 @@ func sparkline(vals []float64, width int) string {
 		if hi > lo {
 			i = int((v - lo) / (hi - lo) * float64(len(blocks)-1))
 		}
-		b.WriteRune(blocks[min(max(i, 0), len(blocks)-1)])
+		b.WriteRune(blocks[i])
 	}
 	return b.String()
 }

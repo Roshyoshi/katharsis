@@ -1,4 +1,4 @@
-RTFM ▸ Silver ▸ Prefix Sums                                                                                                ◇ CAP_PREFIX_SUMS
+RTFM ▸ Silver ▸ Prefix Sums                                                                                                     ◇ CAP_PREFIX
 
 NAME
        prefix-sums - Introduction to Prefix Sums              ★★★★ very frequent
@@ -10,7 +10,7 @@ TRIAL                         unit: Easy → Hard, tags shown · integration: bl
        3  Subsequences Summing to Sevens    Easy       1450  2016 January, Silver P2
        4  Farmer John's Favorite Operation  Medium     1600
        +  2 blind integration doors · The Accumulator · 1350–1650
-       ◇  pass → ◆ CAP_PREFIX_SUMS: The Accumulator joins your route choices
+       ◇  pass → ◆ CAP_PREFIX: The Accumulator joins your route choices
 
 SEE ALSO
        requires  nothing

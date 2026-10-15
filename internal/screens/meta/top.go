@@ -18,12 +18,13 @@ import (
 // rating chart on the left, totals on the right), then a per-topic table
 // with a selection bar, then the function-key bar.
 type Top struct {
-	st     Stats
-	sortBy int // index into topSorts
-	rows   []TopicStat
-	sel    int
-	top    int
-	h      int // table rows at the last View, for paging
+	st      Stats
+	ratings []float64 // st.RatingHistory's ratings, oldest first
+	sortBy  int       // index into topSorts
+	rows    []TopicStat
+	sel     int
+	top     int
+	h       int // table rows at the last View, for paging
 }
 
 type topSort struct {
@@ -47,6 +48,9 @@ func clearRate(t TopicStat) float64 {
 
 func NewTop(st Stats) *Top {
 	t := &Top{st: st}
+	for _, p := range st.RatingHistory {
+		t.ratings = append(t.ratings, p.Rating)
+	}
 	t.sort()
 	return t
 }
@@ -130,10 +134,7 @@ func (t *Top) View(width, height int) string {
 }
 
 func (t *Top) chart(w, h int) []string {
-	vals := make([]float64, len(t.st.RatingHistory))
-	for i, p := range t.st.RatingHistory {
-		vals[i] = p.Rating
-	}
+	vals := t.ratings
 	title := cyan.Render("Rating ") + ratingStyle(t.st.Rating).Bold(true).Render(fmt.Sprintf("%.0f", t.st.Rating))
 	if len(vals) > 0 {
 		peak := slices.Max(vals)
@@ -167,19 +168,14 @@ func (t *Top) meters(w int) []string {
 	}, fmt.Sprint(ind+hint+ed))
 
 	delta := ""
-	if n := len(st.RatingHistory); n > 1 {
-		back := st.RatingHistory[max(n-11, 0)].Rating
-		d := st.Rating - back
+	if n := len(t.ratings); n > 1 {
+		d := st.Rating - t.ratings[max(n-11, 0)]
 		switch {
 		case d > 0:
 			delta = green.Render(fmt.Sprintf(" ▲%.0f", d))
 		case d < 0:
 			delta = red.Render(fmt.Sprintf(" ▼%.0f", -d))
 		}
-	}
-	vals := make([]float64, len(st.RatingHistory))
-	for i, p := range st.RatingHistory {
-		vals[i] = p.Rating
 	}
 
 	return []string{
@@ -190,7 +186,7 @@ func (t *Top) meters(w int) []string {
 		legend(w, ind, hint, ed),
 		label("Uptime") + val(uptime(st.Uptime)),
 		label("Bytes") + val(Bytes(st.LifetimeBytes)) + " lifetime, " + val(Bytes(st.Bank)) + " bank",
-		label("Trend") + cyan.Render(sparkline(vals, max(min(w-20, 30), 0))) + delta + faint.Render(" last 10"),
+		label("Trend") + cyan.Render(sparkline(t.ratings, max(min(w-20, 30), 0))) + delta + faint.Render(" last 10"),
 	}
 }
 
@@ -222,13 +218,13 @@ func meterBar(name string, w int, parts []barPart, text string) string {
 		total += p.n
 	}
 	var b strings.Builder
-	used := 0
-	for i, p := range parts {
+	sum, used := 0, 0
+	for _, p := range parts {
 		n := 0
 		if total > 0 {
 			// Round the running sum so the parts add up to the filled width.
-			end := (sumParts(parts[:i+1])*(inner-len(text)-1) + total/2) / total
-			n = end - used
+			sum += p.n
+			n = (sum*(inner-len(text)-1)+total/2)/total - used
 		}
 		b.WriteString(p.style.Render(strings.Repeat("|", n)))
 		used += n
@@ -236,14 +232,6 @@ func meterBar(name string, w int, parts []barPart, text string) string {
 	fill := inner - used - len(text)
 	return cyan.Render(name) + bold.Render("[") + b.String() + strings.Repeat(" ", max(fill, 0)) +
 		faint.Render(text) + bold.Render("]")
-}
-
-func sumParts(ps []barPart) int {
-	s := 0
-	for _, p := range ps {
-		s += p.n
-	}
-	return s
 }
 
 const (
@@ -254,7 +242,6 @@ const (
 
 func (t *Top) tableHeader(w int) string {
 	head := lipgloss.NewStyle().Background(lipgloss.Color("2")).Foreground(lipgloss.Color("0"))
-	sorted := lipgloss.NewStyle().Background(lipgloss.Color("6")).Foreground(lipgloss.Color("0"))
 	cells := []struct {
 		text, key string
 	}{
@@ -269,7 +256,7 @@ func (t *Top) tableHeader(w int) string {
 	for _, c := range cells {
 		st := head
 		if c.key != "" && c.key == topSorts[t.sortBy].name {
-			st = sorted
+			st = field
 		}
 		b.WriteString(st.Render(c.text))
 	}
@@ -293,7 +280,6 @@ func (t *Top) table(w, h int) []string {
 		maxAtt = max(maxAtt, r.Attempts)
 	}
 	barW := w - colTopic - 3*colNum - colRating - 4
-	selStyle := lipgloss.NewStyle().Background(lipgloss.Color("6")).Foreground(lipgloss.Color("0"))
 
 	var out []string
 	for i := t.top; i < len(t.rows) && i < t.top+h; i++ {
@@ -308,7 +294,7 @@ func (t *Top) table(w, h int) []string {
 			ratingStyle(r.Rating).Render(padLeft(fmt.Sprintf("%.0f", r.Rating), colRating)) +
 			"  " + topicBar(r, maxAtt, barW)
 		if i == t.sel {
-			line = selStyle.Render(pad(ansi.Strip(line), w))
+			line = field.Render(pad(ansi.Strip(line), w))
 		}
 		out = append(out, line)
 	}

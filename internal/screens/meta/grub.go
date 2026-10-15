@@ -2,6 +2,7 @@ package meta
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -34,12 +35,10 @@ type GrubConfig struct {
 }
 
 // Menu is a GRUB 2 style text menu: a boxed list with one highlighted
-// entry, submenus, and an `e` editor for boot entries. NewGrub builds the
-// start screen; NewUpsolve builds the upsolve picker in the same chrome.
+// entry, submenus, and an `e` editor for boot entries.
 type Menu struct {
 	stack   []*page // stack[0] is the root; submenus push
 	edit    *editor
-	escBack bool // esc at the root emits screens.Back (the picker)
 	presets []string
 	maxP    int
 	nameOf  func(int) string
@@ -78,6 +77,14 @@ func NewGrub(c GrubConfig) *Menu {
 	if now.IsZero() {
 		now = time.Now()
 	}
+	title := func(id catalog.ID) string {
+		if c.Title != nil {
+			if t := c.Title(id); t != "" {
+				return t
+			}
+		}
+		return string(id)
+	}
 	m := &Menu{
 		maxP:   min(max(c.Meta.Prestige, 0), game.MaxPrestige),
 		nameOf: c.PrestigeName,
@@ -108,23 +115,21 @@ func NewGrub(c GrubConfig) *Menu {
 		}
 		es = append(es, entry{label: "katharsis (custom preset…)", sub: sub})
 	}
-	ups := DueUpsolves(c.Meta, c.Title, now)
-	regs := 0
-	for _, u := range ups {
-		if u.CoreDump {
-			es = append(es, entry{
-				label: fmt.Sprintf("upsolve core dump: %s (%s)", u.Title, Bytes(u.Bytes)),
-				msg:   screens.Upsolve{Problem: string(u.Problem)},
-			})
-		} else {
-			regs++
-		}
-	}
-	if regs > 0 {
+	if d := c.Meta.CoreDump; d != nil {
 		es = append(es, entry{
-			label: fmt.Sprintf("regressions due: %d", regs),
-			sub:   upsolvePage(ups, now),
+			label: fmt.Sprintf("upsolve core dump: %s (%s)", title(d.Problem), Bytes(d.Bytes)),
+			msg:   screens.Upsolve{Problem: string(d.Problem)},
 		})
+	}
+	if regs := dueRegressions(c.Meta.Regressions, now); len(regs) > 0 {
+		sub := &page{pick: true}
+		for _, r := range regs {
+			sub.entries = append(sub.entries, entry{
+				label: fmt.Sprintf("regression: %s (due %s, stage %d)", title(r.Problem), ago(r.Due, now), r.Stage+1),
+				msg:   screens.Upsolve{Problem: string(r.Problem)},
+			})
+		}
+		es = append(es, entry{label: fmt.Sprintf("regressions due: %d", len(regs)), sub: sub})
 	}
 	es = append(es,
 		entry{label: "git log", msg: screens.OpenLog{}},
@@ -149,48 +154,24 @@ func NightlySeed(t time.Time) uint64 {
 	return seed
 }
 
-// NewUpsolve builds the upsolve picker: the core dump and due regressions
-// (see DueUpsolves). Enter emits screens.Upsolve; esc emits screens.Back.
-func NewUpsolve(items []UpsolveItem, now time.Time) *Menu {
-	if now.IsZero() {
-		now = time.Now()
-	}
-	return &Menu{stack: []*page{upsolvePage(items, now)}, escBack: true}
-}
-
-func upsolvePage(items []UpsolveItem, now time.Time) *page {
-	p := &page{pick: true}
-	for _, u := range items {
-		label := fmt.Sprintf("regression: %s (due %s, stage %d)", u.Title, ago(u.Due, now), u.Stage+1)
-		if u.CoreDump {
-			label = fmt.Sprintf("core dump: %s (%s, boot #%d)", u.Title, Bytes(u.Bytes), u.Boot)
+// dueRegressions is the regressions due at or before now, oldest due first.
+func dueRegressions(rs []game.Regression, now time.Time) []game.Regression {
+	var due []game.Regression
+	for _, r := range rs {
+		if !r.Due.After(now) {
+			due = append(due, r)
 		}
-		p.entries = append(p.entries, entry{label: label, msg: screens.Upsolve{Problem: string(u.Problem)}})
 	}
-	if len(p.entries) == 0 {
-		p.entries = []entry{{label: "nothing to upsolve"}}
-	}
-	return p
+	slices.SortStableFunc(due, func(a, b game.Regression) int { return a.Due.Compare(b.Due) })
+	return due
 }
 
 func (m *Menu) bootEntry(prestige int, preset string) entry {
-	return entry{
-		label: m.bootLabel(prestige, preset),
-		boot:  &screens.StartBoot{Prestige: prestige, Preset: preset},
-	}
-}
-
-func (m *Menu) bootLabel(prestige int, preset string) string {
-	s := fmt.Sprintf("katharsis, prestige %d", prestige)
-	if m.nameOf != nil {
-		if n := m.nameOf(prestige); n != "" {
-			s += " (" + n + ")"
-		}
-	}
+	label := "katharsis, " + prestigeText(prestige, m.nameOf)
 	if preset != standardPreset {
-		s += ", preset " + preset
+		label += ", preset " + preset
 	}
-	return s
+	return entry{label: label, boot: &screens.StartBoot{Prestige: prestige, Preset: preset}}
 }
 
 func (m *Menu) cur() *page { return m.stack[len(m.stack)-1] }
@@ -240,8 +221,6 @@ func (m *Menu) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	case "esc", "q", "left", "backspace":
 		if len(m.stack) > 1 {
 			m.stack = m.stack[:len(m.stack)-1]
-		} else if m.escBack {
-			return m, screens.Emit(screens.Back{})
 		}
 	}
 	return m, nil
@@ -392,12 +371,8 @@ func (m *Menu) View(width, height int) string {
 	for i := range foot {
 		foot[i] = strings.Repeat(" ", max((w-helpW)/2, 1)) + foot[i]
 	}
-	if m.status != "" {
-		foot = append(foot, "", center(faint.Render(m.status), w))
-	}
-
-	var head []string
-	head = append(head, center(grubVersion, w), "")
+	foot = append(foot, "", center(faint.Render(m.status), w))
+	head := []string{center(grubVersion, w), ""}
 
 	// The box takes what is left. Drop the help, then the header, when the
 	// terminal is too short to hold them and a few entries.
@@ -487,10 +462,6 @@ func (m *Menu) menuLines(inner, rows int) []string {
 		e := p.entries[i]
 		if i == p.sel {
 			out = append(out, reverse.Render(pad("*"+e.label, inner)))
-			continue
-		}
-		if e.msg == nil && e.boot == nil && e.sub == nil {
-			out = append(out, faint.Render(" "+e.label))
 			continue
 		}
 		out = append(out, " "+e.label)

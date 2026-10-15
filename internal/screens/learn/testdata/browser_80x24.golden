@@ -1,24 +1,24 @@
 RTFM(7)                  USACO Guide · CC BY-NC-SA 4.0                   RTFM(7)
-       MODULE                               CAPABILITY             TRIAL
-▾ GENERAL                                                       1 module
+       MODULE                            BIOME               CAPABILITY    TRIAL
+▾ GENERAL                                                               1 module
    ▾ Language-Specific
-       Fast Input & Output                                         1+3
-▾ BRONZE                                                        1 module
+       Fast Input & Output               Userland                          1+3
+▾ BRONZE                                                                1 module
    ▾ Additional
-       Casework                                                    4
-▾ SILVER                                               2 modules · ◆ 1/2
+       Casework                          Userland                          4
+▾ SILVER                                                       2 modules · ◆ 1/2
    ▾ Prefix Sums
-       Introduction to Prefix Sums          ◇ CAP_PREFIX_SUMS      4
+       Introduction to Prefix Sums       The Accumulator     ◇ CAP_PREFIX  4
    ▾ Sorting & Searching
-       Two Pointers                         ◆ CAP_TWO_POINTERS     4
-▾ GOLD                                                  1 module · ◆ 0/1
+       Two Pointers                      The Sliding Window  ◆ CAP_TWOPTR  4
+▾ GOLD                                                          1 module · ◆ 0/1
    ▾ Additional Topics
-       (Optional) Hashmaps                  ◇ CAP_DATA_STRUCTURES  1+3
-▾ PLATINUM                                              1 module · ◆ 0/1
+       (Optional) Hashmaps               The Heap            ◇ CAP_DS      1+3
+▾ PLATINUM                                                              1 module
    ▾ Misc. Topics
-       Matrix Exponentiation                ◇ CAP_MATH             1+3
-▾ ADVANCED                                              1 module · ◆ 0/1
+       Matrix Exponentiation             The ALU                           1+3
+▾ ADVANCED                                                      1 module · ◆ 0/1
    ▾ Data Structures
-       Counting Minimums with Segment Tree  ◇ CAP_DATA_STRUCTURES  0+4
+       Counting Minimums with Segment …  The Heap            ◇ CAP_DS      0+4
 
- rtfm(7) line 1/30 · ◆ 1/4 held       enter open · tab fold · / filter · q quit
+ rtfm(7) line 1/30 · ◆ 1/3 held       enter open · tab fold · / filter · q quit

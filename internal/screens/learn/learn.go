@@ -40,10 +40,10 @@ type Lookup = func(catalog.ID) (catalog.Problem, bool)
 // SPONGE: read this from the trial rules once the engine has them, so the
 //         plan cannot drift from what a trial boot plays.
 
-// IntegrationDoors is how many blind doors follow a trial's unit (DESIGN.md
+// integrationDoors is how many blind doors follow a trial's unit (DESIGN.md
 // "Learn mode": 2 blind doors at the same difficulty). The engine owns the
 // real number; this is only what the plan says.
-const IntegrationDoors = 2
+const integrationDoors = 2
 
 // entry is one module as both screens show it. The trial is built once, up
 // front: its unit size and capability appear on every browser row.
@@ -60,8 +60,8 @@ func newEntry(m guide.Module, judgeable Judgeable) entry {
 	return entry{mod: m, trial: t, biome: flavor.BiomeName(t.IntegTopic)}
 }
 
-// short is how many unit doors the catalog has to top up (DESIGN.md D12:
-// short units are topped up by topic and band).
+// short is how many unit doors the engine tops up from the catalog, by the
+// integration topic and band.
 func (e entry) short() int { return max(guide.DefaultUnitSize-len(e.trial.Unit), 0) }
 
 // capSet is the capabilities the player holds.

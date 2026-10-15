@@ -1,8 +1,8 @@
 // demo-meta shows every out-of-boot screen with fixture data so a human can
-// eyeball them: the GRUB menu, git log, top, the upsolve picker and the
-// reader. It routes the screens' intents the way the app will (git log and
-// top push, q/esc pop) and prints anything it cannot act on, a StartBoot or
-// an OpenURL, in the status line instead.
+// eyeball them: the GRUB menu, git log, top and the reader. It routes the
+// screens' intents the way the app will (git log and top push, q/esc pop)
+// and prints anything it cannot act on, a StartBoot or an OpenURL, in the
+// status line instead.
 //
 //	go run ./cmd/demo-meta                 # start at GRUB
 //	go run ./cmd/demo-meta -screen top     # start somewhere else
@@ -35,7 +35,6 @@ var stops = []struct {
 	{"grub", func() screens.Screen { return grub() }},
 	{"log", func() screens.Screen { return meta.NewLog(fixture.Boots(), nil) }},
 	{"top", func() screens.Screen { return meta.NewTop(fixture.Stats()) }},
-	{"upsolve", func() screens.Screen { return meta.NewUpsolve(fixture.Upsolves(), fixture.Now) }},
 	{"statement", func() screens.Screen { return page(fixture.Statement) }},
 	{"editorial", func() screens.Screen { return page(fixture.Editorial) }},
 	{"learn", func() screens.Screen { return page(fixture.Learn) }},
@@ -145,7 +144,7 @@ func (m *model) View() tea.View {
 }
 
 func main() {
-	start := flag.String("screen", "grub", "first screen: grub, log, top, upsolve, statement, editorial, learn")
+	start := flag.String("screen", "grub", "first screen: grub, log, top, statement, editorial, learn")
 	status := flag.Bool("status", true, "show the demo's status line (screens get one row less)")
 	flag.Parse()
 

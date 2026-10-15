@@ -1,4 +1,4 @@
-RTFM ▸ Silver ▸ Sorting & Searching                           ◆ CAP_TWO_POINTERS
+RTFM ▸ Silver ▸ Sorting & Searching                                 ◆ CAP_TWOPTR
 
 NAME
        two-pointers - Two Pointers                             ★★☆☆ not frequent
@@ -11,7 +11,7 @@ TRIAL                         unit: Easy → Hard, tags shown · integration: bl
        3  Sleepy Cow Herding  Medium
        4  Cow Checkups        Hard
        +  2 blind integration doors · The Sliding Window · 1350–1650
-       ◆  CAP_TWO_POINTERS held: The Sliding Window is already on your routes
+       ◆  CAP_TWOPTR held: The Sliding Window is already on your routes
 
 SEE ALSO
        requires  intro-sorting

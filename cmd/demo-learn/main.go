@@ -128,7 +128,7 @@ func main() {
 		os.Exit(1)
 	}
 	var meta game.Meta
-	judgeable, lookup := rtfm.Judgeable(fixture.Judgeable), rtfm.Lookup(fixture.Lookup)
+	judgeable, lookup := fixture.Judgeable, fixture.Lookup
 	if *dir == fixture.GuideDir() {
 		meta = fixture.Meta()
 	}

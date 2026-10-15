@@ -31,6 +31,12 @@ type page struct {
 
 func pages() []page {
 	std := fixture.Meta
+	crash := func(name string, cause game.Outcome) page {
+		return page{name,
+			func() *game.State { return fixture.Crash(cause) },
+			func() game.Meta { return fixture.CrashMeta(cause) },
+			func(e boot.Env) screens.Screen { return boot.NewCrash(e) }}
+	}
 	return []page{
 		{"route", fixture.Route, std, func(e boot.Env) screens.Screen { return boot.NewRoute(e) }},
 		{"route, three offers", fixture.Route3, std, func(e boot.Env) screens.Screen { return boot.NewRoute(e) }},
@@ -40,12 +46,9 @@ func pages() []page {
 		{"map", fixture.Doors, std, func(e boot.Env) screens.Screen { return boot.NewMap(e) }},
 		{"merge window", fixture.Merge, std, func(e boot.Env) screens.Screen { return boot.NewMerge(e) }},
 		{"upgrade after a clear", fixture.Upgrade, std, func(e boot.Env) screens.Screen { return boot.NewUpgradeScreen(e) }},
-		{"crash, timer", func() *game.State { return fixture.Crash(game.TimedOut) }, std,
-			func(e boot.Env) screens.Screen { return boot.NewCrash(e) }},
-		{"crash, out of lives", func() *game.State { return fixture.Crash(game.OutOfLives) }, std,
-			func(e boot.Env) screens.Screen { return boot.NewCrash(e) }},
-		{"crash, :q!", func() *game.State { return fixture.Crash(game.GaveUp) }, std,
-			func(e boot.Env) screens.Screen { return boot.NewCrash(e) }},
+		crash("crash, timer", game.TimedOut),
+		crash("crash, out of lives", game.OutOfLives),
+		crash("crash, :q!", game.GaveUp),
 		{"cleared", fixture.Cleared, fixture.ClearedMeta, func(e boot.Env) screens.Screen { return boot.NewCleared(e) }},
 		{"HUD bar", fixture.Problem, std, func(e boot.Env) screens.Screen { return &hudPage{env: e} }},
 	}
@@ -156,10 +159,11 @@ var (
 	paneTitle = lipgloss.NewStyle().Faint(true)
 )
 
-// bar is HUDBar for st in a pane w cells wide, the HUD's own width.
-func (h *hudPage) bar(st *game.State, w int, title string) string {
+// pane is HUDBar for st at w columns, the HUD pane's width, in a box.
+func (h *hudPage) pane(st *game.State, w int, title string) string {
 	p, _ := fixture.Lookup(st.Current.Door.Problem)
-	return paneStyle.Width(w).Render(paneTitle.Render(title) + "\n" + boot.HUDBar(st, p, h.env.Now, w-2))
+	title = paneTitle.Render(fmt.Sprintf("%s · %d cols", title, w))
+	return paneStyle.Width(w + 2).Render(title + "\n" + boot.HUDBar(st, p, h.env.Now, w))
 }
 
 func (h *hudPage) View(width, height int) string {
@@ -173,14 +177,12 @@ func (h *hudPage) View(width, height int) string {
 	boss.Current.Deadline = fixture.Now.Add(9 * time.Minute)
 
 	panes := []string{
-		h.bar(open, 46, "open door · 48 cols"),
-		h.bar(crit, 37, "blind+cursed · 35 cols"),
-		h.bar(boss, 62, "boss, 2 quacks · 60 cols"),
+		h.pane(open, 48, "open door"),
+		h.pane(crit, 35, "blind+cursed"),
+		h.pane(boss, 60, "boss, 2 quacks"),
 	}
-	var s string
-	if width >= 46+37+62+4 {
-		s = lipgloss.JoinHorizontal(lipgloss.Top, panes[0], "  ", panes[1], "  ", panes[2])
-	} else {
+	s := lipgloss.JoinHorizontal(lipgloss.Top, panes[0], "  ", panes[1], "  ", panes[2])
+	if lipgloss.Width(s) > width {
 		s = lipgloss.JoinVertical(lipgloss.Left, panes...)
 	}
 	ls := strings.Split(s, "\n")

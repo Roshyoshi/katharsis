@@ -19,8 +19,8 @@ import (
 // Now is the moment every fixture is rendered at.
 var Now = time.Date(2026, 10, 14, 20, 0, 0, 0, time.UTC)
 
-// Presets are custom rules presets beside "standard".
-var Presets = []string{"hardcore", "speedrun", "blind"}
+// presets are custom rules presets beside "standard".
+var presets = []string{"hardcore", "speedrun", "blind"}
 
 var titles = map[catalog.ID]string{
 	"usaco:1014": "Bovine Shuffle",
@@ -37,9 +37,6 @@ var titles = map[catalog.ID]string{
 	"usaco:920":  "Social Distancing",
 }
 
-// Title resolves fixture problem titles.
-func Title(id catalog.ID) string { return titles[id] }
-
 // PrestigeName pins prestige labels so goldens do not follow flavor edits.
 func PrestigeName(p int) string {
 	names := []string{"Bronze", "Silver", "Gold", "Platinum", "Advanced"}
@@ -48,9 +45,6 @@ func PrestigeName(p int) string {
 	}
 	return names[p]
 }
-
-// NoBanner keeps flavor's GRUB banner out of goldens.
-func NoBanner(string) string { return "" }
 
 // Meta is a player at prestige 2 with a core dump from boot #42 and two of
 // three regressions due.
@@ -77,11 +71,11 @@ func Meta() game.Meta {
 func GrubConfig() meta.GrubConfig {
 	return meta.GrubConfig{
 		Meta:         Meta(),
-		Presets:      Presets,
-		Title:        Title,
+		Presets:      presets,
+		Title:        func(id catalog.ID) string { return titles[id] },
 		Now:          Now,
 		PrestigeName: PrestigeName,
-		Banner:       NoBanner,
+		Banner:       func(string) string { return "" }, // flavor's art stays out of goldens
 	}
 }
 
@@ -234,9 +228,6 @@ func Stats() meta.Stats {
 		Bank:          1331,
 	}
 }
-
-// Upsolves is the picker's list for Meta at Now.
-func Upsolves() []meta.UpsolveItem { return meta.DueUpsolves(Meta(), Title, Now) }
 
 // Doc is a reader page as plain strings, so this package need not import
 // the reader.

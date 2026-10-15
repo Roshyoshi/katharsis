@@ -1,8 +1,8 @@
 RTFM(7)                                                USACO Guide · CC BY-NC-SA 4.0                                                 RTFM(7)
-       MODULE                               BIOME               CAPABILITY             TRIAL          FREQ
-▾ SILVER                                                                                 2 modules · ◆ 1/2
+       MODULE                               BIOME               CAPABILITY    TRIAL          FREQ
+▾ SILVER                                                                        2 modules · ◆ 1/2
    ▾ Sorting & Searching
-       Two Pointers                         The Sliding Window  ◆ CAP_TWO_POINTERS     4 doors        ★★☆☆
+       Two Pointers                         The Sliding Window  ◆ CAP_TWOPTR  4 doors        ★★☆☆
 
 COLOPHON
        Learn mode content is adapted from the USACO Guide (https://usaco.guide,
@@ -12,7 +12,7 @@ COLOPHON
        converted from MDX to Markdown and adapted for a terminal; the adapted
        content is shared under the same license.
 
-katharsis                                                                                          RTFM(7)
+katharsis                                                                                 RTFM(7)
 
 
 

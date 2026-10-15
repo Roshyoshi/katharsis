@@ -245,18 +245,12 @@ func outcomeText(b BootRow, room int) string {
 // details is the expansion: a summary line, then one line per attempt.
 func (l *Log) details(b BootRow, w int) []string {
 	gutter := faint.Render("│") + "   "
-	prestige := fmt.Sprintf("prestige %d", b.Prestige)
-	if l.nameOf != nil {
-		if n := l.nameOf(b.Prestige); n != "" {
-			prestige += " (" + n + ")"
-		}
-	}
 	preset := b.Preset
 	if preset == "" {
 		preset = standardPreset
 	}
 	sum := fmt.Sprintf("started %s · seed %x · preset %s · %s · banked %s",
-		b.Started.Format("2006-01-02 15:04"), b.Seed, preset, prestige, Bytes(b.Banked))
+		b.Started.Format("2006-01-02 15:04"), b.Seed, preset, prestigeText(b.Prestige, l.nameOf), Bytes(b.Banked))
 	if b.Dumped > 0 {
 		sum += " · dumped " + Bytes(b.Dumped)
 	}
@@ -264,8 +258,8 @@ func (l *Log) details(b BootRow, w int) []string {
 		sum += " · on " + b.Problem
 	}
 	var out []string
-	for _, l := range strings.Split(ansi.Wordwrap(sum, max(w-4, 10), ""), "\n") {
-		out = append(out, gutter+faint.Render(l))
+	for _, line := range strings.Split(ansi.Wordwrap(sum, max(w-4, 10), ""), "\n") {
+		out = append(out, gutter+faint.Render(line))
 	}
 	if len(b.Attempts) == 0 {
 		return append(out, gutter+faint.Render("no doors opened"))
