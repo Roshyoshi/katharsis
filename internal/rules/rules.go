@@ -149,6 +149,17 @@ type Rules struct {
 	DaemonOffers  int `toml:"daemon_offers"`
 	MaxDaemons    int `toml:"max_daemons"`
 
+	// ---- merge window spending --------------------------------------------
+
+	// What a merge window sells for uncommitted bytes (D25): spent on this
+	// boot, where committing would bank them for packages at GRUB. A price
+	// of 0 takes the item off sale. Prices are bytes, so a preset that
+	// scales base_bytes should scale them too: a cleared door pays about
+	// BaseBytes/2 in Userland and BaseBytes/1.4 in the mid biome.
+	FsckPrice int64 `toml:"fsck_price"` // +1 life, up to MaxLives
+	DupPrice  int64 `toml:"dup_price"`  // +1 duck
+	ShufPrice int64 `toml:"shuf_price"` // a re-roll of a room's doors, kept until used
+
 	// ---- daemons -----------------------------------------------------------
 
 	ForkDoors     int     `toml:"fork_doors"`      // doors per room after an AC
@@ -365,6 +376,10 @@ func Standard() Rules {
 		DaemonOffers:  3,
 		MaxDaemons:    3,
 
+		FsckPrice: 64,
+		DupPrice:  48,
+		ShufPrice: 32,
+
 		ForkDoors:     4,
 		NiceTimerFrac: 0.2,
 		NiceLifeCost:  2,
@@ -501,6 +516,9 @@ func (r Rules) Validate() error {
 	}
 	if r.OnExpire != "" && r.OnExpire != ExpireCrash && r.OnExpire != ExpireOvertime {
 		return fmt.Errorf("rules %q: on_expire %q is not %q or %q", r.Name, r.OnExpire, ExpireCrash, ExpireOvertime)
+	}
+	if r.FsckPrice < 0 || r.DupPrice < 0 || r.ShufPrice < 0 {
+		return fmt.Errorf("rules %q: need fsck_price, dup_price, shuf_price >= 0", r.Name)
 	}
 	if r.MasteryAttempts < 0 {
 		return fmt.Errorf("rules %q: need mastery_attempts >= 0", r.Name)

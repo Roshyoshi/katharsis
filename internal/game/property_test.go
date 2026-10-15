@@ -39,6 +39,7 @@ type checker struct {
 	dumpLost  int64  // what a crash must destroy: the dump's bytes, if any
 	phase     game.Phase
 	lives     int
+	spent     int64
 }
 
 // newChecker is called right after NewBoot or NewTrial, before the first
@@ -76,8 +77,8 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	if s.Lives == 0 && s.Phase != game.PhaseCrashed {
 		fail("no lives but not crashed")
 	}
-	// Only an ECC pick gives a life back, one at a time.
-	if gain := s.Lives - c.lives; gain > 0 && (gain != 1 || a != game.PickUpgrade{Upgrade: game.ECC}) {
+	// Only an ECC pick or an fsck gives a life back, one at a time.
+	if gain := s.Lives - c.lives; gain > 0 && (gain != 1 || a != game.PickUpgrade{Upgrade: game.ECC} && a != game.Spend{Item: game.Fsck}) {
 		fail("lives %d -> %d", c.lives, s.Lives)
 	}
 	c.lives = s.Lives
@@ -233,8 +234,16 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 			fail("trial cleared but not passed")
 		}
 	}
-	if s.Earned() != s.Committed+s.Uncommitted+lost {
-		fail("earned %d != committed %d + uncommitted %d + lost %d", s.Earned(), s.Committed, s.Uncommitted, lost)
+	if s.Earned() != s.Committed+s.Uncommitted+s.Spent+lost {
+		fail("earned %d != committed %d + uncommitted %d + spent %d + lost %d", s.Earned(), s.Committed, s.Uncommitted, s.Spent, lost)
+	}
+	// Only a Spend spends, by the item's price, and a trial sells nothing.
+	if sp, ok := a.(game.Spend); s.Spent != c.spent && (!ok || s.Trial != nil || s.Spent-c.spent != s.Price(sp.Item)) {
+		fail("spent %d -> %d", c.spent, s.Spent)
+	}
+	c.spent = s.Spent
+	if s.Rerolls < 0 {
+		fail("%d shufs", s.Rerolls)
 	}
 	if m.Bank != c.bank0+s.Committed || m.LifetimeBytes != c.lifetime0+s.Earned() {
 		fail("bank %d lifetime %d, want %d + committed %d and %d + earned %d",
@@ -255,7 +264,7 @@ type fuzzer struct {
 func (f *fuzzer) action(s *game.State) game.Action {
 	r := f.rng
 	if r.IntN(4) == 0 { // nonsense: any action, any index
-		switch r.IntN(12) {
+		switch r.IntN(14) {
 		case 0:
 			return game.ChooseRoute{Index: r.IntN(5) - 1}
 		case 1:
@@ -281,6 +290,10 @@ func (f *fuzzer) action(s *game.State) game.Action {
 				return game.GiveUp{}
 			}
 			return game.Tick{}
+		case 11:
+			return game.Spend{Item: []game.Item{game.Fsck, game.Dup, game.Shuf, "bogus"}[r.IntN(4)]}
+		case 12:
+			return game.Reroll{}
 		}
 		return nil
 	}
@@ -290,9 +303,14 @@ func (f *fuzzer) action(s *game.State) game.Action {
 	case s.Phase == game.PhaseRoute:
 		return game.ChooseRoute{Index: r.IntN(len(s.Biomes[s.Biome].Offers))}
 	case s.Phase == game.PhaseDoors:
+		if s.Rerolls > 0 && r.IntN(4) == 0 {
+			return game.Reroll{}
+		}
 		return game.ChooseDoor{Index: r.IntN(len(s.Doors))}
 	case s.Phase == game.PhaseMerge:
 		switch {
+		case r.IntN(3) == 0:
+			return game.Spend{Item: game.AllItems[r.IntN(len(game.AllItems))]}
 		case r.IntN(2) == 0 && s.Uncommitted > 0:
 			return game.Commit{}
 		case len(s.DaemonOffers) > 0 && r.IntN(2) == 0:
@@ -449,22 +467,31 @@ func TestFuzzBoots(t *testing.T) {
 			m := &game.Meta{Prestige: game.MaxPrestige}
 			f := &fuzzer{rng: rand.New(rand.NewPCG(11, 12)), now: t0}
 			ends := map[game.Phase]int{}
+			bought := map[string]int{} // accepted actions by type
 			boots := 3000
 			if testing.Short() {
 				boots = 300
 			}
 			for i := range boots {
-				s, _ := fuzzBoot(t, r, m, ps, f, i%10 == 0)
+				s, moves := fuzzBoot(t, r, m, ps, f, i%10 == 0)
 				ends[s.Phase]++
+				for _, mv := range moves {
+					if !mv.Err {
+						bought[fmt.Sprintf("%T", mv.A)]++
+					}
+				}
 				if f.rng.IntN(3) == 0 && m.CoreDump != nil {
 					game.Upsolve(m, m.CoreDump.Problem, game.Editorial, time.Hour, f.now)
 				}
 				f.now = f.now.Add(time.Duration(f.rng.IntN(int(72 * time.Hour))))
 			}
-			t.Logf("%s: boot ends %v, meta rating %.0f, %d solves, %d regressions",
-				name, ends, m.Rating, len(m.Solves), len(m.Regressions))
+			t.Logf("%s: boot ends %v, meta rating %.0f, %d solves, %d regressions, %d spends, %d shufs",
+				name, ends, m.Rating, len(m.Solves), len(m.Regressions), bought["game.Spend"], bought["game.Reroll"])
 			if ends[game.PhaseCleared] == 0 || ends[game.PhaseCrashed] == 0 {
 				t.Errorf("ends %v: the fuzzer should reach both", ends)
+			}
+			if bought["game.Spend"] == 0 || bought["game.Reroll"] == 0 {
+				t.Errorf("accepted %v: the fuzzer should buy and use items", bought)
 			}
 		})
 	}

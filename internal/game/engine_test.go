@@ -1205,7 +1205,8 @@ func TestInvalidActions(t *testing.T) {
 		game.GiveUp{}, game.SubmitResult{Verdict: "AC"}, game.SubmitResult{Verdict: "WA"},
 		game.Commit{}, game.PickUpgrade{Upgrade: game.Overclock}, game.PickUpgrade{Upgrade: "bogus"},
 		game.PickDaemon{Daemon: game.Fork}, game.PickDaemon{Daemon: "bogus"}, game.LeaveMerge{},
-		game.Link{}, game.Link{Libs: []string{"nope"}}, nil,
+		game.Link{}, game.Link{Libs: []string{"nope"}}, game.Spend{Item: game.Dup}, game.Spend{Item: game.Fsck},
+		game.Spend{Item: "bogus"}, game.Reroll{}, nil,
 	}
 	setups := []struct {
 		phase string
@@ -1238,6 +1239,8 @@ func TestInvalidActions(t *testing.T) {
 				return true
 			case game.PickDaemon:
 				return slices.Contains(h.s.DaemonOffers, a.Daemon)
+			case game.Spend:
+				return h.s.CanSpend(a.Item) == nil
 			}
 			return false
 		}},

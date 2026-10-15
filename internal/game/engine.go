@@ -137,6 +137,10 @@ func Step(s *State, meta *Meta, pool []catalog.Problem, a Action, now time.Time)
 		err = e.leaveMerge()
 	case Link:
 		err = e.link(a.Libs)
+	case Spend:
+		err = e.spend(a.Item)
+	case Reroll:
+		err = e.reroll()
 	default:
 		err = invalid("unknown action %T", a)
 	}
@@ -715,7 +719,7 @@ func (e *engine) finish() {
 // ---- small helpers ---------------------------------------------------------
 
 // Earned is every byte cleared doors paid this boot: Committed + Uncommitted
-// + the crash's Lost, always.
+// + Spent + the crash's Lost, always.
 func (s *State) Earned() int64 {
 	var n int64
 	for _, a := range s.History {

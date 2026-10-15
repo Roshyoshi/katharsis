@@ -40,6 +40,14 @@ type Player struct {
 	BlindCost   float64       // effective rating lost when tags are hidden
 	UpsolveProb float64       // chance it upsolves the crash between boots
 	Overhead    time.Duration // clock time per choice outside a door
+
+	// Spend has the model buy in merge windows before it commits: an fsck
+	// for each life lost below the boot's start, a dup when out of ducks,
+	// and a shuf to hold while rooms are left before the boss, which it
+	// spends on a room whose best door it expects to clear RerollMargin
+	// below the biome's target or worse.
+	Spend        bool
+	RerollMargin float64
 }
 
 // DefaultPlayer is the model the reports in this package's tests use.
@@ -55,6 +63,9 @@ func DefaultPlayer(rating float64) Player {
 		BlindCost:   25,
 		UpsolveProb: 0.6,
 		Overhead:    time.Minute,
+
+		Spend:        true,
+		RerollMargin: 0.2,
 	}
 }
 
@@ -115,9 +126,10 @@ type Report struct {
 
 	MeanUptime, MeanClearUptime, MeanCrashUptime time.Duration
 
-	MeanEarned, MeanCommitted, MeanLost float64 // bytes per boot
-	Recovered                           int64   // core-dump bytes upsolved back
-	DumpsLost                           int64   // core-dump bytes crashed away
+	MeanEarned, MeanCommitted, MeanSpent, MeanLost float64 // bytes per boot
+	Rerolls                                        int     // shufs used
+	Recovered                                      int64   // core-dump bytes upsolved back
+	DumpsLost                                      int64   // core-dump bytes crashed away
 
 	Prestige   int     // highest unlocked at the end
 	PrestigeAt []int   // boot that unlocked level i+1, 0 if never
@@ -175,13 +187,14 @@ func Run(c Config) Report {
 			main.rep.Errors++
 			break
 		}
-		b := &boot{c: &c, p: c.Player, s: s, m: m, rng: rng, clock: clock, sums: sm}
+		b := &boot{c: &c, p: c.Player, s: s, m: m, rng: rng, clock: clock, sums: sm, lives0: s.Lives}
 		b.play()
 
 		rep.Boots++
 		rep.ByPrestige[p].Boots++
 		sm.earned += s.Earned()
 		sm.committed += s.Committed
+		sm.spent += s.Spent
 		switch s.Phase {
 		case game.PhaseCleared:
 			rep.FullClears++
@@ -235,10 +248,10 @@ func Run(c Config) Report {
 
 // sums accumulates one report.
 type sums struct {
-	rep                     Report
-	timerSum                []time.Duration
-	upClear, upCrash        time.Duration
-	earned, committed, lost int64
+	rep                            Report
+	timerSum                       []time.Duration
+	upClear, upCrash               time.Duration
+	earned, committed, spent, lost int64
 }
 
 func newSums(nb int) *sums {
@@ -267,6 +280,7 @@ func (sm *sums) finish() Report {
 		rep.MeanEarned = float64(sm.earned) / float64(n)
 		rep.MeanCommitted = float64(sm.committed) / float64(n)
 		rep.MeanLost = float64(sm.lost) / float64(n)
+		rep.MeanSpent = float64(sm.spent) / float64(n)
 		rep.MeanUptime = (sm.upClear + sm.upCrash) / time.Duration(n)
 	}
 	if rep.FullClears > 0 {
@@ -294,6 +308,7 @@ type boot struct {
 	sums  *sums
 
 	opened, off int // doors opened this boot, and how many off target
+	lives0      int // lives at the boot's start
 }
 
 func (b *boot) step(a game.Action) {
@@ -319,6 +334,9 @@ func (b *boot) play() {
 			b.step(game.PickUpgrade{Upgrade: b.upgrade()})
 		case s.Phase == game.PhaseRoute:
 			b.step(game.ChooseRoute{Index: b.rng.IntN(len(s.Biomes[s.Biome].Offers))})
+		case s.Phase == game.PhaseDoors && b.reroll():
+			b.sums.rep.Rerolls++
+			b.step(game.Reroll{})
 		case s.Phase == game.PhaseDoors:
 			i := b.door()
 			d := s.Doors[i]
@@ -342,6 +360,8 @@ func (b *boot) play() {
 			}
 		case s.Phase == game.PhaseMerge:
 			switch {
+			case b.buy() != "":
+				b.step(game.Spend{Item: b.buy()})
 			case s.Uncommitted > 0:
 				b.step(game.Commit{})
 			case len(s.DaemonOffers) > 0:
@@ -389,6 +409,43 @@ func (b *boot) door() int {
 		}
 	}
 	return bi
+}
+
+// buy is what the model buys next in a merge window, "" for nothing.
+func (b *boot) buy() game.Item {
+	s := b.s
+	if !b.p.Spend {
+		return ""
+	}
+	bossNext := s.Biome+1 < len(s.Biomes) && s.Biomes[s.Biome+1].Kind == rules.Boss
+	for _, want := range []struct {
+		it game.Item
+		ok bool
+	}{
+		{game.Fsck, s.Lives < b.lives0},
+		{game.Dup, s.Ducks == 0},
+		{game.Shuf, s.Rerolls == 0 && !bossNext},
+	} {
+		if want.ok && s.CanSpend(want.it) == nil {
+			return want.it
+		}
+	}
+	return ""
+}
+
+// reroll reports whether the model spends a shuf on the room on offer: it
+// holds one and expects to clear the best door RerollMargin below the
+// biome's target or worse.
+func (b *boot) reroll() bool {
+	s := b.s
+	if s.Rerolls == 0 || s.PendingUpgrade || s.Biomes[s.Biome].Kind == rules.Boss {
+		return false
+	}
+	best := 0.0
+	for _, d := range s.Doors {
+		best = max(best, b.clearP(d))
+	}
+	return best < s.Rules.Biomes[s.Biome].TargetClear-b.p.RerollMargin
 }
 
 func (b *boot) upgrade() game.Upgrade {
@@ -552,8 +609,8 @@ func (r Report) String() string {
 	}
 	fmt.Fprintf(&w, "\nuptime: mean %s, clear %s, crash %s\n", r.MeanUptime.Round(time.Minute),
 		r.MeanClearUptime.Round(time.Minute), r.MeanCrashUptime.Round(time.Minute))
-	fmt.Fprintf(&w, "bytes/boot: earned %.0f, committed %.0f, lost %.0f; recovered %d, dumps lost %d\n",
-		r.MeanEarned, r.MeanCommitted, r.MeanLost, r.Recovered, r.DumpsLost)
+	fmt.Fprintf(&w, "bytes/boot: earned %.0f, committed %.0f, spent %.0f, lost %.0f; recovered %d, dumps lost %d; %d shufs used\n",
+		r.MeanEarned, r.MeanCommitted, r.MeanSpent, r.MeanLost, r.Recovered, r.DumpsLost, r.Rerolls)
 	fmt.Fprintf(&w, "prestige %d, unlocked at boots %v; by prestige:", r.Prestige, r.PrestigeAt)
 	for i, t := range r.ByPrestige {
 		if t.Boots > 0 {

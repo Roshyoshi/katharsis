@@ -15,7 +15,8 @@ import (
 
 // Doors is the room's choice: one card per door with everything that bears
 // on the risk (rating, timer, modifiers) and the reward. enter emits
-// game.ChooseDoor; m flips to the boot map and back.
+// game.ChooseDoor; s spends a shuf (game.Reroll) when one is held; m flips
+// to the boot map and back.
 type Doors struct {
 	env     Env
 	sel     int
@@ -50,6 +51,10 @@ func (d *Doors) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		if n > 0 {
 			return d, screens.Emit(game.ChooseDoor{Index: d.sel})
 		}
+	case "s":
+		if d.canShuf() {
+			return d, screens.Emit(game.Reroll{})
+		}
 	case "m":
 		d.showMap = true
 	default:
@@ -69,7 +74,11 @@ func (d *Doors) View(width, height int) string {
 	if n > 1 {
 		keys = append(keys, "←/→", "select", fmt.Sprintf("1-%d", n), "jump")
 	}
-	footer := hint(append(keys, "enter", "open door", "m", "map")...)
+	keys = append(keys, "enter", "open door")
+	if d.canShuf() {
+		keys = append(keys, "s", fmt.Sprintf("shuf (%d)", st.Rerolls))
+	}
+	footer := hint(append(keys, "m", "map")...)
 
 	// The cards and the map sit centered between header and footer, the
 	// way a game frames a choice, with at least one blank line under the
@@ -80,6 +89,13 @@ func (d *Doors) View(width, height int) string {
 		block = append(append(block, ""), m...)
 	}
 	return layout(width, height, centered(head, block, height), footer)
+}
+
+// canShuf reports whether s re-rolls the room: a shuf is held and the room
+// is not the boss's, which the engine refuses.
+func (d *Doors) canShuf() bool {
+	st := d.env.State
+	return st.Rerolls > 0 && st.Biomes[st.Biome].Kind != rules.Boss
 }
 
 func (d *Doors) where() string {

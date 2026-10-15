@@ -159,11 +159,25 @@ func (e *engine) roomSize(b *BiomeState) int {
 
 // rollRoom offers the current room's doors. fresh is false for the re-roll
 // after a retreat, which never injects the regression door again.
+func (e *engine) rollRoom(fresh bool) {
+	doors := e.drawDoors(nil)
+	// A regression door needs a judgeable problem, so the room has a door
+	// for it to replace.
+	if fresh && e.s.Trial == nil {
+		if d, ok := e.regressionDoor(e.s.Rules.Biomes[e.s.Biome], doors); ok {
+			doors[len(doors)-1] = d
+		}
+	}
+	e.offer(doors)
+}
+
+// drawDoors draws the current room's doors, never none, and none of skip
+// while the pool has others.
 //
 // When everything near the player is used up, eligibility relaxes in steps
 // (allow independently solved, then anything judgeable) rather than leave a
 // room empty: a boot can always continue while one problem is judgeable.
-func (e *engine) rollRoom(fresh bool) {
+func (e *engine) drawDoors(skip []Door) []Door {
 	s := e.s
 	b := &s.Biomes[s.Biome]
 	rb := s.Rules.Biomes[s.Biome]
@@ -173,7 +187,12 @@ func (e *engine) rollRoom(fresh bool) {
 	if s.Trial != nil {
 		ps = []*catalog.Problem{e.trialProblem()}
 	} else {
-		for _, ex := range []map[catalog.ID]bool{e.excluded(), e.attempted(), {}} {
+		for i, ex := range []map[catalog.ID]bool{e.excluded(), e.attempted(), {}} {
+			for _, d := range skip {
+				if i < 2 { // the last resort takes anything
+					ex[d.Problem] = true
+				}
+			}
 			ps = e.pick(e.candidates(b.Topic, rb, ex), n)
 			if len(ps) > 0 {
 				break
@@ -184,15 +203,14 @@ func (e *engine) rollRoom(fresh bool) {
 	for _, p := range ps {
 		doors = append(doors, e.makeDoor(p, rb, b.Boss, false))
 	}
-	// A regression door needs a judgeable problem, so the room has a door
-	// for it to replace.
-	if fresh && s.Trial == nil {
-		if d, ok := e.regressionDoor(rb, doors); ok {
-			doors[len(doors)-1] = d
-		}
-	}
-	s.Doors = doors
+	return doors
+}
 
+// offer puts doors on offer in the current room, logs them and has the app
+// fetch them ahead.
+func (e *engine) offer(doors []Door) {
+	s := e.s
+	s.Doors = doors
 	ids := make([]catalog.ID, len(doors))
 	desc := make([]string, len(doors))
 	for i, d := range doors {

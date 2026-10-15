@@ -244,6 +244,16 @@ const (
 	Kexec     Daemon = "kexec"      // one free door swap per biome
 )
 
+// Item is what a merge window sells for uncommitted bytes (D25): bought
+// for this boot with bytes that committing would have banked.
+type Item string
+
+const (
+	Fsck Item = "fsck" // +1 life, up to MaxLives
+	Dup  Item = "dup"  // +1 duck
+	Shuf Item = "shuf" // one re-roll of a room's doors (Reroll), kept until used
+)
+
 type Crash struct {
 	Cause   Outcome // TimedOut, OutOfLives, GaveUp
 	Door    Door
@@ -303,6 +313,12 @@ type State struct {
 	UpgradePicks int
 	// RegressionOffered: a boot offers at most one regression door.
 	RegressionOffered bool
+
+	// Spent is the uncommitted bytes merge windows sold items for; every
+	// byte earned is committed, uncommitted, spent or lost to the crash.
+	Spent int64
+	// Rerolls is how many shufs are bought and not yet used.
+	Rerolls int
 
 	// Trial is set when this boot is a learn-mode trial (NewTrial).
 	Trial *TrialState
@@ -369,6 +385,12 @@ type PickUpgrade struct{ Upgrade Upgrade }
 type PickDaemon struct{ Daemon Daemon }
 type LeaveMerge struct{}
 
+// Spend buys an item with uncommitted bytes (PhaseMerge).
+type Spend struct{ Item Item }
+
+// Reroll spends a shuf on the room on offer (PhaseDoors, not a boss room).
+type Reroll struct{}
+
 // Link chooses the libs (by name, from Meta.Libs) pasted into this boot's
 // templates. Allowed until the first door opens, up to rules.LinkSlots.
 type Link struct{ Libs []string }
@@ -386,6 +408,8 @@ func (PickUpgrade) isAction()  {}
 func (PickDaemon) isAction()   {}
 func (LeaveMerge) isAction()   {}
 func (Link) isAction()         {}
+func (Spend) isAction()        {}
+func (Reroll) isAction()       {}
 
 // ---- outputs -----------------------------------------------------------------
 

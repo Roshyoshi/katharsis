@@ -988,3 +988,36 @@ func TestRefusedSubmitReleasesTheClock(t *testing.T) {
 		t.Fatal("a refused submit left the clock held")
 	}
 }
+
+// Bytes spent at a merge window buy for the boot and are saved with it; a
+// held shuf re-rolls the doors from the doors screen's s key.
+func TestMergeSpend(t *testing.T) {
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	for h.m.state.Phase != game.PhaseMerge {
+		h.enterDoor()
+		h.send(submitMsg{})
+	}
+	for h.m.state.PendingUpgrade {
+		h.send(game.PickUpgrade{Upgrade: h.m.state.UpgradeOffers[0]})
+	}
+	s := h.m.state
+	s.Uncommitted = 1000 // enough for anything
+	ducks := s.Ducks
+	h.send(game.Spend{Item: game.Dup})
+	h.send(game.Spend{Item: game.Shuf})
+	if s.Ducks != ducks+1 || s.Rerolls != 1 || s.Spent != s.Rules.DupPrice+s.Rules.ShufPrice {
+		t.Fatalf("after dup and shuf: ducks %d, shufs %d, spent %d", s.Ducks, s.Rerolls, s.Spent)
+	}
+	h.send(game.LeaveMerge{})
+	h.toDoors()
+	before := slices.Clone(h.m.state.Doors)
+	h.send(key("s"))
+	if s := h.m.state; s.Rerolls != 0 || slices.Equal(s.Doors, before) {
+		t.Fatalf("s at the doors: %d shufs left, doors changed %v", s.Rerolls, !slices.Equal(s.Doors, before))
+	}
+	h.restart()
+	if s := h.m.state; s == nil || s.Spent != s.Rules.DupPrice+s.Rules.ShufPrice || s.Ducks != ducks+1 {
+		t.Fatalf("resumed boot lost the spending: %+v", s)
+	}
+}

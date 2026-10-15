@@ -339,6 +339,31 @@ func TestMasteredDoor(t *testing.T) {
 	}
 }
 
+// s spends a held shuf on the room, and the footer says how many are held;
+// a boss room and a boot without a shuf ignore it.
+func TestDoorsShuf(t *testing.T) {
+	press1 := func(st *game.State) tea.Msg {
+		_, cmd := NewDoors(env(st)).Update(press("s"))
+		return emitted(cmd)
+	}
+	st := fixture.Doors()
+	if got := press1(st); got != nil {
+		t.Errorf("s with no shuf: got %#v", got)
+	}
+	st.Rerolls = 2
+	if got := press1(st); got != (game.Reroll{}) {
+		t.Errorf("s with a shuf: got %#v", got)
+	}
+	if v := ansi.Strip(NewDoors(env(st)).View(140, 40)); !strings.Contains(v, "s shuf (2)") {
+		t.Errorf("footer should offer the shuf:\n%s", v)
+	}
+	boss := fixture.Boss()
+	boss.Rerolls = 1
+	if got := press1(boss); got != nil {
+		t.Errorf("s in the boss room: got %#v", got)
+	}
+}
+
 func TestDoorsStackWhenNarrow(t *testing.T) {
 	d := NewDoors(env(fixture.Doors()))
 	narrow := ansi.Strip(d.View(89, 30))
@@ -383,6 +408,12 @@ func TestMergeKeys(t *testing.T) {
 	}
 	step("down")
 	step("j")
+	if got := step("enter"); got != (game.Spend{Item: game.Fsck}) {
+		t.Errorf("into the shop: got %#v", got)
+	}
+	for range 3 {
+		step("down")
+	}
 	if got := step("enter"); got != (game.PickDaemon{Daemon: game.Nice}) {
 		t.Errorf("into daemons: got %#v", got)
 	}
@@ -402,6 +433,23 @@ func TestMergeKeys(t *testing.T) {
 	}
 }
 
+// The merge window prices every item on sale, says which the bytes don't
+// cover, and sells nothing in a trial.
+func TestMergeSpendRows(t *testing.T) {
+	st := fixture.Merge()
+	st.Uncommitted, st.Lives, st.Rerolls = 40, st.MaxLives, 1
+	v := ansi.Strip(NewMerge(env(st)).View(140, 40))
+	for _, want := range []string{"spend", "1 shuf held", "fsck", "64 B · lives full", "48 B · 8 B short", "shuf"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("merge window missing %q:\n%s", want, v)
+		}
+	}
+	st.Trial = &game.TrialState{}
+	if v := ansi.Strip(NewMerge(env(st)).View(140, 40)); strings.Contains(v, "fsck") {
+		t.Errorf("a trial's merge window sells items:\n%s", v)
+	}
+}
+
 func TestMergeRefreshMovesPastTakenPick(t *testing.T) {
 	st := fixture.Merge()
 	m := NewMerge(env(st))
@@ -410,8 +458,8 @@ func TestMergeRefreshMovesPastTakenPick(t *testing.T) {
 	st2.PendingUpgrade, st2.UpgradeOffers = false, nil
 	m.Refresh(env(st2))
 	_, cmd := m.Update(press("enter"))
-	if got := emitted(cmd); got != (game.PickDaemon{Daemon: game.Nice}) {
-		t.Errorf("after the upgrade was taken the cursor should sit on the first daemon, got %#v", got)
+	if got := emitted(cmd); got != (game.Spend{Item: game.Fsck}) {
+		t.Errorf("after the upgrade was taken the cursor should sit on the first item, got %#v", got)
 	}
 }
 
@@ -423,6 +471,9 @@ func TestMergeDaemonSlotsFromRules(t *testing.T) {
 	st.Rules.MaxDaemons = 4
 	st.Daemons = []game.Daemon{game.Strace, game.Kexec, game.Fork}
 	m := NewMerge(env(st))
+	for range onSale(st) {
+		m.Update(press("down"))
+	}
 	_, cmd := m.Update(press("enter"))
 	if got := emitted(cmd); got != (game.PickDaemon{Daemon: game.Nice}) {
 		t.Errorf("enter on the first daemon: got %#v", got)
