@@ -301,7 +301,7 @@ type Daemon string
 
 const (
 	Strace    Daemon = "strace"     // failing test's input is shown
-	Nice      Daemon = "nice"       // +20% timer, a failed submit costs 2 lives
+	Nice      Daemon = "nice"       // +20% timer, every door pays 0.8x
 	Fork      Daemon = "fork"       // 4 doors per room after an AC
 	DevRandom Daemon = "dev-random" // mystery doors pay 2x
 	Kexec     Daemon = "kexec"      // one free door swap per biome

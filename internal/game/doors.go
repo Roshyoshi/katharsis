@@ -474,8 +474,8 @@ func mastered(r *rules.Rules, m *Meta, topic string, rating float64) bool {
 // doors pay for their risk and the modifiers decide between doors. Mystery
 // pays MysteryMult instead of BlindMult (it implies blind, and stacking would
 // make a hidden title worth more than a curse). The daemons that pay more
-// (dev-random, cron, chrt) multiply whole doors, so the payout stays flat
-// across difficulty.
+// (dev-random, cron, chrt) or less (nice) multiply whole doors, so the
+// payout stays flat across difficulty.
 func (e *engine) doorBytes(d Door) int64 {
 	r := &e.s.Rules
 	mult := min(max(0.5/d.SolveP, r.MinBytesMult), r.MaxBytesMult)
@@ -499,6 +499,9 @@ func (e *engine) doorBytes(d Door) int64 {
 	}
 	if slices.Contains(e.s.Daemons, Chrt) {
 		mult *= r.ChrtBytesMult
+	}
+	if slices.Contains(e.s.Daemons, Nice) {
+		mult *= 1 - r.NiceBytesFrac
 	}
 	return max(1, int64(math.Round(float64(r.BaseBytes)*mult)))
 }

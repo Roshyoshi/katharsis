@@ -251,15 +251,15 @@ func TestUpgradesAndDaemons(t *testing.T) {
 	// The descriptions quote the rules, standard and custom alike.
 	checks := []struct{ got, want string }{
 		{second(UpgradeTextFor(game.Overclock, r)), "+15% timer"},
-		{second(DaemonTextFor(game.Nice, r)), "+20% timer; a failed submit costs 2 lives"},
+		{second(DaemonTextFor(game.Nice, r)), "+20% timer; every door pays 0.8x bytes."},
 		{second(DaemonTextFor(game.Fork, r)), "4 doors per room after an AC (normally 3)"},
 		{second(DaemonTextFor(game.DevRandom, r)), "pay 2x bytes"},
 	}
-	r.OverclockFrac, r.NiceTimerFrac, r.NiceLifeCost = 0.1, 0.35, 1
+	r.OverclockFrac, r.NiceTimerFrac, r.NiceBytesFrac, r.NiceLifeCost = 0.1, 0.35, 0, 2
 	r.ForkDoors, r.DoorsPerRoom, r.DevRandomMult = 5, 2, 1.5
 	checks = append(checks, []struct{ got, want string }{
 		{second(UpgradeTextFor(game.Overclock, r)), "+10% timer"},
-		{second(DaemonTextFor(game.Nice, r)), "+35% timer; a failed submit costs 1 life."},
+		{second(DaemonTextFor(game.Nice, r)), "+35% timer; a failed submit costs 2 lives."},
 		{second(DaemonTextFor(game.Fork, r)), "5 doors per room after an AC (normally 2)"},
 		{second(DaemonTextFor(game.DevRandom, r)), "pay 1.5x bytes"},
 	}...)

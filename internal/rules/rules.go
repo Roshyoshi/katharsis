@@ -200,7 +200,14 @@ type Rules struct {
 
 	ForkDoors     int     `toml:"fork_doors"`      // doors per room after an AC
 	NiceTimerFrac float64 `toml:"nice_timer_frac"` // timer bonus
-	NiceLifeCost  int     `toml:"nice_life_cost"`  // lives per failed submit
+	NiceBytesFrac float64 `toml:"nice_bytes_frac"` // pay cut on every door
+	// NiceLifeCost is the lives a failed submit costs while nice runs. Nice
+	// pays for its time in bytes (NiceBytesFrac) since the alpha, so this
+	// is 1, the normal charge: at 2 it traded survival for survival, +20%
+	// time for a doubled charge on every miss. A preset may still set it.
+	// A boot saved before the change keeps its snapshot's 2 and,
+	// NiceBytesFrac being 0 there, its full pay.
+	NiceLifeCost  int     `toml:"nice_life_cost"`
 	DevRandomMult float64 `toml:"dev_random_mult"` // extra pay on mystery doors
 	CronMult      float64 `toml:"cron_mult"`       // extra pay on a regression door
 	ChrtTimerFrac float64 `toml:"chrt_timer_frac"` // timer cut
@@ -582,7 +589,8 @@ func Standard() Rules {
 
 		ForkDoors:     4,
 		NiceTimerFrac: 0.2,
-		NiceLifeCost:  2,
+		NiceBytesFrac: 0.2,
+		NiceLifeCost:  1,
 		DevRandomMult: 2,
 		CronMult:      2,
 		ChrtTimerFrac: 0.2,
@@ -876,6 +884,10 @@ func (r Rules) Validate() error {
 	}
 	if r.ChrtTimerFrac < 0 || r.ChrtTimerFrac >= 1 {
 		return fmt.Errorf("rules %q: need 0 <= chrt_timer_frac < 1", r.Name)
+	}
+	// The negated test also catches NaN.
+	if !(r.NiceBytesFrac >= 0 && r.NiceBytesFrac < 1) {
+		return fmt.Errorf("rules %q: need 0 <= nice_bytes_frac < 1", r.Name)
 	}
 	if r.MasteryAttempts < 0 {
 		return fmt.Errorf("rules %q: need mastery_attempts >= 0", r.Name)

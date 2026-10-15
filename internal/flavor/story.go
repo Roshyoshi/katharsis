@@ -498,7 +498,7 @@ A grin in the tree, then a Cat around it. Ducks refilled: {n}
 
 	// ---- Daemons and upgrades: a faint line under the mechanic text ----
 	"daemon.strace":     fixedOf("The Knight's invention: a window onto the test that tripped you."),
-	"daemon.nice":       fixedOf("Carried upside-down so the rain can't get in. The lives fall out."),
+	"daemon.nice":       fixedOf("Carried upside-down so the rain can't get in. The bytes fall out."),
 	"daemon.fork":       fixedOf("He rides two horses at once and falls off both. More doors, though."),
 	"daemon.dev-random": fixedOf("A box of mystery doors. He invented it. He's never opened it."),
 	"daemon.kexec":      fixedOf("Swap the door without getting off the horse. Once per biome."),

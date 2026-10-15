@@ -986,7 +986,7 @@ uses: G30 (allusion); nice parodies the Knight's upside-down box and cron his mo
 
 ```text
 The Knight's invention: a window onto the test that tripped you.
-Carried upside-down so the rain can't get in. The lives fall out.
+Carried upside-down so the rain can't get in. The bytes fall out.
 He rides two horses at once and falls off both. More doors, though.
 A box of mystery doors. He invented it. He's never opened it.
 Swap the door without getting off the horse. Once per biome.

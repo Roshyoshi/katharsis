@@ -523,8 +523,19 @@ func TestSubmit(t *testing.T) {
 			t.Errorf("lives %d phase %s after CE", h.s.Lives, h.s.Phase)
 		}
 	})
-	t.Run("nice costs two", func(t *testing.T) {
+	t.Run("nice charges the normal life", func(t *testing.T) {
 		h := newHarness(t, plain(), nil, ps, 0, 1)
+		h.s.Daemons = []game.Daemon{game.Nice}
+		h.open(0)
+		h.do(wa)
+		if h.s.Lives != 2 {
+			t.Errorf("lives %d, want 2", h.s.Lives)
+		}
+	})
+	t.Run("a preset's nice can cost two", func(t *testing.T) {
+		r := plain()
+		r.NiceLifeCost = 2
+		h := newHarness(t, r, nil, ps, 0, 1)
 		h.s.Daemons = []game.Daemon{game.Nice}
 		h.open(0)
 		h.do(wa)
@@ -837,6 +848,34 @@ func TestUptimeCountsDoors(t *testing.T) {
 	}
 	if c := h.s.Crash; c == nil || c.Cause != game.TimedOut || c.Uptime != 11*time.Minute+d.Timer {
 		t.Errorf("crash %+v, want a timeout at uptime %v", c, 11*time.Minute+d.Timer)
+	}
+}
+
+// nice pays for its time in bytes: the same doors, drawn while it runs,
+// pay NiceBytesFrac less on a longer timer.
+func TestNicePaysInBytes(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	redraw := func(daemons []game.Daemon) []game.Door {
+		h := newHarness(t, plain(), nil, ps, 0, 1)
+		h.s.Daemons = daemons
+		h.open(0)
+		h.do(game.Retreat{})
+		return h.s.Doors
+	}
+	without, with := redraw(nil), redraw([]game.Daemon{game.Nice})
+	cut := 1 - plain().NiceBytesFrac
+	for i, d := range with {
+		p := without[i]
+		if d.Problem != p.Problem {
+			t.Fatalf("door %d: %s with nice, %s without; nice must not move the draw", i, d.Problem, p.Problem)
+		}
+		if want := float64(p.Bytes) * cut; math.Abs(float64(d.Bytes)-want) > 1 {
+			t.Errorf("door %d pays %d B with nice, want about %.1f (%d × %.1f)", i, d.Bytes, want, p.Bytes, cut)
+		}
+		if d.Timer <= p.Timer {
+			t.Errorf("door %d timer %v with nice, %v without", i, d.Timer, p.Timer)
+		}
 	}
 }
 

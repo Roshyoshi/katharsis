@@ -68,9 +68,10 @@ type Player struct {
 	ItemSD           float64
 	Lambda, BeliefSD float64
 	// DeclineDaemons has the model turn down daemons that cost what it is
-	// short of: chrt cuts the timer (most of its crashes are timeouts) and
-	// nice charges two lives a wrong submit. Without it, it takes whatever
-	// a merge window offers.
+	// short of: chrt cuts the timer (most of its crashes are timeouts), and
+	// nice where a preset makes it charge more than a life a wrong submit
+	// (standard's nice costs bytes). Without it, it takes whatever a merge
+	// window offers.
 	DeclineDaemons bool
 
 	// Spend has the model buy in merge windows before it commits, by what
@@ -850,7 +851,7 @@ func (b *boot) daemon() (game.Daemon, bool) {
 	}
 	// chrt last: most of the model's crashes are timeouts.
 	for _, d := range []game.Daemon{game.Fork, game.Kexec, game.DevRandom, game.Cron, game.Strace, game.Nice, game.Chrt} {
-		if b.p.DeclineDaemons && (d == game.Nice || d == game.Chrt) {
+		if b.p.DeclineDaemons && (d == game.Chrt || d == game.Nice && b.s.Rules.NiceLifeCost > 1) {
 			continue
 		}
 		if slices.Contains(b.s.DaemonOffers, d) {

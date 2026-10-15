@@ -47,7 +47,7 @@ fixed rule. Settings are locked for the length of a boot.
 | stats | `top` | rating trend, per-topic radar |
 
 Daemons (v1): `strace` (failing test input shown; hidden by default),
-`nice -20` (+20% timer, a WA costs 2 lives), `fork` (4 doors after an AC),
+`nice -20` (+20% timer, doors pay 0.8x bytes), `fork` (4 doors after an AC),
 `/dev/random` (mystery doors pay 2x), `kexec` (one free door swap per biome).
 
 ## A boot

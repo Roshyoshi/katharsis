@@ -378,7 +378,7 @@ boot 45 step 5 room 0.1: sim:0331/800/26m0s/79B/0.4036/floor sim:0254/800/23m0s/
 boot 45 step 15 room 1.0: sim:0058/800/32m0s/68B/0.4729/floor sim:0571/800/33m0s/77B/0.4130/floor sim:0064/800/33m0s/78B/0.4108/regression+floor
 boot 45 step 19 room 1.0: sim:0058/800/32m0s/68B/0.4729/floor sim:0285/800/32m0s/69B/0.4650/floor sim:0400/800/33m0s/117B/0.4108/blind+floor
 boot 45 step 21 room 1.1: sim:0512/800/32m0s/74B/0.4326/floor sim:0454/800/32m0s/64B/0.5034/floor sim:0400/800/32m0s/148B/0.4326/cursed+floor
-boot 45 step 31 room 2.0: sim:0261/800/1h3m0s/468B/0.4100/blind+mystery+boss-race-condition+floor
+boot 45 step 31 room 2.0: sim:0261/800/1h3m0s/375B/0.4100/blind+mystery+boss-race-condition+floor
 boot 45: sim:0540 retreated
 boot 45: sim:0326 cleared
 boot 45: sim:0254 cleared
@@ -392,7 +392,7 @@ boot 46 step 2 room 0.1: sim:0571/800/17m0s/64B/0.4967/floor sim:0148/800/19m0s/
 boot 46 step 5 room 0.1: sim:0571/800/20m0s/64B/0.4967/floor sim:0148/800/22m0s/104B/0.4596/blind+floor sim:0245/800/20m0s/63B/0.5091/floor
 boot 46 step 10 room 0.1: sim:0540/800/21m0s/204B/0.4713/blind+cursed+floor sim:0392/800/24m0s/73B/0.4407/floor sim:0285/800/18m0s/61B/0.5253/floor
 boot 46 step 14 room 0.1: sim:0596/800/24m0s/74B/0.4347/floor sim:0148/800/24m0s/74B/0.4347/floor sim:0512/800/22m0s/68B/0.4688/floor
-boot 46 step 33 room 1.0: sim:0296/800/31m0s/69B/0.4605/floor sim:0331/800/31m0s/68B/0.4675/floor+tier-0.70 sim:0064/800/31m0s/125B/0.5112/blind+mystery+regression+floor
+boot 46 step 33 room 1.0: sim:0296/800/31m0s/56B/0.4605/floor sim:0331/800/31m0s/55B/0.4675/floor+tier-0.70 sim:0064/800/31m0s/100B/0.5112/blind+mystery+regression+floor
 boot 46: sim:0254 cleared
 boot 46: sim:0571 timed-out
 boot 46: sim:0540 retreated
@@ -404,10 +404,10 @@ boot 47 step 1 room 0.0: sim:0596/800/21m0s/80B/0.3986/floor sim:0285/800/17m0s/
 boot 47 step 4 room 0.1: sim:0296/800/21m0s/76B/0.4237/floor sim:0244/800/20m0s/73B/0.4406/floor sim:0245/800/18m0s/69B/0.4657/floor
 boot 47 step 5 room 0.1: sim:0296/800/24m0s/76B/0.4237/floor sim:0244/800/23m0s/73B/0.4406/floor sim:0245/800/21m0s/69B/0.4657/floor
 boot 47 step 6 room 0.1: sim:0296/800/28m0s/76B/0.4237/floor sim:0244/800/26m0s/73B/0.4406/floor sim:0245/800/24m0s/69B/0.4657/floor
-boot 47 step 16 room 1.0: sim:0540/800/36m0s/73B/0.4374/floor sim:0400/800/36m0s/70B/0.4565/floor sim:0064/800/36m0s/70B/0.4565/regression+floor
-boot 47 step 20 room 1.1: sim:0285/800/36m0s/63B/0.5091/floor+tier-0.70 sim:0456/800/36m0s/72B/0.4472/floor sim:0245/800/36m0s/68B/0.4674/floor
-boot 47 step 23 room 1.1: sim:0285/800/41m0s/63B/0.5091/floor+tier-0.70 sim:0456/800/41m0s/72B/0.4472/floor sim:0245/800/41m0s/68B/0.4674/floor
-boot 47 step 30 room 2.0: sim:0285/800/1h20m0s/182B/0.5265/boss-heisenbug+floor+tier-boss+0.50
+boot 47 step 16 room 1.0: sim:0540/800/36m0s/59B/0.4374/floor sim:0400/800/36m0s/56B/0.4565/floor sim:0064/800/36m0s/56B/0.4565/regression+floor
+boot 47 step 20 room 1.1: sim:0285/800/36m0s/50B/0.5091/floor+tier-0.70 sim:0456/800/36m0s/57B/0.4472/floor sim:0245/800/36m0s/55B/0.4674/floor
+boot 47 step 23 room 1.1: sim:0285/800/41m0s/50B/0.5091/floor+tier-0.70 sim:0456/800/41m0s/57B/0.4472/floor sim:0245/800/41m0s/55B/0.4674/floor
+boot 47 step 30 room 2.0: sim:0285/800/1h20m0s/146B/0.5265/boss-heisenbug+floor+tier-boss+0.50
 boot 47: sim:0596 cleared
 boot 47: sim:0296 cleared
 boot 47: sim:0400 cleared
@@ -473,57 +473,61 @@ boot 53 step 2 room 0.0: sim:0404/800/23m0s/130B/0.3682/blind+floor sim:0392/800
 boot 53 step 8 room 0.0: sim:0404/800/23m0s/193B/0.3318/blind+mystery+floor sim:0392/800/22m0s/71B/0.4515/floor sim:0231/860/23m0s/140B/0.2284/-
 boot 53 step 11 room 0.1: sim:0231/860/23m0s/129B/0.2485/- sim:0244/800/23m0s/85B/0.3750/floor sim:0392/800/20m0s/68B/0.4727/floor
 boot 53 step 12 room 0.1: sim:0231/860/26m0s/129B/0.2485/- sim:0244/800/26m0s/85B/0.3750/floor sim:0392/800/23m0s/68B/0.4727/floor
-boot 53 step 21 room 1.0: sim:0392/800/33m0s/105B/0.4570/blind+floor sim:0070/860/57m0s/177B/0.1809/- sim:0146/800/33m0s/57B/0.5584/regression+floor
-boot 53 step 23 room 1.0: sim:0231/860/47m0s/205B/0.2336/blind sim:0570/850/56m0s/348B/0.1838/blind+mystery sim:0542/850/50m0s/148B/0.2156/-
+boot 53 step 21 room 1.0: sim:0392/800/33m0s/84B/0.4570/blind+floor sim:0070/860/57m0s/142B/0.1809/- sim:0146/800/33m0s/46B/0.5584/regression+floor
+boot 53 step 23 room 1.0: sim:0231/860/47m0s/164B/0.2336/blind sim:0570/850/56m0s/279B/0.1838/blind+mystery sim:0542/850/50m0s/119B/0.2156/-
+boot 53 step 29 room 1.1: sim:0134/830/48m0s/107B/0.2393/- sim:0017/830/54m0s/186B/0.2065/blind sim:0071/950/55m0s/252B/0.2032/cursed
+boot 53 step 30 room 1.1: sim:0134/830/55m0s/107B/0.2393/- sim:0017/830/1h2m0s/186B/0.2065/blind sim:0071/950/1h3m0s/252B/0.2032/cursed
 boot 53: sim:0148 timed-out
 boot 53: sim:0404 cleared
 boot 53: sim:0244 cleared
 boot 53: sim:0070 retreated
-boot 53: sim:0231 out-of-lives
-boot 53 ends crashed, rating 624.0066
-boot 54 step 0 room 0.0: sim:0231/860/21m0s/130B/0.2458/- sim:0148/800/21m0s/117B/0.4093/blind+floor sim:0392/800/19m0s/66B/0.4837/floor
-boot 54 step 6 room 0.0: sim:0134/830/21m0s/229B/0.2098/blind sim:0148/800/21m0s/83B/0.3865/floor sim:0542/850/21m0s/294B/0.2176/blind+mystery
-boot 54 step 8 room 0.1: sim:0070/860/21m0s/151B/0.2120/- sim:0570/850/21m0s/149B/0.2153/- sim:0148/800/21m0s/76B/0.4200/floor
-boot 54 step 11 room 0.1: sim:0070/860/24m0s/151B/0.2120/- sim:0570/850/24m0s/149B/0.2153/- sim:0148/800/24m0s/76B/0.4200/floor
-boot 54 step 12 room 0.1: sim:0070/860/28m0s/151B/0.2120/- sim:0570/850/28m0s/149B/0.2153/- sim:0148/800/28m0s/76B/0.4200/floor
-boot 54: sim:0392 timed-out
-boot 54: sim:0542 cleared
-boot 54: sim:0070 timed-out
-boot 54 ends crashed, rating 625.6559
-boot 55 step 0 room 0.0: sim:0231/860/21m0s/129B/0.2476/- sim:0392/800/20m0s/69B/0.4623/floor sim:0148/800/21m0s/234B/0.4110/blind+cursed+floor
-boot 55 step 1 room 0.0: sim:0392/800/20m0s/69B/0.4623/floor sim:0134/830/21m0s/287B/0.2233/cursed sim:0148/800/21m0s/156B/0.4110/cursed+floor
-boot 55 step 3 room 0.1: sim:0070/860/21m0s/126B/0.2548/- sim:0392/800/18m0s/64B/0.4964/floor sim:0148/800/20m0s/108B/0.4436/blind+floor
-boot 55 step 10 room 0.1: sim:0231/860/21m0s/170B/0.2818/blind sim:0070/860/21m0s/126B/0.2548/- sim:0392/800/18m0s/64B/0.4964/floor
-boot 55: sim:0134 cleared
-boot 55: sim:0148 retreated
-boot 55: sim:0392 timed-out
-boot 55 ends crashed, rating 632.7158
-boot 56 step 0 room 0.0: sim:0070/860/21m0s/209B/0.2300/blind sim:0231/860/21m0s/125B/0.2553/- sim:0422/880/21m0s/152B/0.2102/-
-boot 56 step 2 room 0.1: sim:0148/800/21m0s/71B/0.4531/floor sim:0392/800/19m0s/66B/0.4821/floor sim:0070/860/21m0s/107B/0.2996/-
-boot 56 step 3 room 0.1: sim:0148/800/24m0s/71B/0.4531/floor sim:0392/800/22m0s/66B/0.4821/floor sim:0070/860/24m0s/107B/0.2996/-
-boot 56 step 4 room 0.1: sim:0148/800/28m0s/71B/0.4531/floor sim:0392/800/25m0s/66B/0.4821/floor sim:0070/860/28m0s/107B/0.2996/-
-boot 56 step 13 room 1.0: sim:0148/800/48m0s/71B/0.4504/floor sim:0392/800/48m0s/67B/0.4794/floor sim:0146/800/48m0s/51B/0.6292/regression+floor
-boot 56: sim:0422 cleared
+boot 53: sim:0231 cleared
+boot 53: sim:0134 out-of-lives
+boot 53 ends crashed, rating 652.8957
+boot 54 step 0 room 0.0: sim:0148/800/18m0s/73B/0.4400/floor sim:0392/800/16m0s/62B/0.5162/floor sim:0542/850/19m0s/353B/0.2716/blind+cursed
+boot 54 step 3 room 0.1: sim:0392/800/15m0s/60B/0.5351/floor sim:0017/830/19m0s/131B/0.2448/- sim:0134/830/19m0s/120B/0.2670/-
+boot 54 step 6 room 0.1: sim:0392/800/17m0s/60B/0.5351/floor sim:0017/830/22m0s/131B/0.2448/- sim:0134/830/22m0s/120B/0.2670/-
+boot 54 step 8 room 0.1: sim:0017/830/22m0s/131B/0.2448/- sim:0070/860/22m0s/205B/0.2346/blind sim:0071/950/22m0s/133B/0.2411/-
+boot 54 step 12 room 0.1: sim:0301/870/22m0s/138B/0.2324/- sim:0542/850/22m0s/110B/0.2910/- sim:0570/850/22m0s/191B/0.2516/blind
+boot 54: sim:0148 cleared
+boot 54: sim:0392 retreated
+boot 54: sim:0070 retreated
+boot 54: sim:0542 gave-up
+boot 54 ends crashed, rating 659.0806
+boot 55 step 0 room 0.0: sim:0134/830/23m0s/376B/0.2554/blind+cursed sim:0392/800/18m0s/61B/0.5232/floor sim:0542/850/23m0s/121B/0.2635/-
+boot 55 step 2 room 0.0: sim:0071/950/23m0s/208B/0.2303/blind sim:0392/800/18m0s/61B/0.5232/floor sim:0570/850/23m0s/133B/0.2404/-
+boot 55 step 4 room 0.0: sim:0070/860/23m0s/286B/0.2239/cursed sim:0392/800/18m0s/61B/0.5232/floor sim:0570/850/23m0s/200B/0.2404/blind
+boot 55 step 9 room 0.1: sim:0570/850/23m0s/124B/0.2581/- sim:0301/870/23m0s/134B/0.2385/- sim:0017/830/23m0s/127B/0.2512/-
+boot 55 step 25 room 1.0: sim:0277/840/47m0s/277B/0.2312/blind+mystery sim:0090/870/46m0s/205B/0.2341/blind sim:0146/800/32m0s/50B/0.6408/regression+floor
+boot 55: sim:0542 retreated
+boot 55: sim:0071 retreated
+boot 55: sim:0392 cleared
+boot 55: sim:0301 cleared
+boot 55: sim:0090 gave-up
+boot 55 ends crashed, rating 694.4145
+boot 56 step 0 room 0.0: sim:0542/850/23m0s/105B/0.3048/- sim:0570/850/23m0s/121B/0.2653/- sim:0070/860/23m0s/122B/0.2613/-
+boot 56 step 2 room 0.0: sim:0017/830/23m0s/118B/0.2723/- sim:0570/850/23m0s/121B/0.2653/- sim:0542/850/23m0s/105B/0.3048/-
+boot 56 step 6 room 0.1: sim:0070/860/23m0s/163B/0.2940/blind sim:0542/850/23m0s/94B/0.3405/- sim:0071/950/23m0s/159B/0.3016/blind
+boot 56 step 20 room 1.0: sim:0090/870/31m0s/106B/0.3016/- sim:0422/880/31m0s/162B/0.2957/blind sim:0146/800/28m0s/46B/0.6892/regression+floor
+boot 56 step 23 room 1.1: sim:0422/880/31m0s/97B/0.3286/- sim:0017/830/30m0s/96B/0.3327/- sim:0410/900/31m0s/98B/0.3277/-
+boot 56 step 39 room 2.0: sim:0277/840/53m0s/252B/0.3802/boss-oom-killer+tier-boss+0.50
+boot 56: sim:0570 cleared
 boot 56: sim:0070 cleared
-boot 56: sim:0392 gave-up
-boot 56 ends crashed, rating 669.8688
-boot 57 step 0 room 0.0: sim:0294/920/23m0s/120B/0.2660/- sim:0392/800/21m0s/69B/0.4629/floor sim:0148/800/22m0s/70B/0.4585/floor
-boot 57 step 2 room 0.0: sim:0392/800/21m0s/69B/0.4629/floor sim:0148/800/22m0s/70B/0.4585/floor sim:0231/860/23m0s/215B/0.2980/blind+mystery
-boot 57 step 6 room 0.1: sim:0392/800/21m0s/67B/0.4805/floor sim:0570/850/23m0s/237B/0.2696/cursed sim:0231/860/23m0s/151B/0.3175/blind
-boot 57 step 20 room 1.0: sim:0570/850/36m0s/128B/0.2502/- sim:0301/870/38m0s/208B/0.2311/blind sim:0146/800/28m0s/50B/0.6356/regression+floor
-boot 57 step 23 room 1.1: sim:0017/830/33m0s/117B/0.2745/- sim:0090/870/32m0s/110B/0.2898/- sim:0277/840/35m0s/125B/0.2559/-
-boot 57 step 39 room 2.0: sim:0231/860/53m0s/236B/0.4073/boss-oom-killer+tier-boss+0.50
-boot 57: sim:0148 cleared
-boot 57: sim:0392 cleared
-boot 57: sim:0570 cleared
-boot 57: sim:0090 cleared
-boot 57: sim:0231 gave-up
-boot 57 ends crashed, rating 742.4656
-boot 58 step 0 room 0.0: sim:0410/900/17m0s/102B/0.3131/- sim:0294/920/17m0s/98B/0.3268/- sim:0277/840/17m0s/339B/0.2835/blind+cursed
-boot 58: sim:0410 gave-up
-boot 58 ends crashed, rating 730.9597
-boot 59 step 0 room 0.0: sim:0017/830/21m0s/111B/0.2894/- sim:0277/840/21m0s/118B/0.2702/- sim:0301/870/21m0s/464B/0.2756/blind+mystery+cursed
-boot 59 step 4 room 0.0: sim:0410/900/21m0s/120B/0.2665/- sim:0195/920/21m0s/135B/0.2364/- sim:0294/920/21m0s/108B/0.2973/-
-boot 59: sim:0301 timed-out
-boot 59: sim:0294 timed-out
-boot 59 ends crashed, rating 709.0121
+boot 56: sim:0090 cleared
+boot 56: sim:0017 cleared
+boot 56: sim:0277 gave-up
+boot 56 ends crashed, rating 782.2791
+boot 57 step 0 room 0.0: sim:0507/830/17m0s/112B/0.2864/- sim:0378/940/17m0s/160B/0.2999/blind sim:0294/920/17m0s/106B/0.3008/-
+boot 57: sim:0507 gave-up
+boot 57 ends crashed, rating 765.0090
+boot 58 step 0 room 0.0: sim:0542/850/21m0s/87B/0.3694/- sim:0134/830/21m0s/81B/0.3953/- sim:0422/880/21m0s/389B/0.3290/blind+mystery+cursed
+boot 58 step 4 room 0.0: sim:0410/900/21m0s/103B/0.3111/- sim:0186/930/21m0s/116B/0.2753/- sim:0542/850/21m0s/91B/0.3513/-
+boot 58: sim:0422 timed-out
+boot 58: sim:0542 timed-out
+boot 58 ends crashed, rating 736.9253
+boot 59 step 0 room 0.0: sim:0410/900/17m0s/436B/0.2935/blind+mystery+cursed sim:0422/880/17m0s/116B/0.2754/- sim:0071/950/17m0s/109B/0.2941/-
+boot 59 step 2 room 0.0: sim:0542/850/17m0s/309B/0.3111/blind+cursed sim:0134/830/17m0s/95B/0.3364/- sim:0071/950/17m0s/218B/0.2941/blind+mystery
+boot 59 step 4 room 0.0: sim:0134/830/17m0s/95B/0.3364/- sim:0422/880/17m0s/116B/0.2754/- sim:0542/850/17m0s/206B/0.3111/blind+mystery
+boot 59: sim:0071 retreated
+boot 59: sim:0422 timed-out
+boot 59 ends crashed, rating 724.7253

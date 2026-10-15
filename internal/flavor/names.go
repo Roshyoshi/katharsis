@@ -71,8 +71,14 @@ func DaemonTextFor(d game.Daemon, r rules.Rules) (name, desc string) {
 	case game.Strace:
 		return "strace", "A failed submit shows the failing test's input."
 	case game.Nice:
-		return "nice -20", "+" + pct(r.NiceTimerFrac) + " timer; a failed submit costs " +
-			plural(r.NiceLifeCost, "life", "lives") + "."
+		desc := "+" + pct(r.NiceTimerFrac) + " timer"
+		if r.NiceBytesFrac > 0 {
+			desc += "; every door pays " + mult(1-r.NiceBytesFrac) + " bytes"
+		}
+		if r.NiceLifeCost > 1 {
+			desc += "; a failed submit costs " + plural(r.NiceLifeCost, "life", "lives")
+		}
+		return "nice -20", desc + "."
 	case game.Fork:
 		return "fork", strconv.Itoa(r.ForkDoors) + " doors per room after an AC (normally " +
 			strconv.Itoa(r.DoorsPerRoom) + ")."

@@ -102,6 +102,10 @@ func TestValidate(t *testing.T) {
 		// chrt and cron multiply a door's pay like the rest.
 		{"huge chrt_bytes_mult", func(r *rules.Rules) { r.ChrtBytesMult = 1e300 }, "chrt_bytes_mult"},
 		{"inf cron_mult", func(r *rules.Rules) { r.CronMult = math.Inf(1) }, "cron_mult"},
+		// nice's cut takes a share of the pay: all of it is no door.
+		{"nice_bytes_frac of 1", func(r *rules.Rules) { r.NiceBytesFrac = 1 }, "nice_bytes_frac"},
+		{"nan nice_bytes_frac", func(r *rules.Rules) { r.NiceBytesFrac = math.NaN() }, "nice_bytes_frac"},
+		{"no nice cut", func(r *rules.Rules) { r.NiceBytesFrac = 0 }, ""},
 		{"stacked daemon pay", func(r *rules.Rules) {
 			r.BaseBytes, r.ChrtBytesMult, r.CronMult = rules.MaxBaseBytes, 1000, 1000
 		}, "a door could pay"},
@@ -192,6 +196,11 @@ timer = "40m"
 					r.TopicFollow == 0 && r.CalibWarm == rules.Standard().CalibWarm
 			}, ""},
 		{"bad on_expire", "on_expire = \"never\"\n", nil, "on_expire"},
+		// A preset from before the alpha, when nice cost two lives a
+		// failed submit, still loads and means what it says.
+		{"old nice", "nice_life_cost = 2\n", func(r rules.Rules) bool {
+			return r.NiceLifeCost == 2 && r.NiceBytesFrac == rules.Standard().NiceBytesFrac
+		}, ""},
 	}
 	for _, tc := range tests {
 		path := filepath.Join(t.TempDir(), "preset.toml")

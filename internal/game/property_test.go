@@ -184,9 +184,9 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 			// Effort pays the same at every difficulty (retention GR5): a
 			// door without risk modifiers is expected to pay BaseBytes/2,
 			// times only what multiplies every such door alike (a boss,
-			// chrt, cron on a regression), wherever the difficulty factor
-			// is not clamped. Rounding a door's bytes moves it by at most
-			// half a byte.
+			// chrt, nice, cron on a regression), wherever the difficulty
+			// factor is not clamped. Rounding a door's bytes moves it by at
+			// most half a byte.
 			if !d.Blind && !d.Cursed && 0.5/d.SolveP <= s.Rules.MaxBytesMult && 0.5/d.SolveP >= s.Rules.MinBytesMult {
 				flat := 1.0
 				if d.Boss != "" {
@@ -194,6 +194,9 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 				}
 				if slices.Contains(s.Daemons, game.Chrt) {
 					flat *= s.Rules.ChrtBytesMult
+				}
+				if slices.Contains(s.Daemons, game.Nice) {
+					flat *= 1 - s.Rules.NiceBytesFrac
 				}
 				if d.Regression && slices.Contains(s.Daemons, game.Cron) {
 					flat *= s.Rules.CronMult
