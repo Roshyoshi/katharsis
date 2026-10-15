@@ -131,6 +131,17 @@ includes with the same Dijkstra body as the bits source:
 | g++ O2, `<iostream>` | 413 ms | 222 ms | | 56 MB |
 | g++ O2, `<cstdio>` | 128 ms | 122 ms | | 5 MB |
 
+Through `judge.Compile` (Build.Duration, minimum / median of 6, load
+7-10): "before" is the profile without PCH, "cold" a source's first build,
+with the PCH building beside it, "warm" every build after.
+
+| | before | cold | warm |
+|---|---|---|---|
+| `:w`, bits | 1309 / 1432 ms | 1343 / 1504 ms | 723 / 770 ms |
+| `:w`, template | 1091 / 1157 ms | 1132 / 1148 ms | 673 / 705 ms |
+| `:Submit`, bits | 1259 / 1592 ms | 1450 / 2230 ms | 558 / 686 ms |
+| `:Submit`, template | 891 / 929 ms | 934 / 1015 ms | 459 / 490 ms |
+
 A PCH never lost, even for `<cstdio>`, and its size tracks what it saves.
 Forcing `-include bits/stdc++.h` into a template build saves less than the
 template's own list, and changes the program: names like `y1` (`<cmath>`)
