@@ -137,12 +137,15 @@ var builtIns = func() []string {
 	return names
 }()
 
-// view is what one check reads: Meta, the boot checked when it counts
-// (nil otherwise, and outside a boot), and when.
+// view is what one check reads: Meta, the boot checked when it counts (s,
+// nil otherwise and outside a boot), the boot whatever it is (boot), when,
+// and in a backfill the events table's sample runs.
 type view struct {
-	m   *game.Meta
-	s   *game.State
-	now time.Time
+	m        *game.Meta
+	s        *game.State
+	boot     *game.State
+	now      time.Time
+	backfill *Samples
 }
 
 // Check sets every bit that holds for m and boot s (nil outside a boot)
@@ -150,31 +153,35 @@ type view struct {
 // A boot that has ended is folded into m.Record first (Fold), once. Check
 // sets nothing while a door is open (GR6), never clears a bit, and twice is
 // once: it reads only m, s and now, and now only for the timestamps.
+//
+// A boot's own bits hold as soon as it shows them (a boss beaten, the pool
+// at its cap); those of the Record wait for the boot's end, when it is
+// folded. An abandoned boot keeps what it did before; its end, a crash,
+// sets nothing a clear would.
 func Check(m *game.Meta, s *game.State, now time.Time) []game.SetuidBit {
 	if m == nil || s != nil && (s.Phase == game.PhaseProblem || s.Current != nil) {
 		return nil
 	}
 	Fold(m, s)
-	return check(m, s, now, false, func(Def) bool { return true })
+	return check(&view{m: m, boot: s, now: now}, func(Def) bool { return true })
 }
 
-// check sets the bits of Table that which picks and that hold, stamped
-// with now (and backfill), and returns them.
-func check(m *game.Meta, s *game.State, now time.Time, backfill bool, which func(Def) bool) []game.SetuidBit {
-	v := &view{m: m, now: now}
-	if Counts(s) {
-		v.s = s
+// check sets the bits of Table that which picks and that hold in v,
+// stamped v.now (and Backfill in a backfill), and returns them.
+func check(v *view, which func(Def) bool) []game.SetuidBit {
+	if Counts(v.boot) {
+		v.s = v.boot
 	}
 	var set []game.SetuidBit
 	for _, d := range Table {
-		if d.holds == nil || !which(d) || IsSet(m, d.ID) || !d.holds(v) {
+		if d.holds == nil || !which(d) || IsSet(v.m, d.ID) || !d.holds(v) {
 			continue
 		}
-		b := game.SetuidBit{ID: d.ID, At: now, Backfill: backfill}
-		if s != nil {
-			b.Boot = s.Boot
+		b := game.SetuidBit{ID: d.ID, At: v.now, Backfill: v.backfill != nil}
+		if v.boot != nil {
+			b.Boot = v.boot.Boot
 		}
-		m.Setuid = append(m.Setuid, b) // later bits of the table read it
+		v.m.Setuid = append(v.m.Setuid, b) // later bits of the table read it
 		set = append(set, b)
 	}
 	return set
@@ -187,13 +194,20 @@ func ended(s *game.State) bool {
 
 // Fold folds the ended boot s into m.Record, once (Record.Folded): what it
 // reached that the bits count across boots. A boot still running, and one
-// already folded, change nothing; a trial is only marked folded.
+// already folded, change nothing; a trial is only marked folded, and a boot
+// of a custom preset adds only its boot time.
 func Fold(m *game.Meta, s *game.State) {
 	if m == nil || !ended(s) || s.Boot <= m.Record.Folded {
 		return
 	}
 	m.Record.Folded = s.Boot
-	// The fold of what the boot reached comes with the checkers.
+	if s.Trial != nil {
+		return
+	}
+	m.Record.BootTime += s.BootTime(s.Started)
+	if Counts(s) {
+		fold(&m.Record, s)
+	}
 }
 
 // FreshStore reports whether speed completion id (speed-completion,
