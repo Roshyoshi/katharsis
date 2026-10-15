@@ -892,9 +892,10 @@ func (r Rules) Validate() error {
 
 // MaxBaseBytes bounds base_bytes, MaxBytesMultiplier each multiplier of a
 // door's pay, and MaxDoorBytes what one door can pay with every multiplier
-// stacked; Standard's richest door pays 6 KiB. The bounds keep the sums
-// over a lifetime of boots (the bank, lifetime bytes) far from int64's
-// limit: a preset with base_bytes near it overflowed on the first clear.
+// stacked, 18 KiB under Standard (no door stacks them all: a boss or a
+// regression is never cursed). The bounds keep the sums over a lifetime of
+// boots (the bank, lifetime bytes) far from int64's limit: a preset with
+// base_bytes near it overflowed on the first clear.
 const (
 	MaxBaseBytes       = 1 << 30
 	MaxBytesMultiplier = 1000
@@ -917,6 +918,7 @@ func (r Rules) validateBytes() error {
 		{"cursed_mult", r.CursedMult}, {"boss_mult", r.BossMult},
 		{"min_bytes_mult", r.MinBytesMult}, {"max_bytes_mult", r.MaxBytesMult},
 		{"dev_random_mult", r.DevRandomMult}, {"overtime_bytes_mult", r.OvertimeBytesMult},
+		{"cron_mult", r.CronMult}, {"chrt_bytes_mult", r.ChrtBytesMult},
 		{"dump_independent_mult", r.DumpIndependentMult},
 	}
 	for _, m := range mults {
@@ -927,12 +929,12 @@ func (r Rules) validateBytes() error {
 	}
 	// The richest door stacks every multiplier as doorBytes in
 	// internal/game does: the difficulty factor at its cap, mystery (with
-	// dev-random) or blind, cursed, a boss, and overtime pay. A zero is
-	// the default WithDefaults fills in.
+	// dev-random) or blind, cursed, a boss, a regression with cron, chrt,
+	// and overtime pay. A zero is the default WithDefaults fills in.
 	d := r.WithDefaults()
 	worst := float64(d.BaseBytes) * max(d.MaxBytesMult, d.MinBytesMult) *
 		max(d.MysteryMult*d.DevRandomMult, d.BlindMult, 1) * max(d.CursedMult, 1) *
-		max(d.BossMult, 1) * max(d.OvertimeBytesMult, 1)
+		max(d.BossMult, 1) * max(d.CronMult, 1) * max(d.ChrtBytesMult, 1) * max(d.OvertimeBytesMult, 1)
 	if worst > MaxDoorBytes {
 		return fmt.Errorf("rules %q: a door could pay %.3g bytes, over the %d allowed; lower base_bytes or the *_mult keys",
 			r.Name, worst, int64(MaxDoorBytes))

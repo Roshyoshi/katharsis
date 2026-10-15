@@ -99,6 +99,12 @@ func TestValidate(t *testing.T) {
 		{"inf mystery_mult", func(r *rules.Rules) { r.MysteryMult = math.Inf(1) }, "mystery_mult"},
 		{"nan cursed_mult", func(r *rules.Rules) { r.CursedMult = math.NaN() }, "cursed_mult"},
 		{"negative blind_mult", func(r *rules.Rules) { r.BlindMult = -2 }, "blind_mult"},
+		// chrt and cron multiply a door's pay like the rest.
+		{"huge chrt_bytes_mult", func(r *rules.Rules) { r.ChrtBytesMult = 1e300 }, "chrt_bytes_mult"},
+		{"inf cron_mult", func(r *rules.Rules) { r.CronMult = math.Inf(1) }, "cron_mult"},
+		{"stacked daemon pay", func(r *rules.Rules) {
+			r.BaseBytes, r.ChrtBytesMult, r.CronMult = rules.MaxBaseBytes, 1000, 1000
+		}, "a door could pay"},
 		{"stacked pay", func(r *rules.Rules) {
 			r.BaseBytes, r.MaxBytesMult, r.BossMult, r.CursedMult = rules.MaxBaseBytes, 100, 100, 100
 		}, "a door could pay"},
