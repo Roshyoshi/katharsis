@@ -407,6 +407,26 @@ func TestClearedTrialTitle(t *testing.T) {
 	}
 }
 
+// A reveal tick only moves the count on: View builds the panic's
+// elements, and a tick used to build all of them again three times
+// (twice to ask whether the reveal was over, once to time the next tick).
+func TestCrashRevealTickIsCheap(t *testing.T) {
+	c := NewCrash(crashEnv(game.TimedOut))
+	c.Init()
+	c.View(140, 40)
+	gen := c.gen
+	allocs := testing.AllocsPerRun(20, func() {
+		c.shown = 1
+		c.Update(revealMsg{gen: gen})
+	})
+	if allocs > 10 {
+		t.Errorf("a reveal tick allocates %.0f times, want a handful", allocs)
+	}
+	if c.shown != 2 {
+		t.Errorf("a tick moved the reveal to %d elements, want 2", c.shown)
+	}
+}
+
 // A trial's crash has the Gryphon's line for its epitaph, whatever ended
 // it; a boot's keeps its own.
 func TestCrashTrialEpitaph(t *testing.T) {

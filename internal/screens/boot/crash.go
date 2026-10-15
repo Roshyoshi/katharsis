@@ -45,6 +45,11 @@ type Crash struct {
 	// panic has depends on it (a short terminal drops old log lines and
 	// doors), and the reveal ends when they are all on screen.
 	size [2]int
+	// count is how many elements the panic has at size, -1 until counted. They
+	// depend only on the state and the size, so View counts them as it
+	// builds them, Refresh forgets the count, and the reveal's ticks read it
+	// instead of building them all again.
+	count int
 	// armed is the reboot key pressed once over a live core dump; the
 	// same key again reboots, any other disarms.
 	armed string
@@ -52,11 +57,11 @@ type Crash struct {
 
 // NewCrash builds the panic fully printed. Call Init to play the reveal.
 func NewCrash(env Env) *Crash {
-	return &Crash{env: env, shown: -1, size: [2]int{1 << 10, 1 << 10}}
+	return &Crash{env: env, shown: -1, size: [2]int{1 << 10, 1 << 10}, count: -1}
 }
 
 // Refresh swaps in new state and clock.
-func (c *Crash) Refresh(env Env) { c.env = env }
+func (c *Crash) Refresh(env Env) { c.env, c.count = env, -1 }
 
 // Init starts the reveal: the panic prints line by line over revealTime.
 // Any key during the reveal skips to the end.
@@ -69,7 +74,12 @@ func (c *Crash) Init() tea.Cmd {
 // revealing reports whether the reveal is still printing.
 func (c *Crash) revealing() bool { return c.shown >= 0 && c.shown < c.total() }
 
-func (c *Crash) total() int { return len(c.elements(c.size[0], c.size[1])) }
+func (c *Crash) total() int {
+	if c.count < 0 {
+		c.count = len(c.elements(c.size[0], c.size[1]))
+	}
+	return c.count
+}
 
 func (c *Crash) tick() tea.Cmd {
 	gen := c.gen
@@ -134,6 +144,7 @@ func (c *Crash) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 func (c *Crash) View(width, height int) string {
 	c.size = [2]int{width, height}
 	els := c.elements(width, height)
+	c.count = len(els)
 	n := len(els)
 	if c.shown >= 0 {
 		n = min(c.shown, n)
