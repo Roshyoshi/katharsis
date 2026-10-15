@@ -14,6 +14,8 @@ import (
 
 	"github.com/klauspost/compress/snappy"
 	"github.com/parquet-go/parquet-go"
+	"github.com/parquet-go/parquet-go/encoding/thrift"
+	"github.com/parquet-go/parquet-go/format"
 )
 
 type optPlain struct {
@@ -336,11 +338,32 @@ func TestDecodeHybrid(t *testing.T) {
 		{"width 0", []byte{4 << 1}, 0, 4, []uint32{0, 0, 0, 0}, false},
 		{"cut off", []byte{1<<1 | 1}, 3, 8, nil, true},
 		{"too few", []byte{2 << 1, 1}, 1, 3, nil, true},
+		// Corrupt headers: 2^40 groups of nothing used to loop 2^43 times,
+		// and groups*width overflowing to 32 used to index past b.
+		{"huge width-0 run", binary.AppendUvarint(nil, 1<<40<<1|1), 0, 4, []uint32{0, 0, 0, 0}, false},
+		{"run size overflows", append(binary.AppendUvarint(nil, (1<<59+1)<<1|1), make([]byte, 32)...), 32, 1000, nil, true},
 	}
 	for _, tc := range tests {
 		got, err := decodeHybrid(tc.b, tc.width, tc.n)
 		if (err != nil) != tc.err || !tc.err && !slices.Equal(got, tc.want) {
 			t.Errorf("%s: %v, %v; want %v", tc.name, got, err, tc.want)
+		}
+	}
+}
+
+// A negative value count used to reach make() and panic.
+func TestReadPageHeaderNegativeCount(t *testing.T) {
+	t.Parallel()
+	for _, h := range []format.PageHeader{
+		{Type: format.DataPage, DataPageHeader: thrift.New(format.DataPageHeader{NumValues: -1})},
+		{Type: format.DictionaryPage, DictionaryPageHeader: thrift.New(format.DictionaryPageHeader{NumValues: -1})},
+	} {
+		b, err := thrift.Marshal(new(thrift.CompactProtocol), &h)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := readPageHeader(bytes.NewReader(b), 0); err == nil {
+			t.Errorf("%v page with -1 values accepted", h.Type)
 		}
 	}
 }

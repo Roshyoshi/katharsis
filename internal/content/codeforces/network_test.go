@@ -1,6 +1,7 @@
 package codeforces
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"io/fs"
@@ -44,7 +45,10 @@ func TestNetwork(t *testing.T) {
 		{"cf:1899C", false, false, time.Second},
 		{"cf:1004A", false, true, time.Second},
 	} {
-		os.RemoveAll(filepath.Join(c.root, dirName(mustEntry(t, c, tc.id)))) // time a cold fetch
+		// Time a cold fetch.
+		if err := os.RemoveAll(filepath.Join(c.root, dirName(mustEntry(t, c, tc.id)))); err != nil {
+			t.Fatal(err)
+		}
 		start := time.Now()
 		a, err := c.Fetch(ctx, tc.id)
 		if err != nil {
@@ -98,7 +102,7 @@ func mustEntry(t *testing.T, c *Catalog, id catalog.ID) entry {
 
 func dirSize(dir string) int64 {
 	var n int64
-	filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() {
 			if fi, err := d.Info(); err == nil {
 				n += fi.Size()
@@ -159,7 +163,7 @@ func logStats(t *testing.T, c *Catalog) {
 		count(func(e entry) bool { return e.Rating > 0 }), count(judge),
 		count(func(e entry) bool { return e.HasEditorial }),
 		count(func(e entry) bool { return e.Judgeable && e.HasEditorial }))
-	t.Logf("skip:%s", byKey(all, func(e entry) string { return cmpOr(e.Skip, "ok") }))
+	t.Logf("skip:%s", byKey(all, func(e entry) string { return cmp.Or(e.Skip, "ok") }))
 	t.Logf("tests (judgeable): official=%d generated=%d",
 		count(func(e entry) bool { return e.Judgeable && e.Complete }),
 		count(func(e entry) bool { return e.Judgeable && !e.Complete }))
@@ -182,11 +186,4 @@ func logStats(t *testing.T, c *Catalog) {
 	if fi != nil && ti != nil {
 		t.Logf("cache: index.json %s, text.bin %s", human(fi.Size()), human(ti.Size()))
 	}
-}
-
-func cmpOr(a, b string) string {
-	if a != "" {
-		return a
-	}
-	return b
 }

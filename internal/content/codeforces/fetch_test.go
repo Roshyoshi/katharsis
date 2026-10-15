@@ -2,6 +2,7 @@ package codeforces
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -30,18 +31,6 @@ func readTests(t *testing.T, ts []problem.Test) [][2]string {
 		out = append(out, [2]string{string(in), string(o)})
 	}
 	return out
-}
-
-func equalTests(a, b [][2]string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func TestFetchOfficial(t *testing.T) {
@@ -77,10 +66,10 @@ func TestFetchOfficial(t *testing.T) {
 	}
 	// CRLF from Codeforces becomes LF.
 	want := [][2]string{{"8\n", "YES\n"}, {"5\n", "NO\n"}, {"4\n", "YES\n"}}
-	if got := readTests(t, a.Tests); !equalTests(got, want) {
+	if got := readTests(t, a.Tests); !slices.Equal(got, want) {
 		t.Errorf("tests = %q, want %q", got, want)
 	}
-	if got := readTests(t, a.Samples); !equalTests(got, [][2]string{{"8\n", "YES\n"}}) {
+	if got := readTests(t, a.Samples); !slices.Equal(got, [][2]string{{"8\n", "YES\n"}}) {
 		t.Errorf("samples = %q", got)
 	}
 	if b, _ := os.ReadFile(a.Statement); !strings.HasPrefix(string(b), "# Watermelon\n") {
@@ -99,9 +88,46 @@ func TestFetchOfficial(t *testing.T) {
 	h.setFail(false)
 
 	// A tampered dir is fetched again.
-	os.Remove(a.Tests[1].Out)
+	if err := os.Remove(a.Tests[1].Out); err != nil {
+		t.Fatal(err)
+	}
 	if a2, err := c.Fetch(ctx, "cf:4A"); err != nil || len(a2.Tests) != 3 {
 		t.Errorf("refetch after tampering: %v, %d tests", err, len(a2.Tests))
+	}
+	assertNoDebris(t, c.root)
+}
+
+// A complete dir written under another revision or schema used to be
+// served as is, so a bump never reached problems already in the cache.
+func TestFetchRefetchesOtherBuild(t *testing.T) {
+	t.Parallel()
+	c, h := openFixture(t)
+	a, err := c.Fetch(t.Context(), "cf:4A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	metaPath := filepath.Join(filepath.Dir(a.Statement), "meta.json")
+	b, err := os.ReadFile(metaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m meta
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	m.Key = "rev=older schema=1"
+	if err := os.WriteFile(metaPath, mustJSON(t, m), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := h.total()
+	if _, err := c.Fetch(t.Context(), "cf:4A"); err != nil {
+		t.Fatal(err)
+	}
+	if h.total() == before {
+		t.Error("a dir from another build was served without a fetch")
+	}
+	if b, _ := os.ReadFile(metaPath); json.Unmarshal(b, &m) != nil || m.Key != dirKey {
+		t.Errorf("meta key after refetch = %q, want %q", m.Key, dirKey)
 	}
 	assertNoDebris(t, c.root)
 }
@@ -121,7 +147,7 @@ func TestFetchGenerated(t *testing.T) {
 		{"c2 in\n", "c2 out\n"},
 		{"c3 in\n", "c3 out\n"},
 	}
-	if got := readTests(t, a.Tests); !equalTests(got, want) {
+	if got := readTests(t, a.Tests); !slices.Equal(got, want) {
 		t.Errorf("tests = %q, want %q", got, want)
 	}
 	if a.Editorial == "" {
@@ -150,7 +176,7 @@ func TestFetchFallback(t *testing.T) {
 		{"2028/B test 2\n", "2\n"},
 		{"7\n10 1 0\n", "0\n"},
 	}
-	if got := readTests(t, a.Tests); !equalTests(got, want) {
+	if got := readTests(t, a.Tests); !slices.Equal(got, want) {
 		t.Errorf("tests = %q, want %q", got, want)
 	}
 }
@@ -249,7 +275,7 @@ func TestFetchGeneratedOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := [][2]string{{"b1\n", "B1\n"}, {"b2\n", "B2\n"}}
-	if got := readTests(t, a.Tests); !equalTests(got, want) {
+	if got := readTests(t, a.Tests); !slices.Equal(got, want) {
 		t.Errorf("tests = %q, want %q", got, want)
 	}
 	if p, _ := c.Get("cf:1899B"); !p.Judgeable {
@@ -267,7 +293,9 @@ func TestCleanDebris(t *testing.T) {
 			t.Fatal(err)
 		}
 		if name != ".dl-new" {
-			os.Chtimes(p, old, old)
+			if err := os.Chtimes(p, old, old); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	cleanDebris(root, time.Now().Add(-debrisAge))

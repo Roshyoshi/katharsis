@@ -31,6 +31,20 @@ import (
 
 var errUnsupported = errors.New("parquet layout the streaming reader does not handle")
 
+// plainDictionary is PLAIN_DICTIONARY, deprecated for writers since format
+// 2.0 but still what format 1.0 writers put on dictionary and data pages.
+const plainDictionary = format.Encoding(2)
+
+// chunkStart is where a column chunk's first page is: its dictionary page
+// when it has one. Writers put 0 there for "none"; 0 is also never a real
+// page offset, since the file starts with "PAR1".
+func chunkStart(m format.ColumnMetaData) int64 {
+	if d := m.DictionaryPageOffset; d > 0 && d < m.DataPageOffset {
+		return d
+	}
+	return m.DataPageOffset
+}
+
 // snappyWindow is how far back a Snappy copy may reach. Arrow's C++
 // Snappy compresses in 64 KiB fragments and never copies across one;
 // Go's s2 (parquet-go's writer, used by the tests) reaches further, so
@@ -55,19 +69,13 @@ func streamColumn(ra io.ReaderAt, f *parquet.File, rg int, path []string, wanted
 	if cc.Type != format.ByteArray || leaf.MaxRepetitionLevel > 1 {
 		return errUnsupported
 	}
-	slotDef, err := slotLevel(f.Schema(), path)
-	if err != nil {
-		return err
-	}
 	s := &colStream{
 		ra: ra, codec: cc.Codec,
-		maxDef: leaf.MaxDefinitionLevel, maxRep: leaf.MaxRepetitionLevel, slotDef: slotDef,
-		wanted: wanted, emit: emit, need: map[uint32][]slot{},
+		maxDef: leaf.MaxDefinitionLevel, maxRep: leaf.MaxRepetitionLevel,
+		slotDef: slotLevel(f.Schema(), path),
+		wanted:  wanted, emit: emit, need: map[uint32][]slot{},
 	}
-	off := cc.DataPageOffset
-	if d := cc.DictionaryPageOffset; d > 0 && d < off {
-		off = d
-	}
+	off := chunkStart(cc)
 	end := off + cc.TotalCompressedSize
 	for off < end {
 		h, hlen, err := readPageHeader(ra, off)
@@ -78,7 +86,7 @@ func streamColumn(ra io.ReaderAt, f *parquet.File, rg int, path []string, wanted
 		switch h.Type {
 		case format.DictionaryPage:
 			dh := h.DictionaryPageHeader.V
-			if dh.Encoding != format.Plain && dh.Encoding != format.PlainDictionary {
+			if dh.Encoding != format.Plain && dh.Encoding != plainDictionary {
 				return errUnsupported
 			}
 			s.dict = &page{off: body, csize: h.CompressedPageSize, usize: h.UncompressedPageSize, n: int(dh.NumValues)}
@@ -97,29 +105,26 @@ func streamColumn(ra io.ReaderAt, f *parquet.File, rg int, path []string, wanted
 
 // slotLevel is the definition level at which an entry of path is a list
 // element (or, for a column with no repeated ancestor, any entry at all):
-// below it the row has an empty or null list there, so no value.
-func slotLevel(s *parquet.Schema, path []string) (int, error) {
+// below it the row has an empty or null list there, so no value. path
+// must exist in s.
+func slotLevel(s *parquet.Schema, path []string) int {
 	var node parquet.Node = s
 	def, slot := 0, 0
 	for _, name := range path {
-		var next parquet.Node
 		for _, fl := range node.Fields() {
 			if fl.Name() == name {
-				next = fl
+				node = fl
+				break
 			}
 		}
-		if next == nil {
-			return 0, fmt.Errorf("no column %v", path)
-		}
-		if next.Optional() || next.Repeated() {
+		if node.Optional() || node.Repeated() {
 			def++
 		}
-		if next.Repeated() {
+		if node.Repeated() {
 			slot = def
 		}
-		node = next
 	}
-	return slot, nil
+	return slot
 }
 
 type page struct {
@@ -173,7 +178,7 @@ func (s *colStream) dataPage(h format.PageHeader, body int64) error {
 	var dictIdx []uint32
 	switch dh.Encoding {
 	case format.Plain:
-	case format.RLEDictionary, format.PlainDictionary:
+	case format.RLEDictionary, plainDictionary:
 		nonNull := n
 		if s.maxDef > 0 {
 			nonNull = 0
@@ -188,8 +193,8 @@ func (s *colStream) dataPage(h format.PageHeader, body int64) error {
 			return err
 		}
 		if nonNull > 0 {
-			if len(rest) == 0 || rest[0] > 32 {
-				return fmt.Errorf("dictionary index bit width")
+			if len(rest) == 0 {
+				return fmt.Errorf("dictionary index bit width missing")
 			}
 			if dictIdx, err = decodeHybrid(rest[1:], int(rest[0]), nonNull); err != nil {
 				return err
@@ -315,7 +320,8 @@ func readPageHeader(ra io.ReaderAt, off int64) (format.PageHeader, int64, error)
 			}
 			return format.PageHeader{}, 0, fmt.Errorf("page header at %d: %w", off, err)
 		}
-		if h.CompressedPageSize < 0 || h.UncompressedPageSize < 0 {
+		if h.CompressedPageSize < 0 || h.UncompressedPageSize < 0 ||
+			h.DataPageHeader.V.NumValues < 0 || h.DictionaryPageHeader.V.NumValues < 0 {
 			return format.PageHeader{}, 0, fmt.Errorf("page header at %d: negative size", off)
 		}
 		return h, int64(n - br.Len()), nil
@@ -336,8 +342,8 @@ func pageReader(ra io.ReaderAt, off int64, csize, usize int32, codec format.Comp
 }
 
 // readLevels reads RLE-encoded levels of a v1 data page: a 4-byte length,
-// then the hybrid encoding at the bit width of max.
-func readLevels(r io.Reader, max, n int) ([]uint32, error) {
+// then the hybrid encoding at the bit width of maxLevel.
+func readLevels(r io.Reader, maxLevel, n int) ([]uint32, error) {
 	var lb [4]byte
 	if _, err := io.ReadFull(r, lb[:]); err != nil {
 		return nil, fmt.Errorf("levels length: %w", err)
@@ -350,13 +356,13 @@ func readLevels(r io.Reader, max, n int) ([]uint32, error) {
 	if _, err := io.ReadFull(r, b); err != nil {
 		return nil, fmt.Errorf("levels: %w", err)
 	}
-	lv, err := decodeHybrid(b, bits.Len(uint(max)), n)
+	lv, err := decodeHybrid(b, bits.Len(uint(maxLevel)), n)
 	if err != nil {
 		return nil, err
 	}
 	for _, v := range lv {
-		if int(v) > max {
-			return nil, fmt.Errorf("level %d over the maximum %d", v, max)
+		if int(v) > maxLevel {
+			return nil, fmt.Errorf("level %d over the maximum %d", v, maxLevel)
 		}
 	}
 	return lv, nil
@@ -367,7 +373,7 @@ func readLevels(r io.Reader, max, n int) ([]uint32, error) {
 // count = header/2) or groups of 8 bit-packed values, LSB first (header
 // odd, groups = header/2).
 func decodeHybrid(b []byte, width, n int) ([]uint32, error) {
-	if width < 0 || width > 32 {
+	if width > 32 {
 		return nil, fmt.Errorf("bit width %d", width)
 	}
 	out := make([]uint32, 0, n)
@@ -393,28 +399,32 @@ func decodeHybrid(b []byte, width, n int) ([]uint32, error) {
 			}
 			continue
 		}
-		groups := int(h >> 1)
-		nb := groups * width
-		if groups <= 0 || len(b) < nb {
+		// The run is groups*width bytes holding groups*8 values; values
+		// past n are padding. Check by division and decode only the
+		// values wanted, so a corrupt groups can neither overflow the
+		// product nor, at width 0 (no bytes), spin through 2^60 values.
+		groups := h >> 1
+		if groups == 0 || width > 0 && groups > uint64(len(b)/width) {
 			return nil, fmt.Errorf("hybrid bit-packed run cut off")
+		}
+		vals := n - len(out)
+		if groups < uint64(vals+7)/8 {
+			vals = int(groups) * 8
 		}
 		var acc uint64
 		var have int
 		p := 0
-		for range groups * 8 {
+		for range vals {
 			for have < width {
 				acc |= uint64(b[p]) << have
 				p++
 				have += 8
 			}
-			v := uint32(acc & (1<<width - 1))
+			out = append(out, uint32(acc&(1<<width-1)))
 			acc >>= width
 			have -= width
-			if len(out) < n {
-				out = append(out, v)
-			}
 		}
-		b = b[nb:]
+		b = b[int(groups)*width:]
 	}
 	return out, nil
 }

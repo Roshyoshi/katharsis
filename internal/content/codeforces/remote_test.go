@@ -117,7 +117,7 @@ func TestSpanFile(t *testing.T) {
 	for _, tc := range tests {
 		p := make([]byte, tc.n)
 		n, err := sf.ReadAt(p, tc.off)
-		if string(p[:n]) != tc.want || !errors.Is(err, tc.err) && !(err == nil && tc.err == nil) {
+		if string(p[:n]) != tc.want || !errors.Is(err, tc.err) { // Is(nil, nil) holds
 			t.Errorf("ReadAt(%d, %d) = %q, %v; want %q, %v", tc.off, tc.n, p[:n], err, tc.want, tc.err)
 		}
 	}

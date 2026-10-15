@@ -2,6 +2,7 @@ package codeforces
 
 import (
 	"encoding/json"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -81,7 +82,7 @@ func TestOpenBuildsIndex(t *testing.T) {
 		Rating: 2800, RatingSource: "cf", TimeLimit: 3 * time.Second, MemLimit: 512 << 20,
 		Judgeable: true, FloatTolerance: 1e-6,
 	}
-	if !ok || !sameProblem(p, want) {
+	if !ok || !reflect.DeepEqual(p, want) {
 		t.Errorf("Get(cf:2038M) =\n%+v\nwant\n%+v", p, want)
 	}
 	if e, _ := c.entry("cf:2038M"); !e.HasChecker || e.NeedsChecker {
@@ -131,16 +132,6 @@ func TestOpenBuildsIndex(t *testing.T) {
 func digits(id string) string {
 	s := strings.TrimPrefix(id, "cf:")
 	return s[:strings.IndexFunc(s, func(r rune) bool { return r < '0' || r > '9' })]
-}
-
-func sameProblem(a, b catalog.Problem) bool {
-	return a.ID == b.ID && a.Source == b.Source && a.Title == b.Title && a.URL == b.URL &&
-		a.Division == b.Division && a.Contest == b.Contest && a.Position == b.Position &&
-		slices.Equal(a.Tags, b.Tags) && a.Topic == b.Topic && a.Rating == b.Rating &&
-		a.RatingSource == b.RatingSource && a.TimeLimit == b.TimeLimit && a.MemLimit == b.MemLimit &&
-		a.FileIO == b.FileIO && a.Judgeable == b.Judgeable && a.Interactive == b.Interactive &&
-		a.NeedsChecker == b.NeedsChecker && a.FloatTolerance == b.FloatTolerance &&
-		a.HasEditorial == b.HasEditorial
 }
 
 func parseRange(t *testing.T, rng string, size int64) (int64, int64) {

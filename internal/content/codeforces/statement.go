@@ -22,13 +22,7 @@ import (
 // CRLF, which getline on macOS would hand to the player's program, and the
 // dataset strips the final newline from samples. Statement fences and the
 // files on disk both come from this, so they stay byte-identical.
-func data(s string) string {
-	s = strings.ReplaceAll(s, "\r\n", "\n")
-	if s != "" && !strings.HasSuffix(s, "\n") {
-		s += "\n"
-	}
-	return s
-}
+func data(s string) string { return string(dataBytes([]byte(s))) }
 
 // dataBytes is data for a test value, which can be tens of MB: it copies
 // only when it must. v may be shared, so it is never written in place.
@@ -121,7 +115,7 @@ func prose(s string) string {
 	s = strings.ReplaceAll(s, "\r\n", "\n")
 	// Codeforces uses no-break spaces as ordinary ones; glamour would
 	// never wrap a paragraph of them.
-	s = strings.ReplaceAll(s, " ", " ")
+	s = strings.ReplaceAll(s, "\u00a0", " ")
 	segs := mergeInline(splitMath(s))
 	var b strings.Builder
 	for _, sg := range segs {
@@ -187,11 +181,14 @@ func splitMath(s string) []seg {
 			continue
 		}
 		run := runLen(s, i, '$')
+		if run >= 6 {
+			if j := closeAt(s, i+6, "$$$$$$"); j >= 0 {
+				emit(segDisplay, s[i+6:j], j+6)
+				i = j + 6
+				continue
+			}
+		}
 		switch {
-		case run >= 6 && closeAt(s, i+6, "$$$$$$") >= 0:
-			j := closeAt(s, i+6, "$$$$$$")
-			emit(segDisplay, s[i+6:j], j+6)
-			i = j + 6
 		case run >= 3:
 			if j := closeAt(s, i+3, "$$$"); j >= 0 {
 				emit(segInline, s[i+3:j], j+3)
@@ -318,8 +315,7 @@ var htmlTagRE = regexp.MustCompile(`(?i)</?(p|div|br|spoiler|pre|li|ul|ol|b|i|em
 // and markdown syntax escaped.
 func writeText(b *strings.Builder, s string) {
 	s = htmlTagRE.ReplaceAllStringFunc(s, func(tag string) string {
-		name := strings.ToLower(strings.Trim(strings.Fields(strings.Trim(tag, "</>"))[0], "/"))
-		switch name {
+		switch strings.ToLower(htmlTagRE.FindStringSubmatch(tag)[1]) {
 		case "p", "div", "br", "spoiler", "pre", "li", "ul", "ol":
 			return "\n"
 		}

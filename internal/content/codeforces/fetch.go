@@ -33,7 +33,7 @@ const (
 var errTestsMissing = errors.New("tests not found where the index says")
 
 // meta.json is written last into a problem dir; its presence means the
-// dir is complete.
+// dir is complete. Key is dirKey of the build that wrote it.
 type meta struct {
 	Key          string    `json:"key"`
 	HasEditorial bool      `json:"has_editorial"`
@@ -43,13 +43,17 @@ type meta struct {
 	Fetched      time.Time `json:"fetched"`
 }
 
+// dirKey names what a problem dir's contents depend on, so a dir written
+// under another revision or schema is fetched again, not served stale.
+var dirKey = fmt.Sprintf("rev=%s schema=%d", rev, schema)
+
 func loadAssets(dir string) (catalog.Assets, bool) {
 	b, err := os.ReadFile(filepath.Join(dir, "meta.json"))
 	if err != nil {
 		return catalog.Assets{}, false
 	}
 	var m meta
-	if json.Unmarshal(b, &m) != nil {
+	if json.Unmarshal(b, &m) != nil || m.Key != dirKey {
 		return catalog.Assets{}, false
 	}
 	a := catalog.Assets{Statement: filepath.Join(dir, "statement.md")}
@@ -104,13 +108,13 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 	if err != nil {
 		return catalog.Assets{}, err
 	}
-	defer os.RemoveAll(tmp)
+	defer func() { _ = os.RemoveAll(tmp) }()
 
 	t, err := c.readText(e)
 	if err != nil {
 		return catalog.Assets{}, err
 	}
-	m := meta{Key: e.Key, Fetched: time.Now().UTC()}
+	m := meta{Key: dirKey, Fetched: time.Now().UTC()}
 	files := map[string]string{"statement.md": statementMarkdown(e, t)}
 	if e.HasEditorial {
 		files["editorial.md"] = editorialMarkdown(e, t)
@@ -148,9 +152,10 @@ func (c *Catalog) materialize(ctx context.Context, e entry, dir string) (catalog
 	if err := os.WriteFile(filepath.Join(tmp, "meta.json"), mb, 0o644); err != nil {
 		return catalog.Assets{}, err
 	}
-	// A dir without meta.json is debris from an older crash; replace it.
+	// A dir loadAssets rejects is debris from a crash or another build;
+	// replace it.
 	if _, ok := loadAssets(dir); !ok {
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 	}
 	if err := os.Rename(tmp, dir); err != nil {
 		// Another process published first; its copy is as good.
@@ -192,10 +197,6 @@ func (c *Catalog) fetchTests(ctx context.Context, e entry, dst string) (official
 		case errors.Is(err, errTestsMissing) && !e.Complete:
 			// Generated tests are the full set; the official ones only
 			// add a few small cases.
-			if err := w.reset(); err != nil {
-				return 0, 0, err
-			}
-			official = 0
 		default:
 			return 0, 0, err
 		}
@@ -235,8 +236,8 @@ func (w *testWriter) reset() error {
 	return os.MkdirAll(w.dir, 0o755)
 }
 
-// count checks that names 1..n exist as .in/.out pairs starting at first
-// and returns n.
+// count checks that tests first .. first+n-1 were written in full and
+// returns n.
 func (w *testWriter) count(first, n int) (int, error) {
 	for i := first; i < first+n; i++ {
 		for _, ext := range []string{".in", ".out"} {
@@ -350,19 +351,16 @@ const fallbackMax = 32 << 20
 // and deletes the file. The file is the unit of download: its inputs are
 // one dictionary page, so no byte range holds just this problem's.
 func (c *Catalog) generatedTests(ctx context.Context, e entry, w *testWriter, first int) (int, error) {
-	if e.GenBytes == 0 || e.GenBytes > maxGenFile {
-		return 0, errTestsMissing
-	}
 	dl, err := os.MkdirTemp(c.root, ".dl-")
 	if err != nil {
 		return 0, err
 	}
-	defer os.RemoveAll(dl)
+	defer func() { _ = os.RemoveAll(dl) }()
 	f, err := os.Create(filepath.Join(dl, "tests.parquet"))
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	u := c.fileURL(genFile(e.ContestID))
 	err = c.client.download(ctx, u, maxGenFile, func() (io.Writer, error) {
 		if _, err := f.Seek(0, io.SeekStart); err != nil {
@@ -433,7 +431,7 @@ func (c *Catalog) generatedTests(ctx context.Context, e entry, w *testWriter, fi
 // time, for a small file streamColumn cannot read.
 func (c *Catalog) generatedFallback(pf *parquet.File, name map[int64]string, w *testWriter, u string, first int) (int, error) {
 	r := parquet.NewGenericReader[genRow](pf)
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 	buf := make([]genRow, 1)
 	for i := int64(0); ; i++ {
 		n, err := r.Read(buf)

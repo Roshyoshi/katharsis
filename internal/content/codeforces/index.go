@@ -29,14 +29,12 @@ type entry struct {
 	ContestID int      `json:"contest_id"`
 	Index     string   `json:"index"` // "C", "F1"
 	Name      string   `json:"contest_name"`
-	Aliases   []string `json:"aliases,omitempty"` // same problem in a sibling division
-	Text      [2]int64 `json:"text"`              // offset and length in text.bin
+	Text      [2]int64 `json:"text"` // offset and length in text.bin
 
 	Executable bool   `json:"executable"`  // ≥3 human solutions passed the official tests
 	InputMode  string `json:"input_mode"`  // "stdio" or "file" (input.txt/output.txt)
 	HasChecker bool   `json:"has_checker"` // the dataset generated a Python checker
 	Multi      bool   `json:"multi,omitempty"`
-	AnyCase    bool   `json:"any_case,omitempty"` // "YES/NO in any case"
 
 	TestsetSize int    `json:"testset_size"`    // official tests on Codeforces
 	Complete    bool   `json:"complete"`        // every official test is in the dataset
@@ -54,15 +52,15 @@ type index struct {
 	Entries  []entry `json:"entries"`
 }
 
-// schema changes whenever entry, text.bin or the derivation rules change,
-// so a stale cache is rebuilt rather than misread.
+// schema changes whenever entry, text.bin, the derivation rules or what
+// Fetch writes into a problem dir change, so a stale cache is rebuilt
+// rather than misread.
 const schema = 2 // 2: catalog.Problem.AnyCase
 
 func indexKey(l layout) string {
-	h := sha256.New()
-	json.NewEncoder(h).Encode(l)
-	fmt.Fprint(h, maxGenFile)
-	return fmt.Sprintf("rev=%s schema=%d layout=%s", rev, schema, hex.EncodeToString(h.Sum(nil)[:6]))
+	b, _ := json.Marshal(l) // strings, ints and a string-keyed map cannot fail
+	sum := sha256.Sum256(fmt.Appendf(b, "\n%d", maxGenFile))
+	return fmt.Sprintf("rev=%s schema=%d layout=%x", rev, schema, sum[:6])
 }
 
 // maxGenFile caps the generated-tests file Fetch will download for one
@@ -124,15 +122,11 @@ func buildIndex(l layout, splits []split, gen map[int]int64) (*index, []byte, er
 	for _, sp := range splits {
 		// Position in the verifiable config, which is this split's
 		// executable rows that have a full test set.
-		var verifiable []int
+		vpos := map[int]int{}
 		for i, r := range sp.rows {
 			if r.Executable && (r.OfficialTestsComplete || r.GeneratedTests > 0) {
-				verifiable = append(verifiable, i)
+				vpos[i] = len(vpos)
 			}
-		}
-		vpos := map[int]int{}
-		for p, i := range verifiable {
-			vpos[i] = p
 		}
 		for i, r := range sp.rows {
 			e, ok := newEntry(r)
@@ -140,7 +134,7 @@ func buildIndex(l layout, splits []split, gen map[int]int64) (*index, []byte, er
 				continue
 			}
 			if p, ok := vpos[i]; ok && l.VTests[sp.name] > 0 {
-				e.VFile, e.VRow = vtestFile(sp.name, p, len(verifiable), l.VTests[sp.name])
+				e.VFile, e.VRow = vtestFile(sp.name, p, len(vpos), l.VTests[sp.name])
 			}
 			e.GenBytes = gen[e.ContestID]
 			off := int64(blob.Len())
@@ -155,9 +149,13 @@ func buildIndex(l layout, splits []split, gen map[int]int64) (*index, []byte, er
 	slices.SortFunc(idx.Entries, func(a, b entry) int {
 		return cmp.Or(cmp.Compare(a.ContestID, b.ContestID), indexCompare(a.Index, b.Index))
 	})
-	sum := sha256.Sum256(blob.Bytes())
-	idx.TextSize, idx.TextHash = int64(blob.Len()), hex.EncodeToString(sum[:8])
+	idx.TextSize, idx.TextHash = int64(blob.Len()), textHash(blob.Bytes())
 	return idx, blob.Bytes(), nil
+}
+
+func textHash(blob []byte) string {
+	sum := sha256.Sum256(blob)
+	return hex.EncodeToString(sum[:8])
 }
 
 // indexCompare orders "B" < "C" < "C1" < "C2" < "D"; Codeforces indexes
@@ -173,10 +171,7 @@ func splitIndex(s string) (string, int) {
 	for i < len(s) && isLetter(s[i]) {
 		i++
 	}
-	n, err := strconv.Atoi(s[i:])
-	if err != nil {
-		n = 0
-	}
+	n, _ := strconv.Atoi(s[i:]) // 0 when there is no number
 	return s[:i], n
 }
 
@@ -188,7 +183,6 @@ func newEntry(r tableRow) (entry, bool) {
 	}
 	e := entry{
 		Key: r.ID, ContestID: cid, Index: idxStr, Name: r.ContestName,
-		Aliases:     r.Aliases,
 		Executable:  r.Executable,
 		InputMode:   r.InputMode,
 		HasChecker:  strings.TrimSpace(r.GeneratedChecker) != "",
@@ -223,8 +217,7 @@ func newEntry(r tableRow) (entry, bool) {
 	p.Interactive = strings.TrimSpace(r.InteractionFormat) != "" || slices.Contains(r.Tags, "interactive")
 	p.FloatTolerance = floatTolerance(r.OutputFormat, r.Description, r.Note)
 	e.Multi = multiAnswer(r.OutputFormat, r.Description)
-	e.AnyCase = caseInsensitive(r.OutputFormat, r.Note)
-	p.AnyCase = e.AnyCase
+	p.AnyCase = caseInsensitive(r.OutputFormat, r.Note)
 	// A checker written only to compare reals within the stated error is
 	// the judge's built-in float checker; 240 of the 1780 checkers at rev
 	// are that. Anything else (several valid answers, or a reason the
@@ -303,9 +296,8 @@ func (c *Catalog) readText(e entry) (text, error) {
 	if err != nil {
 		return t, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	zr := flate.NewReader(io.NewSectionReader(f, e.Text[0], e.Text[1]))
-	defer zr.Close()
 	if err := json.NewDecoder(zr).Decode(&t); err != nil {
 		return t, fmt.Errorf("%s: text.bin record: %w", e.ID, err)
 	}
@@ -329,7 +321,7 @@ func loadIndex(root string, l layout) (*index, bool) {
 	if err != nil || int64(len(blob)) != idx.TextSize {
 		return nil, false
 	}
-	if sum := sha256.Sum256(blob); hex.EncodeToString(sum[:8]) != idx.TextHash {
+	if textHash(blob) != idx.TextHash {
 		return nil, false
 	}
 	return &idx, true
@@ -359,12 +351,12 @@ func writeAtomic(p string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(f.Name()) // no-op after the rename
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		return err
+	defer func() { _ = os.Remove(f.Name()) }() // no-op after the rename
+	_, err = f.Write(data)
+	if cerr := f.Close(); err == nil {
+		err = cerr
 	}
-	if err := f.Close(); err != nil {
+	if err != nil {
 		return err
 	}
 	return os.Rename(f.Name(), p)

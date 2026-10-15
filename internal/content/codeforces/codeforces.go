@@ -278,7 +278,7 @@ func cleanDebris(root string, before time.Time) {
 			continue
 		}
 		if fi, err := d.Info(); err == nil && fi.ModTime().Before(before) {
-			os.RemoveAll(filepath.Join(root, name))
+			_ = os.RemoveAll(filepath.Join(root, name))
 		}
 	}
 }

@@ -37,7 +37,7 @@ const (
 // column that was not downloaded fails loudly instead of fetching.
 type spanFile struct {
 	size  int64
-	spans []span // sorted by off, non-overlapping
+	spans []span // sorted by off; a column range may overlap the tail
 }
 
 type span struct {
@@ -106,7 +106,11 @@ func (c *Catalog) openRemote(ctx context.Context, rawURL string, want func(path 
 		}
 		sf.add(off, b)
 	}
-	f, err := openSpans(sf)
+	f, err := parquet.OpenFile(sf, sf.size,
+		parquet.SkipMagicBytes(true), // the header is 4 bytes nobody needs
+		parquet.SkipPageIndex(true),
+		parquet.SkipBloomFilters(true),
+	)
 	if err != nil {
 		return nil, nil, permanentError{fmt.Errorf("%s: %w", rawURL, err)}
 	}
@@ -128,14 +132,6 @@ func (c *Catalog) openRemote(ctx context.Context, rawURL string, want func(path 
 	return f, sf, nil
 }
 
-func openSpans(sf *spanFile) (*parquet.File, error) {
-	return parquet.OpenFile(sf, sf.size,
-		parquet.SkipMagicBytes(true), // the header is 4 bytes nobody needs
-		parquet.SkipPageIndex(true),
-		parquet.SkipBloomFilters(true),
-	)
-}
-
 type byteRange struct{ off, end int64 }
 
 // columnRanges lists the byte ranges of the wanted column chunks in every
@@ -148,13 +144,7 @@ func columnRanges(f *parquet.File, want func(string) bool) ([]byteRange, error) 
 			if !want(strings.Join(m.PathInSchema, ".")) {
 				continue
 			}
-			// A chunk starts at its dictionary page when it has one.
-			// Writers put 0 there for "none"; 0 is also never a real
-			// page offset, since the file starts with "PAR1".
-			off := m.DataPageOffset
-			if d := m.DictionaryPageOffset; d > 0 && d < off {
-				off = d
-			}
+			off := chunkStart(m)
 			end := off + m.TotalCompressedSize
 			if off < 4 || m.TotalCompressedSize < 0 || end > f.Size() {
 				return nil, fmt.Errorf("column %v at [%d, %d) outside the file", m.PathInSchema, off, end)
@@ -197,7 +187,7 @@ func covered(sf *spanFile, r byteRange) bool {
 func readAll[T any](f *parquet.File) ([]T, error) {
 	rows := make([]T, f.NumRows())
 	r := parquet.NewGenericReader[T](f)
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 	n, err := r.Read(rows)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, err

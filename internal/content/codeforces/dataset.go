@@ -12,18 +12,11 @@ import (
 
 // The source is the Hugging Face dataset open-r1/codeforces at a pinned
 // revision, so every cached byte stays valid: a newer revision is a code
-// change (bump rev, which rebuilds the index).
+// change (bump rev, which rebuilds the index and refetches problem dirs).
+// The dataset is CC BY 4.0; statement.md and editorial.md credit it.
 const (
 	repo = "open-r1/codeforces"
 	rev  = "fbe3f6e903ee854eec2e69e9d96d0306cde59baf" // 2025-05-19
-
-	// Attribution is the credit line the dataset's CC BY 4.0 license asks
-	// for; statements and editorials are the problem authors' and
-	// Codeforces'. Every statement.md and editorial.md ends with it too.
-	Attribution = "Problems from the open-r1/codeforces dataset " +
-		"(https://huggingface.co/datasets/open-r1/codeforces), CC BY 4.0; " +
-		"statements and editorials by their Codeforces authors."
-	License = "CC-BY-4.0"
 )
 
 // layout says where the pinned revision keeps the three things Fetch and
@@ -93,11 +86,7 @@ func genFile(contest int) string {
 // column but official_tests.
 type tableRow struct {
 	ID                    string    `parquet:"id"` // "1899/C"
-	Aliases               []string  `parquet:"aliases,list"`
-	ContestID             string    `parquet:"contest_id"`
 	ContestName           string    `parquet:"contest_name"`
-	ContestType           string    `parquet:"contest_type"`
-	Index                 string    `parquet:"index"`
 	Title                 string    `parquet:"title"`
 	TimeLimit             *float64  `parquet:"time_limit"`   // seconds
 	MemoryLimit           *float64  `parquet:"memory_limit"` // MB
@@ -192,11 +181,8 @@ func (c *Catalog) genSizes(ctx context.Context) (map[int]int64, error) {
 		}
 		for _, e := range es {
 			name, ok := strings.CutPrefix(e.Path, "generated_tests/test_cases_")
-			if !ok || e.Type != "file" {
-				continue
-			}
-			id, err := strconv.Atoi(strings.TrimSuffix(name, ".parquet"))
-			if err == nil && strings.HasSuffix(name, ".parquet") {
+			name, ok2 := strings.CutSuffix(name, ".parquet")
+			if id, err := strconv.Atoi(name); ok && ok2 && err == nil && e.Type == "file" {
 				out[id] = e.Size
 			}
 		}

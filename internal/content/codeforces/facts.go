@@ -103,7 +103,7 @@ func bound(s string) (float64, bool) {
 // plainMath drops math delimiters and spacing commands so the regexes see
 // "10^{-6}" whether the statement wrote $$$10^{-6}$$$ or 10^{-6}.
 func plainMath(s string) string {
-	return strings.NewReplacer("$", "", `\,`, " ", `\;`, " ", `\ `, " ", " ", " ").Replace(s)
+	return strings.NewReplacer("$", "", `\,`, " ", `\;`, " ", `\ `, " ", "\u00a0", " ").Replace(s)
 }
 
 // multiAnswer reports whether the statement accepts any of several
@@ -112,9 +112,8 @@ func multiAnswer(sections ...string) bool {
 	return multiRE.MatchString(plainMath(strings.Join(sections, "\n")))
 }
 
-// caseInsensitive reports "YES/NO in any case" answers. The judge compares
-// exactly, so a "Yes" against an expected "YES" fails; the statement gets
-// a warning (see statementMarkdown) until the judge learns the rule.
+// caseInsensitive reports "YES/NO in any case" answers, which the judge
+// folds before comparing (catalog.Problem.AnyCase).
 func caseInsensitive(sections ...string) bool {
 	return caseRE.MatchString(plainMath(strings.Join(sections, "\n")))
 }

@@ -44,7 +44,7 @@ func TestStatementGolden(t *testing.T) {
 		{"4/A", "2010 statement: plain text, no math"},
 		{"919/E", "display math inside a sentence; three samples; editorial"},
 		{"1520/E", `"**.*.." and "- " lists must stay literal and lists`},
-		{"1791/A", "YES/NO in any case: the exact-match warning"},
+		{"1791/A", "YES/NO in any case; a Div. 4 statement with one sample"},
 		{"2028/B", "footnote marks: $$$x$$$$$$^{∗}$$$ is two inline spans"},
 		{"2038/M", "float answer, numbered list, long ICPC contest name"},
 		{"9999/Z", "made up: every prose edge case"},
@@ -124,9 +124,6 @@ func TestData(t *testing.T) {
 	for _, tc := range tests {
 		if got := data(tc.in); got != tc.want {
 			t.Errorf("data(%q) = %q, want %q", tc.in, got, tc.want)
-		}
-		if got := string(dataBytes([]byte(tc.in))); got != tc.want {
-			t.Errorf("dataBytes(%q) = %q, want %q", tc.in, got, tc.want)
 		}
 	}
 	shared := []byte("ab")[:1]

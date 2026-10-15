@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -54,9 +55,10 @@ type shardRow struct {
 }
 
 func toShard(r tableRow) shardRow {
+	contest, index, _ := strings.Cut(r.ID, "/")
 	return shardRow{
-		ID: r.ID, Aliases: r.Aliases, ContestID: r.ContestID, ContestName: r.ContestName,
-		ContestType: r.ContestType, Index: r.Index, Title: r.Title, TimeLimit: r.TimeLimit,
+		ID: r.ID, ContestID: contest, ContestName: r.ContestName, ContestType: "CF",
+		Index: index, Title: r.Title, TimeLimit: r.TimeLimit,
 		MemoryLimit: r.MemoryLimit, Description: r.Description, InputFormat: r.InputFormat,
 		OutputFormat: r.OutputFormat, InteractionFormat: r.InteractionFormat, Note: r.Note,
 		Examples: r.Examples, Editorial: r.Editorial, Rating: r.Rating, Tags: r.Tags,
@@ -124,10 +126,10 @@ func realRows(t testing.TB) map[string]tableRow {
 // made builds a made-up row; fields default to a judgeable problem with
 // complete official tests.
 func made(id string, f func(*tableRow)) tableRow {
-	contest, idx, _ := strings.Cut(id, "/")
+	contest, _, _ := strings.Cut(id, "/")
 	r := tableRow{
-		ID: id, ContestID: contest, Index: idx, ContestName: "Codeforces Round " + contest + " (Div. 2)",
-		ContestType: "CF", Title: "Problem " + id, TimeLimit: ptr(2.0), MemoryLimit: ptr(256.0),
+		ID: id, ContestName: "Codeforces Round " + contest + " (Div. 2)",
+		Title: "Problem " + id, TimeLimit: ptr(2.0), MemoryLimit: ptr(256.0),
 		Description: "Find $$$x$$$.", InputFormat: "One integer $$$n$$$.", OutputFormat: "Print the answer.",
 		Examples: []example{{Input: "1", Output: "1"}}, Rating: ptr(int64(1200)), Tags: []string{"math"},
 		TestsetSize: 2, OfficialTestsComplete: true, InputMode: "stdio", Executable: true,
@@ -311,10 +313,7 @@ func columnSpan(t testing.TB, b []byte, prefix string) [2]int64 {
 			if !strings.HasPrefix(strings.Join(m.PathInSchema, "."), prefix) {
 				continue
 			}
-			off := m.DataPageOffset
-			if d := m.DictionaryPageOffset; d > 0 && d < off {
-				off = d
-			}
+			off := chunkStart(m)
 			if span[0] < 0 || off < span[0] {
 				span[0] = off
 			}
@@ -355,8 +354,7 @@ func newFakeHF(t testing.TB, fx *fixture) *fakeHF {
 		}
 		switch {
 		case r.URL.Path == tree:
-			page := 0
-			fmt.Sscan(r.URL.Query().Get("cursor"), &page)
+			page, _ := strconv.Atoi(r.URL.Query().Get("cursor")) // 0 when absent
 			if page >= len(fx.listing) {
 				http.NotFound(w, r)
 				return
@@ -364,7 +362,7 @@ func newFakeHF(t testing.TB, fx *fixture) *fakeHF {
 			if page+1 < len(fx.listing) {
 				w.Header().Set("Link", fmt.Sprintf(`<%s%s?cursor=%d>; rel="next"`, h.srv.URL, tree, page+1))
 			}
-			json.NewEncoder(w).Encode(fx.listing[page])
+			_ = json.NewEncoder(w).Encode(fx.listing[page])
 		case strings.HasPrefix(r.URL.Path, resolve):
 			p := strings.TrimPrefix(r.URL.Path, resolve)
 			b, ok := fx.files[p]

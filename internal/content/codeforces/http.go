@@ -25,8 +25,7 @@ var errNotFound = errors.New("not found")
 // Face rate-limits unauthenticated resolves (3000 per 5 minutes at the time
 // of writing) and a door prefetch must never look like a crawl. It is
 // process-wide (see client) so two Catalogs cannot double the rate. It is
-// the USACO source's client plus byte ranges; both could move to a shared
-// package once a third source needs one.
+// a copy of the USACO source's client plus byte ranges.
 type politeClient struct {
 	http    *http.Client
 	gap     time.Duration // between the end of one request and the next
@@ -142,7 +141,7 @@ func (c *politeClient) once(ctx context.Context, s *hostSlot, r request) (time.D
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	want := http.StatusOK
 	if r.rng != "" {
 		want = http.StatusPartialContent
