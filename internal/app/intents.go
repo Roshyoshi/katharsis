@@ -15,6 +15,7 @@ import (
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/reader"
+	"katharsis/internal/screens/story"
 	"katharsis/internal/store"
 	"katharsis/internal/units"
 )
@@ -67,6 +68,10 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 		return m.push(s), true
 	case submitMsg:
 		return m.submit(), true
+	case story.Done: // story.go
+		return m.sceneDone(msg), true
+	case crashSceneMsg:
+		return m.onCrashScene(msg), true
 	}
 	return nil, false
 }

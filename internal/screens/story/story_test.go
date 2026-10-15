@@ -168,24 +168,41 @@ func TestKeys(t *testing.T) {
 	if msg := emitted(press(s, "x")); msg != (Done{Scene: "story.prologue"}) {
 		t.Errorf("the last key emits %#v", msg)
 	}
-	// esc leaves at once, mid-page.
+	// esc leaves at once, mid-page, and says so.
 	s = NewFirstMerge()
 	s.Init()
-	if msg := emitted(press(s, "esc")); msg != (Done{Scene: "story.first-merge"}) {
+	if msg := emitted(press(s, "esc")); msg != (Done{Scene: "story.first-merge", Skipped: true}) {
 		t.Errorf("esc emits %#v", msg)
+	}
+	// A scene leaves once: nothing after Done reaches it.
+	if !s.Left() || press(s, "esc") != nil || press(s, "x") != nil {
+		t.Error("a scene that left takes keys")
 	}
 }
 
 func TestAutoLeave(t *testing.T) {
 	s := NewAccepted("AC")
 	s.Init()
-	press(s, "x") // skip to the end: the dwell starts
+	s.Seek(0, s.PageLen(0)) // drawn: the dwell starts
 	cur := leaveMsg{s, s.gen}
 	if _, cmd := s.Update(leaveMsg{s, s.gen - 1}); cmd != nil {
 		t.Error("a stale timer left the scene")
 	}
 	if _, cmd := s.Update(cur); emitted(cmd) != (Done{}) {
 		t.Error("ACCEPTED does not leave on its own")
+	}
+	// Any key leaves a scene that leaves on its own, mid-play too: no key
+	// is spent waiting for the dwell.
+	for name, mk := range map[string]func() *Scene{
+		"accepted": func() *Scene { return NewAccepted("AC") },
+		"biome":    func() *Scene { return NewBiome("dp", nil) },
+		"splash":   func() *Scene { return NewBootSplash(3, 0) },
+	} {
+		a := mk()
+		a.Init()
+		if msg := emitted(press(a, "x")); msg != (Done{}) {
+			t.Errorf("a key in the %s scene emits %#v, want Done", name, msg)
+		}
 	}
 	// A scene without a dwell waits for a key.
 	m := NewFirstMerge()

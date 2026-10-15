@@ -91,7 +91,7 @@ func (m *Model) begin(st *game.State, effs []game.Effect) tea.Cmd {
 	m.state = st
 	m.reset()
 	m.saved(m.d.Store.Checkpoint(m.meta, m.state))
-	return tea.Batch(m.initTop(), m.effects(effs), m.offerLink())
+	return tea.Batch(m.initTop(), m.effects(effs), m.offerLink(), m.storyBegin())
 }
 
 // saved records how a save went and reports whether it worked. A failure
@@ -187,7 +187,7 @@ func (m *Model) tryAt(a game.Action, now time.Time) (tea.Cmd, error) {
 	cmds := []tea.Cmd{m.effects(effs)}
 	if m.baseKey() != before {
 		m.reset()
-		cmds = append(cmds, m.initTop())
+		cmds = append(cmds, m.initTop(), m.storyAfter(before))
 	} else {
 		m.refresh()
 	}

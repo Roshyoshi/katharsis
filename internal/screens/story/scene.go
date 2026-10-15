@@ -23,16 +23,23 @@ import (
 )
 
 // Done is the intent a story screen leaves with. Scene is the seen id to
-// record (a story hook), or "" for a scene that shows every time.
-type Done struct{ Scene string }
+// record (a story hook), or "" for a scene that shows every time. Skipped
+// is set when esc left it: the player wants out of the story for now, so
+// the app drops the scenes queued behind it.
+type Done struct {
+	Scene   string
+	Skipped bool
+}
 
 // page is one step of a scene: a clip built for the body's size.
 type page func(w, h int) anim.Clip
 
 // Scene plays its pages in order. A key while a page plays shows all of
 // it; a key on a finished page goes on to the next, and after the last
-// one the scene emits Done. esc leaves at once. With auto set, a finished
-// last page also leaves on its own after that long.
+// one the scene emits Done. esc leaves at once. With auto set, the scene
+// is one page that leaves on its own that long after it is drawn, and any
+// key leaves it at once: no key is spent waiting. A scene emits Done once
+// and takes no messages after.
 type Scene struct {
 	id    string
 	pages []page
@@ -44,6 +51,7 @@ type Scene struct {
 	p    *anim.Player
 	size [2]int // the body size p's clip was built for
 	gen  int    // bumps per page, so a stale auto-leave timer is dropped
+	left bool   // Done was emitted
 }
 
 // defaultSize is the body size before the first View: 80x24 less the
@@ -88,17 +96,31 @@ func (s *Scene) afterward() tea.Cmd {
 	return tea.Tick(s.auto, func(time.Time) tea.Msg { return leaveMsg{sc, gen} })
 }
 
-func (s *Scene) leave() tea.Cmd { return screens.Emit(Done{Scene: s.id}) }
+func (s *Scene) leave(skipped bool) tea.Cmd {
+	s.left = true
+	return screens.Emit(Done{Scene: s.id, Skipped: skipped})
+}
+
+// Left reports whether the scene has emitted Done.
+func (s *Scene) Left() bool { return s.left }
 
 func (s *Scene) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
+	if s.left {
+		return s, nil
+	}
 	if m, ok := msg.(leaveMsg); ok {
 		if m.s == s && m.gen == s.gen {
-			return s, s.leave()
+			return s, s.leave(false)
 		}
 		return s, nil
 	}
-	if k, ok := msg.(tea.KeyPressMsg); ok && k.String() == "esc" {
-		return s, s.leave()
+	if k, ok := msg.(tea.KeyPressMsg); ok {
+		switch {
+		case k.String() == "esc":
+			return s, s.leave(true)
+		case s.auto > 0:
+			return s, s.leave(false)
+		}
 	}
 	wasDone := s.p.Done()
 	if cmd, used := s.p.Update(msg); used {
@@ -111,7 +133,7 @@ func (s *Scene) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		if s.i+1 < len(s.pages) {
 			return s, s.open(s.i + 1)
 		}
-		return s, s.leave()
+		return s, s.leave(false)
 	}
 	return s, nil
 }
@@ -124,6 +146,8 @@ func (s *Scene) View(width, height int) string {
 	}
 	var f string
 	switch {
+	case s.auto > 0:
+		f = ui.Footer(width, "any key", "continue")
 	case !s.p.Done():
 		f = ui.Footer(width, "any key", "show all", "esc", "skip")
 	case s.i+1 < len(s.pages):

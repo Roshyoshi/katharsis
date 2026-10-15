@@ -85,6 +85,9 @@ type Deps struct {
 	// first-launch rating (D37) and the boot-end line. The game sets it;
 	// headless tests leave it off.
 	Prompts bool
+	// Story plays the story's scenes at their moments (story.go). The game
+	// sets it; headless tests leave it off.
+	Story bool
 	// Sources, when set, is a note on content sources not serving yet
 	// ("Codeforces indexing… 40%"), which GRUB shows as it changes.
 	Sources func() string
@@ -146,6 +149,8 @@ type Model struct {
 
 	// zoomed is the reader the game's pane was zoomed for (zoom.go).
 	zoomed screens.Screen
+
+	story storyState // story.go
 }
 
 func New(d Deps) (*Model, error) {
@@ -205,7 +210,7 @@ func (m *Model) Init() tea.Cmd {
 		}
 		return tea.Batch(tick(), m.initTop(), m.openDoor(s.Current.Door, false))
 	}
-	return tea.Batch(tick(), m.initTop())
+	return tea.Batch(tick(), m.initTop(), m.storyResume())
 }
 
 // doorLeft is the time left on the boot's open door, ok false when no
@@ -363,6 +368,7 @@ func (m *Model) View() tea.View {
 		w, h = 80, 24
 	}
 	body := m.body(w, h) // retention.go
+	m.story.drawn = body
 	if m.saveErr != nil {
 		body = overlayBanner(body, "save failed, progress is not being kept: "+m.saveErr.Error(), w)
 	}
