@@ -50,6 +50,7 @@ type Env struct {
 type flavorSource struct {
 	BiomeName    func(topic string) string
 	BiomeBlurb   func(topic string) string
+	NodeBlurb    func(id, topic string) string
 	BossName     func(key string) string
 	BossBlurb    func(key string) string
 	PrestigeName func(p int) string
@@ -73,6 +74,7 @@ type flavorSource struct {
 var realFlavor = flavorSource{
 	BiomeName:    flavor.BiomeName,
 	BiomeBlurb:   flavor.BiomeBlurb,
+	NodeBlurb:    flavor.NodeBlurb,
 	BossName:     flavor.BossName,
 	BossBlurb:    flavor.BossBlurb,
 	PrestigeName: flavor.PrestigeName,

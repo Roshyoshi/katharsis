@@ -9,7 +9,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/flavor"
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/boot/fixture"
 	"katharsis/internal/units"
@@ -145,6 +147,13 @@ func TestExitCards(t *testing.T) {
 			t.Errorf("act III exits lack %q:\n%s", want, v)
 		}
 	}
+	// A node's own line (Kernel Space's), else its topic's.
+	r = NewRoute(env(fixture.MapRouteFinal()))
+	for i, want := range map[int]string{1: flavor.BiomeBlurb("dp"), 2: flavor.NodeBlurb("kernel", "")} {
+		if got := r.exitCard(r.exits()[i]).blurb; got != want || got == "" {
+			t.Errorf("exit %d blurb %q, want %q", i, got, want)
+		}
+	}
 }
 
 // An exit card's clock is the engine's for that exit (game.Exit.Timer),
@@ -161,6 +170,42 @@ func TestExitCardTimers(t *testing.T) {
 		if !strings.Contains(v, "~25:36") || !strings.Contains(v, tier) {
 			t.Errorf("%dx%d: want the exit's own ~25:36 and the fallback %s:\n%s", sz[0], sz[1], tier, v)
 		}
+	}
+}
+
+// At 80x24 the exits are stacked cards or one row each, short of room for
+// the wide cards, and still say what the choice decides: the tier's price
+// of a fail (the same behind every exit, so said once), and in rows the
+// selected exit's clock, the bosses it leads to, and what opens its lock.
+func TestNarrowExits(t *testing.T) {
+	// Act II, three exits: stacked cards.
+	st := fixture.MapRoute()
+	v := ansi.Strip(NewRoute(env(st)).View(80, 24))
+	if want := ansi.Strip(failText(st)); !strings.Contains(v, want) {
+		t.Errorf("stacked exits lack %q:\n%s", want, v)
+	}
+	// Act III, four exits: rows.
+	st = fixture.MapRouteFinal()
+	r := NewRoute(env(st))
+	v = ansi.Strip(r.View(80, 24))
+	for _, want := range []string{ansi.Strip(failText(st)), "⏱ ~", "→ ⚔ The Halting Problem", "Stub line for route.locked."} {
+		if !strings.Contains(v, want) {
+			t.Errorf("exit rows, Routing Table selected, lack %q:\n%s", want, v)
+		}
+	}
+	r.Update(press("2"))
+	v = ansi.Strip(r.View(80, 24))
+	if !strings.Contains(v, "→ ⚔ The Halting Problem") || strings.Contains(v, "Stub line for route.locked.") {
+		t.Errorf("exit rows, The Cache selected: want its boss and no lock line:\n%s", v)
+	}
+	// The real lock line names the module whole, wrapped rather than cut.
+	fl = realFlavor
+	defer func() { fl = stubFlavor }()
+	e := env(fixture.MapRouteFinal())
+	e.Module = func(string) string { return "Introduction to Graphs and Their Traversals" }
+	v = flat(ansi.Strip(NewRoute(e).View(80, 24)))
+	if !strings.Contains(v, "RTFM › Introduction to Graphs and Their Traversals opens it.") {
+		t.Errorf("exit rows: the lock's module line is cut:\n%s", v)
 	}
 }
 
@@ -209,6 +254,28 @@ func TestHubKeys(t *testing.T) {
 	e.Meta.Regressions = nil
 	if id, _ := upsolveTarget(e); id != "" {
 		t.Errorf("upsolves %s, a door on offer", id)
+	}
+}
+
+// The skip's two picks are the skip's: the pick screen at the final's
+// doors does not show the last clear (Boss II's, its bytes long banked)
+// as if just made, nor credit the picks to its -O3.
+func TestSkipPicks(t *testing.T) {
+	st := fixture.MapRouteFinal()
+	st.History[len(st.History)-1].O3 = true
+	st.Biomes[5] = game.BiomeState{Name: "skip", Kind: rules.Choice, Node: "skip", Exits: st.Biomes[5].Exits, Offers: st.Biomes[5].Offers}
+	st.Biomes[6] = game.BiomeState{Name: "The Halting Problem", Topic: game.Mixed, Kind: rules.Boss, Rooms: 1, Boss: game.FinalBoss, Node: game.FinalBoss}
+	st.Biome, st.Phase = 6, game.PhaseDoors
+	st.PendingUpgrade, st.UpgradePicks = true, 2
+	st.UpgradeOffers = []game.Upgrade{game.Overclock, game.ECC, game.Duck}
+	v := ansi.Strip(NewUpgradeScreen(env(st)).View(140, 40))
+	for _, bad := range []string{"✓ AC", "Snow Boots", "-O3"} {
+		if strings.Contains(v, bad) {
+			t.Errorf("after the skip the pick screen says %q:\n%s", bad, v)
+		}
+	}
+	if !strings.Contains(v, "skip") || !strings.Contains(v, "+2 upgrade picks") {
+		t.Errorf("after the skip the pick screen does not name it:\n%s", v)
 	}
 }
 

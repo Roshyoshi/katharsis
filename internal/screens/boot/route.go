@@ -145,6 +145,11 @@ func (r *Route) View(width, height int) string {
 		rows = centerBlock(ui.JoinH(2, blocks...), width)
 	}
 	if rows == nil || len(block)+len(rows) > room {
+		// Only the wide cards say a fail's price: it is the tier's, the
+		// same behind every exit, so the narrow layouts say it once.
+		if f := tierFail(cards); f != "" {
+			block = []string{block[0], ui.Center(f, width), ""}
+		}
 		rows = nil
 		w := min(width, 72)
 		for i, c := range cards {
@@ -204,12 +209,13 @@ func (r *Route) topicCard(topic string) card {
 // locked exit what opens it in place of the band and the price.
 func (r *Route) exitCard(e game.Exit) card {
 	st := r.env.State
-	// The node's own blurb, else its topic's; a mixed node (Kernel Space)
-	// has no topic blurb of its own, since mixed's is Userland's.
-	c := card{name: e.Name, sub: e.Topic, blurb: fl.BiomeBlurb(e.Node)}
-	if c.blurb == "" && e.Topic != game.Mixed {
-		c.blurb = fl.BiomeBlurb(e.Topic)
+	// The node's own blurb (Kernel Space's), else its topic's; a mixed
+	// node has no topic blurb of its own, since mixed's is Userland's.
+	topic := e.Topic
+	if topic == game.Mixed {
+		topic = ""
 	}
+	c := card{name: e.Name, sub: e.Topic, blurb: fl.NodeBlurb(e.Node, topic)}
 	switch {
 	case e.Skip:
 		c.name, c.sub, c.blurb = "skip", "no room", ""
@@ -412,9 +418,32 @@ func (c card) stacked(cw int) []string {
 	return append(out, ui.Spread(left, cmp.Or(strings.Join(c.behind, " "), c.mine), cw))
 }
 
+// tierFail is the price of a fail the cards carry, "" when none does (a
+// linear route, a skip alone).
+func tierFail(cards []card) string {
+	for _, c := range cards {
+		if c.fail != "" {
+			return c.fail
+		}
+	}
+	return ""
+}
+
 // compact is one line per card, for terminals too short for cards: the
-// name cut before the band, the lock or the bosses behind.
+// name cut before the band or the lock. Under them the selected card says
+// the rest a choice turns on: its rooms and clock, the bosses behind it,
+// and for a lock what opens it.
 func (r *Route) compact(cards []card, width int) []string {
+	out := r.compactRows(cards, width)
+	c := cards[r.sel]
+	out = append(out, "", ui.Spread("    "+c.rooms, cmp.Or(strings.Join(c.behind, " "), c.mine)+"    ", width))
+	if len(c.locked) > 1 {
+		out = append(out, indent(4, ui.WrapN(strings.Join(c.locked[1:], " "), width-8, 2))...)
+	}
+	return out
+}
+
+func (r *Route) compactRows(cards []card, width int) []string {
 	var out []string
 	for i, c := range cards {
 		mark := "  "

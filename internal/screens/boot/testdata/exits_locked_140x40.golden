@@ -14,8 +14,9 @@ Boot #42 · Silver · route · act II                                           
   ┏━ ▸ 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  ╭─ 2 ──────────────────────────────────────╮  ╭─ 3 ──────────────────────────────────────╮
   ┃ Bisect Bridge                            ┃  │ The Sliding Window                       │  │ The ALU                                  │
   ┃ binary-search                            ┃  │ two-pointers                             │  │ math                                     │
-  ┃ Stub blurb for bisect, long enough to    ┃  │ Stub blurb for window, long enough to    │  │ Stub blurb for alu, long enough to wrap  │
-  ┃ wrap onto a second line of a card.       ┃  │ wrap onto a second line of a card.       │  │ onto a second line of a card.            │
+  ┃ Stub blurb for binary-search, long       ┃  │ Stub blurb for two-pointers, long enough │  │ Stub blurb for math, long enough to wrap │
+  ┃ enough to wrap onto a second line of a   ┃  │ to wrap onto a second line of a card.    │  │ onto a second line of a card.            │
+  ┃ card.                                    ┃  │                                          │  │                                          │
   ┃                                          ┃  │                                          │  │                                          │
   ┃ 1 room · ⏱ ~26:00                        ┃  │ 1 room · ⏱ ~26:00                        │  │ 1 room · ⏱ ~26:00                        │
   ┃ □ locked: CAP_BSEARCH or apt git         ┃  │ □ locked: CAP_TWOPTR                     │  │ ◆950–1150 · aim 70% clear                │
@@ -28,7 +29,6 @@ Boot #42 · Silver · route · act II                                           
               ╭─ Userland ─╮   ╭─ The Scheduler ─╮   ╭─ Off-by-One ─╮   ╭─ act II ─╮   ╭─ boss ─╮   ╭─ act III ─╮   ╭─ boss ─╮
               │    ✓ ✗     │───│        ✓        │───│      ✓       │───│    ○     │───│   ⚔    │───│     ○     │───│   ⚔    │
               ╰────────────╯   ╰─────────────────╯   ╰──────────────╯   ╰──────────╯   ╰────────╯   ╰───────────╯   ╰────────╯
-
 
 
 

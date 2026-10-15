@@ -40,6 +40,15 @@ var stubFlavor = flavorSource{
 	BiomeBlurb: func(t string) string {
 		return "Stub blurb for " + t + ", long enough to wrap onto a second line of a card."
 	},
+	NodeBlurb: func(id, t string) string {
+		if id == "kernel" {
+			t = id // a line of its own, as flavor.NodeBlurb has
+		}
+		if t == "" {
+			return ""
+		}
+		return "Stub blurb for " + t + ", long enough to wrap onto a second line of a card."
+	},
 	BossName: func(k string) string {
 		return map[string]string{
 			"heisenbug": "Heisenbug", "off-by-one": "Off-by-One", "oom-killer": "OOM Killer",

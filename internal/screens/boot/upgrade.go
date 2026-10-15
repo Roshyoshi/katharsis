@@ -170,7 +170,11 @@ func (u *UpgradeScreen) View(width, height int) string {
 	st := u.env.State
 	head := u.env.header("upgrade", width, height)
 	var block []string
-	if a, ok := lastClear(st); ok {
+	if n, ok := skipped(st); ok {
+		// A skip owes its picks past it: nothing was cleared to get them.
+		block = append(block, ui.Center(ui.Strong.Render("skip")+ui.Muted.Render(" · no room, no bytes · ")+
+			ui.OK.Render(fmt.Sprintf("+%d", n))+" upgrade picks", width), "")
+	} else if a, ok := clearHere(st); ok {
 		p := u.env.problem(a.Door.Problem)
 		// Green paints the glyph, the words stay plain (R2); -O3 is a
 		// reward, so OK, and not bold (R3).
@@ -207,7 +211,7 @@ func owedPicks(st *game.State) (n int, o3 bool) {
 	if n == 0 && st.PendingUpgrade {
 		n = 1 // a state saved before UpgradePicks existed
 	}
-	a, ok := lastClear(st)
+	a, ok := clearHere(st)
 	return n, ok && a.O3
 }
 
@@ -222,6 +226,37 @@ func picksNote(n int, o3 bool) string {
 		s += " (-O3 earned an extra)"
 	}
 	return ui.Muted.Render(s)
+}
+
+// clearHere is the last clear when the boot still stands in its biome: the
+// clear whose picks are owed. Past a skip the picks are the skip's.
+func clearHere(st *game.State) (game.Attempt, bool) {
+	ss := steps(st)
+	for i := len(ss) - 1; i >= 0; i-- {
+		if ss[i].Attempt.Outcome == game.Cleared {
+			return ss[i].Attempt, ss[i].Biome == st.Biome
+		}
+	}
+	return game.Attempt{}, false
+}
+
+// skipped is the picks of the skip the boot just took (map.md §(c)): it
+// stands at the doors of the tier past a skipped one, none opened yet.
+func skipped(st *game.State) (picks int, ok bool) {
+	b := st.Biome - 1
+	if b < 0 || b >= len(st.Biomes) || st.Room > 0 {
+		return 0, false
+	}
+	n, ok := st.Rules.Node(st.Biomes[b].Node)
+	if !ok || !n.Skip {
+		return 0, false
+	}
+	for _, s := range steps(st) {
+		if s.Biome == st.Biome {
+			return 0, false
+		}
+	}
+	return n.Picks, true
 }
 
 // lastClear is the most recent cleared attempt of the boot.

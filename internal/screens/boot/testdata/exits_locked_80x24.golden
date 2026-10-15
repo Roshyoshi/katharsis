@@ -3,6 +3,7 @@ Boot #42 · Silver · route · act II                                  uptime 44
 ────────────────────────────────────────────────────────────────────────────────
 
           Pick an exit. It sets the next door and the boss behind it.
+                          a fail −12 ♥, the room lost
 
     ┏━ ▸ 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
     ┃ Bisect Bridge · binary-search       □ locked: CAP_BSEARCH or apt git ┃
@@ -16,9 +17,8 @@ Boot #42 · Silver · route · act II                                  uptime 44
     ╰──────────────────────────────────────────────────────────────────────╯
     ╭─ 3 ──────────────────────────────────────────────────────────────────╮
     │ The ALU · math                             ◆950–1150 · aim 70% clear │
-    │ Stub blurb for alu, long enough to wrap onto a second line of a car… │
+    │ Stub blurb for math, long enough to wrap onto a second line of a ca… │
     │ 1 room · ⏱ ~26:00                   → ⚔ Heisenbug → ⚔ Race Condition │
     ╰──────────────────────────────────────────────────────────────────────╯
-
 
 ←/→ choose · t RTFM · m map
