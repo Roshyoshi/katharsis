@@ -149,6 +149,9 @@ D47 open 10-15     Meta research before any change to lives: "3 lives seems a li
                    a thread". Thread: docs/research/meta.md (health economies in Dead
                    Cells, PvZ1, Hades, StS, Into the Breach; ICPC/CF scoring; error-cost
                    learning science; 2-3 candidates prototyped in the sim only).
+                   10-15 user: "Give Up should -10 HP" (door only, the boot goes on);
+                   "you should be able to start and resume runs on the map" (suspend
+                   between doors, the map as the hub): both folded into the thread.
 
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
