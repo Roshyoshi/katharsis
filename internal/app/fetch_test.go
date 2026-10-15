@@ -35,18 +35,18 @@ func TestDoorWaitCancelsAndSwitches(t *testing.T) {
 		h.m.d.Catalog = c
 
 		h.send(game.ChooseDoor{Index: 0})
-		if last := lastLine(h); !strings.Contains(last, "fetching door 1") || !strings.Contains(last, "timer not running") ||
+		if last := h.lastLine(); !strings.Contains(last, "fetching door 1") || !strings.Contains(last, "timer not running") ||
 			!strings.Contains(last, "2 is ready") || !strings.Contains(last, "esc cancel") {
 			t.Fatalf("waiting row %q", last)
 		}
 		h.clock.t = h.clock.t.Add(21 * time.Second)
 		h.send(tickMsg(h.clock.t))
-		if last := lastLine(h); !strings.Contains(last, "00:21") {
+		if last := h.lastLine(); !strings.Contains(last, "00:21") {
 			t.Errorf("the wait does not count up: %q", last)
 		}
 		h.send(tea.KeyPressMsg{Code: tea.KeyEscape})
-		if h.m.fetch.wait != nil || h.m.fetch.chosen != "" || strings.Contains(lastLine(h), "fetching door") {
-			t.Fatalf("esc kept the wait: %+v, chosen %q, row %q", h.m.fetch.wait, h.m.fetch.chosen, lastLine(h))
+		if h.m.fetch.wait != nil || h.m.fetch.chosen != "" || strings.Contains(h.lastLine(), "fetching door") {
+			t.Fatalf("esc kept the wait: %+v, chosen %q, row %q", h.m.fetch.wait, h.m.fetch.chosen, h.lastLine())
 		}
 		h.send(doorReadyMsg{index: 0, id: slow})
 		if h.m.state.Phase != game.PhaseDoors {

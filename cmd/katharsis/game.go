@@ -91,11 +91,11 @@ func runGame(args []string) error {
 		}
 		return session.ExecInTmux("katharsis", append([]string{self}, args...))
 	}
-	warnPresets(ps.loadDir(dir))
+	warnKey("", ps.loadDir(dir), "Skipped those presets.")
 	prefs := openSettings(*budget)
 	sink, audioSet, credits, audioErrs := openAudio(af)
 	defer closeAudio(sink, audioCloseWait) // every way out: quit, hangup, an error
-	warnAudio(audioErrs)
+	warnKey("audio: ", audioErrs, audioDefaults)
 
 	// tmux sends SIGHUP when the game's pane or window is killed; quit
 	// through Bubble Tea so the deferred cleanup still runs. Before the

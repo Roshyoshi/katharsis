@@ -317,7 +317,6 @@ func (s *problemScreen) headless(w int) string {
 // become engine actions; the HUD judges a submit the game starts
 // (startSubmit), and debug belongs to it.
 func (m *Model) onRequest(req session.Request) tea.Cmd {
-	inBoot := m.state != nil && m.state.Phase == game.PhaseProblem && m.open != nil && !m.open.Upsolve
 	var a game.Action
 	switch req.Cmd {
 	case session.CmdQuack:
@@ -351,7 +350,7 @@ func (m *Model) onRequest(req session.Request) tea.Cmd {
 		_, cmd := h.Update(req)
 		return guard(cmd)
 	}
-	if !inBoot {
+	if !m.inBootDoor() {
 		req.Answer(session.Reply{Text: req.Cmd + " needs an open door in a boot"})
 		return nil
 	}

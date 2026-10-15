@@ -8,7 +8,6 @@ import (
 	"testing/synctest"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/game"
 	"katharsis/internal/hud"
@@ -34,11 +33,6 @@ func samplesFailed(t *testing.T) *harness {
 		t.Fatalf("samples %+v, want 0/1 judged", s)
 	}
 	return h
-}
-
-func lastLine(h *harness) string {
-	ls := strings.Split(ansi.Strip(h.m.View().Content), "\n")
-	return ls[len(ls)-1]
 }
 
 // :Submit while the samples fail asks for :Submit! and spends nothing;
@@ -74,14 +68,14 @@ func TestSubmitBangOverFailingSamples(t *testing.T) {
 func TestPaneSubmitAsks(t *testing.T) {
 	h := samplesFailed(t)
 	h.send(key("s"))
-	if last := lastLine(h); !strings.Contains(last, "samples 0/1 pass") || !strings.Contains(last, "s again submits") {
+	if last := h.lastLine(); !strings.Contains(last, "samples 0/1 pass") || !strings.Contains(last, "s again submits") {
 		t.Fatalf("keys row %q after s over failing samples, want the question", last)
 	}
 	if h.m.judging {
 		t.Fatal("the first s submitted")
 	}
 	h.send(key("x"))
-	if last := lastLine(h); strings.Contains(last, "again") {
+	if last := h.lastLine(); strings.Contains(last, "again") {
 		t.Fatalf("keys row %q after another key, want the keys back", last)
 	}
 	h.send(key("s"))
@@ -104,7 +98,7 @@ func TestRetreatAsks(t *testing.T) {
 		h.send(tea.WindowSizeMsg{Width: 60, Height: 30})
 		lives, door := h.m.state.Lives, h.m.state.Current.Door.Problem
 		h.send(key("R"))
-		if last := lastLine(h); !strings.Contains(last, "retreat: -1 ♥") || !strings.Contains(last, "R again") {
+		if last := h.lastLine(); !strings.Contains(last, "retreat: -1 ♥") || !strings.Contains(last, "R again") {
 			t.Fatalf("keys row %q after R, want what the retreat costs", last)
 		}
 		if h.m.state.Current == nil || h.m.state.Current.Door.Problem != door {

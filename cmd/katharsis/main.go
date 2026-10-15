@@ -20,6 +20,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/term"
 
 	"katharsis/internal/hud"
 	"katharsis/internal/judge"
@@ -77,6 +78,33 @@ func pickUI(getenv func(string) string) {
 func waitEnter(in io.Reader, out io.Writer) {
 	fmt.Fprint(out, "press enter to close")
 	_, _ = bufio.NewReader(in).ReadString('\n')
+}
+
+// warnKey reports errs, each "error: " then prefix, the way GRUB reports a
+// bad entry, says what the game does instead (then), and waits for a key:
+// the TUI takes the screen next, and anything on stderr would be gone
+// before it was read.
+func warnKey(prefix string, errs []error, then string) {
+	if len(errs) == 0 {
+		return
+	}
+	for _, err := range errs {
+		fmt.Fprintf(os.Stderr, "error: %s%v\n", prefix, err)
+	}
+	fmt.Fprintln(os.Stderr, then+" Press any key to continue...")
+	fd := os.Stdin.Fd()
+	if !term.IsTerminal(fd) {
+		return
+	}
+	old, err := term.MakeRaw(fd)
+	if err != nil {
+		return
+	}
+	defer func() { _ = term.Restore(fd, old) }()
+	// One read takes a whole escape sequence (an arrow key), so none of it
+	// is left for the TUI to misread. Any outcome, even an error, is the
+	// "key" that continues.
+	_, _ = os.Stdin.Read(make([]byte, 64))
 }
 
 // usage prints the commands and the flags of fs, the command's own flag

@@ -7,8 +7,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/x/term"
-
 	"katharsis/internal/rules"
 )
 
@@ -75,33 +73,6 @@ func (p *presets) add(path string) error {
 	case taken:
 		return fmt.Errorf("%s: preset name %q is already taken by %s", path, name, prev)
 	}
-	r.Name = name
 	p.byName[name], p.from[name] = r, path
 	return nil
-}
-
-// warnPresets reports the preset files that did not load the way GRUB
-// reports a bad entry, and waits for a key: the TUI takes the screen next,
-// and anything on stderr would be gone before it was read.
-func warnPresets(errs []error) {
-	if len(errs) == 0 {
-		return
-	}
-	for _, err := range errs {
-		fmt.Fprintln(os.Stderr, "error:", err)
-	}
-	fmt.Fprintln(os.Stderr, "Skipped those presets. Press any key to continue...")
-	fd := os.Stdin.Fd()
-	if !term.IsTerminal(fd) {
-		return
-	}
-	old, err := term.MakeRaw(fd)
-	if err != nil {
-		return
-	}
-	defer func() { _ = term.Restore(fd, old) }()
-	// One read takes a whole escape sequence (an arrow key), so none of it
-	// is left for the TUI to misread. Any outcome, even an error, is the
-	// "key" that continues.
-	_, _ = os.Stdin.Read(make([]byte, 64))
 }

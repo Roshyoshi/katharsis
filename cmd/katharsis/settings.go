@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -63,19 +62,15 @@ func loadSettings(path string) (settings, error) {
 // flag value is unset. A bad file is reported and the defaults used.
 func openSettings(budget time.Duration) settings {
 	s := defaultSettings()
-	if path, err := settingsPath(); err != nil {
-		warnSettings(err)
-	} else if s, err = loadSettings(path); err != nil {
-		warnSettings(err)
+	path, err := settingsPath()
+	if err == nil {
+		s, err = loadSettings(path)
+	}
+	if err != nil {
+		warnKey("settings: ", []error{err}, "Playing with the default settings.")
 	}
 	if budget >= 0 {
 		s.SessionBudget.Duration = budget
 	}
 	return s
-}
-
-func warnSettings(err error) {
-	fmt.Fprintln(os.Stderr, "error: settings:", err)
-	fmt.Fprintln(os.Stderr, "Playing with the default settings. Press any key to continue...")
-	anyKey()
 }

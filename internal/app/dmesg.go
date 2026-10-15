@@ -5,9 +5,6 @@ import (
 	bootui "katharsis/internal/screens/boot"
 )
 
-// dmesgTracker is the Model's strip state.
-type dmesgTracker = bootui.Tracker
-
 // The dmesg strip (screens/boot dmesg.go, UX J5): after every update the
 // tracker compares the boot with the last look and keeps the events the
 // change makes; boot screens draw them under the header and the problem

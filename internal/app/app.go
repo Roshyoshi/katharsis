@@ -141,13 +141,12 @@ type Model struct {
 
 	width, height int
 
-	// Sound (audio.go): the last state effects were diffed from, the door
-	// whose timer warning sounded, and the credit toast.
-	// dmesg is the boot's event strip (dmesg.go).
-	dmesg dmesgTracker
+	dmesg bootui.Tracker // the boot's event strip (dmesg.go)
 	// fetch is each door's download and the door waited on (fetch.go).
 	fetch doorFetch
 
+	// Sound (audio.go): the last state effects were diffed from, the door
+	// whose timer warning sounded, and the credit toast.
 	audioPrev   audioSnap
 	warned      time.Time
 	toast       string

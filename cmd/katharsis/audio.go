@@ -11,8 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/charmbracelet/x/term"
-
 	"katharsis/internal/audio"
 )
 
@@ -32,18 +30,27 @@ func addAudioFlags(fs *flag.FlagSet) audioFlags {
 	}
 }
 
+// audioSettings reads audio.toml, or says why not and gives the defaults.
+func audioSettings() (audio.Settings, error) {
+	dir, err := audio.ConfigDir()
+	if err != nil {
+		return audio.DefaultSettings(), err
+	}
+	s, err := audio.LoadSettings(filepath.Join(dir, "audio.toml"))
+	if err != nil {
+		return audio.DefaultSettings(), err
+	}
+	return s, nil
+}
+
 // openAudio reads audio.toml and the flags and starts the engine. Sound
 // is never a reason not to play: a bad file is reported and the defaults
 // used; no device or no music downloaded is silence.
 func openAudio(f audioFlags) (audio.Sink, audio.Settings, func() string, []error) {
 	var errs []error
-	set := audio.DefaultSettings()
-	if dir, err := audio.ConfigDir(); err != nil {
+	set, err := audioSettings()
+	if err != nil {
 		errs = append(errs, err)
-	} else if s, err := audio.LoadSettings(filepath.Join(dir, "audio.toml")); err != nil {
-		errs = append(errs, err)
-	} else {
-		set = s
 	}
 	if *f.musicVol >= 0 {
 		set.MusicVolume = min(*f.musicVol, 1)
@@ -68,6 +75,9 @@ func openAudio(f audioFlags) (audio.Sink, audio.Settings, func() string, []error
 	return audio.New(set, lib), set, credits, errs
 }
 
+// audioDefaults is what the game does when audio.toml does not load.
+const audioDefaults = "Playing with the default audio settings."
+
 // audioCloseWait bounds the music's fade at exit (audio.Engine.Close): an
 // output that hangs must not keep the game from exiting.
 const audioCloseWait = time.Second
@@ -86,31 +96,6 @@ func closeAudio(s audio.Sink, wait time.Duration) {
 	case <-done:
 	case <-time.After(wait):
 	}
-}
-
-func warnAudio(errs []error) {
-	if len(errs) == 0 {
-		return
-	}
-	for _, err := range errs {
-		fmt.Fprintln(os.Stderr, "error: audio:", err)
-	}
-	fmt.Fprintln(os.Stderr, "Playing with the default audio settings. Press any key to continue...")
-	anyKey()
-}
-
-// anyKey waits for one key press on a terminal; elsewhere it returns.
-func anyKey() {
-	fd := os.Stdin.Fd()
-	if !term.IsTerminal(fd) {
-		return
-	}
-	old, err := term.MakeRaw(fd)
-	if err != nil {
-		return
-	}
-	defer func() { _ = term.Restore(fd, old) }()
-	_, _ = os.Stdin.Read(make([]byte, 64))
 }
 
 // runAudio is `katharsis audio`: fetch the music, list it, show credits.
@@ -133,13 +118,9 @@ against its SHA-256; the game never bundles it. Your own files go in
 		fs.Usage()
 		return flag.ErrHelp
 	}
-	set := audio.DefaultSettings()
-	if dir, err := audio.ConfigDir(); err == nil {
-		if s, err := audio.LoadSettings(filepath.Join(dir, "audio.toml")); err == nil {
-			set = s
-		} else {
-			warnAudio([]error{err})
-		}
+	set, err := audioSettings()
+	if err != nil {
+		warnKey("audio: ", []error{err}, audioDefaults)
 	}
 	lib, err := audio.DefaultLibrary(set.UserMusic)
 	if err != nil {
