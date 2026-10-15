@@ -3,7 +3,9 @@ package app
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -24,7 +26,8 @@ import (
 // TmuxRunner is the real Runner. Each door gets a directory under Root with
 // the player's source, the samples and the statement; vim opens beside the
 // game's pane; a HUD (embedded in the problem screen) rejudges the samples
-// on every save and judges the full tests on :Submit.
+// on every save and judges the full tests on :Submit. The app calls it from
+// its Update only, so it needs no lock.
 type TmuxRunner struct {
 	Root      string   // solutions root, e.g. ~/cp/runs
 	Editor    []string // e.g. ["vim"]
@@ -37,10 +40,10 @@ type TmuxRunner struct {
 	Conceal func() bool   // hide full tests (a boot without strace)
 	Clock   func() string // the HUD clock and border: countdown, lives, ducks
 
-	mu      sync.Mutex
 	srv     *session.Server
 	sock    string
 	overlay string
+	reaping sync.WaitGroup // closed editors' panes on their way out (reap)
 
 	pane   string
 	border *session.Border
@@ -59,9 +62,11 @@ type Templates struct {
 }
 
 // Listen starts the control socket the editor's commands reach the game
-// through. Call once, after Send is set; Close stops it.
+// through. Call once, after Send is set; Shutdown stops it.
 func (r *TmuxRunner) Listen() error {
-	session.SweepRunDir()
+	// Best effort: what it misses is a dead game's files, and Listen
+	// replaces a stale socket itself.
+	_ = session.SweepRunDir()
 	sock, err := session.SocketPath()
 	if err != nil {
 		return err
@@ -71,16 +76,16 @@ func (r *TmuxRunner) Listen() error {
 		return err
 	}
 	r.srv, r.sock = srv, sock
-	go srv.Serve(func(req session.Request) { r.Send(req) })
+	go func() {
+		if err := srv.Serve(func(req session.Request) { r.Send(req) }); err != nil {
+			r.Send(errMsg{fmt.Errorf("control socket: %w; editor commands are off", err)})
+		}
+	}()
 	return nil
 }
 
 // HUD is the open door's HUD, nil between doors.
-func (r *TmuxRunner) HUD() *hud.Model {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.hud
-}
+func (r *TmuxRunner) HUD() *hud.Model { return r.hud }
 
 func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 	r.Close()
@@ -100,6 +105,7 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 	if err := (session.Overlay{Ctl: []string{self, "ctl"}, QuitGivesUp: !d.Upsolve}).Write(overlay); err != nil {
 		return err
 	}
+	r.overlay = overlay
 	pane, err := session.SplitEditor(dir, src, session.EditorArgv(r.Editor, r.sock, overlay), r.Split)
 	if err != nil {
 		return fmt.Errorf("open editor: %w", err)
@@ -131,8 +137,9 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 		if b, err := session.ShowBorder(win); err == nil {
 			r.border = b
 			// The text is computed in the HUD's Update; Set runs in a command
-			// goroutine, so it must not read game state itself.
-			opt.Border = func(text string) { b.Set(pane, text) }
+			// goroutine, so it must not read game state itself. A border that
+			// fails to update only shows a stale clock.
+			opt.Border = func(text string) { _ = b.Set(pane, text) }
 		}
 	}
 	opt.Debug = func(t hud.DebugTarget) (func(), error) {
@@ -140,7 +147,7 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 		if err != nil {
 			return nil, err
 		}
-		return func() { session.KillPane(dbg) }, nil
+		return func() { _ = session.KillPane(dbg) }, nil
 	}
 
 	wctx, stop := context.WithCancel(context.Background())
@@ -151,23 +158,17 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 		}
 	}()
 
-	r.mu.Lock()
 	r.pane, r.stop, r.door, r.dir, r.src = pane, stop, d, dir, src
 	r.hud = hud.New(opt)
-	r.overlay = overlay
-	r.mu.Unlock()
 	return nil
 }
 
 // Reopen brings the editor back after the player closed vim mid-door.
 func (r *TmuxRunner) Reopen() error {
-	r.mu.Lock()
-	d, dir := r.door, r.dir
-	r.mu.Unlock()
-	if dir == "" {
-		return fmt.Errorf("no door open")
+	if r.dir == "" {
+		return errors.New("no door open")
 	}
-	return r.Open(context.Background(), d)
+	return r.Open(context.Background(), r.door)
 }
 
 // Close ends the door's side: watcher, HUD, editor, border. The control
@@ -177,34 +178,57 @@ func (r *TmuxRunner) Reopen() error {
 // itself with the player's next keystroke, and on resume put a second vim
 // with a swap-file warning beside it. The watcher is stopped first, so
 // that last write judges nothing.
-func (r *TmuxRunner) Close() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (r *TmuxRunner) Close() {
 	if r.stop != nil {
 		r.stop()
 	}
 	if r.hud != nil {
 		r.hud.Cleanup()
 	}
-	if r.pane != "" && session.PaneAlive(r.pane) {
-		session.SaveAndCloseEditor(r.pane)
+	if pane := r.pane; pane != "" {
+		alive := session.PaneAlive(pane)
+		if alive {
+			// A failed save-and-quit leaves the editor open, which reap
+			// then leaves alone.
+			_ = session.SaveAndCloseEditor(pane)
+		}
+		r.reaping.Go(func() { reap(pane, alive) })
 	}
 	if r.border != nil {
-		r.border.Restore()
+		// Best effort: the options it could not put back stay set on
+		// the game's window only.
+		_ = r.border.Restore()
 	}
 	r.stop, r.hud, r.pane, r.border = nil, nil, "", nil
-	return nil
 }
 
-// Shutdown closes the door and the control socket.
+// reap waits for a closed editor's pane to die, then kills it: with tmux's
+// remain-on-exit on (some players set it globally) a dead pane stays on
+// screen. A vim still asking after reapWait (a buffer it cannot write) is
+// the player's to answer, and stays.
+func reap(pane string, alive bool) {
+	for deadline := time.Now().Add(reapWait); alive; alive = session.PaneAlive(pane) {
+		if time.Now().After(deadline) {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	_ = session.KillPane(pane) // gone already is fine; a failure leaves it on screen
+}
+
+const reapWait = 3 * time.Second
+
+// Shutdown closes the door and the control socket. It waits for the last
+// editor's pane to go, which the program exiting would otherwise cut short.
 func (r *TmuxRunner) Shutdown() {
 	r.Close()
 	if r.srv != nil {
-		r.srv.Close()
+		_ = r.srv.Close() // what it leaves, the next game's SweepRunDir removes
 	}
 	if r.overlay != "" {
-		os.Remove(r.overlay)
+		_ = os.Remove(r.overlay) // likewise
 	}
+	r.reaping.Wait()
 }
 
 // materialize lays out a door's directory and returns it and the source
@@ -222,7 +246,7 @@ func (r *TmuxRunner) materialize(d Door) (dir, src string, err error) {
 		return "", "", err
 	}
 	src = filepath.Join(dir, name+".cpp")
-	if _, err := os.Stat(src); os.IsNotExist(err) {
+	if _, err := os.Stat(src); errors.Is(err, fs.ErrNotExist) {
 		body, ok := r.seed(d)
 		if !ok {
 			body = []byte(libs.Inject(r.template(d.Problem), d.Libs))
@@ -241,7 +265,9 @@ func (r *TmuxRunner) materialize(d Door) (dir, src string, err error) {
 		}
 	}
 	if d.Assets.Statement != "" && !d.Door.Mystery {
-		copyTo(d.Assets.Statement, filepath.Join(dir, "statement.md"))
+		// A copy for reading beside the source; the game's own reader (t)
+		// reads the cache.
+		_ = copyTo(d.Assets.Statement, filepath.Join(dir, "statement.md"))
 	}
 	if _, err := problem.Load(dir); err != nil {
 		return "", "", err
@@ -300,8 +326,9 @@ func (r *TmuxRunner) template(p catalog.Problem) string {
 	return stdioTemplate
 }
 
-const stdioTemplate = `// libc++ has no <bits/stdc++.h>; list headers as the ~/cp templates do.
-#include <algorithm>
+// cppHeaders opens both built-in templates: libc++ has no <bits/stdc++.h>,
+// so they list headers as the ~/cp templates do.
+const cppHeaders = `#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -317,7 +344,10 @@ const stdioTemplate = `// libc++ has no <bits/stdc++.h>; list headers as the ~/c
 #include <vector>
 using namespace std;
 using ll = long long;
+`
 
+const stdioTemplate = "// libc++ has no <bits/stdc++.h>; list headers as the ~/cp templates do.\n" +
+	cppHeaders + `
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -326,23 +356,7 @@ int main() {
 }
 `
 
-const fileIOTemplate = `#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstdint>
-#include <cstdio>
-#include <functional>
-#include <iostream>
-#include <map>
-#include <numeric>
-#include <queue>
-#include <set>
-#include <string>
-#include <unordered_map>
-#include <vector>
-using namespace std;
-using ll = long long;
-
+const fileIOTemplate = cppHeaders + `
 int main() {
     freopen("problem.in", "r", stdin);
     freopen("problem.out", "w", stdout);
@@ -363,8 +377,6 @@ func copyTo(src, dst string) error {
 
 // Source is the open door's source file, "" between doors.
 func (r *TmuxRunner) Source() string {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	if r.hud == nil {
 		return ""
 	}

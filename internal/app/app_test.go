@@ -60,10 +60,21 @@ func (c *fakeCatalog) Fetch(_ context.Context, id catalog.ID) (catalog.Assets, e
 	return catalog.Assets{Statement: path}, os.WriteFile(path, []byte(md), 0o644)
 }
 
-type fakeRunner struct{ opened, closed int }
+// fakeRunner counts the doors it opened and closed; while openErr is set,
+// every Open fails with it.
+type fakeRunner struct {
+	opened, closed int
+	openErr        error
+}
 
-func (r *fakeRunner) Open(context.Context, Door) error { r.opened++; return nil }
-func (r *fakeRunner) Close() error                     { r.closed++; return nil }
+func (r *fakeRunner) Open(context.Context, Door) error {
+	if r.openErr != nil {
+		return r.openErr
+	}
+	r.opened++
+	return nil
+}
+func (r *fakeRunner) Close() { r.closed++ }
 
 // clock advances only when the test says so, so timers never expire by
 // accident.
@@ -72,16 +83,41 @@ type clock struct{ t time.Time }
 func (c *clock) now() time.Time { return c.t }
 
 // hudFakeRunner is a runner with a HUD, as the tmux runner has: the app
-// then routes submits through the HUD instead of Deps.Judge. Its HUD has no
-// problem to load, so it judges nothing; tests deliver hud.SubmittedMsg
-// themselves.
+// then routes submits through the HUD instead of Deps.Judge. Like the tmux
+// runner it makes a HUD from opt for each door and each reopen. With no
+// problem in opt.Dir the HUD judges nothing; tests deliver its results.
 type hudFakeRunner struct {
 	*fakeRunner
-	hud *hud.Model
+	opt       hud.Options
+	hud       *hud.Model
+	reopenErr error
+}
+
+func (r *hudFakeRunner) Open(ctx context.Context, d Door) error {
+	if err := r.fakeRunner.Open(ctx, d); err != nil {
+		return err
+	}
+	r.hud = hud.New(r.opt)
+	return nil
+}
+
+func (r *hudFakeRunner) Close() {
+	r.fakeRunner.Close()
+	if r.hud != nil {
+		r.hud.Cleanup()
+	}
+	r.hud = nil
 }
 
 func (r *hudFakeRunner) HUD() *hud.Model { return r.hud }
-func (r *hudFakeRunner) Reopen() error   { return nil }
+
+func (r *hudFakeRunner) Reopen() error {
+	if r.reopenErr != nil {
+		return r.reopenErr
+	}
+	r.hud = hud.New(r.opt)
+	return nil
+}
 
 type harness struct {
 	t       *testing.T
@@ -108,7 +144,7 @@ func newHarnessWith(t *testing.T, wrap func(*fakeRunner) Runner) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { st.Close() })
+	t.Cleanup(func() { _ = st.Close() }) // some tests close it early
 	h := &harness{t: t, st: st, runner: &fakeRunner{}, clock: &clock{time.Date(2026, 10, 14, 18, 0, 0, 0, time.UTC)}, verdict: "AC"}
 	var runner Runner = h.runner
 	if wrap != nil {
@@ -144,6 +180,20 @@ func newHarnessWith(t *testing.T, wrap func(*fakeRunner) Runner) *harness {
 	h.send(tea.WindowSizeMsg{Width: 100, Height: 30})
 	h.run(m.Init())
 	return h
+}
+
+// restart is the game started again on the same store, catalog and
+// runner.
+func (h *harness) restart() {
+	h.t.Helper()
+	d := h.m.d
+	m, err := New(Deps{Store: d.Store, Catalog: d.Catalog, Runner: d.Runner, Judge: d.Judge, Now: d.Now})
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	h.m = m
+	h.send(tea.WindowSizeMsg{Width: 100, Height: 30})
+	h.run(m.Init())
 }
 
 // run executes a command and feeds its messages back, recursively. Commands
@@ -187,6 +237,8 @@ func (h *harness) send(msg tea.Msg) {
 	}
 }
 
+func key(k string) tea.KeyPressMsg { return tea.KeyPressMsg{Code: rune(k[0]), Text: k} }
+
 // play drives the boot with the simplest choices until it ends, returning
 // the final phase.
 func (h *harness) play() game.Phase {
@@ -223,6 +275,35 @@ func (h *harness) play() game.Phase {
 	}
 	h.t.Fatal("boot did not end in 400 steps")
 	return ""
+}
+
+// enterDoor plays the boot up to its next open door.
+func (h *harness) enterDoor() *game.Attempt {
+	h.t.Helper()
+	for i := 0; h.m.state.Phase != game.PhaseProblem; i++ {
+		if i > 20 {
+			h.t.Fatalf("no door after 20 steps, phase %q", h.m.state.Phase)
+		}
+		switch {
+		case h.m.state.PendingUpgrade:
+			h.send(game.PickUpgrade{Upgrade: h.m.state.UpgradeOffers[0]})
+		case h.m.state.Phase == game.PhaseRoute:
+			h.send(game.ChooseRoute{})
+		case h.m.state.Phase == game.PhaseMerge:
+			h.send(game.LeaveMerge{})
+		default:
+			h.send(game.ChooseDoor{})
+		}
+	}
+	return h.m.state.Current
+}
+
+// toDoors plays the boot up to a room of doors.
+func (h *harness) toDoors() {
+	h.t.Helper()
+	for h.m.state.Phase != game.PhaseDoors {
+		h.send(game.ChooseRoute{})
+	}
 }
 
 func TestFullClear(t *testing.T) {
@@ -286,68 +367,22 @@ func TestCrashThenUpsolveRecoversCoreDump(t *testing.T) {
 func TestTimerExpiryCrashes(t *testing.T) {
 	h := newHarness(t)
 	h.send(screens.StartBoot{Preset: "standard"})
-	for h.m.state.Phase != game.PhaseProblem {
-		switch {
-		case h.m.state.PendingUpgrade:
-			h.send(game.PickUpgrade{Upgrade: h.m.state.UpgradeOffers[0]})
-		case h.m.state.Phase == game.PhaseRoute:
-			h.send(game.ChooseRoute{})
-		default:
-			h.send(game.ChooseDoor{})
-		}
-	}
-	h.clock.t = h.m.state.Current.Deadline.Add(time.Second)
+	h.clock.t = h.enterDoor().Deadline.Add(time.Second)
 	h.send(tickMsg(h.clock.t))
 	if h.m.state.Phase != game.PhaseCrashed || h.m.state.Crash.Cause != game.TimedOut {
 		t.Fatalf("phase %q crash %+v, want a timeout crash", h.m.state.Phase, h.m.state.Crash)
 	}
 }
 
+// A second app on the same store resumes the boot and reopens the door.
 func TestResumeMidDoor(t *testing.T) {
 	h := newHarness(t)
 	h.send(screens.StartBoot{Preset: "standard"})
-	for h.m.state.Phase != game.PhaseProblem {
-		switch {
-		case h.m.state.Phase == game.PhaseRoute:
-			h.send(game.ChooseRoute{})
-		default:
-			h.send(game.ChooseDoor{})
-		}
-	}
-	want := h.m.state.Current.Door
-
-	// A second app on the same store resumes the boot and reopens the door.
-	m2, err := New(Deps{Store: h.st, Catalog: h.m.d.Catalog, Runner: h.runner, Judge: h.m.d.Judge, Now: h.clock.now})
-	if err != nil {
-		t.Fatal(err)
-	}
-	h.m = m2
-	h.send(tea.WindowSizeMsg{Width: 60, Height: 20})
-	h.run(m2.Init())
+	want := h.enterDoor().Door
+	h.restart()
 	if h.m.open == nil || !reflect.DeepEqual(h.m.open.Door, want) {
 		t.Fatalf("resumed door %+v, want %+v", h.m.open, want)
 	}
-}
-
-// enterDoor plays the boot up to its first open door.
-func (h *harness) enterDoor() *game.Attempt {
-	h.t.Helper()
-	for i := 0; h.m.state.Phase != game.PhaseProblem; i++ {
-		if i > 20 {
-			h.t.Fatalf("no door after 20 steps, phase %q", h.m.state.Phase)
-		}
-		switch {
-		case h.m.state.PendingUpgrade:
-			h.send(game.PickUpgrade{Upgrade: h.m.state.UpgradeOffers[0]})
-		case h.m.state.Phase == game.PhaseRoute:
-			h.send(game.ChooseRoute{})
-		case h.m.state.Phase == game.PhaseMerge:
-			h.send(game.LeaveMerge{})
-		default:
-			h.send(game.ChooseDoor{})
-		}
-	}
-	return h.m.state.Current
 }
 
 // A submit made before the deadline is judged after it; the engine's grace
@@ -392,10 +427,8 @@ func TestLostJudgeCannotStopTheClock(t *testing.T) {
 // the HUD without marking the door as judging, so a submit just before the
 // deadline was crashed by the next tick instead of getting the grace.
 func TestEditorSubmitGetsTheGrace(t *testing.T) {
-	var hr *hudFakeRunner
 	h := newHarnessWith(t, func(f *fakeRunner) Runner {
-		hr = &hudFakeRunner{fakeRunner: f, hud: hud.New(hud.Options{Dir: t.TempDir()})}
-		return hr
+		return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: t.TempDir()}}
 	})
 	h.send(screens.StartBoot{Preset: "standard"})
 	cur := h.enterDoor()
@@ -407,7 +440,8 @@ func TestEditorSubmitGetsTheGrace(t *testing.T) {
 	if h.m.state.Phase != game.PhaseProblem {
 		t.Fatalf("phase %q after an editor submit inside the grace, want problem", h.m.state.Phase)
 	}
-	h.send(hud.SubmittedMsg{Summary: judge.Summary{Verdict: judge.AC, Passed: 4, Total: 4, Done: 4, First: -1}})
+	sum := judge.Summary{Verdict: judge.AC, Passed: 4, Total: 4, Done: 4, First: -1}
+	h.send(hud.SubmittedMsg{Summary: sum})
 	if last := h.m.state.History[len(h.m.state.History)-1]; last.Outcome != game.Cleared {
 		t.Fatalf("door ended %q, want cleared", last.Outcome)
 	}
@@ -417,7 +451,7 @@ func TestEditorSubmitGetsTheGrace(t *testing.T) {
 // one says what the duck revealed.
 func TestEditorQuackAnswers(t *testing.T) {
 	h := newHarnessWith(t, func(f *fakeRunner) Runner {
-		return &hudFakeRunner{fakeRunner: f, hud: hud.New(hud.Options{Dir: t.TempDir()})}
+		return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: t.TempDir()}}
 	})
 	h.send(screens.StartBoot{Preset: "standard"})
 	h.enterDoor()
@@ -440,7 +474,100 @@ func TestEditorQuackAnswers(t *testing.T) {
 	}
 }
 
-// The editorial a :q! opens counts against the upsolve that follows, even
+// A door whose editor failed to open is not open, so e retries it; it used
+// to count as open with no editor and could only time out.
+func TestFailedOpenRetries(t *testing.T) {
+	h := newHarness(t)
+	h.runner.openErr = errors.New("no tmux")
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.enterDoor()
+	if h.m.open != nil || !strings.Contains(h.m.flash, "no tmux") {
+		t.Fatalf("open %+v flash %q after a failed open, want no door and the error", h.m.open, h.m.flash)
+	}
+	h.runner.openErr = nil
+	h.send(key("e"))
+	if h.m.open == nil {
+		t.Fatal("e did not retry the door")
+	}
+}
+
+// A failed reopen leaves the editor marked closed, so e can try again; it
+// used to clear the mark first, and the door had no editor and no retry.
+func TestFailedReopenRetries(t *testing.T) {
+	var hr *hudFakeRunner
+	h := newHarnessWith(t, func(f *fakeRunner) Runner {
+		hr = &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: t.TempDir()}}
+		return hr
+	})
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.enterDoor()
+	h.send(hudQuitMsg{}) // the player quit vim
+	hr.reopenErr = errors.New("tmux gone")
+	h.send(key("e"))
+	hr.reopenErr = nil
+	before := hr.hud
+	h.send(key("e"))
+	if s := h.m.top().(*problemScreen); s.closed || hr.hud == before {
+		t.Fatalf("closed %v, new HUD %v after a retried reopen, want the editor back", s.closed, hr.hud != before)
+	}
+}
+
+// A fetch that lands after its door is gone opens nothing: here the player
+// left an upsolve while its problem downloaded.
+func TestLateFetchOpensNothing(t *testing.T) {
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.enterDoor()
+	h.send(game.GiveUp{})
+	id := h.m.state.Crash.Door.Problem
+	c := newGateCatalog(h.m.d.Catalog.(*fakeCatalog))
+	c.gates[id] = make(chan struct{})
+	t.Cleanup(func() { close(c.gates[id]) })
+	h.m.d.Catalog = c
+	opened := h.runner.opened
+
+	h.send(screens.Upsolve{Problem: string(id)}) // the fetch hangs
+	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "fetching") || strings.Contains(v, "e retries") {
+		t.Errorf("upsolve while fetching shows %q, want fetching without e (the editorial key)", v)
+	}
+	h.send(key("Q"))
+	h.send(fetchedMsg{door: game.Door{Problem: id}, upsolve: true})
+	if h.m.open != nil || h.runner.opened != opened {
+		t.Fatalf("open %+v, runner opened %d more after the upsolve was left, want none", h.m.open, h.runner.opened-opened)
+	}
+}
+
+// A boot whose first save failed still starts, with the error shown; it
+// used to sit behind the screen it was started from.
+func TestUnsavedBootStillStarts(t *testing.T) {
+	h := newHarness(t)
+	if err := h.st.Close(); err != nil {
+		t.Fatal(err)
+	}
+	h.send(screens.StartBoot{Preset: "standard"})
+	if _, grub := h.m.top().(interface{ Editing() bool }); grub || !strings.Contains(h.m.flash, "save") {
+		t.Fatalf("top %T flash %q, want the boot's screen and the save error", h.m.top(), h.m.flash)
+	}
+}
+
+// An accepted upsolve that could not be saved still closes its door; left
+// open, a second AC recorded the solve twice.
+func TestUnsavedUpsolveClosesTheDoor(t *testing.T) {
+	h := newHarness(t)
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.enterDoor()
+	h.send(game.GiveUp{})
+	h.send(screens.Upsolve{Problem: string(h.m.state.Crash.Door.Problem)})
+	if err := h.st.Close(); err != nil {
+		t.Fatal(err)
+	}
+	h.send(submitMsg{})
+	if h.m.open != nil || !strings.Contains(h.m.flash, "save") {
+		t.Fatalf("open %+v flash %q, want the door closed and the save error", h.m.open, h.m.flash)
+	}
+}
+
+// The editorial a :q! offers counts against the upsolve that follows, even
 // after the game restarts and the core dump is upsolved from GRUB.
 func TestUpsolveAfterGiveUpIsEditorial(t *testing.T) {
 	h := newHarness(t)
@@ -454,13 +581,7 @@ func TestUpsolveAfterGiveUpIsEditorial(t *testing.T) {
 		t.Fatalf("core dump %+v, want one on %s", h.m.meta.CoreDump, id)
 	}
 
-	m2, err := New(Deps{Store: h.st, Catalog: h.m.d.Catalog, Runner: h.runner, Judge: h.m.d.Judge, Now: h.clock.now})
-	if err != nil {
-		t.Fatal(err)
-	}
-	h.m = m2
-	h.send(tea.WindowSizeMsg{Width: 100, Height: 30})
-	h.run(m2.Init())
+	h.restart()
 	h.send(screens.Upsolve{Problem: string(id)})
 	h.send(submitMsg{})
 	last := h.m.meta.Solves[len(h.m.meta.Solves)-1]
@@ -507,17 +628,9 @@ func TestMysteryStatementHidesTitle(t *testing.T) {
 func TestResumeAfterDeadlineCrashesWithoutReopening(t *testing.T) {
 	h := newHarness(t)
 	h.send(screens.StartBoot{Preset: "standard"})
-	cur := h.enterDoor()
+	h.clock.t = h.enterDoor().Deadline.Add(time.Minute)
 	opened := h.runner.opened
-
-	h.clock.t = cur.Deadline.Add(time.Minute)
-	m2, err := New(Deps{Store: h.st, Catalog: h.m.d.Catalog, Runner: h.runner, Judge: h.m.d.Judge, Now: h.clock.now})
-	if err != nil {
-		t.Fatal(err)
-	}
-	h.m = m2
-	h.send(tea.WindowSizeMsg{Width: 100, Height: 30})
-	h.run(m2.Init())
+	h.restart()
 	if h.m.state.Phase != game.PhaseCrashed || h.m.state.Crash.Cause != game.TimedOut {
 		t.Fatalf("phase %q crash %+v, want a timeout on resume", h.m.state.Phase, h.m.state.Crash)
 	}
@@ -563,7 +676,9 @@ func TestUpsolveSources(t *testing.T) {
 	if b, _ := os.ReadFile(usrc); string(b) != "// my attempt\n" {
 		t.Fatalf("upsolve source %q, want the attempt from %s", b, dir)
 	}
-	os.WriteFile(usrc, []byte("// accepted\n"), 0o644)
+	if err := os.WriteFile(usrc, []byte("// accepted\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Days later the regression is due: a blank file elsewhere.
 	h.clock.t = h.m.meta.Regressions[0].Due.Add(time.Hour)
@@ -626,17 +741,20 @@ func biomeLabelOf(s *game.State) string {
 }
 
 // gateCatalog records the order fetches start in and holds each one until
-// its gate opens; Get puts ids starting "b" in a second source.
+// its gate opens or its context ends; Get puts ids starting "b" in a
+// second source.
 type gateCatalog struct {
 	*fakeCatalog
-	mu      sync.Mutex
-	started []catalog.ID
-	gates   map[catalog.ID]chan struct{}
-	start   chan catalog.ID
+	mu        sync.Mutex
+	started   []catalog.ID
+	cancelled map[catalog.ID]bool
+	gates     map[catalog.ID]chan struct{}
+	start     chan catalog.ID
 }
 
 func newGateCatalog(fc *fakeCatalog, ids ...catalog.ID) *gateCatalog {
-	c := &gateCatalog{fakeCatalog: fc, gates: map[catalog.ID]chan struct{}{}, start: make(chan catalog.ID, 16)}
+	c := &gateCatalog{fakeCatalog: fc, cancelled: map[catalog.ID]bool{},
+		gates: map[catalog.ID]chan struct{}{}, start: make(chan catalog.ID, 16)}
 	for _, id := range ids {
 		c.byID[id] = catalog.Problem{ID: id, Source: catalog.Source(string(id[:1])), Title: string(id)}
 		c.gates[id] = make(chan struct{})
@@ -651,9 +769,13 @@ func (c *gateCatalog) Fetch(ctx context.Context, id catalog.ID) (catalog.Assets,
 	c.start <- id
 	select {
 	case <-c.gates[id]:
+		return catalog.Assets{}, nil
 	case <-ctx.Done():
+		c.mu.Lock()
+		c.cancelled[id] = true
+		c.mu.Unlock()
+		return catalog.Assets{}, ctx.Err()
 	}
-	return catalog.Assets{}, nil
 }
 
 func (c *gateCatalog) waitStart(t *testing.T) catalog.ID {
@@ -667,10 +789,16 @@ func (c *gateCatalog) waitStart(t *testing.T) catalog.ID {
 	}
 }
 
+func (c *gateCatalog) wasCancelled(id catalog.ID) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.cancelled[id]
+}
+
 // Doors on offer prefetch one at a time per source, in door order (a
 // source sends one request at a time, so fetching its doors together
-// only delays the first), while different sources run side by side; a
-// chosen door stops the rest.
+// only delays the first), while different sources run side by side. A
+// chosen door cancels the other doors' fetches but not its own.
 func TestPrefetchOrder(t *testing.T) {
 	h := newHarness(t)
 	c := newGateCatalog(h.m.d.Catalog.(*fakeCatalog), "a1", "a2", "a3", "b1")
@@ -687,16 +815,76 @@ func TestPrefetchOrder(t *testing.T) {
 	if id := c.waitStart(t); id != "a2" {
 		t.Fatalf("after a1, %s started, want a2", id)
 	}
-	h.m.stopPrefetch() // the player chose a door
+	h.m.stopPrefetch("a2") // the player chose door a2
 	close(c.gates["a2"])
-	close(c.gates["b1"])
 	select {
 	case <-done:
 	case <-time.After(time.Second):
 		t.Fatal("prefetch kept going after a door was chosen")
 	}
-	if slices.Contains(c.started, "a3") {
-		t.Errorf("fetched %v, want a3 skipped once a door was chosen", c.started)
+	if !c.wasCancelled("b1") || c.wasCancelled("a2") || slices.Contains(c.started, "a3") {
+		t.Errorf("fetched %v, cancelled %v; want b1 cancelled, a2 kept, a3 skipped", c.started, c.cancelled)
+	}
+}
+
+// Quitting cancels the fetches still running and waits for them, so a
+// download cut short can remove its temp files before the process exits.
+func TestQuitCancelsFetches(t *testing.T) {
+	h := newHarness(t)
+	c := newGateCatalog(h.m.d.Catalog.(*fakeCatalog), "a1", "b1")
+	h.m.d.Catalog = c
+	go h.m.prefetch([]catalog.ID{"a1", "b1"})()
+	c.waitStart(t)
+	c.waitStart(t)
+	h.m.quit()
+	// A fetch records its cancellation before it returns, and quit waits
+	// for that.
+	if !c.wasCancelled("a1") || !c.wasCancelled("b1") {
+		t.Errorf("cancelled %v when quit returned, want both fetches", c.cancelled)
+	}
+}
+
+// breakingCatalog finds every problem it fetches unjudgeable, as a USACO
+// fetch does when the problem's test zip turns out not to exist.
+type breakingCatalog struct {
+	*fakeCatalog
+	mu     sync.Mutex
+	broken map[catalog.ID]bool
+}
+
+func (c *breakingCatalog) Get(id catalog.ID) (catalog.Problem, bool) {
+	p, ok := c.fakeCatalog.Get(id)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	p.Judgeable = p.Judgeable && !c.broken[id]
+	return p, ok
+}
+
+func (c *breakingCatalog) All() []catalog.Problem {
+	all := slices.Clone(c.fakeCatalog.All())
+	for i := range all {
+		all[i], _ = c.Get(all[i].ID)
+	}
+	return all
+}
+
+func (c *breakingCatalog) Fetch(ctx context.Context, id catalog.ID) (catalog.Assets, error) {
+	c.mu.Lock()
+	c.broken[id] = true
+	c.mu.Unlock()
+	return c.fakeCatalog.Fetch(ctx, id)
+}
+
+// A problem a fetch finds unjudgeable leaves the pool the engine draws
+// doors from; the pool used to be read once, at start.
+func TestUnjudgeableProblemLeavesThePool(t *testing.T) {
+	h := newHarness(t)
+	h.m.d.Catalog = &breakingCatalog{fakeCatalog: h.m.d.Catalog.(*fakeCatalog), broken: map[catalog.ID]bool{}}
+	h.send(screens.StartBoot{Preset: "standard"}) // the room's doors prefetch
+	h.toDoors()
+	id := h.m.state.Doors[0].Problem
+	if i := slices.IndexFunc(h.m.pool, func(p catalog.Problem) bool { return p.ID == id }); h.m.pool[i].Judgeable {
+		t.Fatalf("%s still judgeable in the pool after its fetch found it not", id)
 	}
 }
 
@@ -706,10 +894,7 @@ func TestPrefetchOrder(t *testing.T) {
 func TestChosenDoorWaitsForItsProblem(t *testing.T) {
 	h := newHarness(t)
 	h.send(screens.StartBoot{Preset: "standard"})
-	for h.m.state.Phase != game.PhaseDoors {
-		h.send(game.ChooseRoute{})
-	}
-	id := h.m.state.Doors[0].Problem
+	h.toDoors()
 	h.send(game.ChooseDoor{Index: 0})
 	if h.m.state.Phase != game.PhaseProblem {
 		t.Fatalf("phase %q after choosing a cached door, want problem", h.m.state.Phase)
@@ -717,10 +902,8 @@ func TestChosenDoorWaitsForItsProblem(t *testing.T) {
 
 	h = newHarness(t)
 	h.send(screens.StartBoot{Preset: "standard"})
-	for h.m.state.Phase != game.PhaseDoors {
-		h.send(game.ChooseRoute{})
-	}
-	id = h.m.state.Doors[0].Problem
+	h.toDoors()
+	id := h.m.state.Doors[0].Problem
 	c := newGateCatalog(h.m.d.Catalog.(*fakeCatalog))
 	c.gates[id] = make(chan struct{})
 	h.m.d.Catalog = c
@@ -738,9 +921,7 @@ func TestChosenDoorWaitsForItsProblem(t *testing.T) {
 
 	h = newHarness(t)
 	h.send(screens.StartBoot{Preset: "standard"})
-	for h.m.state.Phase != game.PhaseDoors {
-		h.send(game.ChooseRoute{})
-	}
+	h.toDoors()
 	id = h.m.state.Doors[0].Problem
 	h.m.choosing = id
 	h.send(doorReadyMsg{index: 0, id: id, err: errors.New("offline")})
@@ -753,7 +934,7 @@ func TestChosenDoorWaitsForItsProblem(t *testing.T) {
 // then the two footer rows on the last two lines.
 func TestProblemScreenFillsThePane(t *testing.T) {
 	h := newHarnessWith(t, func(f *fakeRunner) Runner {
-		return &hudFakeRunner{fakeRunner: f, hud: hud.New(hud.Options{Dir: t.TempDir(), Embedded: true})}
+		return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: t.TempDir(), Embedded: true}}
 	})
 	h.send(screens.StartBoot{Preset: "standard"})
 	h.enterDoor()

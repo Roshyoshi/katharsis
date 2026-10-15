@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 	"katharsis/internal/hud"
 	"katharsis/internal/screens"
@@ -27,6 +27,14 @@ type submitMsg struct{}
 type hudRunner interface {
 	HUD() *hud.Model
 	Reopen() error
+}
+
+// hud is the open door's HUD, nil between doors and without a hudRunner.
+func (m *Model) hud() *hud.Model {
+	if r, ok := m.d.Runner.(hudRunner); ok {
+		return r.HUD()
+	}
+	return nil
 }
 
 // hudQuitMsg replaces the HUD's tea.Quit: embedded in the game, the HUD
@@ -79,13 +87,6 @@ func newUpsolveScreen(m *Model, d game.Door) *problemScreen {
 	return &problemScreen{m: m, upsolve: true, door: d}
 }
 
-func (s *problemScreen) hud() *hud.Model {
-	if r, ok := s.m.d.Runner.(hudRunner); ok {
-		return r.HUD()
-	}
-	return nil
-}
-
 func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	k, ok := msg.(tea.KeyPressMsg)
 	if !ok {
@@ -105,14 +106,12 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 			return s, screens.Emit(game.Quack{})
 		}
 	case "e":
-		if s.closed {
-			if r, ok := s.m.d.Runner.(hudRunner); ok {
-				s.closed = false
-				if err := r.Reopen(); err != nil {
-					return s, fail("reopen editor: %v", err)
-				}
-				return s, guard(r.HUD().Init())
+		if r, ok := s.m.d.Runner.(hudRunner); ok && s.closed {
+			if err := r.Reopen(); err != nil {
+				return s, fail("reopen editor: %v", err)
 			}
+			s.closed = false
+			return s, guard(r.HUD().Init())
 		}
 		if s.m.open == nil && !s.upsolve {
 			// A resumed door whose fetch failed (offline, say) has no
@@ -140,7 +139,7 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		return s, nil // the HUD's q would close the editor; the door decides
 	}
 	// The rest (j/k, r to rerun samples) is the HUD's.
-	if h := s.hud(); h != nil {
+	if h := s.m.hud(); h != nil {
 		_, cmd := h.Update(msg)
 		return s, guard(cmd)
 	}
@@ -184,7 +183,7 @@ func (s *problemScreen) View(w, h int) string {
 	// HUD runs embedded (no header or key help of its own) and is exactly
 	// as tall as the room it is given.
 	room := h - len(top) - 2
-	if hm := s.hud(); hm != nil && room > 1 {
+	if hm := s.m.hud(); hm != nil && room > 1 {
 		// The HUD sizes itself from WindowSizeMsg; give it the room left.
 		if s.hudSize != [2]int{w, room} {
 			s.hudSize = [2]int{w, room}
@@ -209,7 +208,11 @@ func (s *problemScreen) headless(w int) string {
 	line := faint.Render("samples rejudge on :w · :Submit for the full tests")
 	switch {
 	case s.m.open == nil:
-		line = faint.Render("fetching " + string(s.door.Problem) + "… · e retries")
+		line = "fetching " + string(s.door.Problem) + "…"
+		if !s.upsolve {
+			line += " · e retries" // in an upsolve e is the editorial
+		}
+		line = faint.Render(line)
 	case s.m.judging:
 		line = faint.Render("judging full tests…")
 	case s.last.verdict != "":
@@ -225,10 +228,6 @@ func (s *problemScreen) headless(w int) string {
 // onRequest handles a command from the editor. The game's own commands
 // become engine actions; submit and debug belong to the HUD.
 func (m *Model) onRequest(req session.Request) tea.Cmd {
-	h := (*hud.Model)(nil)
-	if r, ok := m.d.Runner.(hudRunner); ok {
-		h = r.HUD()
-	}
 	inBoot := m.state != nil && m.state.Phase == game.PhaseProblem && m.open != nil && !m.open.Upsolve
 	var a game.Action
 	switch req.Cmd {
@@ -242,6 +241,7 @@ func (m *Model) onRequest(req session.Request) tea.Cmd {
 		req.Answer(session.Reply{OK: true, Text: m.statusLine()})
 		return nil
 	default:
+		h := m.hud()
 		if h == nil {
 			req.Answer(session.Reply{Text: "no door open"})
 			return nil
@@ -306,7 +306,7 @@ func ducks(s *game.State) string {
 	return fmt.Sprintf("🦆%d", s.Ducks)
 }
 
-func countdown(d interface{ Seconds() float64 }) string {
+func countdown(d time.Duration) string {
 	t := int(d.Seconds())
 	if t >= 3600 {
 		return fmt.Sprintf("%d:%02d:%02d", t/3600, t/60%60, t%60)
@@ -317,10 +317,6 @@ func countdown(d interface{ Seconds() float64 }) string {
 func readFile(path string) (string, error) {
 	b, err := os.ReadFile(path)
 	return string(b), err
-}
-
-func errNo(kind string, id catalog.ID) error {
-	return fmt.Errorf("%s has no %s", id, kind)
 }
 
 // overlayFlash replaces the last line of body with msg, so errors and notes

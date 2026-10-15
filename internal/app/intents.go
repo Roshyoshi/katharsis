@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"slices"
 	"strings"
@@ -85,13 +86,19 @@ func (m *Model) openLog() tea.Cmd {
 	if err != nil {
 		return fail("git log: %v", err)
 	}
+	// One query for every attempt, not one per boot; grouping keeps each
+	// boot's newest first.
+	atts, err := m.d.Store.Attempts(store.AttemptFilter{})
+	if err != nil {
+		return fail("git log: %v", err)
+	}
+	byBoot := map[int][]store.AttemptRecord{}
+	for _, a := range atts {
+		byBoot[a.Boot] = append(byBoot[a.Boot], a)
+	}
 	rows := make([]meta.BootRow, 0, len(boots))
 	for _, b := range boots {
-		atts, err := m.d.Store.Attempts(store.AttemptFilter{Boot: b.Boot})
-		if err != nil {
-			return fail("git log: %v", err)
-		}
-		rows = append(rows, m.bootRow(b, atts))
+		rows = append(rows, m.bootRow(b, byBoot[b.Boot]))
 	}
 	return m.push(meta.NewLog(rows, nil))
 }
@@ -124,8 +131,8 @@ func (m *Model) openDoc(id catalog.ID, editorial bool) tea.Cmd {
 	// name; the statement must not give it away either.
 	mystery := !editorial && m.state != nil && m.state.Phase == game.PhaseProblem &&
 		m.state.Current != nil && m.state.Current.Door.Problem == id && m.state.Current.Door.Mystery
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	return m.background(func(ctx context.Context) tea.Msg {
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
 		a, err := cat.Fetch(ctx, id)
 		if err != nil {
@@ -137,7 +144,7 @@ func (m *Model) openDoc(id catalog.ID, editorial bool) tea.Cmd {
 			path, kind = a.Editorial, "editorial"
 		}
 		if path == "" {
-			return errMsg{errNo(kind, id)}
+			return errMsg{fmt.Errorf("%s has no %s", id, kind)}
 		}
 		md, err := readFile(path)
 		if err != nil {
@@ -148,7 +155,7 @@ func (m *Model) openDoc(id catalog.ID, editorial bool) tea.Cmd {
 			return docMsg{reader.Doc{Title: "???", Source: "mystery door · " + kind, Markdown: redact(md, p)}}
 		}
 		return docMsg{reader.Doc{Title: p.Title, Source: p.Contest + " · " + kind, URL: p.URL, Markdown: md}}
-	}
+	})
 }
 
 // redact hides a mystery door's identity in its statement: the headings
@@ -190,9 +197,10 @@ func (m *Model) startUpsolve(id catalog.ID) tea.Cmd {
 }
 
 // sawEditorial reports whether the player has had id's editorial in front
-// of them: opened this session, or opened by a :q! on it (the engine opens
-// it on every :q!) that no solve has come after. The second survives a
-// restart, so a core dump upsolved from GRUB the next day still counts.
+// of them: opened this session, or offered by a :q! on it (the crash screen
+// offers it after every :q!) that no solve has come after. The second
+// survives a restart, so a core dump upsolved from GRUB the next day still
+// counts.
 func (m *Model) sawEditorial(id catalog.ID) bool {
 	if m.editorials[id] {
 		return true
@@ -241,12 +249,13 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 	}
 	id := m.open.Door.Problem
 	got := game.Upsolve(&m.meta, id, kind, m.d.Now().Sub(m.open.Opened), m.d.Now())
+	// The solve is recorded either way: unsaved, it goes with the next
+	// save, and a door left open would let it count twice.
+	m.closeDoor()
+	m.reset()
 	if err := m.d.Store.SaveMeta(m.meta); err != nil {
 		return fail("save: %v", err)
 	}
-	m.closeDoor()
-	m.pop()
-	m.reset()
 	if got > 0 {
 		return note("core dump recovered: +%s banked", meta.Bytes(got))
 	}
@@ -255,7 +264,7 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 
 func openURL(url string) tea.Cmd {
 	return func() tea.Msg {
-		exec.Command("open", url).Run()
+		_ = exec.Command("open", url).Run() // no browser: the key does nothing
 		return nil
 	}
 }

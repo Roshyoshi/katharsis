@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -45,17 +45,25 @@ func (m *Model) baseScreen() screens.Screen {
 	return m.grub()
 }
 
+// baseKey is what baseScreen chooses by; when it changes, the stack is
+// rebuilt.
+type baseKey struct {
+	phase   game.Phase
+	upgrade bool
+}
+
+func (m *Model) baseKey() baseKey {
+	return baseKey{m.state.Phase, m.state.Phase == game.PhaseDoors && m.state.PendingUpgrade}
+}
+
 func (m *Model) env() bootui.Env {
 	return bootui.Env{State: m.state, Meta: m.meta, Lookup: m.d.Catalog.Get, Now: m.d.Now()}
 }
 
-// startBoot begins a new boot. A boot still running is given up first, so
-// leaving one from GRUB costs what quitting a door costs.
+// startBoot begins a new boot. A boot still running is given up first.
 func (m *Model) startBoot(b screens.StartBoot) tea.Cmd {
-	if m.state != nil && m.state.Phase != game.PhaseCrashed && m.state.Phase != game.PhaseCleared {
-		if err := m.abandon(); err != nil {
-			return fail("abandon boot %d: %v", m.state.Boot, err)
-		}
+	if err := m.abandon(); err != nil {
+		return fail("abandon boot %d: %v", m.state.Boot, err)
 	}
 	r, ok := m.d.Presets[b.Preset]
 	if !ok {
@@ -65,23 +73,37 @@ func (m *Model) startBoot(b screens.StartBoot) tea.Cmd {
 	if seed == 0 {
 		seed = m.d.Seed()
 	}
+	// A fetch outside the doors (a statement, say) may have found problems
+	// unjudgeable since the pool was last read.
+	m.pool = m.d.Catalog.All()
 	st, effs, err := game.NewBoot(r, &m.meta, m.pool, b.Prestige, seed, m.d.Now())
 	if err != nil {
 		return fail("new boot: %v", err)
 	}
-	m.state = st
-	// Save before the first step, so quitting right away still resumes.
-	if err := m.d.Store.Checkpoint(m.meta, m.state); err != nil {
-		return fail("save: %v", err)
-	}
-	m.reset()
-	return tea.Batch(m.initTop(), m.effects(effs), m.offerLink())
+	return m.begin(st, effs)
 }
 
-// abandon gives up a running boot. In a door that is :q!; elsewhere there
-// is no engine action for it, so the store just marks the boot abandoned.
+// begin shows a boot or trial that NewBoot or NewTrial just made. It is
+// saved before the first step, so quitting right away still resumes; a
+// failed save is shown, and the boot goes on, as after a step (try).
+func (m *Model) begin(st *game.State, effs []game.Effect) tea.Cmd {
+	m.state = st
+	m.reset()
+	var save tea.Cmd
+	if err := m.d.Store.Checkpoint(m.meta, m.state); err != nil {
+		save = fail("save: %v", err)
+	}
+	return tea.Batch(save, m.initTop(), m.effects(effs), m.offerLink())
+}
+
+// abandon gives up a boot still running, so leaving one costs what quitting
+// a door costs. In a door that is :q!; elsewhere there is no engine action
+// for it, so the store just marks the boot abandoned.
 func (m *Model) abandon() error {
-	if m.state.Phase == game.PhaseProblem {
+	switch {
+	case m.state == nil || m.state.Phase == game.PhaseCrashed || m.state.Phase == game.PhaseCleared:
+		return nil
+	case m.state.Phase == game.PhaseProblem:
 		if _, err := game.Step(m.state, &m.meta, m.pool, game.GiveUp{}, m.d.Now()); err != nil {
 			return err
 		}
@@ -107,7 +129,7 @@ func (m *Model) try(a game.Action) (tea.Cmd, error) {
 	if m.state == nil {
 		return nil, nil
 	}
-	before := m.state.Phase
+	before := m.baseKey()
 	effs, err := game.Step(m.state, &m.meta, m.pool, a, m.d.Now())
 	if errors.Is(err, game.ErrInvalid) {
 		return nil, err
@@ -122,7 +144,7 @@ func (m *Model) try(a game.Action) (tea.Cmd, error) {
 		cmds = append(cmds, fail("save: %v", err))
 	}
 	cmds = append(cmds, m.effects(effs))
-	if m.state.Phase != before || needsRebuild(a) {
+	if m.baseKey() != before {
 		m.reset()
 		cmds = append(cmds, m.initTop())
 	} else {
@@ -135,16 +157,6 @@ func (m *Model) try(a game.Action) (tea.Cmd, error) {
 // "invalid action" prefix.
 func refusal(err error) string {
 	return strings.TrimPrefix(err.Error(), game.ErrInvalid.Error()+": ")
-}
-
-// needsRebuild: actions that change which screen a phase shows without
-// changing the phase (an upgrade picked, a door swapped).
-func needsRebuild(a game.Action) bool {
-	switch a.(type) {
-	case game.PickUpgrade, game.Retreat, game.ChooseDoor:
-		return true
-	}
-	return false
 }
 
 // refresh hands the screens the new state and clock, keeping their cursors.
@@ -183,7 +195,10 @@ func (m *Model) pastGrace() bool {
 	return c == nil || !m.d.Now().Before(c.Deadline.Add(m.state.Rules.SubmitGrace.Duration))
 }
 
-// effects carries out what the engine asked for.
+// effects carries out what the engine asked for. RevealTags, ShowCrash and
+// ShowCleared need nothing beyond the screen rebuild: the state carries
+// them. Nor does OpenEditorial, which comes with a :q! crash: the kernel
+// panic lands first, and its screen offers the editorial on [e].
 func (m *Model) effects(effs []game.Effect) tea.Cmd {
 	var cmds []tea.Cmd
 	for _, e := range effs {
@@ -192,12 +207,6 @@ func (m *Model) effects(effs []game.Effect) tea.Cmd {
 			cmds = append(cmds, m.openDoor(e.Door, false))
 		case game.CloseProblem:
 			m.closeDoor()
-		case game.OpenEditorial:
-			// After :q! the boot has crashed: let the kernel panic land
-			// first; its screen offers the editorial on [e].
-			if m.state == nil || m.state.Phase != game.PhaseCrashed {
-				cmds = append(cmds, m.openDoc(e.Problem, true))
-			}
 		case game.Sound:
 			if m.d.Sound != nil {
 				m.d.Sound(e.Name)
@@ -205,8 +214,6 @@ func (m *Model) effects(effs []game.Effect) tea.Cmd {
 		case game.Prefetch:
 			cmds = append(cmds, m.prefetch(e.Problems))
 		}
-		// RevealTags, ShowCrash and ShowCleared need nothing beyond the
-		// screen rebuild: the state already carries them.
 	}
 	return tea.Batch(cmds...)
 }
@@ -222,15 +229,19 @@ type fetchedMsg struct {
 // the runner once it arrives.
 func (m *Model) openDoor(d game.Door, upsolve bool) tea.Cmd {
 	cat := m.d.Catalog
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	return m.background(func(ctx context.Context) tea.Msg {
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
 		a, err := cat.Fetch(ctx, d.Problem)
 		return fetchedMsg{door: d, upsolve: upsolve, assets: a, err: err}
-	}
+	})
 }
 
 func (m *Model) onFetched(f fetchedMsg) tea.Cmd {
+	m.recheck(f.door.Problem)
+	if !m.awaits(f) {
+		return nil
+	}
 	if f.err != nil {
 		return fail("fetch %s: %v", f.door.Problem, f.err)
 	}
@@ -239,33 +250,57 @@ func (m *Model) onFetched(f fetchedMsg) tea.Cmd {
 	if f.upsolve {
 		d.ReadEditorial = m.sawEditorial(f.door.Problem)
 		d.Sub, d.SeedBoot = m.upsolveFiles(f.door.Problem)
-	}
-	if m.state != nil && !f.upsolve {
+	} else {
 		d.Boot = m.state.Boot
 		d.Libs = game.LinkedLibs(m.state, &m.meta)
-		if m.state.Current != nil {
-			d.Deadline = m.state.Current.Deadline
-		}
+	}
+	// A door that failed to open stays unopened, so e can retry it.
+	if err := m.d.Runner.Open(context.Background(), *d); err != nil {
+		return fail("open door: %v", err)
 	}
 	m.open = d
-	if m.d.Runner != nil {
-		if err := m.d.Runner.Open(context.Background(), *d); err != nil {
-			return fail("open door: %v", err)
-		}
-	}
 	m.refresh()
-	if r, ok := m.d.Runner.(hudRunner); ok && r.HUD() != nil {
-		return guard(r.HUD().Init())
+	if h := m.hud(); h != nil {
+		return guard(h.Init())
 	}
 	return nil
 }
 
+// awaits reports whether the door f fetched is still on screen waiting to
+// open. While it downloaded, the player may have left the upsolve, the door
+// may have crashed or been swapped, or a retry may have opened it.
+func (m *Model) awaits(f fetchedMsg) bool {
+	return m.open == nil && slices.ContainsFunc(m.stack, func(s screens.Screen) bool {
+		p, ok := s.(*problemScreen)
+		return ok && p.upsolve == f.upsolve && p.door.Problem == f.door.Problem
+	})
+}
+
 func (m *Model) closeDoor() {
-	if m.open != nil && m.d.Runner != nil {
+	if m.open != nil {
 		m.d.Runner.Close()
 	}
 	m.open, m.judging = nil, false
 }
+
+// recheck takes the catalog's word on problems a fetch just touched: one
+// whose tests turned out missing (a zip that 404s, say) is no longer
+// judgeable, and the engine must stop offering it.
+func (m *Model) recheck(ids ...catalog.ID) {
+	for _, id := range ids {
+		p, _ := m.d.Catalog.Get(id)
+		stale := !p.Judgeable && slices.ContainsFunc(m.pool, func(q catalog.Problem) bool {
+			return q.ID == id && q.Judgeable
+		})
+		if stale {
+			m.pool = m.d.Catalog.All()
+			return
+		}
+	}
+}
+
+// prefetchedMsg lists the doors a prefetch fetched or gave up on.
+type prefetchedMsg []catalog.ID
 
 // prefetch warms the cache for doors on offer so opening one is instant.
 // Failures are ignored here; opening the door reports them.
@@ -275,18 +310,19 @@ func (m *Model) closeDoor() {
 // so fetching its doors in parallel only interleaves them: in play, three
 // cold Codeforces doors fetched together were all ready after 42-56 s,
 // where in turn the first would have been ready in about a third of that.
-// Door 1, where the cursor starts, goes first. Choosing a door stops the
-// rest (stopPrefetch): the room's other doors are gone, and their requests
-// would only slow the chosen one. Opening a door mid-fetch joins the
-// source's download of it rather than starting another.
+// Door 1, where the cursor starts, goes first. Choosing a door cancels the
+// others' fetches (stopPrefetch): those doors are gone, and their requests
+// would only hold up the chosen one. The chosen door's own fetch goes on,
+// and opening it joins that download rather than starting another.
 func (m *Model) prefetch(ids []catalog.ID) tea.Cmd {
-	m.stopPrefetch()
-	stop := new(atomic.Bool)
-	m.prefetching = stop
+	m.stopPrefetch("")
 	cat := m.d.Catalog
+	ctxs := map[catalog.ID]context.Context{}
+	m.prefetching = map[catalog.ID]context.CancelFunc{}
 	var bySource [][]catalog.ID
 	index := map[catalog.Source]int{}
 	for _, id := range ids {
+		ctxs[id], m.prefetching[id] = context.WithTimeout(m.ctx, 5*time.Minute)
 		p, _ := cat.Get(id)
 		i, ok := index[p.Source]
 		if !ok {
@@ -296,32 +332,33 @@ func (m *Model) prefetch(ids []catalog.ID) tea.Cmd {
 		}
 		bySource[i] = append(bySource[i], id)
 	}
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
+	// The maps are only read from here on, so the goroutines share them.
+	cancels := m.prefetching
+	return m.background(func(context.Context) tea.Msg {
 		var wg sync.WaitGroup
-		for _, ids := range bySource {
+		for _, queue := range bySource {
 			wg.Go(func() {
-				for _, id := range ids {
-					if stop.Load() {
-						return
+				for _, id := range queue {
+					if ctxs[id].Err() == nil {
+						_, _ = cat.Fetch(ctxs[id], id)
 					}
-					cat.Fetch(ctx, id)
+					cancels[id]()
 				}
 			})
 		}
 		wg.Wait()
-		return nil
-	}
+		return prefetchedMsg(ids)
+	})
 }
 
-// stopPrefetch lets the fetch in progress finish (it may be the chosen
-// door's) but starts no more.
-func (m *Model) stopPrefetch() {
-	if m.prefetching != nil {
-		m.prefetching.Store(true)
-		m.prefetching = nil
+// stopPrefetch cancels the prefetch of every door on offer but keep's.
+func (m *Model) stopPrefetch(keep catalog.ID) {
+	for id, cancel := range m.prefetching {
+		if id != keep {
+			cancel()
+		}
 	}
+	m.prefetching = nil
 }
 
 // doorReadyMsg reports that the problem behind a chosen door is on disk,
@@ -343,20 +380,21 @@ func (m *Model) chooseDoor(a game.ChooseDoor) tea.Cmd {
 	if s == nil || s.Phase != game.PhaseDoors || s.PendingUpgrade || a.Index < 0 || a.Index >= len(s.Doors) {
 		return m.step(a) // the engine says why not
 	}
-	m.stopPrefetch()
 	id := s.Doors[a.Index].Problem
+	m.stopPrefetch(id)
 	m.choosing = id
 	m.flash = fmt.Sprintf("fetching door %d… its timer starts once it opens", a.Index+1)
 	cat := m.d.Catalog
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	return m.background(func(ctx context.Context) tea.Msg {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 		defer cancel()
 		_, err := cat.Fetch(ctx, id)
 		return doorReadyMsg{index: a.Index, id: id, err: err}
-	}
+	})
 }
 
 func (m *Model) onDoorReady(r doorReadyMsg) tea.Cmd {
+	m.recheck(r.id)
 	if m.choosing != r.id {
 		return nil // the player chose another door meanwhile
 	}
@@ -382,12 +420,12 @@ func (m *Model) submit() tea.Cmd {
 	if m.open == nil {
 		return nil
 	}
-	if r, ok := m.d.Runner.(hudRunner); ok && r.HUD() != nil {
+	if h := m.hud(); h != nil {
 		// The HUD judges and reports back with a SubmittedMsg. A submit
 		// while one runs replaces it, as :Submit from the editor does.
 		m.judging = true
 		req, _ := session.NewRequest(session.Command{Cmd: session.CmdSubmit})
-		_, cmd := r.HUD().Update(req)
+		_, cmd := h.Update(req)
 		return guard(cmd)
 	}
 	if m.d.Judge == nil || m.judging {

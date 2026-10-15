@@ -2,7 +2,6 @@ package app
 
 import (
 	"cmp"
-	"slices"
 
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
@@ -31,8 +30,7 @@ func (m *Model) bootRow(b store.BootSummary, atts []store.AttemptRecord) meta.Bo
 	}
 	// Attempts come newest first; the screen lists them in play order.
 	for i := len(atts) - 1; i >= 0; i-- {
-		a := atts[i]
-		row.Attempts = append(row.Attempts, m.attemptRow(a.Attempt))
+		row.Attempts = append(row.Attempts, m.attemptRow(atts[i].Attempt))
 	}
 	if len(atts) > 0 && !row.Cleared {
 		row.Biome = m.lastBiome(b.Rules, atts)
@@ -107,7 +105,8 @@ func (m *Model) attemptRow(a game.Attempt) meta.AttemptRow {
 	return r
 }
 
-// stats maps store totals and the rating history onto the top screen.
+// stats maps store totals and the rating history onto the top screen, which
+// sorts the topics itself.
 func (m *Model) stats(st store.Stats, hist []store.RatingPoint) meta.Stats {
 	s := meta.Stats{
 		Rating:        m.meta.Rating,
@@ -130,6 +129,5 @@ func (m *Model) stats(st store.Stats, hist []store.RatingPoint) meta.Stats {
 			Rating:   m.meta.TopicRating[topic],
 		})
 	}
-	slices.SortFunc(s.Topics, func(a, b meta.TopicStat) int { return b.Attempts - a.Attempts })
 	return s
 }

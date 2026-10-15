@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -27,7 +28,9 @@ type srcRunner struct {
 }
 
 func (r *srcRunner) Open(ctx context.Context, d Door) error {
-	r.fakeRunner.Open(ctx, d)
+	if err := r.fakeRunner.Open(ctx, d); err != nil {
+		return err
+	}
 	r.libs = append(r.libs, d.Libs)
 	r.src = filepath.Join(r.dir, strings.ReplaceAll(string(d.Door.Problem), ":", "")+".cpp")
 	return os.WriteFile(r.src, []byte(r.write), 0o644)
@@ -74,13 +77,21 @@ func TestNoLinkScreenWithoutLibs(t *testing.T) {
 	}
 }
 
-func TestTrialGrantsItsCapability(t *testing.T) {
-	h := newHarness(t)
+// loadGuide gives the app the learn package's fixture guide as its RTFM
+// curriculum.
+func loadGuide(h *harness) *learn.Curriculum {
+	h.t.Helper()
 	cur, err := learn.Load(filepath.Join("..", "learn", "testdata", "guide"))
 	if err != nil {
-		t.Fatal(err)
+		h.t.Fatal(err)
 	}
 	h.m.cur = cur
+	return cur
+}
+
+func TestTrialGrantsItsCapability(t *testing.T) {
+	h := newHarness(t)
+	cur := loadGuide(h)
 	mod, ok := cur.Module("prefix-sums")
 	if !ok {
 		t.Fatal("fixture guide has no prefix-sums module")
@@ -104,13 +115,22 @@ func TestTrialGrantsItsCapability(t *testing.T) {
 
 func TestModuleWithoutTopicHasNoTrial(t *testing.T) {
 	h := newHarness(t)
-	cur, err := learn.Load(filepath.Join("..", "learn", "testdata", "guide"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	h.m.cur = cur
+	loadGuide(h)
 	h.send(screens.StartTrial{Module: "fast-io"})
 	if h.m.state != nil && h.m.state.Trial != nil {
 		t.Fatal("a topic-less module started a trial")
+	}
+}
+
+// A trial's timer is soft: its door resumed past the deadline goes on in
+// overtime, so it reopens; it used to wait, editorless, for an e.
+func TestResumedTrialInOvertimeReopens(t *testing.T) {
+	h := newHarness(t)
+	loadGuide(h)
+	h.send(screens.StartTrial{Module: "prefix-sums"})
+	h.clock.t = h.enterDoor().Deadline.Add(time.Minute)
+	h.restart()
+	if h.m.state.Phase != game.PhaseProblem || h.m.open == nil {
+		t.Fatalf("phase %q open %v after resuming a trial door in overtime, want it open", h.m.state.Phase, h.m.open != nil)
 	}
 }

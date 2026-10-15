@@ -31,8 +31,8 @@ func (m *Model) openLearn() tea.Cmd {
 	if m.cur != nil {
 		return m.push(learnui.NewBrowser(m.cur, m.meta, m.judgeable, m.d.Catalog.Get))
 	}
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	return m.background(func(ctx context.Context) tea.Msg {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 		defer cancel()
 		dir, err := guide.Snapshot(ctx)
 		if err != nil {
@@ -40,7 +40,7 @@ func (m *Model) openLearn() tea.Cmd {
 		}
 		cur, err := learn.Load(dir)
 		return learnLoadedMsg{cur: cur, err: err}
-	}
+	})
 }
 
 func (m *Model) onLearnLoaded(msg learnLoadedMsg) tea.Cmd {
@@ -92,21 +92,15 @@ func (m *Model) startTrial(id string) tea.Cmd {
 	if t.Capability == "" {
 		return fail("%s has no trial: it teaches no gated topic", mod.Title)
 	}
-	if m.state != nil && m.state.Phase != game.PhaseCrashed && m.state.Phase != game.PhaseCleared {
-		if err := m.abandon(); err != nil {
-			return fail("abandon boot %d: %v", m.state.Boot, err)
-		}
+	if err := m.abandon(); err != nil {
+		return fail("abandon boot %d: %v", m.state.Boot, err)
 	}
+	m.pool = m.d.Catalog.All() // as in startBoot
 	st, effs, err := game.NewTrial(rules.Trial(), &m.meta, m.pool, t.Spec(), m.d.Seed(), m.d.Now())
 	if err != nil {
 		return fail("trial: %v", err)
 	}
-	m.state = st
-	if err := m.d.Store.Checkpoint(m.meta, m.state); err != nil {
-		return fail("save: %v", err)
-	}
-	m.reset()
-	return tea.Batch(m.initTop(), m.effects(effs))
+	return m.begin(st, effs)
 }
 
 // sourceRunner is a Runner that can name the open door's source file, so
@@ -207,7 +201,7 @@ func (s *linkScreen) View(w, h int) string {
 			cursor = "▸ "
 		}
 		lines := strings.Count(strings.TrimRight(l.Source, "\n"), "\n") + 1
-		b.WriteString(fmt.Sprintf("%s%s %-20s %s\n", cursor, mark, l.Name, faint.Render(fmt.Sprintf("%d lines", lines))))
+		fmt.Fprintf(&b, "%s%s %-20s %s\n", cursor, mark, l.Name, faint.Render(fmt.Sprintf("%d lines", lines)))
 	}
 	b.WriteString("\n" + faint.Render("linked libs are pasted above main in each new door's source"))
 	used := strings.Count(b.String(), "\n")

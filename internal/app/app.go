@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -29,18 +29,17 @@ import (
 // disk, the editor pane, the file watcher. Results come back as messages.
 type Runner interface {
 	Open(ctx context.Context, d Door) error
-	Close() error
+	Close()
 }
 
 // Door is everything a Runner needs to put a problem in front of the player.
 type Door struct {
-	Door     game.Door
-	Problem  catalog.Problem
-	Assets   catalog.Assets
-	Deadline time.Time
-	Boot     int
-	Upsolve  bool // untimed, outside a boot
-	Opened   time.Time
+	Door    game.Door
+	Problem catalog.Problem
+	Assets  catalog.Assets
+	Boot    int
+	Upsolve bool // untimed, outside a boot
+	Opened  time.Time
 	// ReadEditorial marks an upsolve whose editorial was opened, so the
 	// solve is recorded as editorial-assisted.
 	ReadEditorial bool
@@ -55,8 +54,9 @@ type Door struct {
 	Libs []game.Lib
 }
 
-// Judge runs the full tests of an open door. The app calls it on :Submit;
-// it must be safe to call from a goroutine.
+// Judge runs the full tests of an open door, for a Runner without a HUD
+// (the headless tests). The app calls it on :Submit; it must be safe to
+// call from a goroutine.
 type Judge func(ctx context.Context, d Door) (verdict string, passed, total int, err error)
 
 type Deps struct {
@@ -76,8 +76,10 @@ type Model struct {
 	d     Deps
 	meta  game.Meta
 	state *game.State // nil outside a boot
-	pool  []catalog.Problem
-	cur   *learn.Curriculum // RTFM, loaded on first use
+	// pool is the catalog as the engine draws doors from it; recheck and
+	// every boot start reload it.
+	pool []catalog.Problem
+	cur  *learn.Curriculum // RTFM, loaded on first use
 
 	stack   []screens.Screen // top is shown; the bottom is GRUB or a boot screen
 	open    *Door            // the door being played, nil otherwise
@@ -85,13 +87,20 @@ type Model struct {
 	flash   string // one-line error shown over the screen until the next key
 
 	// editorials are the problems whose editorial was opened this session,
-	// including the one a :q! opens before any upsolve exists.
+	// such as from the crash screen before any upsolve exists.
 	editorials map[catalog.ID]bool
 	// choosing is the door chosen while its problem is still being
 	// fetched; it opens when the fetch lands (chooseDoor).
 	choosing catalog.ID
-	// prefetching tells the running prefetch to start no more fetches.
-	prefetching *atomic.Bool
+	// prefetching cancels the prefetch of each door on offer.
+	prefetching map[catalog.ID]context.CancelFunc
+
+	// ctx bounds the background fetches (background). Quit cancels it and
+	// waits for them, so a download cut short removes its temp files
+	// before the process exits.
+	ctx     context.Context
+	cancel  context.CancelFunc
+	fetches sync.WaitGroup
 
 	width, height int
 }
@@ -113,12 +122,12 @@ func New(d Deps) (*Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := &Model{d: d, meta: meta, pool: d.Catalog.All(), editorials: map[catalog.ID]bool{}}
 	st, err := d.Store.ActiveBoot()
 	if err != nil {
 		return nil, err
 	}
-	m.state = st
+	m := &Model{d: d, meta: meta, state: st, pool: d.Catalog.All(), editorials: map[catalog.ID]bool{}}
+	m.ctx, m.cancel = context.WithCancel(context.Background())
 	m.reset()
 	return m, nil
 }
@@ -133,12 +142,13 @@ func (m *Model) Init() tea.Cmd {
 	// A boot resumed in the middle of a door reopens it; its deadline is
 	// absolute, so time spent away still counted. A door that ran out while
 	// the game was closed crashes now, rather than opening the editor only
-	// for the first tick to close it again.
-	if m.state != nil && m.state.Phase == game.PhaseProblem && m.state.Current != nil {
-		if !m.d.Now().Before(m.state.Current.Deadline) {
+	// for the first tick to close it again. A soft timer (a trial) only
+	// goes overtime, so its door reopens.
+	if s := m.state; s != nil && s.Phase == game.PhaseProblem && s.Current != nil {
+		if !m.d.Now().Before(s.Current.Deadline) && !s.SoftTimer() {
 			return tea.Batch(tick(), m.step(game.Tick{}))
 		}
-		return tea.Batch(tick(), m.initTop(), m.openDoor(m.state.Current.Door, false))
+		return tea.Batch(tick(), m.initTop(), m.openDoor(s.Current.Door, false))
 	}
 	return tea.Batch(tick(), m.initTop())
 }
@@ -184,6 +194,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.chooseDoor(msg)
 	case doorReadyMsg:
 		return m, m.onDoorReady(msg)
+	case prefetchedMsg:
+		m.recheck(msg...)
+		return m, nil
 	case game.Action:
 		return m, m.step(msg)
 	case judgedMsg:
@@ -232,8 +245,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// The problem screen sizes the HUD to the room below its own bar, so
 	// the window size is not passed on to it.
 	_, resize := msg.(tea.WindowSizeMsg)
-	if r, ok := m.d.Runner.(hudRunner); ok && r.HUD() != nil && !resize {
-		_, cmd := r.HUD().Update(msg)
+	if h := m.hud(); h != nil && !resize {
+		_, cmd := h.Update(msg)
 		cmds = append(cmds, guard(cmd))
 	}
 	return m, tea.Batch(cmds...)
@@ -253,11 +266,37 @@ func (m *Model) View() tea.View {
 	return v
 }
 
+// quitWait bounds how long quitting waits for cancelled fetches to clean
+// up; a fetch that ignores its context is left behind.
+const quitWait = 2 * time.Second
+
 func (m *Model) quit() tea.Cmd {
-	if m.open != nil && m.d.Runner != nil {
+	if m.open != nil {
 		m.d.Runner.Close()
 	}
+	m.cancel()
+	done := make(chan struct{})
+	go func() { m.fetches.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(quitWait):
+	}
 	return tea.Quit
+}
+
+// background runs work in a command under the app's lifetime: quit cancels
+// ctx and waits for work to return. After quit it runs nothing, so no new
+// work can start while quit waits.
+func (m *Model) background(work func(ctx context.Context) tea.Msg) tea.Cmd {
+	if m.ctx.Err() != nil {
+		return nil
+	}
+	ctx, wg := m.ctx, &m.fetches
+	wg.Add(1)
+	return func() tea.Msg {
+		defer wg.Done()
+		return work(ctx)
+	}
 }
 
 type errMsg struct{ err error }
@@ -286,7 +325,7 @@ func (m *Model) Conceal() bool {
 }
 
 // Clock is the HUD's clock in a boot: the countdown with lives and ducks,
-// e.g. "23:41 · ♥♥♡ · 🦆1". Outside a boot it counts up, as in practice.
+// e.g. "23:41 · ♥♥ · 🦆1". Outside a boot it counts up, as in practice.
 func (m *Model) Clock() string {
 	s := m.state
 	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil || (m.open != nil && m.open.Upsolve) {
