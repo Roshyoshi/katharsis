@@ -39,6 +39,10 @@ type Profile struct {
 	// commonFlags). GNU builds compile with g++ (see gnu.go).
 	Libstdcxx bool
 	GNU       bool
+	// PCH builds load a precompiled header of the #include lines a source
+	// opens with, once one is built (see pch.go). Only Libstdcxx profiles:
+	// libc++ builds force-include the shim ahead of everything.
+	PCH bool
 }
 
 // macOS ld refuses -stack_size above 512 MB; the 8 MB default segfaults on
@@ -97,6 +101,7 @@ type Build struct {
 	Cached   bool
 	Log      string // compiler stderr
 	Duration time.Duration
+	PCH      bool // loaded a precompiled header (see pch.go)
 }
 
 // Compiler is the C++ compiler; the dev shell pins clang++.
@@ -109,6 +114,11 @@ var Compiler = "clang++"
 // of a judge's g++ (see commonFlags): ONLINE_JUDGE defined, so a template's
 // "#ifndef ONLINE_JUDGE freopen(\"input.txt\")" stays out; <bits/stdc++.h>,
 // which libc++ lacks; and libstdc++'s std::__gcd and std::__lg.
+//
+// Under a PCH profile, a build loads the precompiled header of the
+// source's leading #include lines once one is ready, and starts one
+// otherwise (see pch.go). A build means the same either way, so its
+// binary is cached under the same key.
 func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	src, err := os.ReadFile(source)
 	if err != nil {
@@ -147,23 +157,39 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	}
 	defer func() { _ = os.RemoveAll(work) }()
 	out := filepath.Join(work, filepath.Base(bin))
-	in := source
+	in, compiled := source, src
 	if fixed, ok := stripTargetPragmas(src, source); p.GNU && ok {
-		in = filepath.Join(work, filepath.Base(source))
+		in, compiled = filepath.Join(work, filepath.Base(source)), fixed
 		if err := os.WriteFile(in, fixed, 0o644); err != nil {
 			return Build{}, err
 		}
 	}
 	// -fdiagnostics-color=never, not clang's -fno-color-diagnostics, which
 	// g++ rejects.
-	args := append(flags, "-fdiagnostics-color=never", "-x", "c++", in, "-o", out)
-	cmd := exec.CommandContext(ctx, p.compiler(), args...)
-	cmd.Env = compileEnv(p)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	base := slices.Concat(flags, []string{"-fdiagnostics-color=never"})
+	tail := []string{"-x", "c++", in, "-o", out}
+	b := Build{Binary: bin, Src: src}
 	start := time.Now()
-	err = cmd.Run()
-	b := Build{Binary: bin, Src: src, Log: stderr.String(), Duration: time.Since(start)}
+	var pc *pch
+	if p.PCH && ctx.Err() == nil {
+		pc = precompiled(dir, p, base, compiled)
+	}
+	if pc != nil {
+		b.Log, err = runCompiler(ctx, p, slices.Concat(base, pc.args(), tail))
+		b.PCH = true
+		if ctx.Err() == nil && pc.blamed(b.Log, err) {
+			pc.drop()
+			b.PCH = false
+			if err == nil {
+				b.Log = pc.unmention(b.Log) // g++ read the headers instead
+			} else {
+				b.Log, err = runCompiler(ctx, p, slices.Concat(base, tail))
+			}
+		}
+	} else {
+		b.Log, err = runCompiler(ctx, p, slices.Concat(base, tail))
+	}
+	b.Duration = time.Since(start)
 	if err != nil {
 		var exit *exec.ExitError
 		if errors.As(err, &exit) && ctx.Err() == nil {
@@ -184,6 +210,16 @@ func Compile(ctx context.Context, source string, p Profile) (Build, error) {
 	b.OK = true
 	evictBuilds(dir, BuildCacheCap, time.Now().Add(-evictMinAge))
 	return b, nil
+}
+
+// runCompiler runs p's compiler with args and returns its stderr.
+func runCompiler(ctx context.Context, p Profile, args []string) (log string, err error) {
+	cmd := exec.CommandContext(ctx, p.compiler(), args...)
+	cmd.Env = compileEnv(p)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	err = cmd.Run()
+	return stderr.String(), err
 }
 
 // commonFlags go into every build after the profile's own; see Compile.
@@ -306,18 +342,20 @@ var sweepOnce sync.Once
 // katharsis-run-* and katharsis-probe-* dirs in the temp dir (a run's
 // working dir holds a copy of a hidden test's input) and build-* dirs in
 // the build cache (SIGKILL skips a compile's deferred cleanup), and trims
-// the build cache to BuildCacheCap. A process's first build sweeps the
-// cache by itself; a command calls Sweep at startup to cover the temp dir
-// too. Other processes judging meanwhile are safe: nothing they use is
-// that old.
+// the build cache, builds and PCHs, to BuildCacheCap. A process's first
+// build sweeps the cache by itself; a command calls Sweep at startup to
+// cover the temp dir too. Other processes judging meanwhile are safe:
+// nothing they use is that old.
 func Sweep() {
 	cleanDebris(os.TempDir(), time.Now().Add(-debrisAge), "katharsis-run-", "katharsis-probe-")
 	_, _ = cacheDir()
 }
 
 // BuildCacheCap is the size the build cache is trimmed to, least recently
-// used first. A build is a few hundred KB to a few MB with its dSYM.
-var BuildCacheCap int64 = 256 << 20
+// used first. A build is a few hundred KB to a few MB with its dSYM; a
+// PCH is 20-200 MB (see pch.go), and one source's pair, g++'s and
+// clang's, is 150-210 MB. The cap holds two pairs and the builds.
+var BuildCacheCap int64 = 512 << 20
 
 const (
 	// debrisAge: a build-* or run dir older than this is from a compile or
@@ -344,9 +382,11 @@ func cleanDebris(dir string, before time.Time, prefixes ...string) {
 	}
 }
 
-// evictBuilds deletes the least recently used builds (a binary and its
-// dSYM, by the binary's mtime, which a cache hit refreshes) until the
-// cache is within capBytes, sparing any used since keepAfter.
+// evictBuilds deletes the least recently used entries until the cache is
+// within capBytes, sparing any used since keepAfter. An entry is a build
+// (a binary and its dSYM, by the binary's mtime, which a cache hit
+// refreshes) or a pch-* dir (by its own mtime, which a build loading the
+// PCH refreshes).
 func evictBuilds(dir string, capBytes int64, keepAfter time.Time) {
 	des, err := os.ReadDir(dir)
 	if err != nil {
@@ -361,7 +401,8 @@ func evictBuilds(dir string, capBytes int64, keepAfter time.Time) {
 	var total int64
 	for _, d := range des {
 		name := d.Name()
-		if d.IsDir() || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "build-") {
+		isPCH := d.IsDir() && strings.HasPrefix(name, "pch-")
+		if !isPCH && (d.IsDir() || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "build-")) {
 			continue
 		}
 		fi, err := d.Info()
@@ -369,6 +410,9 @@ func evictBuilds(dir string, capBytes int64, keepAfter time.Time) {
 			continue
 		}
 		b := build{name: name, used: fi.ModTime(), size: fi.Size() + dirSize(filepath.Join(dir, name+".dSYM"))}
+		if isPCH {
+			b.size = dirSize(filepath.Join(dir, name))
+		}
 		builds = append(builds, b)
 		total += b.size
 	}
@@ -381,7 +425,7 @@ func evictBuilds(dir string, capBytes int64, keepAfter time.Time) {
 			break
 		}
 		_ = os.RemoveAll(filepath.Join(dir, b.name+".dSYM"))
-		if os.Remove(filepath.Join(dir, b.name)) == nil {
+		if os.RemoveAll(filepath.Join(dir, b.name)) == nil {
 			total -= b.size
 		}
 	}

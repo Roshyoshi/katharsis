@@ -30,18 +30,35 @@ func TestEvictBuilds(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	mk("old", 400, 3*time.Hour, true)    // 800 with its dSYM: evicted first
-	mk("older", 300, 4*time.Hour, false) // evicted before it
+	// A PCH dir is one entry, its size its files', last used at its mtime.
+	mkPCH := func(name string, size int, age time.Duration) {
+		t.Helper()
+		p := filepath.Join(dir, name)
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(p, "prefix.h.gch"), make([]byte, size), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(p, now.Add(-age), now.Add(-age)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mkPCH("pch-stale", 400, 5*time.Hour) // evicted first of all
+	mk("old", 400, 3*time.Hour, true)    // 800 with its dSYM: evicted third
+	mk("older", 300, 4*time.Hour, false) // evicted second
 	mk("mid", 300, 2*time.Hour, false)   // fits under the cap once those go
 	mk("fresh", 900, time.Minute, false) // over the cap alone, but in use
+	mkPCH("pch-live", 200, time.Minute)  // in use
 	if err := os.MkdirAll(filepath.Join(dir, "gone.dSYM"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	_ = os.Chtimes(filepath.Join(dir, "gone.dSYM"), now.Add(-time.Hour), now.Add(-time.Hour))
 
-	evictBuilds(dir, 1300, now.Add(-evictMinAge))
+	evictBuilds(dir, 1500, now.Add(-evictMinAge))
 	for name, want := range map[string]bool{
 		"old": false, "old.dSYM": false, "older": false, "mid": true, "fresh": true, "gone.dSYM": false,
+		"pch-stale": false, "pch-live": true,
 	} {
 		_, err := os.Stat(filepath.Join(dir, name))
 		if got := err == nil; got != want {

@@ -18,7 +18,8 @@ func gnuCompiler() bool {
 	return err == nil && strings.Contains(string(out), "Free Software Foundation")
 }
 
-// gnuToolchain is judge.Profiles, skipping t where g++ does not judge.
+// gnuToolchain is judge.Profiles without PCHs, skipping t where g++ does
+// not judge.
 func gnuToolchain(t *testing.T) judge.Toolchain {
 	t.Helper()
 	needCompiler(t)
@@ -26,6 +27,7 @@ func gnuToolchain(t *testing.T) judge.Toolchain {
 	if !tc.Full.Libstdcxx {
 		t.Skipf("g++ does not judge here (Full is %q)", tc.Full.Name)
 	}
+	tc.Samples, tc.Full = noPCH(tc.Samples), noPCH(tc.Full)
 	return tc
 }
 

@@ -35,9 +35,11 @@ var (
 		CleanEnv:  true,
 		Libstdcxx: true,
 		GNU:       true,
+		PCH:       true,
 	}
 	// GCCDebug: Debug's flags through g++, so :Debug runs what :Submit
-	// judged, short of optimization.
+	// judged, short of optimization. No PCH: an -O0 -g .gch is 140-200 MB
+	// more in the build cache, for the rarest build (it saves 0.4-0.7 s).
 	GCCDebug = Profile{
 		Name:      "debug (g++)",
 		Flags:     Debug.Flags,
@@ -63,6 +65,7 @@ var (
 		Compiler:  ClangLibstdcxx,
 		CleanEnv:  true,
 		Libstdcxx: true,
+		PCH:       true,
 	}
 	// GCCSamples: the fallback when LibstdcxxSamples' binaries do not run.
 	// No ASan; UBSan in trap mode, which needs no runtime (a trap says
@@ -80,6 +83,7 @@ var (
 		CleanEnv:  true,
 		Libstdcxx: true,
 		GNU:       true,
+		PCH:       true,
 	}
 )
 

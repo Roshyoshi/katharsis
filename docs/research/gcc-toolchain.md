@@ -112,8 +112,44 @@ Dijkstra body.
 | clang ASan, libc++ | 1385 ms | 1246 ms | |
 | clang ASan, libstdc++ | 996 ms | 1089 ms | 2400 ms |
 
-`<bits/stdc++.h>` costs ~0.8 s per g++ build. A precompiled header cuts it
-to 664 ms from 1935 ms, at 175 MB for the `.gch`; not done (open items).
+**Precompiled headers** (`internal/judge/pch.go`, 2026-10-14). Builds under
+the sample and full profiles load a PCH of the `#include <...>` lines the
+source opens with, once a background build has made one for that compiler,
+flag set and header list. Compiler alone, the judge's exact flags, minimum
+of 10 runs (hyperfine), load ~5; "template" is `~/cp/template.cpp`'s 35
+includes with the same Dijkstra body as the bits source:
+
+| | plain | own includes' PCH | `-include bits` PCH | PCH size |
+|---|---|---|---|---|
+| g++ O2, bits | 1230 ms | 491 ms | | 188 MB |
+| g++ O2, template | 876 ms | 447 ms | 565 ms | 129 MB |
+| g++ O0 -g, bits | 1370 ms | 629 ms | | 204 MB |
+| g++ O0 -g, template | 980 ms | 545 ms | | 140 MB |
+| clang ASan, bits | 1299 ms | 713 ms | | 25 MB |
+| clang ASan, template | 1075 ms | 657 ms | 714 ms | 18 MB |
+| g++ O2, 15 headers | 715 ms | 411 ms | | 85 MB |
+| g++ O2, `<iostream>` | 413 ms | 222 ms | | 56 MB |
+| g++ O2, `<cstdio>` | 128 ms | 122 ms | | 5 MB |
+
+A PCH never lost, even for `<cstdio>`, and its size tracks what it saves.
+Forcing `-include bits/stdc++.h` into a template build saves less than the
+template's own list, and changes the program: names like `y1` (`<cmath>`)
+or a global `count` collide with the library under `using namespace std`, a
+missing `#include` passes here and fails on Codeforces, and a
+`#define _GLIBCXX_DEBUG` or `#pragma GCC optimize` above the includes stops
+reaching them. So the judge precompiles each source's own leading list and
+forces nothing; the list ends at the first line that is not an include, a
+comment or `#line` (clang builds also pass `#pragma GCC optimize`/`target`,
+which clang ignores).
+
+g++ passes over a `.gch` that does not match (`-Winvalid-pch` says why:
+"not used because `__cplusplus' defined as ...", "settings for -fexceptions
+do not match") and reads the headers, but a truncated one is a hard error
+("cannot read PCH file"). clang refuses any mismatch with an error,
+including a header whose mtime changed since. So a PCH is built aside,
+checked by compiling an empty file against it (g++'s `-H` marks the one it
+loads with `!`), and renamed into place; a build that names it in a warning
+or fails over it drops it and, if it failed, compiles again without.
 
 **Samples: clang ASan against libstdc++, with assertions.** GCC's trap-mode
 UBSan misses the memory bugs, so ASan stays on clang. Against libstdc++,
@@ -198,6 +234,8 @@ run with `CleanEnv`, which drops `NIX_*` (a login shell here exports
 - `DESIGN.md` still says clang 22 judges (the stack table and the pipeline
   sketch), and `internal/app`'s built-in templates still say libc++ has no
   `<bits/stdc++.h>`.
-- A PCH for `<bits/stdc++.h>` would save ~0.8 s per g++ build.
+- No PCH for `:Debug` (g++ -O0 -g: 140-204 MB more cache for the rarest
+  build, 0.4-0.7 s each), nor for g++ sources that open with `#pragma GCC
+  optimize`, which applies to the headers after it.
 - The clang + libc++ fallback misses string and `std::array` indexing too;
   libc++'s hardening mode would catch them there.

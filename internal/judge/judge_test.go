@@ -46,10 +46,10 @@ func TestMain(m *testing.M) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		tc := judge.Profiles(ctx)
 		cancel()
-		sample = tc.Samples
+		sample = noPCH(tc.Samples)
 		// Where g++ judges, clang's Full is the fallback elsewhere: keep
 		// judging with it too.
-		full = []judge.Profile{tc.Full}
+		full = []judge.Profile{noPCH(tc.Full)}
 		if tc.Full.Name != judge.Full.Name {
 			full = append(full, judge.Full)
 		}
@@ -57,8 +57,17 @@ func TestMain(m *testing.M) {
 		samples = []judge.Profile{sample}
 	}
 	code := m.Run()
+	judge.WaitPCH()
 	_ = os.RemoveAll(home)
 	os.Exit(code)
+}
+
+// noPCH is p without precompiled headers. With them, which of a test's
+// builds loads one would depend on which background build finished first;
+// TestPCH covers them.
+func noPCH(p judge.Profile) judge.Profile {
+	p.PCH = false
+	return p
 }
 
 func needCompiler(t *testing.T) {
@@ -191,7 +200,7 @@ func withHardened(ps []judge.Profile) []judge.Profile {
 	out := slices.Clone(ps)
 	fallbacks := []judge.Profile{judge.HardenedSamples}
 	if sample.Libstdcxx {
-		fallbacks = append(fallbacks, judge.GCCSamples)
+		fallbacks = append(fallbacks, noPCH(judge.GCCSamples))
 	}
 	for _, f := range fallbacks {
 		if !slices.ContainsFunc(out, func(p judge.Profile) bool { return p.Name == f.Name }) {
