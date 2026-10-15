@@ -53,6 +53,12 @@ type CoreDump struct {
 	Bytes   int64
 	Boot    int
 	At      time.Time
+
+	// Mult is what an upsolve made without the editorial multiplies Bytes
+	// by: rules.DumpIndependentMult of the boot that dumped them
+	// (retention RT4). 0, in a dump saved before it existed, reads as the
+	// standard rules'.
+	Mult float64 `json:",omitempty"`
 }
 
 // Regression is a problem due to come back as a door.
@@ -342,6 +348,21 @@ type State struct {
 
 	// Trial is set when this boot is a learn-mode trial (NewTrial).
 	Trial *TrialState
+
+	// AtStart is the player as the boot began, for the end screens'
+	// before and after (Debrief); nil in a boot saved before it existed.
+	AtStart *Start `json:",omitempty"`
+}
+
+// Start is what the player had when a boot began (State.AtStart).
+type Start struct {
+	Rating      float64
+	TopicRating map[string]float64 `json:",omitempty"`
+	Bank        int64
+	// Dump is the core dump the boot puts at risk: an earlier boot's, which
+	// a crash in this one destroys. nil for none, and in a trial, whose
+	// crash leaves the dump alone.
+	Dump *CoreDump `json:",omitempty"`
 }
 
 // TrialSpec is a learn-mode trial as the curriculum builds it

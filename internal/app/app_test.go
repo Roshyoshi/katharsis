@@ -420,8 +420,8 @@ func TestCrashThenUpsolveRecoversCoreDump(t *testing.T) {
 	if h.m.meta.CoreDump != nil {
 		t.Error("core dump still there after an accepted upsolve")
 	}
-	if h.m.meta.Bank != bank+dump.Bytes {
-		t.Errorf("bank %d, want %d + %d recovered", h.m.meta.Bank, bank, dump.Bytes)
+	if got := dump.Recovers(game.Independent); h.m.meta.Bank != bank+got { // RT4: 1.5x, no editorial
+		t.Errorf("bank %d, want %d + %d recovered", h.m.meta.Bank, bank, got)
 	}
 	if h.m.open != nil {
 		t.Error("upsolve door still open")

@@ -105,6 +105,11 @@ type Rules struct {
 	// after its i-th re-solve, and retires after the last.
 	RegressionDays []int `toml:"regression_days"`
 
+	// DumpIndependentMult multiplies the core dump an upsolve recovers when
+	// the editorial was never opened (retention RT4): the independent act
+	// pays more. 1 pays the same either way.
+	DumpIndependentMult float64 `toml:"dump_independent_mult"`
+
 	// TimerFit: once the player has this many solves, door timers come from
 	// their own solve times (quantile TimerQuantile, scaled by gap).
 	TimerFitMin     int     `toml:"timer_fit_min"`
@@ -407,6 +412,7 @@ func (r Rules) WithDefaults() Rules {
 		{&r.TimerQuantile, &d.TimerQuantile}, {&r.RatingK, &d.RatingK},
 		{&r.ColdStartRating, &d.ColdStartRating}, {&r.RatingKCold, &d.RatingKCold},
 		{&r.CalibMax, &d.CalibMax},
+		{&r.DumpIndependentMult, &d.DumpIndependentMult},
 	}
 	for _, f := range floats {
 		if *f.v <= 0 {
@@ -458,6 +464,10 @@ func Standard() Rules {
 		TimerQuantile:   0.85,
 		RatingK:         40,
 		ColdStartRating: 1000,
+
+		// The user-held default (retention RT4): an upsolve without the
+		// editorial recovers half as much again.
+		DumpIndependentMult: 1.5,
 
 		RatingWindows:  []int{100, 250, 500},
 		TopicRatingMin: 5,
@@ -717,6 +727,7 @@ func (r Rules) validateBytes() error {
 		{"cursed_mult", r.CursedMult}, {"boss_mult", r.BossMult},
 		{"min_bytes_mult", r.MinBytesMult}, {"max_bytes_mult", r.MaxBytesMult},
 		{"dev_random_mult", r.DevRandomMult}, {"overtime_bytes_mult", r.OvertimeBytesMult},
+		{"dump_independent_mult", r.DumpIndependentMult},
 	}
 	for _, m := range mults {
 		// TOML has inf and nan; the negated test also catches NaN.

@@ -2,6 +2,7 @@ package game
 
 import (
 	"cmp"
+	"math"
 	"slices"
 	"time"
 
@@ -10,7 +11,10 @@ import (
 )
 
 // Upsolve records a solve of id made outside a boot and returns the core-dump
-// bytes it recovered into the bank (0 unless id holds the dump).
+// bytes it recovered into the bank (0 unless id holds the dump). An
+// independent upsolve, the editorial never opened, recovers the dump times
+// its Mult (retention RT4); the bytes past the dump are new earnings, so
+// they count toward LifetimeBytes too.
 //
 // A non-editorial upsolve made on or after a regression's due date counts as
 // that stage's re-solve: the regression moves to its next stage, or is
@@ -26,15 +30,29 @@ func Upsolve(m *Meta, id catalog.ID, kind SolveKind, elapsed time.Duration, now 
 		Boot:    m.Boots,
 		Upsolve: true,
 	})
-	if m.CoreDump != nil && m.CoreDump.Problem == id {
-		recovered = m.CoreDump.Bytes
+	if d := m.CoreDump; d != nil && d.Problem == id {
+		recovered = d.Recovers(kind)
 		m.Bank += recovered
+		m.LifetimeBytes += recovered - d.Bytes
 		m.CoreDump = nil
 	}
 	if kind != Editorial {
 		advanceRegression(m, id, now)
 	}
 	return recovered
+}
+
+// Recovers is what an upsolve of kind banks from d: Bytes, times Mult for
+// an independent one (no editorial, no duck), rounded to the byte.
+func (d CoreDump) Recovers(kind SolveKind) int64 {
+	if kind != Independent {
+		return d.Bytes
+	}
+	mult := d.Mult
+	if mult <= 0 {
+		mult = rules.Standard().DumpIndependentMult
+	}
+	return int64(math.Round(float64(d.Bytes) * mult))
 }
 
 // DueRegressions lists the regressions due at now, oldest due first.

@@ -89,6 +89,7 @@ func (e *engine) begin() {
 		m.Rating = r.ColdStartRating
 	}
 	s.Boot = m.Boots
+	s.AtStart = startOf(s, m) // debrief.go
 	s.Lives = max(1, r.Lives+r.Ascend(s.Prestige).Lives)
 	s.MaxLives = max(r.MaxLives, s.Lives)
 	s.Packages = slices.Clone(m.Installed)
@@ -500,7 +501,7 @@ func (e *engine) crash(cause Outcome, cursed bool) {
 			m.CoreDump = nil
 		}
 		if lost > 0 {
-			m.CoreDump = &CoreDump{Problem: d.Problem, Bytes: lost, Boot: s.Boot, At: e.now}
+			m.CoreDump = &CoreDump{Problem: d.Problem, Bytes: lost, Boot: s.Boot, At: e.now, Mult: s.Rules.DumpIndependentMult}
 			e.logf("core dumped: %s on %s", units.Bytes(lost), d.Problem)
 		}
 		if due, ok := scheduleRegression(m, d.Problem, e.now, s.Rules.RegressionDays); ok {
