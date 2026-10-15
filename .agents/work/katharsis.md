@@ -191,7 +191,12 @@ pages), g-content (USACO tags aligned, schema 3, 8 problems move; web.Flights
 single-flight closes a codeforces double-download window; old guide snapshots
 swept; fsync before publish; Codeforces retries once after 10 min). g-judge (30 s compile timeout across every compiler run, compilers in their own
 process group so a cancel kills cc1plus too, compiler TMPDIR = build dir, timing
-tests hold at load 37-67, problem.Load and FileIO "%s.in" fixes).
+tests hold at load 37-67, problem.Load and FileIO "%s.in" fixes). f-hooks (D44 notice on cards/HUD/strip/map; RT8 easing lines + x declines;
+"first boot in N days"; short + patch built-ins (patch: 3 doors, ~1 h), short.toml
+dropped; route aim from AimClear; ◆≤800 floor doors; Forecast after the doors
+and in top; milestone.retired.1; no SPONGE left in the repo).
+Cleanup wave 2 running: g-engine, g-flavor, g-ui, g-app; wave 1 still running:
+g-store, g-qa.
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
 retired milestone); cleanup wave 1: g-store, g-qa
