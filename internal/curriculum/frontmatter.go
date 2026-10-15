@@ -73,21 +73,18 @@ func parseFrontmatter(src string) (frontmatter, error) {
 			i++
 			continue
 		}
-		if l[0] == ' ' || l[0] == '\t' {
+		key, val, ok := strings.Cut(l, ":")
+		key, val = strings.TrimSpace(key), strings.TrimSpace(val)
+		_, dupScalar := f.scalars[key]
+		_, dupList := f.lists[key]
+		switch {
+		case l[0] == ' ' || l[0] == '\t':
 			return f, errAt(i, "unexpected indented line %q", t)
-		}
-		colon := strings.IndexByte(l, ':')
-		if colon <= 0 {
+		case !ok || key == "":
 			return f, errAt(i, "want `key: value`, got %q", t)
-		}
-		key := strings.TrimSpace(l[:colon])
-		if _, dup := f.scalars[key]; dup {
+		case dupScalar || dupList:
 			return f, errAt(i, "duplicate key %q", key)
 		}
-		if _, dup := f.lists[key]; dup {
-			return f, errAt(i, "duplicate key %q", key)
-		}
-		val := strings.TrimSpace(l[colon+1:])
 		i++
 		// A quoted scalar may continue on lines at any indentation
 		// (js-yaml accepts it, and Complete_Rec.mdx relies on it).
@@ -98,73 +95,90 @@ func parseFrontmatter(src string) (frontmatter, error) {
 			val += " " + strings.TrimSpace(lines[i])
 			i++
 		}
-		// Collect indented continuation lines, dropping comment lines. YAML
-		// also lets a block list sit at its key's own indentation
-		// (Matroid.mdx does).
-		var cont []string
-		for i < len(lines) && (lines[i] == "" || lines[i][0] == ' ' || lines[i][0] == '\t' ||
-			val == "" && isItem(lines[i])) {
-			// A blank line inside a folded scalar is a newline; the guide
-			// never relies on that, so it joins as a space.
-			if t := strings.TrimSpace(lines[i]); !strings.HasPrefix(t, "#") {
-				cont = append(cont, t)
-			}
-			i++
+		cont, next := continuation(lines, i, val == "")
+		if err := f.set(key, val, cont); err != nil {
+			return f, errAt(next-1, "%s: %v", key, err)
 		}
-		for len(cont) > 0 && cont[len(cont)-1] == "" {
-			cont = cont[:len(cont)-1]
-		}
-		if val == "" && len(cont) > 0 && isItem(cont[0]) {
-			var items []string
-			for _, c := range cont {
-				if c == "" {
-					continue
-				}
-				if !isItem(c) {
-					return f, errAt(i-1, "mixed list and scalar under %q", key)
-				}
-				v, err := yamlScalar(strings.TrimSpace(c[1:]))
-				if err != nil {
-					return f, errAt(i-1, "%s: %v", key, err)
-				}
-				items = append(items, v)
-			}
-			f.lists[key] = items
-			continue
-		}
-		full := val
-		for _, c := range cont {
-			if full == "" {
-				full = c
-			} else {
-				full += " " + c
-			}
-		}
-		if strings.HasPrefix(full, "[") {
-			if !strings.HasSuffix(full, "]") {
-				return f, errAt(i-1, "unterminated flow list under %q", key)
-			}
-			var items []string
-			for _, p := range splitFlow(full[1 : len(full)-1]) {
-				if p = strings.TrimSpace(p); p == "" {
-					continue
-				}
-				v, err := yamlScalar(p)
-				if err != nil {
-					return f, errAt(i-1, "%s: %v", key, err)
-				}
-				items = append(items, v)
-			}
-			f.lists[key] = items
-			continue
-		}
-		v, err := yamlScalar(full)
-		if err != nil {
-			return f, errAt(i-1, "%s: %v", key, err)
-		}
-		f.scalars[key] = v
+		i = next
 	}
 	return f, nil
+}
+
+// continuation collects the lines from i that continue a value: indented
+// or blank ones, minus comments and trailing blanks. YAML also lets a block
+// list sit at its key's own indentation (Matroid.mdx does), so after an
+// empty value an unindented "- item" continues it too. end is the index
+// after the last non-blank line taken, so errors name a line of the value.
+func continuation(lines []string, i int, empty bool) (cont []string, end int) {
+	for end = i; i < len(lines); i++ {
+		l := lines[i]
+		if more := l == "" || l[0] == ' ' || l[0] == '\t' || empty && isItem(l); !more {
+			break
+		}
+		t := strings.TrimSpace(l)
+		if t != "" {
+			end = i + 1
+		}
+		// A blank line inside a folded scalar is a newline; the guide never
+		// relies on that, so it joins as a space.
+		if !strings.HasPrefix(t, "#") {
+			cont = append(cont, t)
+		}
+	}
+	for len(cont) > 0 && cont[len(cont)-1] == "" {
+		cont = cont[:len(cont)-1]
+	}
+	return cont, end
+}
+
+// set stores key's value from the rest of its line and its continuation
+// lines: a block list, a flow list, or a scalar folded onto one line.
+func (f frontmatter) set(key, val string, cont []string) error {
+	if val == "" && len(cont) > 0 && isItem(cont[0]) {
+		var items []string
+		for _, c := range cont {
+			switch {
+			case c == "":
+			case !isItem(c):
+				return errors.New("mixed list and scalar")
+			default:
+				items = append(items, c[1:])
+			}
+		}
+		return f.setList(key, items)
+	}
+	full := strings.TrimSpace(strings.Join(append([]string{val}, cont...), " "))
+	if strings.HasPrefix(full, "[") {
+		if !strings.HasSuffix(full, "]") {
+			return errors.New("unterminated flow list")
+		}
+		var items []string
+		for _, p := range splitFlow(full[1 : len(full)-1]) {
+			if p = strings.TrimSpace(p); p != "" {
+				items = append(items, p)
+			}
+		}
+		return f.setList(key, items)
+	}
+	v, err := yamlScalar(full)
+	if err != nil {
+		return err
+	}
+	f.scalars[key] = v
+	return nil
+}
+
+func (f frontmatter) setList(key string, items []string) error {
+	var vals []string
+	for _, it := range items {
+		v, err := yamlScalar(it)
+		if err != nil {
+			return err
+		}
+		vals = append(vals, v)
+	}
+	f.lists[key] = vals
+	return nil
 }
 
 // quotedClosed reports whether s, starting with a quote, also ends that

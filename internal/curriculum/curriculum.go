@@ -151,64 +151,10 @@ func Load(guideDir string) (*Curriculum, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	type mdxFile struct {
-		path string
-		fm   frontmatter
-	}
-	mdx := map[string]mdxFile{}
-	problems := map[string][]ProblemList{}
-	problemFile := map[string]string{}
-	err = filepath.WalkDir(content, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		switch {
-		case strings.HasSuffix(path, ".problems.json"):
-			b, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			id, lists, err := parseProblems(path, b)
-			if err != nil {
-				return err
-			}
-			if prev, dup := problemFile[id]; dup {
-				return fmt.Errorf("%s: MODULE_ID %q also used by %s", path, id, prev)
-			}
-			problemFile[id] = path
-			problems[id] = lists
-		case strings.HasSuffix(path, ".mdx"):
-			b, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			fmSrc, _, _, err := splitFrontmatter(string(b))
-			if err != nil {
-				return fmt.Errorf("%s: %w", path, err)
-			}
-			fm, err := parseFrontmatter(fmSrc)
-			if err != nil {
-				return fmt.Errorf("%s: %w", path, err)
-			}
-			id := fm.str("id")
-			if id == "" {
-				return nil // not a module (no id), e.g. a stray doc page
-			}
-			if prev, dup := mdx[id]; dup {
-				return fmt.Errorf("%s: module id %q also used by %s", path, id, prev.path)
-			}
-			mdx[id] = mdxFile{path: path, fm: fm}
-		}
-		return nil
-	})
+	mdx, problems, err := scanContent(content)
 	if err != nil {
 		return nil, err
 	}
-
 	c := &Curriculum{Divisions: divs, dir: root, modules: map[string]Module{}}
 	for _, d := range divs {
 		for _, ch := range d.Chapters {
@@ -217,37 +163,117 @@ func Load(guideDir string) (*Curriculum, error) {
 				if !ok {
 					return nil, fmt.Errorf("curriculum: ordering.ts lists module %q but no .mdx has that id", ref.ID)
 				}
-				m := Module{
-					ID:            ref.ID,
-					Title:         f.fm.str("title"),
-					Description:   f.fm.str("description"),
-					Authors:       f.fm.list("author"),
-					Contributors:  f.fm.list("contributors"),
-					Prerequisites: f.fm.list("prerequisites"),
-					Frequency:     -1,
-					Division:      d.ID,
-					DivisionTitle: d.Title,
-					Chapter:       ch.Title,
-					URL:           siteBase + "/" + d.ID + "/" + ref.ID,
-					Path:          f.path,
-					Problems:      problems[ref.ID],
+				m, err := c.newModule(d, ch, ref.ID, f, problems[ref.ID])
+				if err != nil {
+					return nil, err
 				}
-				if fq := f.fm.str("frequency"); fq != "" {
-					if m.Frequency, err = strconv.Atoi(fq); err != nil {
-						return nil, fmt.Errorf("%s: frequency %q is not a number", f.path, fq)
-					}
-				}
-				m.Topic = TopicFor(m.ID, m.Title, m.Division)
-				m.body = &lazyBody{render: func() (string, error) {
-					md, _, err := c.convert(m)
-					return md, err
-				}}
 				c.modules[m.ID] = m
 				c.order = append(c.order, m.ID)
 			}
 		}
 	}
 	return c, nil
+}
+
+// mdxFile is a module's source and its frontmatter.
+type mdxFile struct {
+	path string
+	fm   frontmatter
+}
+
+// scanContent reads every .mdx frontmatter and .problems.json under
+// content, keyed by module id. An .mdx without an id (a stray doc page) is
+// not a module and is skipped.
+func scanContent(content string) (map[string]mdxFile, map[string][]ProblemList, error) {
+	mdx := map[string]mdxFile{}
+	problems := map[string][]ProblemList{}
+	problemFile := map[string]string{}
+	err := filepath.WalkDir(content, func(path string, d fs.DirEntry, err error) error {
+		switch {
+		case err != nil:
+			return err
+		case d.IsDir():
+		case strings.HasSuffix(path, ".problems.json"):
+			id, lists, err := readProblems(path)
+			if err != nil {
+				return err
+			}
+			if prev, dup := problemFile[id]; dup {
+				return fmt.Errorf("%s: MODULE_ID %q also used by %s", path, id, prev)
+			}
+			problemFile[id], problems[id] = path, lists
+		case strings.HasSuffix(path, ".mdx"):
+			fm, err := readFrontmatter(path)
+			if err != nil {
+				return err
+			}
+			id := fm.str("id")
+			if prev, dup := mdx[id]; dup {
+				return fmt.Errorf("%s: module id %q also used by %s", path, id, prev.path)
+			}
+			if id != "" { // no id: not a module
+				mdx[id] = mdxFile{path: path, fm: fm}
+			}
+		}
+		return nil
+	})
+	return mdx, problems, err
+}
+
+func readProblems(path string) (string, []ProblemList, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", nil, err
+	}
+	return parseProblems(path, b)
+}
+
+func readFrontmatter(path string) (frontmatter, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return frontmatter{}, err
+	}
+	src, _, _, err := splitFrontmatter(string(b))
+	if err != nil {
+		return frontmatter{}, fmt.Errorf("%s: %w", path, err)
+	}
+	fm, err := parseFrontmatter(src)
+	if err != nil {
+		return frontmatter{}, fmt.Errorf("%s: %w", path, err)
+	}
+	return fm, nil
+}
+
+// newModule builds module id, which ordering.ts lists in chapter ch of
+// division d.
+func (c *Curriculum) newModule(d Division, ch Chapter, id string, f mdxFile, problems []ProblemList) (Module, error) {
+	m := Module{
+		ID:            id,
+		Title:         f.fm.str("title"),
+		Description:   f.fm.str("description"),
+		Authors:       f.fm.list("author"),
+		Contributors:  f.fm.list("contributors"),
+		Prerequisites: f.fm.list("prerequisites"),
+		Frequency:     -1,
+		Division:      d.ID,
+		DivisionTitle: d.Title,
+		Chapter:       ch.Title,
+		URL:           siteBase + "/" + d.ID + "/" + id,
+		Path:          f.path,
+		Problems:      problems,
+	}
+	if fq := f.fm.str("frequency"); fq != "" {
+		var err error
+		if m.Frequency, err = strconv.Atoi(fq); err != nil {
+			return m, fmt.Errorf("%s: frequency %q is not a number", f.path, fq)
+		}
+	}
+	m.Topic = TopicFor(m.ID, m.Title, m.Division)
+	m.body = &lazyBody{render: func() (string, error) {
+		md, _, err := c.convert(m)
+		return md, err
+	}}
+	return m, nil
 }
 
 // convertStats are the soft findings of one conversion, for the full-repo

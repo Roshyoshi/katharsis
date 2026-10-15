@@ -1,6 +1,7 @@
 package curriculum
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"strconv"
@@ -486,76 +487,103 @@ func parseOrdering(file, src string) ([]Division, error) {
 	if !ok {
 		return nil, fmt.Errorf("%s: no `const MODULE_ORDERING = {...}` declaration", file)
 	}
-	errAt := func(line int, format string, args ...any) error {
-		return fmt.Errorf("%s:%d: %s", file, line, fmt.Sprintf(format, args...))
-	}
+	o := &orderingParser{file: file, seen: map[string]string{}}
 	root, ok := raw.(*tsObject)
-	if !ok {
-		return nil, errAt(lines["MODULE_ORDERING"], "MODULE_ORDERING is not an object")
+	switch {
+	case !ok:
+		return nil, o.errf(lines["MODULE_ORDERING"], "MODULE_ORDERING is not an object")
+	case len(root.keys) == 0:
+		return nil, o.errf(lines["MODULE_ORDERING"], "MODULE_ORDERING is empty")
 	}
-	labels := map[string]string{}
-	if lv, ok := consts["SECTION_LABELS"].(*tsObject); ok {
-		for _, k := range lv.keys {
-			s, ok := lv.vals[k].(string)
-			if !ok {
-				return nil, errAt(lv.line[k], "SECTION_LABELS.%s is not a string", k)
-			}
-			labels[k] = s
-		}
+	labels, err := o.labels(consts["SECTION_LABELS"])
+	if err != nil {
+		return nil, err
 	}
-	seen := map[string]string{}
-	var divs []Division
-	for _, divID := range root.keys {
-		title := labels[divID]
-		if title == "" {
-			title = defaultDivisionTitles[divID]
-		}
-		if title == "" {
-			title = divID
-		}
-		d := Division{ID: divID, Title: title}
-		chapters, ok := root.vals[divID].([]tsValue)
-		if !ok {
-			return nil, errAt(root.line[divID], "division %q is not an array of chapters", divID)
-		}
-		for i, cv := range chapters {
-			co, ok := cv.(*tsObject)
-			if !ok {
-				return nil, errAt(root.line[divID], "division %q chapter %d is not an object", divID, i)
-			}
-			name, ok := co.vals["name"].(string)
-			if !ok {
-				return nil, errAt(root.line[divID], "division %q chapter %d has no string name", divID, i)
-			}
-			ch := Chapter{Title: name}
-			if desc, ok := co.vals["description"]; ok {
-				s, ok := desc.(string)
-				if !ok {
-					return nil, errAt(co.line["description"], "chapter %q description is not a string", name)
-				}
-				ch.Description = s
-			}
-			items, ok := co.vals["items"].([]tsValue)
-			if !ok {
-				return nil, errAt(co.line["name"], "chapter %q has no items array", name)
-			}
-			for _, iv := range items {
-				id, ok := iv.(string)
-				if !ok || id == "" {
-					return nil, errAt(co.line["items"], "chapter %q has a non-string item", name)
-				}
-				if prev, dup := seen[id]; dup {
-					return nil, errAt(co.line["items"], "module %q listed in both %s and %s", id, prev, divID)
-				}
-				seen[id] = divID
-				ch.Modules = append(ch.Modules, ModuleRef{ID: id})
-			}
-			d.Chapters = append(d.Chapters, ch)
+	divs := make([]Division, 0, len(root.keys))
+	for _, id := range root.keys {
+		d, err := o.division(id, root.vals[id], root.line[id], labels[id])
+		if err != nil {
+			return nil, err
 		}
 		divs = append(divs, d)
 	}
-	if len(divs) == 0 {
-		return nil, errAt(lines["MODULE_ORDERING"], "MODULE_ORDERING is empty")
-	}
 	return divs, nil
+}
+
+// orderingParser turns MODULE_ORDERING's parsed literal into divisions.
+type orderingParser struct {
+	file string
+	seen map[string]string // module id -> the division that lists it
+}
+
+func (o *orderingParser) errf(line int, format string, args ...any) error {
+	return fmt.Errorf("%s:%d: %s", o.file, line, fmt.Sprintf(format, args...))
+}
+
+// labels reads the optional SECTION_LABELS object.
+func (o *orderingParser) labels(v tsValue) (map[string]string, error) {
+	labels := map[string]string{}
+	lv, ok := v.(*tsObject)
+	if !ok {
+		return labels, nil
+	}
+	for _, k := range lv.keys {
+		s, ok := lv.vals[k].(string)
+		if !ok {
+			return nil, o.errf(lv.line[k], "SECTION_LABELS.%s is not a string", k)
+		}
+		labels[k] = s
+	}
+	return labels, nil
+}
+
+func (o *orderingParser) division(id string, v tsValue, line int, label string) (Division, error) {
+	d := Division{ID: id, Title: cmp.Or(label, defaultDivisionTitles[id], id)}
+	chapters, ok := v.([]tsValue)
+	if !ok {
+		return d, o.errf(line, "division %q is not an array of chapters", id)
+	}
+	for i, cv := range chapters {
+		ch, err := o.chapter(id, i, cv, line)
+		if err != nil {
+			return d, err
+		}
+		d.Chapters = append(d.Chapters, ch)
+	}
+	return d, nil
+}
+
+// chapter reads chapter i of division divID; divLine is where the division
+// starts, for errors in a chapter with no usable keys.
+func (o *orderingParser) chapter(divID string, i int, v tsValue, divLine int) (Chapter, error) {
+	co, ok := v.(*tsObject)
+	if !ok {
+		return Chapter{}, o.errf(divLine, "division %q chapter %d is not an object", divID, i)
+	}
+	name, ok := co.vals["name"].(string)
+	if !ok {
+		return Chapter{}, o.errf(divLine, "division %q chapter %d has no string name", divID, i)
+	}
+	ch := Chapter{Title: name}
+	if desc, ok := co.vals["description"]; ok {
+		if ch.Description, ok = desc.(string); !ok {
+			return ch, o.errf(co.line["description"], "chapter %q description is not a string", name)
+		}
+	}
+	items, ok := co.vals["items"].([]tsValue)
+	if !ok {
+		return ch, o.errf(co.line["name"], "chapter %q has no items array", name)
+	}
+	for _, iv := range items {
+		id, ok := iv.(string)
+		if !ok || id == "" {
+			return ch, o.errf(co.line["items"], "chapter %q has a non-string item", name)
+		}
+		if prev, dup := o.seen[id]; dup {
+			return ch, o.errf(co.line["items"], "module %q listed in both %s and %s", id, prev, divID)
+		}
+		o.seen[id] = divID
+		ch.Modules = append(ch.Modules, ModuleRef{ID: id})
+	}
+	return ch, nil
 }

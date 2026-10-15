@@ -100,6 +100,8 @@ func TestParseFrontmatterErrors(t *testing.T) {
 		{"unterminated quote", "title: 'abc\n", "unterminated quoted scalar"},
 		{"stray quote", "title: 'a'b'\n", "stray quote"},
 		{"mixed list", "p:\n  - a\n  b\n", "mixed list and scalar"},
+		{"unterminated flow list", "p: [a, b\n", "frontmatter line 2: p: unterminated flow list"},
+		{"duplicate across kinds", "p: [a]\np: b\n", `frontmatter line 3: duplicate key "p"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := parseFrontmatter(tc.src)
