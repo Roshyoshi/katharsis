@@ -171,7 +171,11 @@ S8 consolidation (after all code QA lands; from the cross-package report):
      (qa/chaos/oracle.sh); single-player honor system, not fixed
 
 ## Now
-Merged since last: S10 store (migration 2: events, offers, skill_history,
+Merged since last: B content (content/web shared client with a 30 s idle cut, fsync
+writes and debris sweeps; one module->topic table in guide, the curriculum's
+mapping proved right for all 5; usaco.DivisionBand; Codeforces opens from cache
+and indexes in the background: cold-cache start 20.7 s -> 0.4 s; internal/deps
+gone, go mod tidy, vendorHash recomputed with a fake hash after the merge), S10 store (migration 2: events, offers, skill_history,
 model_versions, attempt columns; app events through a 256-deep async queue,
 failures to katharsis.log; D37 prompt = identity CF prior clamped 800..3500,
 asked once when nothing is rated, --no-prompts; load average = share of practice
@@ -202,8 +206,7 @@ and :Debug; samples clang ASan on libstdc++ + _GLIBCXX_ASSERTIONS; cin 1e6 ints
 38 ms vs 967 ms on libc++; clang 21 out; package closure 2013 -> 1989 MiB;
 binary 28.4 MB). Main tests green (judge TLE timing flaked at load 23; passed
 alone); nix build ok.
-Running (workspaces): s10-engine, c-part2, b-content (content/web, one topic
-table, DivisionBand, CF cache-only start, deps tidy). Agents keep .agents/work/progress-<ws>.md for
+Running (workspaces): s10-engine, c-part2. Agents keep .agents/work/progress-<ws>.md for
 restarts (spamming esc stops every agent).
 For B (from the GCC report): qa/judge expects ASan wording on the libstdc++
 sample profile (re_heap_oob, re_container_oob, re_after_20KB_debug_stderr) and
@@ -223,3 +226,26 @@ Next: merge A2; then wave 1: S10 lane (RT0 first,
 ML1 -> ML3 -> ML4/ML5 -> ML6 code -> ML7-ML10; ML2 + D37 in the store lane;
 ML11 after B), C part 2; wave 2: D (+story text, D36, retention UI), S9 part 2;
 audio merges when ready; core-loop QA; ping alpha (D42).
+
+## QA list (pre-alpha, after wave 2)
+Run with the unslop pass (package by package), then core-loop QA, then alpha.
+- Load robustness: session tmux/lldb tests and remaining judge wall-clock
+  tests flake at load >= 30; -race finds data races in the robust_test.go
+  harness (h.stall).
+- judge.Compile has no timeout: a hung compile now locks resubmits until the
+  grace (submit-busy); add ~30 s.
+- USACO tag table still maps Sliding Window, Sweep Line, Merging, Bitset the
+  old way: align with guide.ModuleTopic (moves 227 266 943 -> geometry, 600
+  767 1021 -> data-structures, 862 -> math, 923 -> prefix-sums; usaco schema
+  bump).
+- qa/content TestAudit: drop cf:646A, cf:1769B2 (Russian-only, already out of
+  play). qa-tagged files: 16 lint issues. ubsan+hardened OOB cases report no
+  line. qa/chaos r13 first half greps the wrong thing.
+- Duplicates: single-flight Fetch + isCtxErr in usaco and codeforces (~40
+  lines each); judge cleanDebris vs web.CleanDebris.
+- Old guide snapshot dirs stay after a Commit bump; Codeforces "offline" never
+  retries until the next start; problem dir files are not fsynced;
+  katharsis.log may belong in XDG_STATE_HOME.
+- GRUB banner lost at 80x24 (SPONGE in meta_test.go; C part 2 P4).
+- When deps change: recompute vendorHash with a fake hash (nix reuses a
+  cached vendor dir and hides a stale hash).
