@@ -180,7 +180,7 @@ func (m *Model) event(kind string, problem catalog.ID, data kv) {
 	}
 	if s := m.state; s != nil {
 		e.Boot = s.Boot
-		if s.Phase == game.PhaseProblem && s.Current != nil && (m.open == nil || !m.open.Upsolve) {
+		if m.attempt() != nil {
 			i := len(s.History)
 			e.Attempt = &i
 		}

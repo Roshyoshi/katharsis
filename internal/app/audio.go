@@ -128,17 +128,15 @@ func audioEffects(p, n audioSnap) []string {
 // warnTimer sounds once per door when its timer passes WarnAt left. A
 // trial's soft timer only goes overtime, so it gets no warning.
 func (m *Model) warnTimer() {
-	s := m.state
-	at := m.d.AudioSettings.WarnAt.Duration
-	if at <= 0 || s == nil || s.Phase != game.PhaseProblem || s.Current == nil || s.SoftTimer() ||
-		(m.open != nil && m.open.Upsolve) {
+	c, at := m.attempt(), m.d.AudioSettings.WarnAt.Duration
+	if at <= 0 || c == nil || m.state.SoftTimer() {
 		return
 	}
-	left := s.Current.Deadline.Sub(m.d.Now())
-	if left > at || left <= 0 || m.warned.Equal(s.Current.Opened) {
+	left := c.Deadline.Sub(m.d.Now())
+	if left > at || left <= 0 || m.warned.Equal(c.Opened) {
 		return
 	}
-	m.warned = s.Current.Opened
+	m.warned = c.Opened
 	// A door resumed with less than a minute already left still warns:
 	// the player did not hear it before.
 	m.d.Audio.Play("warn")

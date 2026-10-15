@@ -56,7 +56,7 @@ func (m *Model) failCost() string {
 // the retreat anyway (the last life), so its reason shows at once.
 func (m *Model) retreatAsk() (string, bool) {
 	st := m.state
-	if st == nil || st.Phase != game.PhaseProblem || st.Current == nil {
+	if m.attempt() == nil {
 		return "", false
 	}
 	if slices.Contains(st.Daemons, game.Kexec) && !st.KexecUsed {

@@ -387,11 +387,11 @@ func (m *Model) reveal(level int) string {
 // countdown, lives, ducks. It has no ⏱: vim counts that glyph two columns
 // wide and tmux draws it in one, so vim leaves a stale character after it.
 func (m *Model) statusLine() string {
-	s := m.state
-	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil {
+	s, c := m.state, m.attempt()
+	if c == nil {
 		return "no door open"
 	}
-	left := max(s.Current.Deadline.Sub(m.d.Now()), 0)
+	left := max(c.Deadline.Sub(m.d.Now()), 0)
 	return fmt.Sprintf("%s left · %s · %s", units.Countdown(left), units.Hearts(s.Lives, s.MaxLives), ducks(s))
 }
 

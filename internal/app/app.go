@@ -209,16 +209,14 @@ func (m *Model) Init() tea.Cmd {
 	// goes overtime, so its door reopens. A submit the last game quit while
 	// judging is judged again first, as of when it was made (resubmit): the
 	// door opens for it, and the clock holds.
-	if s := m.state; s != nil && s.Phase == game.PhaseProblem && s.Current != nil {
-		if at := s.Current.SubmitAt; !at.IsZero() {
+	if c := m.attempt(); c != nil {
+		if at := c.SubmitAt; !at.IsZero() {
 			m.judging, m.resumed = true, resumedSubmit{at: at, since: m.d.Now()}
-		} else if !m.d.Now().Before(s.Current.Deadline) && !s.SoftTimer() {
+		} else if !m.d.Now().Before(c.Deadline) && !m.state.SoftTimer() {
 			return tea.Batch(tick(), m.step(game.Tick{}))
 		}
-		if left, ok := m.doorLeft(); ok {
-			m.flash = resumeNote(left) // debrief.go
-		}
-		return tea.Batch(tick(), m.initTop(), m.openDoor(s.Current.Door, false))
+		m.flash = resumeNote(c.Deadline.Sub(m.d.Now())) // debrief.go
+		return tea.Batch(tick(), m.initTop(), m.openDoor(c.Door, false))
 	}
 	return tea.Batch(tick(), m.initTop(), m.storyResume())
 }
@@ -227,11 +225,20 @@ func (m *Model) Init() tea.Cmd {
 // timed door is open. A soft timer (a trial) also keeps running; past its
 // deadline it is overtime, shown as negative.
 func (m *Model) doorLeft() (time.Duration, bool) {
-	s := m.state
-	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil {
+	c := m.attempt()
+	if c == nil {
 		return 0, false
 	}
-	return s.Current.Deadline.Sub(m.d.Now()), true
+	return c.Deadline.Sub(m.d.Now()), true
+}
+
+// attempt is the boot's open door, a trial's too; nil between doors. An
+// upsolve is never one: it opens only outside a boot's door.
+func (m *Model) attempt() *game.Attempt {
+	if s := m.state; s != nil && s.Phase == game.PhaseProblem {
+		return s.Current
+	}
+	return nil
 }
 
 // leftText is "12:34 left", or "overtime" past a soft deadline.
@@ -457,11 +464,11 @@ func (m *Model) Conceal() bool {
 // Clock is the HUD's clock in a boot: the countdown with lives and ducks,
 // e.g. "23:41 · ♥♥ · 🦆1". Outside a boot it counts up, as in practice.
 func (m *Model) Clock() string {
-	s := m.state
-	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil || (m.open != nil && m.open.Upsolve) {
+	s, c := m.state, m.attempt()
+	if c == nil {
 		return "untimed"
 	}
-	left := s.Current.Deadline.Sub(m.d.Now())
+	left := c.Deadline.Sub(m.d.Now())
 	t := units.Countdown(left)
 	// A trial's timer is soft: past the deadline the door goes on at half
 	// pay, so show how far over it is instead of a frozen 00:00.
@@ -478,12 +485,12 @@ func (m *Model) Clock() string {
 // them, ♥♥♡, lost lives included, and for a moment the strip's timer
 // warning (borderWarn).
 func (m *Model) BorderClock() string {
-	s := m.state
-	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil || (m.open != nil && m.open.Upsolve) {
+	s, c := m.state, m.attempt()
+	if c == nil {
 		return ui.TmuxEscape(ui.G.Timer + "untimed")
 	}
-	left := s.Current.Deadline.Sub(m.d.Now())
-	t := ui.BorderTimer(left, s.Current.Door.Timer)
+	left := c.Deadline.Sub(m.d.Now())
+	t := ui.BorderTimer(left, c.Door.Timer)
 	if left < 0 && s.SoftTimer() {
 		t = ui.Danger.Tmux(ui.G.Timer + "+" + units.Clock(-left) + " over")
 	}
@@ -516,9 +523,8 @@ func (m *Model) borderWarn(left time.Duration) string {
 // HUD's HP bar: a door resumed with a fresh HUD keeps it (hud.Options.Best).
 // An upsolve, or no door, has none.
 func (m *Model) Best() (passed, total int) {
-	s := m.state
-	if s == nil || s.Phase != game.PhaseProblem || s.Current == nil || (m.open != nil && m.open.Upsolve) {
-		return 0, 0
+	if c := m.attempt(); c != nil {
+		return c.BestPass, c.Total
 	}
-	return s.Current.BestPass, s.Current.Total
+	return 0, 0
 }
