@@ -204,6 +204,16 @@ D52 settled 10-15  "go": build docs/design/map.md's defaults (three acts, the ex
                    map hub, suspend/resume and the cycles rename. Lanes: build-engine
                    (contract first), story-map (text), then the UI/app lane.
 
+D53 settled 10-15  Story only at game events, esoteric: "keep the story non visible outside
+                   of actual game events keep it esoteric lol like remove the lore tab".
+                   Remove GRUB /proc/story and RTFM's story tail sections; keep scenes,
+                   boss cards, biome falls, strip lines, boot-end beats, GRUB subtitles.
+D54 settled 10-15  Each boss bends one rule (user: "we can also ..."): off-by-one double
+                   burn on a one-test WA; oom-killer memory x0.5; heisenbug pass/fail-only
+                   samples; race-condition clock x1.25 fast, pays x4; undefined-behavior
+                   samples without sanitizers; halting-problem hidden clock. Named on the
+                   boss card; settings; sim-checked.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
