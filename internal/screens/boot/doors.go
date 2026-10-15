@@ -47,6 +47,10 @@ func (d *Doors) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	}
 	n := len(d.doors())
 	switch key {
+	case "esc":
+		if d.env.Wait != nil {
+			return d, screens.Emit(CancelWait{})
+		}
 	case "enter":
 		if n > 0 {
 			return d, screens.Emit(game.ChooseDoor{Index: d.sel})
@@ -79,6 +83,9 @@ func (d *Doors) View(width, height int) string {
 		keys = append(keys, "s", fmt.Sprintf("shuf (%d)", st.Rerolls))
 	}
 	footer := ui.Footer(width, append(keys, "m", "map")...)
+	if w := d.env.waitLine(width); w != "" {
+		footer = w
+	}
 
 	// The cards and the map sit centered between header and footer, the
 	// way a game frames a choice, with at least one blank line under the
@@ -223,7 +230,13 @@ func (d *Doors) wideBody(door game.Door, cw int) (top, bottom []string) {
 		top = append(top, titleToken(door).Render(l))
 	}
 	top = append(top, tagLines(t, cw, 2)...)
+	// The download's state shares the stats row when it fits.
 	bottom = []string{"", doorStats(door)}
+	if f := d.env.fetchNote(door); f != "" && widthOf(bottom[1])+2+widthOf(f) <= cw {
+		bottom[1] = ui.Spread(bottom[1], f, cw)
+	} else if f != "" {
+		bottom = append(bottom, f)
+	}
 	return top, append(bottom, d.modifiers(door, cw, hiddenShort)...)
 }
 
@@ -247,7 +260,7 @@ func (d *Doors) stackedBody(door game.Door, cw int) []string {
 	if h, ok := d.hiddenMod(door, hiddenLong); ok {
 		tags = h.line()
 	}
-	out = append(out, ui.Clip(tags, cw))
+	out = append(out, ui.Spread(tags, d.env.fetchNote(door), cw))
 	return append(out, d.modifiers(door, cw, hiddenNone)...)
 }
 
@@ -406,6 +419,9 @@ func (d *Doors) bossBody(door game.Door, cw int) []string {
 		out = append(out, ui.Center(l, cw))
 	}
 	out = append(out, ui.Center(doorStats(door), cw))
+	if f := d.env.fetchNote(door); f != "" {
+		out = append(out, ui.Center(f, cw))
+	}
 	for _, l := range d.modifiers(door, cw, hiddenShort) {
 		out = append(out, ui.Center(l, cw))
 	}

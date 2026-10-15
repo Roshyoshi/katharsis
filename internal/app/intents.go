@@ -13,6 +13,7 @@ import (
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/screens/story"
@@ -70,6 +71,8 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 		return m.push(s), true
 	case submitMsg:
 		return m.submit(), true
+	case bootui.CancelWait:
+		return m.cancelWait(), true
 	case story.Done: // story.go
 		return m.sceneDone(msg)
 	case story.Read:

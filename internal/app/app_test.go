@@ -1020,8 +1020,8 @@ func TestChosenDoorWaitsForItsProblem(t *testing.T) {
 	c.gates[id] = make(chan struct{})
 	h.m.d.Catalog = c
 	h.send(game.ChooseDoor{Index: 0}) // the fetch hangs; the harness moves on
-	if h.m.state.Phase != game.PhaseDoors || h.m.flash == "" {
-		t.Fatalf("phase %q flash %q while the door's problem downloads, want doors and a note", h.m.state.Phase, h.m.flash)
+	if last := lastLine(h); h.m.state.Phase != game.PhaseDoors || !strings.Contains(last, "fetching door 1") {
+		t.Fatalf("phase %q, last row %q while the door's problem downloads, want doors and the wait", h.m.state.Phase, last)
 	}
 	h.clock.t = h.clock.t.Add(40 * time.Second)
 	h.send(doorReadyMsg{index: 0, id: id})

@@ -34,6 +34,10 @@ type Env struct {
 	// Events is the dmesg strip, oldest first (Tracker.Events); nil shows
 	// none.
 	Events []Event
+	// Fetch is each door's download (fetch.go), by problem; Wait the door
+	// chosen while its download runs, nil for none.
+	Fetch map[catalog.ID]Fetch
+	Wait  *Wait
 }
 
 // flavorSource is the slice of internal/flavor the screens use. fl points at

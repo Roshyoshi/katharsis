@@ -12,6 +12,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/content/web"
 	"katharsis/internal/game"
 	"katharsis/internal/hud"
 	"katharsis/internal/screens"
@@ -58,7 +59,9 @@ func (m *Model) baseKey() baseKey {
 }
 
 func (m *Model) env() bootui.Env {
-	return bootui.Env{State: m.state, Meta: m.meta, Lookup: m.d.Catalog.Get, Now: m.d.Now(), End: m.endInfo(), Events: m.dmesg.Events()}
+	e := bootui.Env{State: m.state, Meta: m.meta, Lookup: m.d.Catalog.Get, Now: m.d.Now(), End: m.endInfo(), Events: m.dmesg.Events()}
+	m.fetchEnv(&e) // door readiness (fetch.go)
+	return e
 }
 
 // startBoot begins a new boot. A boot still running is given up first.
@@ -369,13 +372,28 @@ type prefetchedMsg []catalog.ID
 // and opening it joins that download rather than starting another.
 func (m *Model) prefetch(ids []catalog.ID) tea.Cmd {
 	m.stopPrefetch("")
-	cat := m.d.Catalog
+	m.endWait() // a new room: the door waited on, if any, is gone
+	return m.prefetchQueue(ids)
+}
+
+// prefetchQueue prefetches ids beside the prefetches already running, each
+// door's progress on the readiness board (fetch.go).
+func (m *Model) prefetchQueue(ids []catalog.ID) tea.Cmd {
+	if len(ids) == 0 {
+		return nil
+	}
+	cat, board := m.d.Catalog, &m.fetch.board
+	board.queue(ids)
 	ctxs := map[catalog.ID]context.Context{}
-	m.prefetching = map[catalog.ID]context.CancelFunc{}
+	cancels := map[catalog.ID]context.CancelFunc{}
+	if m.prefetching == nil {
+		m.prefetching = map[catalog.ID]context.CancelFunc{}
+	}
 	var bySource [][]catalog.ID
 	index := map[catalog.Source]int{}
 	for _, id := range ids {
-		ctxs[id], m.prefetching[id] = context.WithTimeout(m.ctx, 5*time.Minute)
+		ctxs[id], cancels[id] = context.WithTimeout(m.ctx, 5*time.Minute)
+		m.prefetching[id] = cancels[id]
 		p, _ := cat.Get(id)
 		i, ok := index[p.Source]
 		if !ok {
@@ -386,14 +404,17 @@ func (m *Model) prefetch(ids []catalog.ID) tea.Cmd {
 		bySource[i] = append(bySource[i], id)
 	}
 	// The maps are only read from here on, so the goroutines share them.
-	cancels := m.prefetching
 	return m.background(func(context.Context) tea.Msg {
 		var wg sync.WaitGroup
 		for _, queue := range bySource {
 			wg.Go(func() {
 				for _, id := range queue {
-					if ctxs[id].Err() == nil {
-						_, _ = cat.Fetch(ctxs[id], id)
+					if ctx := ctxs[id]; ctx.Err() == nil {
+						board.set(id, bootui.FetchGoing)
+						_, err := cat.Fetch(web.WithProgress(ctx, board.adder(id)), id)
+						board.finish(id, err)
+					} else {
+						board.finish(id, ctx.Err())
 					}
 					cancels[id]()
 				}
@@ -436,12 +457,21 @@ func (m *Model) chooseDoor(a game.ChooseDoor) tea.Cmd {
 	id := s.Doors[a.Index].Problem
 	m.stopPrefetch(id)
 	m.choosing = id
-	m.flash = fmt.Sprintf("fetching door %d… its timer starts once it opens", a.Index+1)
-	cat := m.d.Catalog
-	return m.background(func(ctx context.Context) tea.Msg {
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	// The doors screen's last row says how far it has got (fetch.go); a
+	// door already on disk answers at once and never shows it.
+	wait := m.waitFor(a.Index)
+	cat, board := m.d.Catalog, &m.fetch.board
+	if board.state(id) != bootui.FetchReady {
+		board.set(id, bootui.FetchGoing)
+	}
+	m.refresh() // the wait's row
+	return m.background(func(context.Context) tea.Msg {
+		ctx, cancel := context.WithTimeout(wait, 5*time.Minute)
 		defer cancel()
-		_, err := cat.Fetch(ctx, id)
+		_, err := cat.Fetch(web.WithProgress(ctx, board.adder(id)), id)
+		if !errors.Is(err, context.Canceled) { // let go: its prefetch, if any, goes on
+			board.finish(id, err)
+		}
 		return doorReadyMsg{index: a.Index, id: id, err: err}
 	})
 }
@@ -449,9 +479,10 @@ func (m *Model) chooseDoor(a game.ChooseDoor) tea.Cmd {
 func (m *Model) onDoorReady(r doorReadyMsg) tea.Cmd {
 	m.recheck(r.id)
 	if m.choosing != r.id {
-		return nil // the player chose another door meanwhile
+		return nil // the player chose another door meanwhile, or let it go
 	}
-	m.choosing, m.flash = "", ""
+	m.choosing = ""
+	m.endWait()
 	if r.err != nil {
 		return fail("door %d: %v", r.index+1, r.err)
 	}

@@ -89,6 +89,22 @@ type Request struct {
 	Progress func(received int64)
 }
 
+type progressKey struct{}
+
+// WithProgress returns a context under which every request tells fn the
+// body bytes it receives, as they arrive: a caller that cannot reach the
+// Requests a source makes (a door's Fetch) can still show a download
+// moving. fn adds up what it is told, retries included; it may be called
+// from several goroutines at once.
+func WithProgress(ctx context.Context, fn func(n int64)) context.Context {
+	return context.WithValue(ctx, progressKey{}, fn)
+}
+
+func progressFrom(ctx context.Context) func(int64) {
+	fn, _ := ctx.Value(progressKey{}).(func(int64))
+	return fn
+}
+
 // Permanent marks an error a retry cannot fix, such as a body that is too
 // big or malformed, so the Client gives up at once.
 func Permanent(err error) error { return permanentError{err} }
@@ -220,7 +236,7 @@ func (c *Client) once(ctx context.Context, s *hostSlot, r Request) (retryAfter t
 	if r.Read == nil {
 		return 0, nil
 	}
-	resp.Body = &idleBody{ReadCloser: resp.Body, timer: timer, idle: idle, progress: r.Progress}
+	resp.Body = &idleBody{ReadCloser: resp.Body, timer: timer, idle: idle, progress: r.Progress, sink: progressFrom(ctx)}
 	if err := r.Read(resp); err != nil {
 		// A read cut short by the network is worth retrying; a body the
 		// reader refused is not.
@@ -239,6 +255,7 @@ type idleBody struct {
 	timer    *time.Timer
 	idle     time.Duration
 	progress func(int64)
+	sink     func(int64) // the context's (WithProgress): each read's bytes
 	n        int64
 }
 
@@ -249,6 +266,9 @@ func (b *idleBody) Read(p []byte) (int, error) {
 		b.n += int64(n)
 		if b.progress != nil {
 			b.progress(b.n)
+		}
+		if b.sink != nil {
+			b.sink(int64(n))
 		}
 	}
 	return n, err

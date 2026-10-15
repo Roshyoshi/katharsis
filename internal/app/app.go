@@ -146,6 +146,8 @@ type Model struct {
 	// whose timer warning sounded, and the credit toast.
 	// dmesg is the boot's event strip (dmesg.go).
 	dmesg dmesgTracker
+	// fetch is each door's download and the door waited on (fetch.go).
+	fetch doorFetch
 
 	audioPrev   audioSnap
 	warned      time.Time
@@ -273,6 +275,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	defer m.syncAudio()
 	defer m.syncZoom()
 	defer m.syncDmesg()
+	defer m.syncFetch()
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height

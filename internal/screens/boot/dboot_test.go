@@ -1,11 +1,14 @@
 package boot
 
 import (
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 	"katharsis/internal/screens/boot/fixture"
 )
@@ -55,5 +58,40 @@ func TestBossCardEntrance(t *testing.T) {
 	enter := strings.Index(v, "Stub line for boss.enter.heisenbug.")
 	if name < 0 || enter < name {
 		t.Errorf("no entrance line under the boss's name:\n%s", v)
+	}
+}
+
+// fetchEnv is the doors fixture mid-download: door 1 on disk, door 2
+// chosen and downloading, door 3 waiting its turn.
+func fetchEnv() Env {
+	e := env(fixture.Doors())
+	ds := e.State.Doors
+	e.Fetch = map[catalog.ID]Fetch{
+		ds[0].Problem: {State: FetchReady},
+		ds[1].Problem: {State: FetchGoing, Got: 38 << 20},
+		ds[2].Problem: {State: FetchQueued},
+	}
+	e.Wait = &Wait{Index: 1, Since: e.Now.Add(-21 * time.Second)}
+	return e
+}
+
+// Door readiness on the cards and the wait on the last row (J9), at both
+// golden sizes; esc lets the wait go.
+func TestGoldenDoorsFetch(t *testing.T) {
+	for _, sz := range goldenSizes {
+		name := fmt.Sprintf("doors_fetch_%dx%d", sz[0], sz[1])
+		t.Run(name, func(t *testing.T) {
+			golden(t, name, ansi.Strip(NewDoors(fetchEnv()).View(sz[0], sz[1]))+"\n")
+		})
+	}
+	for _, sz := range fitSizes {
+		checkFits(t, "doors_fetch", NewDoors(fetchEnv()).View(sz[0], sz[1]), sz[0], sz[1])
+	}
+	d := NewDoors(fetchEnv())
+	if _, cmd := d.Update(press("esc")); emitted(cmd) != (CancelWait{}) {
+		t.Errorf("esc while waiting emitted %#v, want CancelWait", emitted(cmd))
+	}
+	if _, cmd := NewDoors(env(fixture.Doors())).Update(press("esc")); cmd != nil {
+		t.Errorf("esc with no wait emitted %#v", emitted(cmd))
 	}
 }
