@@ -36,6 +36,7 @@ func clips() map[string]Clip {
 			Paras: []Para{{Text: "Fails on the judge; passes the moment you add a printf."},
 				{Text: "The Sheep's shop: look hard at any shelf and it's quite empty.", Style: italic}}},
 		"fall": Fall{From: screenA, To: screenB, W: 50, H: 12, D: 900 * time.Millisecond, Label: "The Cache"},
+		"fire": testFire(24, 8).Clip(),
 		"then": Then(Fade{Lines: lines[:1], From: Gone, To: Normal, D: 200 * time.Millisecond},
 			Typewriter{Lines: lines[1:]}, Hold{Lines: []string{"press any key"}}),
 		"seq": Seq(Cheshire{Appear: true, D: 500 * time.Millisecond}, Hold{Lines: nil, D: 0},

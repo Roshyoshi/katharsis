@@ -151,6 +151,11 @@ func SetPalette(p Palette) {
 	}
 }
 
+// Hued reports whether the palette paints hues: false under Mono. Art
+// that paints colors of its own, such as the title's fire, draws its
+// hue-free form when it is false.
+func Hued() bool { return !mono }
+
 func (l look) style() lipgloss.Style {
 	s := lipgloss.NewStyle()
 	if l.fg != none {
