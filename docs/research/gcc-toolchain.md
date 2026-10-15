@@ -231,6 +231,12 @@ run with `CleanEnv`, which drops `NIX_*` (a login shell here exports
   untouched-memory MLE, INT_MIN / -1, stack-overflow wording, wall-clock
   TLE, CE paths) and passes `gnu_pb_ds`. `stderr_64MiB_then_answer` gets a
   4 s limit: writing 64 MiB of stderr costs 1.0-1.1 s of CPU.
+- Follow-up, 2026-10-15: the clang + libc++ fallback's ASan profiles build
+  with libc++'s debug hardening (`_LIBCPP_HARDENING_MODE_DEBUG`; the fast
+  and extensive modes trap without a message), and every ASan run sets
+  `handle_abort`, so `v[i]`, `s[i]` and `std::array` indexing past the end
+  report `libc++: string index out of bounds at sol.cpp:N` and the like
+  (`TestLibcxxHardening`; without the flag, `s[i]` and the array read AC).
 - `nix build` and `nix flake check --all-systems` pass.
 
 ## Open items
@@ -238,5 +244,3 @@ run with `CleanEnv`, which drops `NIX_*` (a login shell here exports
 - No PCH for `:Debug` (g++ -O0 -g: 140-204 MB more cache for the rarest
   build, 0.4-0.7 s each), nor for g++ sources that open with `#pragma GCC
   optimize`, which applies to the headers after it.
-- The clang + libc++ fallback misses string and `std::array` indexing too;
-  libc++'s hardening mode would catch them there.

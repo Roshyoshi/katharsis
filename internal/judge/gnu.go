@@ -58,7 +58,7 @@ var (
 	// bugs instead, std::array's too (crashReason names them).
 	LibstdcxxSamples = Profile{
 		Name: "asan+ubsan (libstdc++)",
-		Flags: slices.Concat(Samples.Flags,
+		Flags: slices.Concat(asanFlags,
 			[]string{"-D_GLIBCXX_SANITIZE_VECTOR", "-D_GLIBCXX_ASSERTIONS"}),
 		Slack:     Samples.Slack,
 		Sanitized: true,

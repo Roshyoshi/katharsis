@@ -181,12 +181,10 @@ func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result
 	cmd.Stderr = errPipe.w
 	// Leak detection is unsupported on Apple silicon and noisy anyway. A
 	// short allocation context keeps use-after-free reports quick to
-	// symbolize. libstdc++'s assertions abort without saying where the
-	// player's code called in; handle_abort has ASan print the stack.
-	asan := "ASAN_OPTIONS=detect_leaks=0:halt_on_error=1:print_summary=1:malloc_context_size=5"
-	if p.Libstdcxx {
-		asan += ":handle_abort=1"
-	}
+	// symbolize. libstdc++'s assertions and libc++'s hardening abort
+	// without saying where the player's code called in; handle_abort has
+	// ASan print the stack (some 0.3 s of symbolizing, on a crash only).
+	asan := "ASAN_OPTIONS=detect_leaks=0:halt_on_error=1:print_summary=1:malloc_context_size=5:handle_abort=1"
 	cmd.Env = append(os.Environ(), asan, "UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
 	cmd.WaitDelay = time.Second
 	inGroup(cmd)

@@ -270,9 +270,9 @@ func TestRun(t *testing.T) {
 		{name: "RE heap overflow", src: "heapoob.cpp", in: "10\n", profs: withHardened(samples), want: judge.RE,
 			check: func(t *testing.T, p judge.Profile, r judge.Result) {
 				if sanitizes(p, "address") {
-					// libstdc++'s assertion fires before the store
+					// The library's bounds check fires before the store
 					// reaches ASan, and ASan's abort report places it.
-					want := "heap-buffer-overflow at heapoob.cpp:9"
+					want := "libc++: vector[] index out of bounds at heapoob.cpp:9"
 					if p.Libstdcxx {
 						want = "libstdc++: __n < this->size() at heapoob.cpp:9"
 					}
@@ -413,7 +413,7 @@ func TestRun(t *testing.T) {
 			}},
 		{name: "RE report after debug output", src: "noisy_oob.cpp", in: "10\n", profs: samples, want: judge.RE,
 			check: func(t *testing.T, p judge.Profile, r judge.Result) {
-				want := "heap-buffer-overflow at noisy_oob.cpp:11"
+				want := "libc++: vector[] index out of bounds at noisy_oob.cpp:11"
 				if p.Libstdcxx {
 					want = "libstdc++: __n < this->size() at noisy_oob.cpp:11"
 				}
@@ -535,6 +535,42 @@ func TestRun(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// The clang + libc++ fallback's sample profiles check vector, string and
+// std::array indexing with libc++'s debug hardening; ASan alone misses the
+// last two. ASan's abort report says where.
+func TestLibcxxHardening(t *testing.T) {
+	needCompiler(t)
+	t.Parallel()
+	for _, p := range []judge.Profile{judge.Samples, judge.AppleSamples, judge.HardenedSamples} {
+		t.Run(p.Name, func(t *testing.T) {
+			t.Parallel()
+			if b, err := judge.Compile(context.Background(), fixture("ab.cpp"), p); err != nil || !b.OK {
+				t.Skipf("%s does not build here: %v", p.Name, err)
+			} else if r, err := judge.Run(context.Background(), b.Binary, writeCase(t, "1 2\n", "3\n"), quick, p); err != nil || r.Verdict != judge.AC {
+				t.Skipf("%s does not run here: %v %s %q", p.Name, err, r.Verdict, r.Reason)
+			}
+			for _, tc := range []struct{ src, in, want, at string }{
+				{"heapoob.cpp", "10\n", "libc++: vector[] index out of bounds", "heapoob.cpp:9"},
+				{"string_oob.cpp", "5\n", "libc++: string index out of bounds", "string_oob.cpp:10"},
+				{"array_oob.cpp", "4\n", "libc++: out-of-bounds access in std::array<T, N>", "array_oob.cpp:16"},
+			} {
+				b := build(t, tc.src, p)
+				r, err := judge.Run(context.Background(), b.Binary, writeCase(t, tc.in, "0\n"), quick, p)
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := tc.want
+				if sanitizes(p, "address") {
+					want += " at " + tc.at
+				}
+				if r.Verdict != judge.RE || r.Reason != want {
+					t.Errorf("%s: %s %q, want RE %q\n%s", tc.src, r.Verdict, r.Reason, want, r.Stderr)
+				}
+			}
+		})
 	}
 }
 

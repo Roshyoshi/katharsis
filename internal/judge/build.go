@@ -56,15 +56,25 @@ const stackFlag = "-Wl,-stack_size,0x20000000"
 // the trap.
 var divTrap = []string{"-fsanitize=integer-divide-by-zero", "-fsanitize-trap=integer-divide-by-zero"}
 
+// asanFlags are the ASan + UBSan sample builds' flags, before the library's.
+var asanFlags = []string{
+	"-std=gnu++23", "-O1", "-g", "-fno-omit-frame-pointer",
+	"-fsanitize=address,undefined", "-fno-sanitize-recover=undefined",
+	stackFlag,
+}
+
+// libcxxDebug is libc++'s debug hardening: bounds checks on vector, string,
+// array, span and the like, where ASan alone misses string and std::array
+// indexing. Its fast and extensive modes check the same but trap without a
+// word; this one aborts naming the check ("string index out of bounds").
+var libcxxDebug = []string{"-U_LIBCPP_HARDENING_MODE", "-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG"}
+
 var (
-	// Samples: catch UB and memory errors early; timing is not trusted.
+	// Samples: catch UB and memory errors early, libc++'s bounds checks
+	// among them; timing is not trusted.
 	Samples = Profile{
-		Name: "asan+ubsan",
-		Flags: []string{
-			"-std=gnu++23", "-O1", "-g", "-fno-omit-frame-pointer",
-			"-fsanitize=address,undefined", "-fno-sanitize-recover=undefined",
-			stackFlag,
-		},
+		Name:      "asan+ubsan",
+		Flags:     slices.Concat(asanFlags, libcxxDebug),
 		Slack:     4,
 		Sanitized: true,
 	}

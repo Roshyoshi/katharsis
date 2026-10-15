@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -35,13 +36,10 @@ var (
 	// which still catch out-of-range vector/string indexing.
 	HardenedSamples = Profile{
 		Name: "ubsan+hardened",
-		Flags: []string{
+		Flags: slices.Concat([]string{
 			"-std=gnu++23", "-O1", "-g", "-fno-omit-frame-pointer",
 			"-fsanitize=undefined", "-fno-sanitize-recover=undefined",
-			"-U_LIBCPP_HARDENING_MODE",
-			"-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG",
-			stackFlag,
-		},
+		}, libcxxDebug, []string{stackFlag}),
 		Slack: 2,
 	}
 )

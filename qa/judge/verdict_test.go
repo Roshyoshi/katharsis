@@ -152,9 +152,10 @@ func verdictCases() []vcase {
 		ex(judge.RE).because(sigfpe), ex(judge.RE, "division by zero"), ex(judge.RE, "division by zero")))
 	add(mk("ub_signed_overflow", progOverflow, "2147483647\n", "-2147483648\n",
 		nil, ex(judge.RE, "signed integer overflow", "sol.cpp:5"), ex(judge.RE, "signed integer overflow", "sol.cpp:5")))
-	// Against libstdc++ (_GLIBCXX_ASSERTIONS) the library's bounds check
-	// stops v[i] before ASan sees the access, and is the report.
-	bounds := "|libstdc++: __n < this->size()"
+	// The library's bounds check (libstdc++'s _GLIBCXX_ASSERTIONS, libc++'s
+	// debug hardening) stops v[i] before ASan sees the access, and is the
+	// report.
+	bounds := "|libstdc++: __n < this->size()|libc++: vector[] index out of bounds"
 	add(mk("re_heap_oob", progHeapOOB, "10\n", "1\n",
 		nil, ex(judge.RE, "heap-buffer-overflow"+bounds, "sol.cpp:7"), ex(judge.RE, "out of bounds", "sol.cpp:7")))
 	add(mk("re_container_oob", progContainerOOB, "6\n", "1 8\n",
