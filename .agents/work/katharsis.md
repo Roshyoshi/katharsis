@@ -194,9 +194,11 @@ process group so a cancel kills cc1plus too, compiler TMPDIR = build dir, timing
 tests hold at load 37-67, problem.Load and FileIO "%s.in" fixes). f-hooks (D44 notice on cards/HUD/strip/map; RT8 easing lines + x declines;
 "first boot in N days"; short + patch built-ins (patch: 3 doors, ~1 h), short.toml
 dropped; route aim from AimClear; ◆≤800 floor doors; Forecast after the doors
-and in top; milestone.retired.1; no SPONGE left in the repo).
-Cleanup wave 2 running: g-engine, g-flavor, g-ui, g-app; wave 1 still running:
-g-store, g-qa.
+and in top; milestone.retired.1; no SPONGE left in the repo). g-store (stale vim border writes dropped by sequence; Cleanup waits up to 5 s
+for the passes it cancels, so no compile outlives the game; a late :Debug pane
+is closed; session tests hold at load 35-57; HUD can answer :Submit with the
+cost; migration 2 keeps every v1 column, tested).
+Cleanup wave 2 running: g-engine, g-flavor, g-ui, g-app; wave 1 still running: g-qa.
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
 retired milestone); cleanup wave 1: g-store, g-qa
@@ -308,5 +310,7 @@ Run with the unslop pass (package by package), then core-loop QA, then alpha.
   swap the engine lacks (storyteller).
 - D end leftovers: RT1 "RTFM as the next step after 2+ crashes on a topic in
   14 days"; D36 predicted-vs-observed in top; a real-binary smoke run.
+- judge: the background PCH build (pch.go:184) runs under context.Background and
+  can outlive the game by one header build.
 - When deps change: recompute vendorHash with a fake hash (nix reuses a
   cached vendor dir and hides a stale hash).
