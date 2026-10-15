@@ -261,3 +261,17 @@ func TestDoorsRegressionIntro(t *testing.T) {
 		t.Error("a room with no regression door wants the White Queen")
 	}
 }
+
+// A route card's aim is the engine's (State.AimClear): an easing's while
+// it runs, the biome's own once declined.
+func TestRouteAim(t *testing.T) {
+	st := fixture.Route()
+	st.Ease = []game.Ease{{Kind: game.EaseGovernor, Why: "the last 2 boots ended in Userland", Clear: []float64{0.95, 0.78, 0.65, 0.55}}}
+	if v := ansi.Strip(NewRoute(env(st)).View(140, 40)); !strings.Contains(v, "aim 78% clear") {
+		t.Errorf("eased route:\n%s", v)
+	}
+	st.Declined = true
+	if v := ansi.Strip(NewRoute(env(st)).View(140, 40)); !strings.Contains(v, "aim 70% clear") || strings.Contains(v, "78%") {
+		t.Errorf("declined route:\n%s", v)
+	}
+}

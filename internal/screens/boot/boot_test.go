@@ -138,6 +138,12 @@ func cases() []screenCase {
 	return []screenCase{
 		{"route", func() screens.Screen { return NewRoute(env(fixture.Route())) }},
 		{"route3", func() screens.Screen { return NewRoute(env(fixture.Route3())) }},
+		// The governor raised every aim (RT8): the route says the raised one.
+		{"route_eased", func() screens.Screen {
+			st := fixture.Route()
+			st.Ease = []game.Ease{{Kind: game.EaseGovernor, Why: "the last 2 boots ended in Userland", Clear: []float64{0.95, 0.78, 0.65, 0.55}}}
+			return NewRoute(env(st))
+		}},
 		{"doors", func() screens.Screen { return NewDoors(env(fixture.Doors())) }},
 		{"doors_fork", func() screens.Screen { return NewDoors(env(fixture.DoorsFork())) }},
 		{"doors_boss", func() screens.Screen { return NewDoors(env(fixture.Boss())) }},

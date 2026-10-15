@@ -126,13 +126,18 @@ func (r *Route) describe(topic string) route {
 	if ok && rb.Timer.Duration > 0 {
 		out.rooms += ui.Muted.Render(ui.G.Sep) + ui.G.Timer + "~" + units.Clock(rb.Timer.Duration)
 	}
-	if ok && rb.TargetClear > 0 && rb.TargetClear < 1 {
+	// The aim is the biome's, or what an easing raised it to (RT8).
+	aim := 0.0
+	if ok {
+		aim = st.AimClear(st.Biome)
+	}
+	if aim > 0 && aim < 1 {
 		// A preview of the rating the engine aims this topic's doors at,
 		// widened ±100 and rounded to 50; the pool picks the actual doors.
 		meta := &r.env.Meta
 		mid := int(math.Round(st.Target(meta, topic)/50) * 50)
 		out.band = ui.RatingBand(mid-100, mid+100) +
-			ui.Muted.Render(fmt.Sprintf("%saim %d%% clear", ui.G.Sep, int(math.Round(rb.TargetClear*100))))
+			ui.Muted.Render(fmt.Sprintf("%saim %d%% clear", ui.G.Sep, int(math.Round(aim*100))))
 		// The engine aims with the topic's own rating only once it has
 		// enough attempts behind it; a mixed door always gets the overall one.
 		if own := game.PlayerRating(&st.Rules, meta, topic); own != game.PlayerRating(&st.Rules, meta, game.Mixed) {
