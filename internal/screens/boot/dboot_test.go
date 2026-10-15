@@ -142,3 +142,23 @@ func TestNoticesWaitForTheEngine(t *testing.T) {
 		t.Errorf("x emitted %#v with nothing to decline", emitted(cmd))
 	}
 }
+
+// The White Queen's block shows over the first room that offers a
+// regression door, once drawn is reported, and stays away once seen.
+func TestDoorsRegressionIntro(t *testing.T) {
+	d := NewDoors(env(fixture.DoorsFork()))
+	if v := ansi.Strip(d.View(140, 40)); !strings.Contains(v, "Stub block for story.first-regression") {
+		t.Fatalf("no White Queen over the first regression room:\n%s", v)
+	}
+	if got := d.Shown(); len(got) != 1 || got[0] != "story.first-regression" {
+		t.Errorf("Shown = %v", got)
+	}
+	e := env(fixture.DoorsFork())
+	game.MarkSeen(&e.Meta, "story.first-regression")
+	if v := ansi.Strip(NewDoors(e).View(140, 40)); strings.Contains(v, "first-regression") {
+		t.Errorf("the White Queen came back once seen:\n%s", v)
+	}
+	if NewDoors(env(fixture.Doors())).intro {
+		t.Error("a room with no regression door wants the White Queen")
+	}
+}

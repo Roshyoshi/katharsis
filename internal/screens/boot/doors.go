@@ -2,6 +2,7 @@ package boot
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -21,14 +22,44 @@ type Doors struct {
 	env     Env
 	sel     int
 	showMap bool
+	// intro is the White Queen's block (story.first-regression) over the
+	// first room that offers a regression door; drawn records that the
+	// last View had room for it, so the app marks it seen (Shown).
+	intro, drawn bool
 }
 
-func NewDoors(env Env) *Doors { return &Doors{env: env} }
+func NewDoors(env Env) *Doors {
+	d := &Doors{env: env}
+	d.wantIntro()
+	return d
+}
 
 // Refresh swaps in new state and clock, keeping the selection.
 func (d *Doors) Refresh(env Env) {
 	d.env = env
 	d.sel = move("", d.sel, len(d.doors()))
+	d.wantIntro()
+}
+
+// regressionHook is the doors screen's one-time block, a story scene.
+const regressionHook = "story.first-regression"
+
+// wantIntro keeps the White Queen up from the room that first offers a
+// regression door, unseen, until the screen goes: marking it seen once
+// drawn must not take it away under the player.
+func (d *Doors) wantIntro() {
+	if !d.intro && !game.HasSeen(&d.env.Meta, regressionHook) {
+		d.intro = slices.ContainsFunc(d.doors(), func(x game.Door) bool { return x.Regression })
+	}
+}
+
+// Shown is the one-time scene this screen has drawn, for the app to mark
+// seen.
+func (d *Doors) Shown() []string {
+	if d.drawn {
+		return []string{regressionHook}
+	}
+	return nil
 }
 
 func (d *Doors) doors() []game.Door { return d.env.State.Doors }
@@ -106,7 +137,21 @@ func (d *Doors) View(width, height int) string {
 	if len(notes) > 0 {
 		notes = append(notes, "")
 	}
-	block := append(notes, d.cards(width, room-len(notes))...)
+	cards := d.cards(width, room-len(notes))
+	// The White Queen goes over the cards when they keep their tier with
+	// her there; else she waits for a screen with room.
+	d.drawn = false
+	if d.intro {
+		var q []string
+		for _, l := range fl.StoryBlock(regressionHook) {
+			q = append(q, ui.Voice.Render(ui.Muted.Render(ui.Clip(l, width-4))))
+		}
+		q = centerBlock(q, width) // one block, its lines flush left
+		if len(q) > 0 && len(notes)+len(q)+1+len(cards) <= room {
+			notes, d.drawn = append(append(notes, q...), ""), true
+		}
+	}
+	block := append(notes, cards...)
 	if m := centerBlock(renderMap(st, width), width); len(block)+1+len(m) <= room-1 {
 		block = append(append(block, ""), m...)
 	}

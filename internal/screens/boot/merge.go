@@ -159,6 +159,15 @@ func (m *Merge) View(width, height int) string {
 	if m.intro && !m.drawn {
 		secs = m.sections(width, cw, cur, false)
 	}
+	// The Hatter's line over the table when there is room: the table's
+	// word on the bytes it holds (merge.line), or on none (merge.nothing).
+	hook := "merge.line"
+	if st.Uncommitted == 0 {
+		hook = "merge.nothing"
+	}
+	if v := fl.Story(hook, st.Seed^uint64(st.Biome)); v != "" && len(head)+3+len(secs) <= height-1 {
+		secs = append([]string{ui.Center(ui.Voice.Render(ui.Muted.Render(ui.Clip(v, width))), width), ""}, secs...)
+	}
 
 	block := secs
 	if mp := centerBlock(renderMap(st, width), width); len(head)+2+len(mp)+1+len(secs) <= height-1 {
