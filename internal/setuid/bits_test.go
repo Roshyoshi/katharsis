@@ -28,8 +28,8 @@ func door(s *game.State, biome int, start, d time.Duration) game.Attempt {
 	timer := s.Rules.Biomes[biome].Timer.Duration
 	boss := s.Biomes[biome].Boss
 	dr := game.Door{Problem: catalog.ID(fmt.Sprintf("t:%d", len(s.History))), Topic: game.Mixed, Rating: 1200, Timer: timer, Boss: boss}
-	if boss == "off-by-one" {
-		dr.Twist = boss
+	if boss != "" && boss != game.TrialBoss {
+		dr.Twist = boss // the map's twists are on
 	}
 	return game.Attempt{
 		Door: dr, Opened: t0.Add(start), Deadline: t0.Add(start + timer), Closed: t0.Add(start + d),
@@ -77,7 +77,7 @@ func mapClear() *game.State { return boot(rules.Map(), mapNodes) }
 func shortClear(k string) *game.State {
 	s := boot(rules.Short(), nil)
 	s.Biomes[2].Boss = k
-	s.History[len(s.History)-1].Door.Boss = k
+	s.History[len(s.History)-1].Door.Boss, s.History[len(s.History)-1].Door.Twist = k, k
 	return s
 }
 
@@ -353,7 +353,9 @@ func cases() map[string]bitCase {
 		},
 		"ditto-ditto": {
 			meet: []func() (*game.Meta, *game.State){boots(mapClear), edit(func(s *game.State) { burn(&s.History[0], fail("WA", 1)) })},
-			miss: []func() (*game.Meta, *game.State){edit(func(s *game.State) { burn(at(s, "off-by-one"), fail("WA", 9)) })},
+			miss: []func() (*game.Meta, *game.State){edit(func(s *game.State) { burn(at(s, "off-by-one"), fail("WA", 9)) }),
+				// A boot saved before twists: no twist to master.
+				edit(func(s *game.State) { at(s, "off-by-one").Door.Twist = "" })},
 		},
 		"rss-modest": {
 			meet: []func() (*game.Meta, *game.State){boots(func() *game.State { return shortClear("oom-killer") })},
@@ -389,7 +391,10 @@ func cases() map[string]bitCase {
 		},
 		"decided-this-one": {
 			meet: []func() (*game.Meta, *game.State){edit(func(s *game.State) { at(s, game.FinalBoss).O3 = true })},
-			miss: []func() (*game.Meta, *game.State){boots(mapClear)},
+			miss: []func() (*game.Meta, *game.State){boots(mapClear), edit(func(s *game.State) {
+				a := at(s, game.FinalBoss)
+				a.O3, a.Door.Twist = true, ""
+			})},
 		},
 		"independent": {
 			meet: []func() (*game.Meta, *game.State){metas(func(m *game.Meta) { m.Record.Recovered, m.Record.RecoveredFree = 1, 1 })},
@@ -623,7 +628,7 @@ func wake(s *game.State) {
 	s.Biomes[4].Node, s.Biomes[4].Boss = rules.TrialNode, game.TrialBoss
 	s.History = s.History[:6]
 	a := &s.History[5]
-	a.Door.Boss, a.Door.Cursed = game.TrialBoss, true
+	a.Door.Boss, a.Door.Cursed, a.Door.Twist = game.TrialBoss, true, ""
 	s.Ending, s.Biome = game.EndingWake, 4
 }
 

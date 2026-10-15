@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
+	"katharsis/internal/setuid"
 	"katharsis/internal/store"
 )
 
@@ -120,5 +122,92 @@ func TestEnding(t *testing.T) {
 	run, ok, err := s.SeedBest(wake.Seed)
 	if err != nil || !ok || run.Cleared {
 		t.Errorf("the wake's seed %+v, %v, %v: a wake clears no seed", run, ok, err)
+	}
+}
+
+// TestBackfillSetuid: a store from before the bits backfills what its
+// history proves, marked, stamped by the boots' ends; the boot time is
+// TIME+ less upsolves and trials; and the events table's sample runs come
+// back per door, upsolves aside.
+func TestBackfillSetuid(t *testing.T) {
+	t.Parallel()
+	s := openClocked(t, tempPath(t), t0)
+	day := 24 * time.Hour
+	if _, err := s.Event(store.Event{At: t0.Add(day - time.Hour), Kind: store.EventAppStart}); err != nil {
+		t.Fatal(err)
+	}
+	// Boot 1: the old standard rules, linear, cleared.
+	b1 := clearBoot(midBoot(1, t0))
+	b1.Rules = rules.Legacy()
+	// Boot 2: crashed with 120 B uncommitted, upsolved without help after.
+	b2 := crash(midBoot(2, t0.Add(day)), game.OutOfLives)
+	// Boot 3: a learn-mode trial, cleared: no bits, no boot time.
+	b3 := clearBoot(midBoot(3, t0.Add(2*day)))
+	b3.Trial = &game.TrialState{}
+	// Boot 4: still running, so no part of the history.
+	b4 := midBoot(4, t0.Add(3*day))
+	m := sampleMeta()
+	m.CoreDump, m.Capabilities, m.Libs = nil, nil, nil
+	m.Solves = append(m.Solves, game.Solve{Problem: b2.Crash.Door.Problem, Kind: game.Independent,
+		At: b2.Crash.At.Add(time.Hour), Elapsed: 20 * time.Minute, Upsolve: true})
+	for _, st := range []*game.State{b1, b2, b3, b4} {
+		checkpoint(t, s, m, st)
+	}
+	two := 2
+	for _, e := range []store.Event{
+		{At: t0.Add(day + 41*time.Minute), Boot: 2, Attempt: &two, Kind: store.EventSamplesJudged, Data: map[string]any{"upsolve": false}},
+		{At: t0.Add(day + 42*time.Minute), Boot: 2, Attempt: &two, Kind: store.EventSamplesJudged, Data: map[string]any{"upsolve": true}},
+	} {
+		if _, err := s.Event(e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	runs, err := s.SampleRuns()
+	if err != nil || !runs.Since.Equal(t0.Add(day-time.Hour)) || len(runs.Runs) != 1 || runs.Runs[setuid.Door{Boot: 2, Index: 2}] != 1 {
+		t.Fatalf("sample runs %+v, %v", runs, err)
+	}
+	var folded []int
+	if err := s.FinishedBoots(func(st *game.State) error { folded = append(folded, st.Boot); return nil }); err != nil ||
+		len(folded) != 3 || folded[0] != 1 || folded[2] != 3 {
+		t.Fatalf("finished boots %v, %v", folded, err)
+	}
+
+	now := t0.Add(10 * day)
+	bits, err := s.BackfillSetuid(&m, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]game.SetuidBit{}
+	for _, b := range bits {
+		got[b.ID] = b
+		if !b.Backfill {
+			t.Errorf("%s not marked from git log", b.ID)
+		}
+	}
+	for _, id := range []string{"hello-world", "exit-0", "grin-returns", "independent"} {
+		if _, ok := got[id]; !ok {
+			t.Errorf("backfill missed %s: %v", id, bits)
+		}
+	}
+	if b := got["exit-0"]; b.Boot != 1 || !b.At.Equal(b1.EndTime(now)) {
+		t.Errorf("exit-0 %+v: stamped boot 1's end", b)
+	}
+	if b := got["grin-returns"]; b.Boot != 0 || !b.At.Equal(now) {
+		t.Errorf("grin-returns %+v: Meta's, stamped now", b)
+	}
+	if !m.Record.Backfilled || m.Record.Folded != 3 || m.Record.Recovered != 1 || m.Record.RecoveredFree != 1 {
+		t.Errorf("record %+v", m.Record)
+	}
+	tp, err := s.TimePlus(4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := tp - b3.BootTime(now); m.Record.BootTime != want || want != b1.BootTime(now)+b2.BootTime(now) {
+		t.Errorf("boot time %v, want TIME+ %v less the trial's %v", m.Record.BootTime, tp, b3.BootTime(now))
+	}
+	// Twice is once: a backfilled save sets nothing more.
+	again, err := s.BackfillSetuid(&m, now.Add(day))
+	if err != nil || len(again) != 0 {
+		t.Errorf("a second backfill set %v, %v", again, err)
 	}
 }

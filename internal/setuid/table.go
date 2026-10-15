@@ -42,6 +42,12 @@ func table() []Def {
 			return found && ok(v, i, a)
 		}
 	}
+	// twist is boss for a door that bore the boss's twist: the skill bits of
+	// S8-S13 are each the twist mastered, so a boot saved before twists
+	// sets none.
+	twist := func(k string, ok func(v *view, i int, a game.Attempt) bool) func(*view) bool {
+		return boss(k, func(v *view, i int, a game.Attempt) bool { return a.Door.Twist == k && ok(v, i, a) })
+	}
 	// unlocked is "a clear of B unlocked prestige level"; its counter is
 	// the prestige gate's rated doors while level is next.
 	unlocked := func(level int) func(*view) bool {
@@ -151,22 +157,22 @@ func table() []Def {
 			Text:  fmt.Sprintf("Clear at prestige %d with no failed hidden-test submit and no duck.", top),
 			holds: full(func(v *view) bool { return v.s.Prestige == top && v.clean() && v.ducks() == 0 })},
 		{ID: "ditto-ditto", Kind: KindSkill, Name: "Ditto, Ditto", Text: "Defeat Off-by-One with no failed hidden-test submit on its door.",
-			holds: boss("off-by-one", func(v *view, _ int, a game.Attempt) bool { return burns(&v.s.Rules, a) == 0 })},
+			holds: twist("off-by-one", func(v *view, _ int, a game.Attempt) bool { return burns(&v.s.Rules, a) == 0 })},
 		{ID: "rss-modest", Kind: KindSkill, Name: "RSS: Modest", Text: "Defeat the OOM Killer on your first :Submit.",
-			holds: boss("oom-killer", func(_ *view, _ int, a game.Attempt) bool { return a.Submits == 1 })},
+			holds: twist("oom-killer", func(_ *view, _ int, a game.Attempt) bool { return a.Submits == 1 })},
 		{ID: "stopped-looking", Kind: KindSkill, Name: "You Stopped Looking Hard",
 			Text: "Defeat Heisenbug without running the samples (`:w`) on its door.",
-			holds: boss("heisenbug", func(v *view, i int, a game.Attempt) bool {
+			holds: twist("heisenbug", func(v *view, i int, a game.Attempt) bool {
 				n, ok := v.samples(i, a)
 				return ok && n == 0
 			})},
 		{ID: "every-thread", Kind: KindSkill, Name: "Every Thread Joined", Text: "Defeat Race Condition with -O3, under half its fast clock.",
-			holds: boss("race-condition", func(_ *view, _ int, a game.Attempt) bool { return a.O3 })},
+			holds: twist("race-condition", func(_ *view, _ int, a game.Attempt) bool { return a.O3 })},
 		{ID: "bounds-checked", Kind: KindSkill, Name: "Bounds-Checked the Soup", Text: "Defeat Undefined Behavior with no failed hidden-test submit.",
-			holds: boss("undefined-behavior", func(v *view, _ int, a game.Attempt) bool { return burns(&v.s.Rules, a) == 0 })},
+			holds: twist("undefined-behavior", func(v *view, _ int, a game.Attempt) bool { return burns(&v.s.Rules, a) == 0 })},
 		{ID: "decided-this-one", Kind: KindSkill, Name: "You Decided This One",
 			Text:  "Defeat The Halting Problem with -O3, under half its hidden clock.",
-			holds: boss(game.FinalBoss, func(_ *view, _ int, a game.Attempt) bool { return a.O3 })},
+			holds: twist(game.FinalBoss, func(_ *view, _ int, a game.Attempt) bool { return a.O3 })},
 		{ID: "independent", Kind: KindSkill, Name: "The Cat Kept a Copy",
 			Text:    "Recover a core dump with an upsolve made without the editorial or a duck.",
 			current: true, holds: func(v *view) bool { return v.m.Record.RecoveredFree > 0 }},
