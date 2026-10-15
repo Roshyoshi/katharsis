@@ -93,8 +93,7 @@ func (m *Model) module(id string) (curriculum.Module, bool) {
 	return m.cur.Module(id)
 }
 
-// startTrial begins a learn-mode trial for a module. Like a boot, it gives
-// up a boot still running.
+// startTrial begins a learn-mode trial for a module.
 func (m *Model) startTrial(id string) tea.Cmd {
 	mod, ok := m.module(id)
 	if !ok {
@@ -104,11 +103,17 @@ func (m *Model) startTrial(id string) tea.Cmd {
 	if t.Capability == "" {
 		return fail("%s has no trial: it teaches no gated topic", mod.Title)
 	}
+	return m.beginTrial(t.Spec())
+}
+
+// beginTrial starts the trial t. Like a boot, it gives up a boot still
+// running.
+func (m *Model) beginTrial(t game.TrialSpec) tea.Cmd {
 	if err := m.abandon(); err != nil {
 		return fail("abandon boot %d: %v", m.state.Boot, err)
 	}
 	m.pool = m.d.Catalog.All() // as in startBoot
-	st, effs, err := game.NewTrial(rules.Trial(), &m.meta, m.pool, t.Spec(), m.d.Seed(), m.d.Now())
+	st, effs, err := game.NewTrial(rules.Trial(), &m.meta, m.pool, t, m.d.Seed(), m.d.Now())
 	if err != nil {
 		return fail("trial: %v", err)
 	}

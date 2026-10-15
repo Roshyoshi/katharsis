@@ -64,8 +64,13 @@ func (m *Model) env() bootui.Env {
 	return e
 }
 
-// startBoot begins a new boot. A boot still running is given up first.
+// startBoot begins a new boot. A boot still running is given up first. A
+// trial's end screens reboot on the trial rules, which are no boot
+// preset: that runs the trial again.
 func (m *Model) startBoot(b screens.StartBoot) tea.Cmd {
+	if st := m.state; st != nil && st.Trial != nil && b.Preset == st.Rules.Name {
+		return m.beginTrial(st.Trial.TrialSpec)
+	}
 	if err := m.abandon(); err != nil {
 		return fail("abandon boot %d: %v", m.state.Boot, err)
 	}

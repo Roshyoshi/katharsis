@@ -156,7 +156,7 @@ func (c *Cleared) View(width, height int) string {
 	for _, f := range env.End.Firsts[:min(len(env.End.Firsts), 2)] {
 		kept = append(kept, star+ui.Strong.Render(f))
 	}
-	nextStep := ui.Strong.Render("r") + " reboot at " + prestigeLabel(next(env)) + eta(env.End.ETA)
+	nextStep := rebootStep(env)
 	// The debrief is one column, centered like the rest of the screen.
 	cw := min(width, debriefW)
 	col := func(ls []string) []string { return indent((width-cw)/2, ls) }

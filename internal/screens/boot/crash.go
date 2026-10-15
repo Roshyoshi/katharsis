@@ -385,7 +385,7 @@ func (c *Crash) next(b game.Brief, width int) []string {
 		s = ui.Strong.Render(learnKey) + " RTFM " + l.Topic +
 			ui.Muted.Render(ui.G.Sep+fmt.Sprintf("%d crashes on it in 14 days", l.Crashes))
 	default:
-		s = ui.Strong.Render("r") + " reboot at " + prestigeLabel(next(env)) + eta(env.End.ETA)
+		s = rebootStep(env)
 	}
 	return nextSection(s, width)
 }

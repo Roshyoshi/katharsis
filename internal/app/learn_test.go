@@ -11,6 +11,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
@@ -142,6 +143,29 @@ func TestResumedTrialInOvertimeReopens(t *testing.T) {
 		h.restart()
 		if h.m.state.Phase != game.PhaseProblem || h.m.open == nil {
 			t.Fatalf("phase %q open %v after resuming a trial door in overtime, want it open", h.m.state.Phase, h.m.open != nil)
+		}
+	})
+}
+
+// r on a trial's end screen runs the same trial again: the trial rules
+// are no boot preset, and the reboot fell back to a standard boot.
+func TestRebootAfterATrialRetriesIt(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		loadGuide(h)
+		h.send(screens.StartTrial{Module: "prefix-sums"})
+		h.verdict = "WA"
+		if got := h.play(); got != game.PhaseCrashed || h.m.state.Trial == nil {
+			t.Fatalf("trial ended %q (trial %v), want crashed", got, h.m.state.Trial != nil)
+		}
+		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "r retry the prefix-sums trial") {
+			t.Fatalf("the end screen does not say r retries the trial:\n%s", v)
+		}
+		first := h.m.state.Boot
+		h.m.cur = nil // the curriculum is not needed again
+		h.send(key("r"))
+		if s := h.m.state; s.Boot == first || s.Trial == nil || s.Trial.Module != "prefix-sums" || s.Phase == game.PhaseCrashed {
+			t.Fatalf("after r: boot %d (was %d), trial %+v, phase %s; want prefix-sums again", s.Boot, first, s.Trial, s.Phase)
 		}
 	})
 }

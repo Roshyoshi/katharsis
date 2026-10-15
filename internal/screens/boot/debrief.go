@@ -546,9 +546,23 @@ func next(env Env) int {
 	return min(max(env.Meta.Prestige, env.State.Prestige), game.MaxPrestige)
 }
 
+// rebootStep is r as the next step: a reboot at the prestige it starts at,
+// or after a trial the same trial again (the app runs it on the trial
+// rules, which are no boot preset).
+func rebootStep(env Env) string {
+	if t := env.State.Trial; t != nil {
+		return ui.Strong.Render("r") + " retry the " + t.Module + " trial"
+	}
+	return ui.Strong.Render("r") + " reboot at " + prestigeLabel(next(env)) + eta(env.End.ETA)
+}
+
 // rebootPairs are the footer's reboot keys with their ETAs.
 func rebootPairs(env Env) []string {
-	pairs := []string{"r", "reboot" + eta(env.End.ETA)}
+	label := "reboot" + eta(env.End.ETA)
+	if env.State.Trial != nil {
+		label = "retry"
+	}
+	pairs := []string{"r", label}
 	for _, r := range env.End.Reboots {
 		pairs = append(pairs, r.Key, r.Preset+eta(r.ETA))
 	}
