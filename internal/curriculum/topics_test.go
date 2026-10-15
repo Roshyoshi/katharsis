@@ -6,6 +6,7 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/guide"
+	"katharsis/internal/content/usaco"
 	"katharsis/internal/game"
 )
 
@@ -90,7 +91,17 @@ func TestTopicFor(t *testing.T) {
 	}
 }
 
+// Bands come from the USACO source's own rating table, so a trial's blind
+// doors sit at the ratings its unit problems were given.
 func TestDivisionBand(t *testing.T) {
+	for guideDiv, usacoDiv := range map[string]string{"general": "bronze", "bronze": "bronze", "silver": "silver", "gold": "gold", "plat": "platinum"} {
+		if want, _ := usaco.DivisionBand(usacoDiv); DivisionBand(guideDiv) != want {
+			t.Errorf("DivisionBand(%q) = %v, want usaco's %s band %v", guideDiv, DivisionBand(guideDiv), usacoDiv, want)
+		}
+	}
+	if adv, plat := DivisionBand("adv"), DivisionBand("plat"); adv[0] != plat[1] {
+		t.Errorf("adv band %v does not start where plat %v ends", adv, plat)
+	}
 	prev := 0
 	for _, d := range []string{"bronze", "silver", "gold", "plat", "adv"} {
 		b := DivisionBand(d)

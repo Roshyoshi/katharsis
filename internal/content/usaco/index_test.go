@@ -295,3 +295,25 @@ func TestFactsTable(t *testing.T) {
 		t.Errorf("interactive: %v", interactive)
 	}
 }
+
+// A division's band runs from its P1 to its P3 rating, so a problem rated
+// by position alone lands inside its division's band.
+func TestDivisionBand(t *testing.T) {
+	t.Parallel()
+	for _, div := range []string{"bronze", "silver", "gold", "platinum"} {
+		b, ok := DivisionBand(div)
+		if !ok || b[0] >= b[1] {
+			t.Fatalf("DivisionBand(%q) = %v, %v", div, b, ok)
+		}
+		for pos := 1; pos <= 3; pos++ {
+			if r, _ := estimate(div, pos, nil); r < b[0] || r > b[1] {
+				t.Errorf("%s P%d rated %d, outside its band %v", div, pos, r, b)
+			}
+		}
+	}
+	for _, div := range []string{"old gold", "plat", ""} {
+		if b, ok := DivisionBand(div); ok {
+			t.Errorf("DivisionBand(%q) = %v, want no band", div, b)
+		}
+	}
+}

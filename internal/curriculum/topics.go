@@ -5,6 +5,7 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/guide"
+	"katharsis/internal/content/usaco"
 	"katharsis/internal/game"
 )
 
@@ -55,23 +56,26 @@ func TopicFor(moduleID, title, division string) string {
 // unlock.
 func CapabilityFor(topic string) string { return game.CapabilityFor(topic) }
 
-// divisionBands are CF-scale rating bands for the integration doors, the
-// same division table the USACO content source uses for its estimates.
-// General modules sit with Bronze; Advanced extends past Platinum.
-var divisionBands = map[string][2]int{
-	"general": {1000, 1300},
-	"bronze":  {1000, 1300},
-	"silver":  {1350, 1650},
-	"gold":    {1700, 2000},
-	"plat":    {2100, 2400},
-	"adv":     {2400, 2800},
-}
-
-// DivisionBand returns the rating band for a guide division id; unknown
-// divisions get the Bronze band.
+// DivisionBand returns the CF-scale rating band of a guide division's
+// integration doors: the band the USACO source rates that division's
+// problems in (usaco.DivisionBand), so a trial's blind doors sit where its
+// own unit does. General modules sit with Bronze. Advanced has no USACO
+// division: it starts where Platinum ends and spans one division step, the
+// gap from Gold to Platinum. Unknown divisions get the Bronze band.
 func DivisionBand(division string) [2]int {
-	if b, ok := divisionBands[division]; ok {
+	switch division {
+	case "general":
+		division = "bronze"
+	case "plat":
+		division = "platinum"
+	case "adv":
+		gold, _ := usaco.DivisionBand("gold")
+		plat, _ := usaco.DivisionBand("platinum")
+		return [2]int{plat[1], plat[1] + plat[0] - gold[0]}
+	}
+	if b, ok := usaco.DivisionBand(division); ok {
 		return b
 	}
-	return divisionBands["bronze"]
+	b, _ := usaco.DivisionBand("bronze")
+	return b
 }

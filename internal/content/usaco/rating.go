@@ -104,3 +104,15 @@ func estimate(era string, position int, labels []string) (int, string) {
 	}
 	return r, src
 }
+
+// DivisionBand is the band today's division (catalog.Problem.Division:
+// bronze, silver, gold, platinum) is rated in before labels and solve
+// rates move a problem: its P1 to its P3. ok is false for any other name.
+func DivisionBand(division string) (band [2]int, ok bool) {
+	switch division {
+	case "bronze", "silver", "gold", "platinum":
+		row := baseRating[division]
+		return [2]int{row[0], row[2]}, true
+	}
+	return [2]int{}, false
+}
