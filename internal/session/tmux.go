@@ -136,7 +136,7 @@ func paneDead(pane string) (dead, ok bool) {
 //
 // The session gets a server of its own (-L name). A session added to a
 // server that is already running inherits that server's environment, not
-// ours, and the judge finds the dev shell's pinned clang++ through PATH.
+// ours, and the judge finds the dev shell's pinned compilers through PATH.
 //
 // argv runs with $KATHARSIS_OWN_SESSION set (OwnSession). A session whose
 // game is gone (MarkGame's pid is dead: a kill -9, a panic) is not merely

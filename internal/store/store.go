@@ -154,23 +154,28 @@ func (s *Store) step(stage string) error {
 // LoadMeta returns a fresh player (zero Meta at the cold-start rating) when
 // nothing has been saved.
 func (s *Store) LoadMeta() (game.Meta, error) {
-	var raw []byte
-	err := s.db.QueryRow(`SELECT json FROM meta WHERE id = 1`).Scan(&raw)
-	if errors.Is(err, sql.ErrNoRows) {
-		return game.Meta{Rating: rules.Standard().ColdStartRating}, nil
+	m, ok, err := readMeta(s.db)
+	if err == nil && !ok {
+		m.Rating = rules.Standard().ColdStartRating
 	}
-	if err != nil {
-		return game.Meta{}, err
-	}
-	return decodeMeta(raw)
+	return m, err
 }
 
-func decodeMeta(raw []byte) (game.Meta, error) {
-	var m game.Meta
-	if err := json.Unmarshal(raw, &m); err != nil {
-		return m, fmt.Errorf("store: meta: %w", err)
+// readMeta reads the Meta row through q, the store or one of its read
+// transactions; ok is false when none has been saved.
+func readMeta(q querier) (m game.Meta, ok bool, err error) {
+	var raw []byte
+	err = q.QueryRow(`SELECT json FROM meta WHERE id = 1`).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return m, false, nil
 	}
-	return m, nil
+	if err != nil {
+		return m, false, err
+	}
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return m, false, fmt.Errorf("store: meta: %w", err)
+	}
+	return m, true, nil
 }
 
 // SaveMeta is for changes outside a boot (upsolving, learn mode); inside

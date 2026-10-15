@@ -343,7 +343,7 @@ func openDebugger(src string, t problem.Test, open func(DebugTarget) (func(), er
 	if err != nil {
 		return "", nil, err
 	}
-	if dir, err = os.MkdirTemp("", "katharsis-debug-"); err != nil {
+	if dir, err = os.MkdirTemp("", debugDirPrefix); err != nil {
 		return "", nil, err
 	}
 	target := DebugTarget{Binary: b.Binary, Dir: dir, Stdin: t.In, Test: t.Name}

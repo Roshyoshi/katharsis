@@ -204,15 +204,7 @@ func (s *Store) Stats() (Stats, error) {
 			return err
 		}
 
-		var raw []byte
-		err := tx.QueryRow(`SELECT json FROM meta WHERE id = 1`).Scan(&raw)
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		m, err := decodeMeta(raw)
+		m, _, err := readMeta(tx)
 		if err != nil {
 			return err
 		}
@@ -227,6 +219,7 @@ func (s *Store) Stats() (Stats, error) {
 // querier is a *sql.DB or a *sql.Tx.
 type querier interface {
 	Query(query string, args ...any) (*sql.Rows, error)
+	QueryRow(query string, args ...any) *sql.Row
 }
 
 // eachRow runs q and calls scan on each row, stopping at its first error.

@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"slices"
 	"time"
 )
 
@@ -71,14 +70,10 @@ func (s *Store) MedianCommitted(n int) (int64, error) {
 			xs = append(xs, c)
 			return err
 		})
-	if err != nil || len(xs) == 0 {
+	if err != nil {
 		return 0, err
 	}
-	slices.Sort(xs)
-	if k := len(xs); k%2 == 0 {
-		return (xs[k/2-1] + xs[k/2]) / 2, nil
-	}
-	return xs[len(xs)/2], nil
+	return median(xs), nil
 }
 
 // MedianUptime is the median uptime of the last n finished boots on

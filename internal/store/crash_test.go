@@ -219,12 +219,10 @@ func TestWALReaders(t *testing.T) {
 			t.Fatalf("bank = %d before the write", b)
 		}
 
+		// Without WAL the write would wait busy_timeout on the open read and
+		// fail: the read holds its lock until after the write.
 		m.Bank += 100
-		start := time.Now()
 		checkpoint(t, w, m, st)
-		if d := time.Since(start); d > time.Second {
-			t.Errorf("Checkpoint took %v behind an open reader; WAL should not wait", d)
-		}
 		if b := bank(); b != m.Bank-100 {
 			t.Errorf("open read saw bank %d mid-transaction, want its snapshot %d", b, m.Bank-100)
 		}

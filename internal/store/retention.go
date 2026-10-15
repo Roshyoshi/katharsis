@@ -3,7 +3,6 @@ package store
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"slices"
 	"time"
 
@@ -192,15 +191,7 @@ func (s *Store) retentionData(now time.Time) (retentionData, error) {
 			}); err != nil {
 			return err
 		}
-		var raw []byte
-		err := tx.QueryRow(`SELECT json FROM meta WHERE id = 1`).Scan(&raw)
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		m, err := decodeMeta(raw)
+		m, _, err := readMeta(tx)
 		if err != nil {
 			return err
 		}
@@ -293,16 +284,17 @@ func later(a, b time.Time) time.Time {
 	return a
 }
 
-func median(ds []time.Duration) time.Duration {
-	if len(ds) == 0 {
+// median sorts xs and returns its middle, 0 for none.
+func median[T ~int64](xs []T) T {
+	if len(xs) == 0 {
 		return 0
 	}
-	slices.Sort(ds)
-	n := len(ds)
+	slices.Sort(xs)
+	n := len(xs)
 	if n%2 == 1 {
-		return ds[n/2]
+		return xs[n/2]
 	}
-	return (ds[n/2-1] + ds[n/2]) / 2
+	return (xs[n/2-1] + xs[n/2]) / 2
 }
 
 // Retention is RT13's panel and GR11's alarms as of now.
