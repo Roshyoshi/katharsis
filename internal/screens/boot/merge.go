@@ -238,9 +238,10 @@ func Fountain(st *game.State) (heal int, here bool) {
 }
 
 // fountainRow is the window's fountain line, in the label column: what it
-// gave (State.Fountain, "+5 cycles, free, between acts ✓ 17 → 22"), that
-// it gave none (the cycles at the line, fountain.full), or that it is dry
-// (fountain.dry). nil in a window without one.
+// gave (State.Fountain, "+5 cycles, free, up to 30 ✓"; the strip said
+// "♥ 17 → 22" as it poured, and fsck or an Overclock since may have moved
+// the cycles), that it gave none (the cycles at the line, fountain.full),
+// or that it is dry (fountain.dry). nil in a window without one.
 func fountainRow(st *game.State, label func(string) string) []string {
 	heal, here := Fountain(st)
 	if !here {
@@ -253,7 +254,7 @@ func fountainRow(st *game.State, label func(string) string) []string {
 		s = ui.Muted.Render("dry at " + prestigeLabel(st.Prestige) + ": no heal between acts")
 	case st.Fountain > 0:
 		s = fmt.Sprintf("+%d cycles", st.Fountain) + ui.Muted.Render(", free, up to "+fmt.Sprint(start)) + "  " +
-			ui.OK.Render(ui.G.Pass) + fmt.Sprintf(" %d %s %d", st.Cycles-st.Fountain, ui.G.Arrow, st.Cycles)
+			ui.OK.Render(ui.G.Pass)
 	default:
 		s = ui.Muted.Render(fmt.Sprintf("+%d cycles up to %d: yours are at the line, none taken", heal, start))
 	}

@@ -3,7 +3,7 @@ Boot #57 · Silver · merge window                                    uptime 44:
 [ 2640.0] spend: fsck · +10 cycles now · 64 B · ♥ 22 → 32
           Stub line for item.fsck.
 ────────────────────────────────────────────────────────────────────────────────
-    fountain +5 cycles, free, up to 30  ✓ 27 → 32
+    fountain +5 cycles, free, up to 30  ✓
     commit   576 B uncommitted: a crash loses it, the bank keeps it
 
     upgrade  a clear earned one; pick it before you leave

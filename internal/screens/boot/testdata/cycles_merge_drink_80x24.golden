@@ -2,7 +2,7 @@ Boot #57 · Silver · merge window                                    uptime 44:
 ♥ 22/50 cycles  🦆1  640 B uncommitted · 256 B committed          daemons strace
 ────────────────────────────────────────────────────────────────────────────────
 
-    fountain +5 cycles, free, up to 30  ✓ 17 → 22
+    fountain +5 cycles, free, up to 30  ✓
     commit   640 B uncommitted: a crash loses it, the bank keeps it
 
     Stub line for boss.defeat.off-by-one.

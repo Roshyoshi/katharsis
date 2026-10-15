@@ -102,7 +102,7 @@ func TestCyclesScreensSay(t *testing.T) {
 		{"final", NewDoors(env(fixture.CyclesBoss(game.FinalBoss))), []string{
 			"⚔ clock hidden, warned at 05:00 and 01:00", "one shot: a fail or :q! ends the boot", "Stub line for boss.oneshot."}},
 		{"retry", NewDoors(env(fixture.CyclesBossRetry())), []string{"Stub line for boss.retry.", "(2 left)"}},
-		{"fountain", NewMerge(env(fixture.CyclesMerge("drink"))), []string{"fountain +5 cycles, free, up to 30 ✓ 17 → 22", "fsck +10 cycles now · 64 B", "f fsck"}},
+		{"fountain", NewMerge(env(fixture.CyclesMerge("drink"))), []string{"fountain +5 cycles, free, up to 30 ✓", "fsck +10 cycles now · 64 B", "f fsck"}},
 		{"fountain full", NewMerge(env(fixture.CyclesMerge("full"))), []string{"fountain +5 cycles up to 30: yours are at the line, none taken"}},
 		{"fountain dry", NewMerge(env(fixture.CyclesMerge("dry"))), []string{"fountain dry at Advanced: no heal between acts", "fsck +5 cycles now"}},
 		{"crash timeout", NewCrash(env(fixture.CyclesCrash("timeout"))), []string{
@@ -123,6 +123,32 @@ func TestCyclesScreensSay(t *testing.T) {
 		if v := strings.ReplaceAll(v, "out-of-lives", ""); strings.Contains(v, "lives") || strings.Contains(v, " life") { // hook keys keep their names
 			t.Errorf("%s still says lives:\n%s", c.name, v)
 		}
+	}
+}
+
+// The fountain's row says what it poured, and stays true once fsck or an
+// Overclock moves the cycles in the same window: it drew "before" from the
+// cycles as they stand, so fsck after a 17 → 22 pour read "27 → 32".
+func TestFountainRowAfterSpend(t *testing.T) {
+	st := fixture.CyclesMerge("drink")
+	st.Cycles += 10 // fsck
+	v := flat(ansi.Strip(NewMerge(env(st)).View(140, 40)))
+	if !strings.Contains(v, "fountain +5 cycles, free, up to 30 ✓") || strings.Contains(v, "27 → 32") {
+		t.Errorf("fountain row after fsck:\n%s", v)
+	}
+}
+
+// The reboot's pool is the one its preset deals (End.Next): a boot saved
+// before cycles crashed on its old snapshot, 3 lives, and the next step
+// said "♥ 2 cycles" for a map reboot at P4 that deals 25.
+func TestRebootPoolFromPreset(t *testing.T) {
+	st := fixture.CyclesCrash("timeout")
+	st.Rules.Cycles, st.Prestige = 3, 4
+	e := env(st)
+	next := rules.Map()
+	e.End.Next = &next
+	if v := flat(ansi.Strip(NewCrash(e).View(140, 40))); !strings.Contains(v, "reboot at Advanced") || !strings.Contains(v, "♥ 25 cycles") {
+		t.Errorf("crash's next step:\n%s", v)
 	}
 }
 

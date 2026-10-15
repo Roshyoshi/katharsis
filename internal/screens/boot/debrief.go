@@ -8,6 +8,7 @@ import (
 
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/ui"
 	"katharsis/internal/units"
@@ -28,6 +29,9 @@ type End struct {
 	// ETA is the player's median uptime on the boot's own preset, 0 when
 	// unknown (GR3: an ETA is the player's own, never a guess).
 	ETA time.Duration
+	// Next is the preset r boots, nil when unknown: the reboot's pool is
+	// its, not the ended boot's snapshot (an old save's ran on lives).
+	Next *rules.Rules
 	// Reboots are the other presets offered where "one more" is decided
 	// (RT7), short and patch: each with its key and the player's median
 	// uptime on it.
@@ -610,6 +614,9 @@ func rebootStep(env Env) string {
 	}
 	// The pool the reboot is dealt, which prestige cuts (P4, P7).
 	r := env.State.Rules
+	if env.End.Next != nil {
+		r = *env.End.Next
+	}
 	pool := max(1, r.Cycles+r.Ascend(next(env)).Cycles)
 	return ui.Strong.Render("r") + " reboot at " + prestigeLabel(next(env)) + eta(env.End.ETA) +
 		ui.Muted.Render(ui.G.Sep) + ui.Life.Render(ui.G.Life) + " " + units.Plural(pool, "cycle")

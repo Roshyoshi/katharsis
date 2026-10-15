@@ -93,6 +93,10 @@ func (m *Model) computeEnd(st *game.State) bootui.End {
 	var err error
 	e.ETA, err = m.d.Store.MedianUptime(st.Rules.Name, etaBoots)
 	m.logErr("eta", err)
+	if p, ok := m.d.Presets[st.Rules.Name]; ok && st.Trial == nil {
+		p = p.WithDefaults() // what r boots (bootui.Crash), as NewBoot fills it
+		e.Next = &p
+	}
 	if tp, err := m.d.Store.TimePlus(st.Boot); err != nil { // kept adds this boot
 		m.logErr("TIME+", err)
 	} else {

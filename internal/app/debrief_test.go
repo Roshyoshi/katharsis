@@ -101,6 +101,10 @@ func TestEndInfo(t *testing.T) {
 		if e.ETA <= 0 {
 			t.Errorf("ETA %v, want this boot's uptime as the median", e.ETA)
 		}
+		// r reboots the boot's preset, so its pool is that preset's.
+		if e.Next == nil || e.Next.Name != h.m.state.Rules.Name || e.Next.Cycles != h.m.d.Presets[h.m.state.Rules.Name].Cycles {
+			t.Errorf("next %+v, want the %q preset", e.Next, h.m.state.Rules.Name)
+		}
 		if e.Goal == nil || e.Goal.Name == "" || e.Goal.Per != h.m.state.Committed {
 			t.Errorf("goal %+v, committed %d", e.Goal, h.m.state.Committed)
 		}

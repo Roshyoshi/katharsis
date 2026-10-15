@@ -13,7 +13,7 @@ Boot #57 · Silver · merge window                                              
 
                                                          Stub line for merge.line.
 
-                                  fountain +5 cycles, free, up to 30  ✓ 27 → 32
+                                  fountain +5 cycles, free, up to 30  ✓
                                   commit   576 B uncommitted: a crash loses it, the bank keeps it
 
                                   Stub line for boss.defeat.off-by-one.
