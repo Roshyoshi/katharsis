@@ -182,6 +182,7 @@ func openEditor(opt *hud.Options, dir, source string, editor []string, split int
 	}()
 
 	_ = session.SweepRunDir() // best effort: leftovers only take space
+	judge.Sweep()
 	sock, err := session.SocketPath()
 	if err != nil {
 		return "", nil, nil, err

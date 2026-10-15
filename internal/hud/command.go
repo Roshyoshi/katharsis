@@ -291,8 +291,9 @@ func openDebugger(src string, t problem.Test, open func(DebugTarget) (func(), er
 		return "", nil, err
 	}
 	target := DebugTarget{Binary: b.Binary, Dir: dir, Stdin: t.In, Test: t.Name}
+	// A detected stem gets <stem>.in as well as stdin: detection can guess
+	// wrong, and the judge feeds both.
 	if stem := problem.FileIO(b.Src); stem != "" {
-		target.Stdin = ""
 		err = copyFile(t.In, filepath.Join(dir, stem+".in"))
 	}
 	if err == nil {

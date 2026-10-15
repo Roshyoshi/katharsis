@@ -67,6 +67,7 @@ func (r *TmuxRunner) Listen() error {
 	// Best effort: what it misses is a dead game's files, and Listen
 	// replaces a stale socket itself.
 	_ = session.SweepRunDir()
+	judge.Sweep() // judge temp and build dirs a killed game left behind
 	sock, err := session.SocketPath()
 	if err != nil {
 		return err
@@ -120,6 +121,7 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 			Output:         judge.DefaultOutputLimit,
 			Scale:          r.Scale,
 			FloatTolerance: d.Problem.FloatTolerance,
+			FileIO:         d.Problem.FileIO, // a stem the source hides from detection
 			AnyCase:        d.Problem.AnyCase,
 		},
 		SubmitProfile: judge.Full,

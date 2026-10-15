@@ -264,13 +264,16 @@ func TestDebugOpensTarget(t *testing.T) {
 			if _, err := os.Stat(got.Binary + ".dSYM"); err != nil {
 				t.Errorf("no symbols beside %s: %v", got.Binary, err)
 			}
+			// A file-I/O program gets <stem>.in and stdin both, as the judge
+			// feeds them, since detecting the stem can guess wrong.
+			if got.Stdin != m.prob.Tests[1].In {
+				t.Errorf("Stdin = %q, want test 2's input", got.Stdin)
+			}
 			if tc.fileIO {
 				b, err := os.ReadFile(filepath.Join(got.Dir, "milk2.in"))
-				if got.Stdin != "" || err != nil || string(b) != "5 6\n" {
+				if err != nil || string(b) != "5 6\n" {
 					t.Errorf("file io target %+v: milk2.in = %q, %v", got, b, err)
 				}
-			} else if got.Stdin != m.prob.Tests[1].In {
-				t.Errorf("Stdin = %q, want test 2's input", got.Stdin)
 			}
 
 			// A second :Debug replaces the first debugger.
