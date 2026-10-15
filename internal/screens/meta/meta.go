@@ -159,10 +159,11 @@ func causeText(c game.Outcome) string {
 	return string(c)
 }
 
-// prestigeText is "prestige 2 (Gold)", or "prestige 2" when name has none.
+// prestigeText is "prestige 2 (Gold)", or "prestige 6" when name has none
+// or only says the number again (flavor's "Prestige 6" past the divisions).
 func prestigeText(p int, name func(int) string) string {
 	s := fmt.Sprintf("prestige %d", p)
-	if n := name(p); n != "" {
+	if n := name(p); n != "" && !strings.EqualFold(n, s) {
 		s += " (" + n + ")"
 	}
 	return s

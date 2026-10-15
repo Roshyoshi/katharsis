@@ -700,12 +700,12 @@ var BossKeys = []string{"off-by-one", "heisenbug", "oom-killer", "race-condition
 
 const FinalBoss = "halting-problem"
 
-// MaxPrestige is the highest prestige level a boot can play. The map's
-// ladder runs to P8 (map.md §(d), rules.MapAscensions); this stays 4 until
-// the story names P5-P8 (flavor's prestige table, rings, cleared.N and
-// grub.subtitle.prestige.N) and GRUB lists nine levels at 80x24. A rules
-// ladder can stop short of it (rules.Rules.TopPrestige).
-const MaxPrestige = 4
+// MaxPrestige is the highest prestige level a boot can play: the map's
+// ladder runs to P8 (map.md §(d), rules.MapAscensions). The story names
+// P5-P8 by ring (flavor.Ring, cleared.N, grub.subtitle.prestige.N), and
+// their division names fall back to "Prestige N". A rules ladder can stop
+// short of it (rules.Rules.TopPrestige).
+const MaxPrestige = 8
 
 // ---- logging (ml-pipeline §4.1, slice ML1) ----------------------------------
 

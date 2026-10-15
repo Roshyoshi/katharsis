@@ -166,11 +166,23 @@ func NewGrub(c GrubConfig) *Menu {
 	}
 
 	// The default boot, then the core dump right under it (RT4): the
-	// cliffhanger is the second thing GRUB offers.
+	// cliffhanger is the second thing GRUB offers. Once a level past the
+	// divisions is unlocked, the divisions fold into a submenu, as GRUB
+	// keeps older kernels under one entry: nine levels and the rest would
+	// not fit beside the art at 80x24.
 	var es []entry
+	var divisions *page
 	for p := m.maxP; p >= 0; p-- {
 		e := m.bootEntry(p, standardPreset)
 		e.note = prestigeNote(p, sub)
+		if m.maxP > foldAbove && p <= foldAbove {
+			if divisions == nil {
+				divisions = &page{}
+				es = append(es, entry{label: fmt.Sprintf("katharsis (prestige %d to 0…)", foldAbove), sub: divisions})
+			}
+			divisions.entries = append(divisions.entries, e)
+			continue
+		}
 		es = append(es, e)
 		if d := c.Meta.CoreDump; d != nil && p == m.maxP {
 			es = append(es, entry{
@@ -227,6 +239,11 @@ func NewGrub(c GrubConfig) *Menu {
 
 // maxDue is how many due regressions GRUB lists (retention GR10).
 const maxDue = 3
+
+// foldAbove is the last division (P4, Advanced). The levels past it are
+// rings −2 and −3; once one is unlocked, the divisions fold into one
+// submenu.
+const foldAbove = 4
 
 // prestigeNote is a prestige entry's subtitle (grub.subtitle.prestige.N):
 // the ring it boots into.

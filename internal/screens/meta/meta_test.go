@@ -110,6 +110,13 @@ func wantMsg(t *testing.T, got, want tea.Msg) {
 
 func grub() *meta.Menu { return meta.NewGrub(fixture.GrubConfig()) }
 
+// topGrub is GRUB for a player with every level unlocked (P8).
+func topGrub() *meta.Menu {
+	c := fixture.GrubConfig()
+	c.Meta.Prestige, c.Gate = game.MaxPrestige, game.PrestigeGate{}
+	return meta.NewGrub(c)
+}
+
 // ---- goldens -----------------------------------------------------------------
 
 func TestGoldens(t *testing.T) {
@@ -128,6 +135,9 @@ func TestGoldens(t *testing.T) {
 		{"grub_presets", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "enter"}},
 		{"grub_regressions", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "down", "enter"}},
 		{"grub_edit", func() screens.Screen { return grub() }, []string{"e", "down", "tab", "down", "8", "f", "3", "a"}},
+		// Every level unlocked: P8 to P5, then the divisions folded.
+		{"grub_p8", func() screens.Screen { return topGrub() }, nil},
+		{"grub_p8_divisions", func() screens.Screen { return topGrub() }, []string{"down", "down", "down", "down", "down", "enter"}},
 		{"log", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, nil},
 		{"log_expanded", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, []string{"enter"}},
 		{"log_crashed", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, []string{"f", "f", "j", "enter"}},
@@ -237,6 +247,35 @@ func TestGrubEntries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			wantMsg(t, press(t, grub(), tt.keys...), tt.want)
 		})
+	}
+}
+
+// With every level unlocked GRUB lists P8 to P5, the core dump under P8,
+// and the divisions (P4 to P0) in a submenu; the editor still reaches any
+// level.
+func TestGrubNineLevels(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		keys []string
+		want tea.Msg
+	}{
+		{"default boots P8", []string{"enter"}, screens.StartBoot{Prestige: 8, Preset: "standard"}},
+		{"core dump under it", []string{"down", "enter"}, screens.Upsolve{Problem: "usaco:1014"}},
+		{"P5", []string{"down", "down", "down", "down", "enter"}, screens.StartBoot{Prestige: 5, Preset: "standard"}},
+		{"P4 heads the divisions", []string{"down", "down", "down", "down", "down", "enter", "enter"}, screens.StartBoot{Prestige: 4, Preset: "standard"}},
+		{"P0 ends them", []string{"down", "down", "down", "down", "down", "enter", "G", "enter"}, screens.StartBoot{Prestige: 0, Preset: "standard"}},
+		{"the nightly plays P8", []string{"down", "down", "down", "down", "down", "down", "enter"}, screens.StartBoot{Prestige: 8, Preset: "standard", Seed: 0x20261014}},
+		{"the editor wraps over nine", []string{"e", "right", "enter"}, screens.StartBoot{Prestige: 0, Preset: "standard"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			wantMsg(t, press(t, topGrub(), tt.keys...), tt.want)
+		})
+	}
+	// Through P4 every level stays on the root, as before.
+	c := fixture.GrubConfig()
+	c.Meta.Prestige = 4
+	if v := plain(meta.NewGrub(c).View(80, 24)); !strings.Contains(v, "prestige 0 (Bronze)") || strings.Contains(v, "4 to 0") {
+		t.Errorf("P4 folds its divisions:\n%s", v)
 	}
 }
 
@@ -582,11 +621,12 @@ func TestGrubRealBannerAt80x24(t *testing.T) {
 			t.Errorf("art line %q missing at 80x24:\n%s", a, v)
 		}
 	}
-	// Every prestige unlocked and every optional entry there: 14 entries.
+	// Every prestige unlocked and every optional entry there: 14 entries,
+	// the divisions folded.
 	c := fixture.GrubConfig()
 	c.Meta.Prestige, c.Gate = game.MaxPrestige, game.PrestigeGate{}
 	v = view(c)
-	for _, want := range append([]string{"prestige 0", "poweroff"}, art...) {
+	for _, want := range append([]string{"prestige 8", "prestige 5", "prestige 4 to 0", "poweroff"}, art...) {
 		if !strings.Contains(v, want) {
 			t.Errorf("%q missing:\n%s", want, v)
 		}

@@ -44,10 +44,11 @@ func lookup(id catalog.ID) (catalog.Problem, bool) {
 }
 
 // PrestigeName pins prestige labels so goldens do not follow flavor edits.
+// Past the divisions it falls back as flavor does, to "Prestige N".
 func PrestigeName(p int) string {
 	names := []string{"Bronze", "Silver", "Gold", "Platinum", "Advanced"}
 	if p < 0 || p >= len(names) {
-		return ""
+		return fmt.Sprintf("Prestige %d", p)
 	}
 	return names[p]
 }

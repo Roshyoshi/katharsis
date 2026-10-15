@@ -1,0 +1,24 @@
+                             GNU GRUB  version 2.12
+
+ ┌────────────────────────────────────────────────────────────────────────────┐
+ │*katharsis, prestige 4 (Advanced)                                           │
+ │ katharsis, prestige 3 (Platinum)                                           │
+ │ katharsis, prestige 2 (Gold)                                               │
+ │ katharsis, prestige 1 (Silver)                                             │
+ │ katharsis, prestige 0 (Bronze)                                             │
+ │                                                                            │
+ │                                                                            │
+ │                                                                            │
+ │                                                                            │
+ │                                                                            │
+ │                                                                            │
+ │                                                                            │
+ │                                                                            │
+ │                                                                            │
+ └────────────────────────────────────────────────────────────────────────────┘
+           stub grub.subtitle.prestige.4, a line in the story's voice
+     Use the ↑ and ↓ keys to select which entry is highlighted. Press enter
+     to boot the selected entry, `e' to edit the commands, `c' for credits.
+     ESC to return previous menu.
+
+                   bank 1.3 KiB · rating 1432 · next boot #43

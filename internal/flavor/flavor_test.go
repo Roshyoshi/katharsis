@@ -218,9 +218,14 @@ func TestBosses(t *testing.T) {
 	}
 }
 
+// TestPrestige: P0-P4 are the USACO divisions; the levels past them (P5-P8,
+// the map's ladder) have no division and fall back to "Prestige N".
 func TestPrestige(t *testing.T) {
 	want := []string{"Bronze", "Silver", "Gold", "Platinum", "Advanced"}
-	if len(want) != game.MaxPrestige+1 || len(prestiges) != game.MaxPrestige+1 {
+	for p := len(want); p <= game.MaxPrestige; p++ {
+		want = append(want, "Prestige "+strconv.Itoa(p))
+	}
+	if len(prestiges) > game.MaxPrestige+1 {
 		t.Fatalf("MaxPrestige %d, table %d", game.MaxPrestige, len(prestiges))
 	}
 	for p := 0; p <= game.MaxPrestige; p++ {
