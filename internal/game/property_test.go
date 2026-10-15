@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"slices"
 	"testing"
@@ -25,12 +26,33 @@ var next = map[game.Phase][]game.Phase{
 	game.PhaseCleared: {game.PhaseCleared},
 }
 
-// checker holds what invariants compare against across one boot.
+// checker holds what invariants compare against across one boot: Meta as
+// it was when the boot started (nothing outside the boot touches it until
+// the boot ends), and the previous step's phase and lives.
 type checker struct {
-	t     testing.TB
-	bank0 int64 // meta.Bank when the boot started
-	phase game.Phase
-	dump0 string // a trial's meta.CoreDump (JSON) when it started
+	t         testing.TB
+	bank0     int64
+	lifetime0 int64
+	rated0    int
+	solves0   int
+	dump0     string // meta.CoreDump as JSON
+	dumpLost  int64  // what a crash must destroy: the dump's bytes, if any
+	phase     game.Phase
+	lives     int
+}
+
+// newChecker is called right after NewBoot or NewTrial, before the first
+// Step: no door has closed, so Meta's bank, bytes, ratings and solves are
+// still what the boot started from.
+func newChecker(t testing.TB, s *game.State, m *game.Meta) *checker {
+	c := &checker{
+		t: t, bank0: m.Bank, lifetime0: m.LifetimeBytes, rated0: m.Rated, solves0: len(m.Solves),
+		dump0: mustJSON(t, m.CoreDump), phase: s.Phase, lives: s.Lives,
+	}
+	if m.CoreDump != nil {
+		c.dumpLost = m.CoreDump.Bytes
+	}
+	return c
 }
 
 // check asserts the invariants that hold after every Step.
@@ -54,6 +76,11 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	if s.Lives == 0 && s.Phase != game.PhaseCrashed {
 		fail("no lives but not crashed")
 	}
+	// Only an ECC pick gives a life back, one at a time.
+	if gain := s.Lives - c.lives; gain > 0 && (gain != 1 || a != game.PickUpgrade{Upgrade: game.ECC}) {
+		fail("lives %d -> %d", c.lives, s.Lives)
+	}
+	c.lives = s.Lives
 	if s.UpgradePicks < 0 || s.PendingUpgrade != (s.UpgradePicks > 0) || s.PendingUpgrade != (len(s.UpgradeOffers) > 0) {
 		fail("picks %d pending %v offers %v", s.UpgradePicks, s.PendingUpgrade, s.UpgradeOffers)
 	}
@@ -83,6 +110,9 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	} else if len(s.Doors) != 0 {
 		fail("%d doors outside the doors phase", len(s.Doors))
 	}
+	if s.Phase != game.PhaseMerge && len(s.DaemonOffers) != 0 {
+		fail("daemons %v on offer outside a merge window", s.DaemonOffers)
+	}
 	// A merge window or a clear sits past the last room of the biome it ends.
 	done := 0
 	if s.Phase == game.PhaseMerge || s.Phase == game.PhaseCleared {
@@ -97,6 +127,7 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 
 	// Bytes are conserved: every byte a clear paid is committed, still
 	// uncommitted, or lost to the crash, and only commits reach the bank.
+	// A crash destroys the earlier dump first, then dumps what it lost.
 	lost := int64(0)
 	if s.Crash != nil {
 		lost = s.Crash.Lost
@@ -107,11 +138,66 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 		switch {
 		case s.Trial != nil:
 			// A failed trial leaves the dump a boot made, and no other.
-			if got := mustJSON(t, d); got != c.dump0 {
+			if got := mustJSON(t, d); got != c.dump0 || s.Crash.DumpLost != 0 {
 				fail("trial crash changed the core dump %s to %s", c.dump0, got)
 			}
+		case s.Crash.DumpLost != c.dumpLost:
+			fail("crash destroyed %d B of dump, want the %d B the boot started with", s.Crash.DumpLost, c.dumpLost)
 		case (lost > 0) != (d != nil) || d != nil && (d.Problem != s.Crash.Door.Problem || d.Bytes != lost):
 			fail("crash lost %d, core dump %+v", lost, d)
+		}
+	} else if got := mustJSON(t, m.CoreDump); got != c.dump0 {
+		fail("core dump %s became %s without a crash", c.dump0, got)
+	}
+	if s.Crash != nil && s.Trial == nil {
+		// The problem that crashed you comes back, from stage 0.
+		i := slices.IndexFunc(m.Regressions, func(g game.Regression) bool { return g.Problem == s.Crash.Door.Problem })
+		if i < 0 || m.Regressions[i].Stage != 0 || !m.Regressions[i].Due.Equal(s.Crash.At.AddDate(0, 0, s.Rules.RegressionDays[0])) {
+			fail("crash on %s, regressions %+v", s.Crash.Door.Problem, m.Regressions)
+		}
+	}
+	regs := map[catalog.ID]bool{}
+	for _, g := range m.Regressions {
+		if regs[g.Problem] || g.Stage < 0 || len(g.Days) > 0 && g.Stage >= len(g.Days) {
+			fail("regression %+v in %+v", g, m.Regressions)
+		}
+		regs[g.Problem] = true
+	}
+	regDoors := 0
+	for _, d := range s.Doors {
+		if d.Regression {
+			regDoors++
+		}
+	}
+	if s.Current != nil && s.Current.Door.Regression {
+		regDoors++
+	}
+	cleared, rated := 0, 0
+	for _, h := range s.History {
+		if h.Door.Regression {
+			regDoors++
+		}
+		if h.Outcome == game.Cleared {
+			cleared++
+		}
+		if h.Outcome != game.Retreated {
+			rated++
+		}
+	}
+	if regDoors > 1 {
+		fail("%d regression doors in one boot", regDoors)
+	}
+	// Every closed door but a retreat is rated, and every clear is a solve.
+	if m.Rated != c.rated0+rated || len(m.Solves) != c.solves0+cleared {
+		fail("rated %d solves %d, want %d and %d", m.Rated, len(m.Solves), c.rated0+rated, c.solves0+cleared)
+	}
+	for k, cal := range m.Calibration {
+		limit := s.Rules.CalibMax
+		if k != game.CalibrationAll {
+			limit /= 2
+		}
+		if math.Abs(cal.Offset) > limit || cal.Observed < 0 || cal.Observed > 1 || cal.Expected < 0 || cal.Expected > 1 {
+			fail("calibration %s %+v outside ±%.0f", k, cal, limit)
 		}
 	}
 	if s.Trial != nil {
@@ -130,8 +216,9 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	if s.Earned() != s.Committed+s.Uncommitted+lost {
 		fail("earned %d != committed %d + uncommitted %d + lost %d", s.Earned(), s.Committed, s.Uncommitted, lost)
 	}
-	if m.Bank != c.bank0+s.Committed {
-		fail("bank %d != %d + committed %d", m.Bank, c.bank0, s.Committed)
+	if m.Bank != c.bank0+s.Committed || m.LifetimeBytes != c.lifetime0+s.Earned() {
+		fail("bank %d lifetime %d, want %d + committed %d and %d + earned %d",
+			m.Bank, m.LifetimeBytes, c.bank0, s.Committed, c.lifetime0, s.Earned())
 	}
 	if s.Phase == game.PhaseCleared && s.Uncommitted != 0 {
 		fail("cleared with %d uncommitted", s.Uncommitted)
@@ -193,12 +280,14 @@ func (f *fuzzer) action(s *game.State) game.Action {
 		}
 		return game.LeaveMerge{}
 	case s.Phase == game.PhaseProblem:
-		switch r.IntN(10) {
+		switch r.IntN(20) {
 		case 0:
+			return game.GiveUp{}
+		case 1, 2:
 			return game.Quack{}
-		case 1:
+		case 3, 4:
 			return game.Retreat{}
-		case 2, 3:
+		case 5, 6, 7, 8:
 			return game.Tick{}
 		}
 		return f.submit()
@@ -215,36 +304,46 @@ func (f *fuzzer) tick() {
 	f.now = f.now.Add(time.Duration(f.rng.IntN(int(12 * time.Minute))))
 }
 
-// fuzzBoot plays one boot to its end (or a step cap) and returns the
-// actions with their times, for replay.
+// move is one fuzzed action with its time, for replay.
 type move struct {
 	A   game.Action
 	At  time.Time
 	Err bool
 }
 
-func fuzzBoot(t testing.TB, r rules.Rules, m *game.Meta, ps []catalog.Problem, f *fuzzer, verify bool) (*game.State, []move) {
+// startBoot starts a boot at a random unlocked prestige.
+func startBoot(t testing.TB, r rules.Rules, m *game.Meta, ps []catalog.Problem, f *fuzzer) *game.State {
 	t.Helper()
-	prestige := f.rng.IntN(m.Prestige + 1)
-	s, _, err := game.NewBoot(r, m, ps, prestige, f.rng.Uint64(), f.now)
+	s, _, err := game.NewBoot(r, m, ps, f.rng.IntN(m.Prestige+1), f.rng.Uint64(), f.now)
 	if err != nil {
 		t.Fatalf("NewBoot: %v", err)
 	}
-	c := &checker{t: t, bank0: m.Bank, phase: s.Phase}
-	return s, c.play(s, m, ps, f, verify)
+	return s
 }
 
-// fuzzTrial is fuzzBoot for a learn-mode trial on a spec drawn from ps.
-func fuzzTrial(t testing.TB, m *game.Meta, ps []catalog.Problem, f *fuzzer, verify bool) (*game.State, []move) {
+// startTrial starts a learn-mode trial on a spec drawn from ps.
+func startTrial(t testing.TB, m *game.Meta, ps []catalog.Problem, f *fuzzer) *game.State {
 	t.Helper()
 	spec := fuzzSpec(f.rng, ps)
-	dump0 := mustJSON(t, m.CoreDump)
 	s, _, err := game.NewTrial(rules.Trial(), m, ps, spec, f.rng.Uint64(), f.now)
 	if err != nil {
 		t.Fatalf("NewTrial(%+v): %v", spec, err)
 	}
-	c := &checker{t: t, bank0: m.Bank, phase: s.Phase, dump0: dump0}
-	return s, c.play(s, m, ps, f, verify)
+	return s
+}
+
+// fuzzBoot plays one boot to its end (or a step cap).
+func fuzzBoot(t testing.TB, r rules.Rules, m *game.Meta, ps []catalog.Problem, f *fuzzer, verify bool) (*game.State, []move) {
+	t.Helper()
+	s := startBoot(t, r, m, ps, f)
+	return s, newChecker(t, s, m).play(s, m, ps, f, verify)
+}
+
+// fuzzTrial is fuzzBoot for a trial.
+func fuzzTrial(t testing.TB, m *game.Meta, ps []catalog.Problem, f *fuzzer, verify bool) (*game.State, []move) {
+	t.Helper()
+	s := startTrial(t, m, ps, f)
+	return s, newChecker(t, s, m).play(s, m, ps, f, verify)
 }
 
 // fuzzSpec is a trial on a random topic and band, with a unit of 0 to 5 of
@@ -315,52 +414,6 @@ func TestFuzzTrials(t *testing.T) {
 	}
 }
 
-// TestTrialJSONRoundTrip is TestJSONRoundTrip for trials.
-func TestTrialJSONRoundTrip(t *testing.T) {
-	t.Parallel()
-	ps := sim.SyntheticPool(600, 6)
-	resumed := 0
-	for seed := range uint64(150) {
-		f := &fuzzer{rng: rand.New(rand.NewPCG(seed, 7)), now: t0}
-		_, moves := fuzzTrial(t, &game.Meta{}, ps, f, false)
-		if len(moves) < 4 {
-			continue
-		}
-		cut := len(moves) / 2
-		f2 := &fuzzer{rng: rand.New(rand.NewPCG(seed, 7)), now: t0}
-		m2 := &game.Meta{}
-		s2, _, err := game.NewTrial(rules.Trial(), m2, ps, fuzzSpec(f2.rng, ps), f2.rng.Uint64(), t0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, mv := range moves[:cut] {
-			game.Step(s2, m2, ps, mv.A, mv.At)
-		}
-		var s3 game.State
-		var m3 game.Meta
-		if err := json.Unmarshal([]byte(mustJSON(t, s2)), &s3); err != nil {
-			t.Fatal(err)
-		}
-		if err := json.Unmarshal([]byte(mustJSON(t, m2)), &m3); err != nil {
-			t.Fatal(err)
-		}
-		for _, mv := range moves[cut:] {
-			fx2, err2 := game.Step(s2, m2, ps, mv.A, mv.At)
-			fx3, err3 := game.Step(&s3, &m3, ps, mv.A, mv.At)
-			if (err2 == nil) != (err3 == nil) || (err2 != nil) != mv.Err || fmt.Sprint(fx2) != fmt.Sprint(fx3) {
-				t.Fatalf("seed %d: %T%+v diverged after the reload: %v / %v", seed, mv.A, mv.A, err2, err3)
-			}
-		}
-		if mustJSON(t, s2) != mustJSON(t, &s3) || mustJSON(t, m2) != mustJSON(t, &m3) {
-			t.Fatalf("seed %d: reloaded trial ended differently", seed)
-		}
-		resumed += len(moves) - cut
-	}
-	if resumed < 300 {
-		t.Errorf("only %d moves played after a reload", resumed)
-	}
-}
-
 // TestFuzzBoots plays thousands of fuzzed boots with meta carried across,
 // checking every invariant after every step.
 func TestFuzzBoots(t *testing.T) {
@@ -417,7 +470,7 @@ func TestModelInvariants(t *testing.T) {
 						if err != nil {
 							t.Fatalf("NewBoot: %v", err)
 						}
-						c = &checker{t: t, bank0: m.Bank - s.Committed, phase: s.Phase}
+						c = newChecker(t, s, m)
 					}
 					c.check(s, m, a, err)
 				},
@@ -457,55 +510,67 @@ func TestDeterminism(t *testing.T) {
 	}
 }
 
-// TestJSONRoundTrip saves a boot mid-run, loads it, and plays the same
-// actions on both copies: they must end identical.
+// TestJSONRoundTrip saves boots and trials mid-run, loads them, and plays
+// the same actions on both copies: they must end identical. Replaying the
+// first half on a fresh start must also accept and refuse what the original
+// run did.
 func TestJSONRoundTrip(t *testing.T) {
 	t.Parallel()
 	ps := sim.SyntheticPool(600, 6)
-	resumed := 0
-	for seed := range uint64(300) {
-		m := &game.Meta{Prestige: game.MaxPrestige}
-		f := &fuzzer{rng: rand.New(rand.NewPCG(seed, 9)), now: t0}
-		_, moves := fuzzBoot(t, rules.Standard(), m, ps, f, false)
-		if len(moves) < 4 {
-			continue
-		}
-		cut := len(moves) / 2
-
-		// Replay the first half, snapshot, then play the rest on both.
-		f2 := &fuzzer{rng: rand.New(rand.NewPCG(seed, 9)), now: t0}
-		m2 := &game.Meta{Prestige: game.MaxPrestige}
-		s2, _, err := game.NewBoot(rules.Standard(), m2, ps, f2.rng.IntN(m2.Prestige+1), f2.rng.Uint64(), t0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, mv := range moves[:cut] {
-			game.Step(s2, m2, ps, mv.A, mv.At)
-		}
-		var s3 game.State
-		var m3 game.Meta
-		if err := json.Unmarshal([]byte(mustJSON(t, s2)), &s3); err != nil {
-			t.Fatalf("unmarshal state: %v", err)
-		}
-		if err := json.Unmarshal([]byte(mustJSON(t, m2)), &m3); err != nil {
-			t.Fatalf("unmarshal meta: %v", err)
-		}
-		if mustJSON(t, &s3) != mustJSON(t, s2) {
-			t.Fatal("state JSON does not round-trip")
-		}
-		for _, mv := range moves[cut:] {
-			fx2, err2 := game.Step(s2, m2, ps, mv.A, mv.At)
-			fx3, err3 := game.Step(&s3, &m3, ps, mv.A, mv.At)
-			if (err2 == nil) != (err3 == nil) || (err2 != nil) != mv.Err || fmt.Sprint(fx2) != fmt.Sprint(fx3) {
-				t.Fatalf("seed %d: %T%+v diverged after the reload: %v / %v", seed, mv.A, mv.A, err2, err3)
+	for _, tc := range []struct {
+		name       string
+		seeds      uint64
+		minResumed int
+		start      func(*game.Meta, *fuzzer) *game.State
+	}{
+		{"boot", 300, 1000, func(m *game.Meta, f *fuzzer) *game.State { return startBoot(t, rules.Standard(), m, ps, f) }},
+		{"trial", 150, 300, func(m *game.Meta, f *fuzzer) *game.State { return startTrial(t, m, ps, f) }},
+	} {
+		resumed := 0
+		for seed := range tc.seeds {
+			fresh := func() (*game.State, *game.Meta, *fuzzer) {
+				m := &game.Meta{Prestige: game.MaxPrestige}
+				f := &fuzzer{rng: rand.New(rand.NewPCG(seed, 9)), now: t0}
+				return tc.start(m, f), m, f
 			}
+			s, m, f := fresh()
+			moves := newChecker(t, s, m).play(s, m, ps, f, false)
+			if len(moves) < 4 {
+				continue
+			}
+			cut := len(moves) / 2
+
+			s2, m2, _ := fresh()
+			for _, mv := range moves[:cut] {
+				if _, err := game.Step(s2, m2, ps, mv.A, mv.At); (err != nil) != mv.Err {
+					t.Fatalf("%s seed %d: replayed %T%+v: %v", tc.name, seed, mv.A, mv.A, err)
+				}
+			}
+			var s3 game.State
+			var m3 game.Meta
+			if err := json.Unmarshal([]byte(mustJSON(t, s2)), &s3); err != nil {
+				t.Fatalf("unmarshal state: %v", err)
+			}
+			if err := json.Unmarshal([]byte(mustJSON(t, m2)), &m3); err != nil {
+				t.Fatalf("unmarshal meta: %v", err)
+			}
+			if mustJSON(t, &s3) != mustJSON(t, s2) {
+				t.Fatalf("%s seed %d: state JSON does not round-trip", tc.name, seed)
+			}
+			for _, mv := range moves[cut:] {
+				fx2, err2 := game.Step(s2, m2, ps, mv.A, mv.At)
+				fx3, err3 := game.Step(&s3, &m3, ps, mv.A, mv.At)
+				if (err2 == nil) != (err3 == nil) || (err2 != nil) != mv.Err || fmt.Sprint(fx2) != fmt.Sprint(fx3) {
+					t.Fatalf("%s seed %d: %T%+v diverged after the reload: %v / %v", tc.name, seed, mv.A, mv.A, err2, err3)
+				}
+			}
+			if mustJSON(t, s2) != mustJSON(t, &s3) || mustJSON(t, m2) != mustJSON(t, &m3) {
+				t.Fatalf("%s seed %d: reloaded run ended differently", tc.name, seed)
+			}
+			resumed += len(moves) - cut
 		}
-		if mustJSON(t, s2) != mustJSON(t, &s3) || mustJSON(t, m2) != mustJSON(t, &m3) {
-			t.Fatalf("seed %d: reloaded boot ended differently", seed)
+		if resumed < tc.minResumed {
+			t.Errorf("%s: only %d moves played after a reload", tc.name, resumed)
 		}
-		resumed += len(moves) - cut
-	}
-	if resumed < 1000 {
-		t.Errorf("only %d moves played after a reload", resumed)
 	}
 }

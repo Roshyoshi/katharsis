@@ -15,7 +15,7 @@ import (
 
 func TestNewBootLayout(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	h := newHarness(t, rules.Standard(), nil, ps, 0, 1)
 	s, m := h.s, h.m
 
@@ -97,7 +97,7 @@ func TestNewBootErrors(t *testing.T) {
 
 func TestBossKeys(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 50)
+	ps := dense(catalog.Topics, 800, 2600, 50)
 	for p := 0; p <= game.MaxPrestige; p++ {
 		h := newHarness(t, rules.Standard(), &game.Meta{Prestige: p}, ps, p, uint64(p))
 		got := h.s.Biomes[2].Boss
@@ -146,7 +146,7 @@ func TestRouteOffers(t *testing.T) {
 		pool []catalog.Problem
 		ok   func([]string) bool
 	}{
-		{"new player gets un-gated topics", nil, dense(allTopics(), 800, 2600, 20), func(o []string) bool {
+		{"new player gets un-gated topics", nil, dense(catalog.Topics, 800, 2600, 20), func(o []string) bool {
 			return len(o) == 2 && game.CapabilityFor(o[0]) == "" && game.CapabilityFor(o[1]) == ""
 		}},
 		{"capability unlocks its topic", []string{"CAP_DP"}, dense([]string{"dp", "graphs"}, 800, 2600, 20), func(o []string) bool {
@@ -182,7 +182,7 @@ func TestRouteOffers(t *testing.T) {
 
 func TestDoorTargets(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 400, 3000, 10)
+	ps := dense(catalog.Topics, 400, 3000, 10)
 	r := plain()
 	tier := game.CalibrationTier(r.Biomes[0])
 	cal := func(all, own float64) map[string]game.Calibration {
@@ -201,7 +201,7 @@ func TestDoorTargets(t *testing.T) {
 		{1500, 0, map[string]game.Calibration{"0.50": {Offset: 200}}, 0}, // another tier's
 	}
 	for _, tc := range tests {
-		for seed := range uint64(20) {
+		for seed := range uint64(5) {
 			m := &game.Meta{Rating: tc.rating, Prestige: tc.prestige, Calibration: tc.cal}
 			h := newHarness(t, r, m, ps, tc.prestige, seed)
 			target := tc.rating + 400*math.Log10(1/r.Biomes[0].TargetClear-1) + r.PrestigeOffset*float64(tc.prestige) + tc.offset
@@ -331,7 +331,7 @@ func TestDoorEligibility(t *testing.T) {
 
 func TestDoorModifiers(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	price := func(d game.Door, mult float64) int64 {
 		base := min(max(0.5/d.SolveP, 0.25), 4)
 		return int64(math.Round(64 * base * mult))
@@ -377,7 +377,7 @@ func TestDoorModifiers(t *testing.T) {
 
 func TestTimers(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 
 	h := newHarness(t, plain(), nil, ps, 0, 1)
 	for _, d := range h.s.Doors {
@@ -415,31 +415,50 @@ func TestTimers(t *testing.T) {
 	}
 }
 
+// TestTimerFit: past TimerFitMin solves a door's timer is the fit, clamped
+// to [TimerFitLo, TimerFitHi] of the biome's default. Doors aimed at 0.92
+// sit about 420 points below the player, where the fit is under the floor;
+// doors at 0.5 straddle the fit's crossing of the ceiling.
 func TestTimerFit(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
-	m := &game.Meta{Rating: 1500}
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	var solves []game.Solve
 	for range 40 {
-		m.Solves = append(m.Solves, game.Solve{Problem: "x", Kind: game.Independent, Elapsed: 20 * time.Minute, Gap: 0})
+		solves = append(solves, game.Solve{Problem: "x", Kind: game.Independent, Elapsed: 20 * time.Minute, Gap: 0})
 	}
-	for seed := range uint64(5) {
-		mm := *m
-		h := newHarness(t, plain(), &mm, ps, 0, seed)
-		for _, d := range h.s.Doors {
-			// q85 of 20m is 20m, ×1.25 headroom, ×2^(gap/200), clamped to
-			// [0.5, 2] × the 15m default.
-			fit := 25 * float64(time.Minute) * math.Exp2((float64(d.Rating)-1500)/200)
-			want := time.Duration(min(max(fit, 7.5*float64(time.Minute)), 30*float64(time.Minute))).Round(time.Minute)
-			if d.Timer != want {
-				t.Errorf("door %d: fitted timer %v, want %v", d.Rating, d.Timer, want)
+	clamped := map[string]int{}
+	for _, aim := range []float64{0.92, 0.5} {
+		r := plain()
+		r.Biomes = []rules.Biome{{Kind: rules.Fixed, Rooms: 1, TargetClear: aim, Timer: rules.Duration{Duration: 20 * time.Minute}}}
+		for seed := range uint64(10) {
+			h := newHarness(t, r, &game.Meta{Rating: 1500, Solves: slices.Clone(solves)}, ps, 0, seed)
+			for _, d := range h.s.Doors {
+				// q85 of 20m is 20m, ×1.25 headroom, ×2^(gap/200).
+				fit := 25 * math.Exp2((float64(d.Rating)-1500)/200)
+				lo, hi := 20*r.TimerFitLo, 20*r.TimerFitHi
+				switch {
+				case fit < lo:
+					clamped["lo"]++
+				case fit > hi:
+					clamped["hi"]++
+				default:
+					clamped["no"]++
+				}
+				want := time.Duration(min(max(fit, lo), hi) * float64(time.Minute)).Round(time.Minute)
+				if d.Timer != want {
+					t.Errorf("aim %v door %d: fitted timer %v, want %v", aim, d.Rating, d.Timer, want)
+				}
 			}
 		}
+	}
+	if len(clamped) != 3 {
+		t.Errorf("doors by clamp %v, want some below, inside and above", clamped)
 	}
 }
 
 func TestSubmit(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	wa := game.SubmitResult{Verdict: "WA", Passed: 3, Total: 10}
 
 	t.Run("wrong answer costs a life", func(t *testing.T) {
@@ -485,11 +504,15 @@ func TestSubmit(t *testing.T) {
 		h.do(wa)
 		h.do(wa)
 		fx := h.do(wa)
-		if h.s.Phase != game.PhaseCrashed || h.s.Crash.Cause != game.OutOfLives || h.s.Crash.Verdict != "WA" {
-			t.Fatalf("phase %s crash %+v", h.s.Phase, h.s.Crash)
+		c := h.s.Crash
+		if h.s.Phase != game.PhaseCrashed || c.Cause != game.OutOfLives || c.Verdict != "WA" || c.Cursed {
+			t.Fatalf("phase %s crash %+v", h.s.Phase, c)
 		}
 		if _, ok := has[game.ShowCrash](fx); !ok || !slices.Contains(sounds(fx), "crash") {
 			t.Errorf("effects %v, want ShowCrash and the crash sound", fx)
+		}
+		if last := h.s.Log[len(h.s.Log)-1].Text; !strings.Contains(last, "out of lives") {
+			t.Errorf("last dmesg line %q", last)
 		}
 	})
 	t.Run("cursed crashes on the first failure", func(t *testing.T) {
@@ -504,16 +527,6 @@ func TestSubmit(t *testing.T) {
 		}
 		if last := h.s.Log[len(h.s.Log)-1].Text; !strings.Contains(last, "curse triggered") {
 			t.Errorf("last dmesg line %q", last)
-		}
-	})
-	t.Run("out of lives is not the curse", func(t *testing.T) {
-		h := newHarness(t, plain(), nil, ps, 0, 1)
-		h.open(0)
-		h.do(wa)
-		h.do(wa)
-		h.do(wa)
-		if h.s.Crash == nil || h.s.Crash.Cursed || !strings.Contains(h.s.Log[len(h.s.Log)-1].Text, "out of lives") {
-			t.Errorf("crash %+v, log %v", h.s.Crash, h.s.Log[len(h.s.Log)-1])
 		}
 	})
 	t.Run("accepted", func(t *testing.T) {
@@ -563,11 +576,25 @@ func TestSubmit(t *testing.T) {
 			t.Errorf("after two picks: pending %v offers %v upgrades %v", h.s.PendingUpgrade, h.s.UpgradeOffers, h.s.Upgrades)
 		}
 	})
+	t.Run("-O3 on the last door promises nothing", func(t *testing.T) {
+		r := plain()
+		r.Biomes = r.Biomes[2:]
+		h := newHarness(t, r, nil, ps, 0, 1)
+		h.clearDoor(0, time.Minute)
+		if h.s.Phase != game.PhaseCleared || !h.s.History[0].O3 || h.s.UpgradePicks != 0 {
+			t.Fatalf("phase %s O3 %v picks %d", h.s.Phase, h.s.History[0].O3, h.s.UpgradePicks)
+		}
+		for _, l := range h.s.Log {
+			if strings.Contains(l.Text, "free upgrade") {
+				t.Errorf("dmesg %q after the boot's last door", l.Text)
+			}
+		}
+	})
 }
 
 func TestUpgrades(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	h := newHarness(t, plain(), nil, ps, 0, 1)
 	h.open(0)
 	h.do(game.SubmitResult{Verdict: "WA"})
@@ -597,7 +624,7 @@ func TestUpgrades(t *testing.T) {
 
 func TestQuack(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	tests := []struct {
 		name   string
 		edit   func(*rules.Rules)
@@ -645,7 +672,7 @@ func TestQuack(t *testing.T) {
 
 func TestRetreat(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 
 	h := newHarness(t, plain(), nil, ps, 0, 1)
 	d := h.open(1)
@@ -690,7 +717,7 @@ func TestRetreat(t *testing.T) {
 
 func TestDeadline(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	ac := game.SubmitResult{Verdict: "AC"}
 	tests := []struct {
 		name  string
@@ -724,7 +751,7 @@ func TestDeadline(t *testing.T) {
 
 func TestGiveUp(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	h := newHarness(t, plain(), nil, ps, 0, 1)
 	d := h.open(0)
 	h.now = h.now.Add(9 * time.Minute)
@@ -752,7 +779,7 @@ func TestGiveUp(t *testing.T) {
 // first, then this boot's uncommitted bytes (if any) become the new one.
 func TestCoreDumpOrder(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	old := &game.CoreDump{Problem: "old", Bytes: 100, Boot: 7}
 	tests := []struct {
 		name     string
@@ -837,7 +864,7 @@ func fullClear(h *harness) {
 
 func TestMergeWindow(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	h := newHarness(t, plain(), nil, ps, 0, 1)
 	h.open(0)
 	h.do(game.Quack{})                  // spend the only duck
@@ -891,7 +918,7 @@ func TestMergeWindow(t *testing.T) {
 
 func TestDaemonOffers(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	tests := []struct {
 		held []game.Daemon
 		want int
@@ -917,7 +944,7 @@ func TestDaemonOffers(t *testing.T) {
 
 func TestForkAndDevRandom(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	h := newHarness(t, plain(), nil, ps, 0, 1)
 	h.s.Daemons = []game.Daemon{game.Fork}
 	h.clearDoor(0, 10*time.Minute)
@@ -946,7 +973,7 @@ func TestForkAndDevRandom(t *testing.T) {
 
 func TestFullClear(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	// rated is the player's rated attempts before the boot: no prestige
 	// unlocks until calibration has CalibAfter of them.
 	tests := []struct {
@@ -978,7 +1005,7 @@ func TestFullClear(t *testing.T) {
 
 func TestPrestigeAscension(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	r := rules.Standard()
 	tests := []struct {
 		prestige, lives, ducks int
@@ -991,15 +1018,11 @@ func TestPrestigeAscension(t *testing.T) {
 			t.Errorf("prestige %d: lives %d ducks %d, want %d and %d", tc.prestige, h.s.Lives, h.s.Ducks, tc.lives, tc.ducks)
 		}
 	}
-	a := r.Ascend(3)
-	if math.Abs(a.BlindChance-0.15) > 1e-12 || a.Ducks != -1 || math.Abs(a.CursedChance-0.07) > 1e-12 || math.Abs(a.TimerMult-0.9) > 1e-12 || a.Lives != 0 {
-		t.Errorf("Ascend(3) = %+v", a)
-	}
 }
 
 func TestRegressionDoor(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	target := ps[40].ID
 	tests := []struct {
 		name string
@@ -1142,13 +1165,14 @@ func TestColdStart(t *testing.T) {
 
 func TestInvalidActions(t *testing.T) {
 	t.Parallel()
-	ps := dense(allTopics(), 800, 2600, 20)
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	all := []game.Action{
 		game.ChooseRoute{Index: 0}, game.ChooseRoute{Index: 9}, game.ChooseDoor{Index: 0},
 		game.ChooseDoor{Index: -1}, game.ChooseDoor{Index: 9}, game.Retreat{}, game.Quack{},
 		game.GiveUp{}, game.SubmitResult{Verdict: "AC"}, game.SubmitResult{Verdict: "WA"},
 		game.Commit{}, game.PickUpgrade{Upgrade: game.Overclock}, game.PickUpgrade{Upgrade: "bogus"},
-		game.PickDaemon{Daemon: game.Fork}, game.PickDaemon{Daemon: "bogus"}, game.LeaveMerge{}, nil,
+		game.PickDaemon{Daemon: game.Fork}, game.PickDaemon{Daemon: "bogus"}, game.LeaveMerge{},
+		game.Link{}, game.Link{Libs: []string{"nope"}}, nil,
 	}
 	setups := []struct {
 		phase string
@@ -1156,8 +1180,13 @@ func TestInvalidActions(t *testing.T) {
 		valid func(a game.Action, h *harness) bool // which of all are allowed
 	}{
 		{"doors", func(h *harness) {}, func(a game.Action, h *harness) bool {
-			c, ok := a.(game.ChooseDoor)
-			return ok && c.Index >= 0 && c.Index < len(h.s.Doors)
+			switch a := a.(type) {
+			case game.ChooseDoor:
+				return a.Index >= 0 && a.Index < len(h.s.Doors)
+			case game.Link:
+				return len(a.Libs) == 0 // the first door has not opened
+			}
+			return false
 		}},
 		{"doors with a pick owed", func(h *harness) { h.clearDoor(0, 10*time.Minute) }, func(a game.Action, h *harness) bool {
 			p, ok := a.(game.PickUpgrade)

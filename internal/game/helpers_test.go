@@ -39,8 +39,6 @@ func dense(topics []string, lo, hi, step int) []catalog.Problem {
 	return ps
 }
 
-func allTopics() []string { return catalog.Topics }
-
 // harness drives one boot with a clock that moves a minute per action.
 type harness struct {
 	t   *testing.T
@@ -89,8 +87,7 @@ func (h *harness) pick() {
 // clearDoor opens door i and ACs it after d.
 func (h *harness) clearDoor(i int, d time.Duration) {
 	h.t.Helper()
-	h.pick()
-	h.do(game.ChooseDoor{Index: i})
+	h.open(i)
 	h.now = h.now.Add(d)
 	h.do(game.SubmitResult{Verdict: "AC", Passed: 10, Total: 10})
 }

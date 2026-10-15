@@ -31,7 +31,7 @@ func (e *engine) target(topic string, rb rules.Biome) float64 {
 // what the engine is trying to offer, before the pool decides what it can.
 func (s *State) Target(m *Meta, topic string) float64 {
 	e := &engine{s: s, meta: m}
-	return e.target(topic, s.Rules.Biomes[min(s.Biome, len(s.Rules.Biomes)-1)])
+	return e.target(topic, s.Rules.Biomes[s.Biome])
 }
 
 // attempted is every problem opened this boot.
@@ -178,13 +178,11 @@ func (e *engine) rollRoom(fresh bool) {
 	for _, p := range ps {
 		doors = append(doors, e.makeDoor(p, rb, b.Boss, false))
 	}
+	// A regression door needs a judgeable problem, so the room has a door
+	// for it to replace.
 	if fresh && s.Trial == nil {
 		if d, ok := e.regressionDoor(rb, doors); ok {
-			if len(doors) > 0 {
-				doors[len(doors)-1] = d
-			} else {
-				doors = append(doors, d)
-			}
+			doors[len(doors)-1] = d
 		}
 	}
 	s.Doors = doors
@@ -296,10 +294,7 @@ func (e *engine) doorBytes(d Door) int64 {
 // route is never empty.
 func (e *engine) routeOffers(rb rules.Biome, k int, used map[string]bool) []string {
 	r := &e.s.Rules
-	widest := 0.0
-	for _, w := range r.RatingWindows {
-		widest = max(widest, float64(w))
-	}
+	widest := float64(slices.Max(r.RatingWindows))
 	ex := e.excluded()
 	targets := map[string]float64{}
 	count := map[string]int{}

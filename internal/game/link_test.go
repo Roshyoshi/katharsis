@@ -5,11 +5,13 @@ import (
 	"slices"
 	"testing"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 )
 
 func TestLink(t *testing.T) {
-	ps := dense(allTopics(), 800, 2600, 20)
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2600, 20)
 	m := &game.Meta{Libs: []game.Lib{{Name: "dsu", Source: "struct DSU{};\n"}, {Name: "bit", Source: "int b;\n"}, {Name: "seg", Source: "int s;\n"}}}
 	h := newHarness(t, plain(), m, ps, 0, 1)
 

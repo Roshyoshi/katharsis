@@ -366,7 +366,7 @@ type RevealTags struct {
 type OpenEditorial struct{ Problem catalog.ID }
 type ShowCrash struct{ Crash Crash }
 type ShowCleared struct{}
-type Sound struct{ Name string }              // "ac", "wa", "crash", "commit", "boss"
+type Sound struct{ Name string }              // "ac", "wa", "crash", "commit", "boss", "cleared"
 type Prefetch struct{ Problems []catalog.ID } // doors on offer: fetch ahead
 
 func (OpenProblem) isEffect()   {}

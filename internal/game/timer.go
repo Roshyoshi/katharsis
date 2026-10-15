@@ -1,6 +1,7 @@
 package game
 
 import (
+	"cmp"
 	"math"
 	"slices"
 	"time"
@@ -74,15 +75,7 @@ func fitTimer(r *rules.Rules, solves []Solve, gap float64) (time.Duration, bool)
 	}
 	// Stable: ties keep recency order, so the result doesn't depend on
 	// sort internals.
-	slices.SortStableFunc(xs, func(a, b obs) int {
-		switch {
-		case a.dist < b.dist:
-			return -1
-		case a.dist > b.dist:
-			return 1
-		}
-		return 0
-	})
+	slices.SortStableFunc(xs, func(a, b obs) int { return cmp.Compare(a.dist, b.dist) })
 	xs = xs[:max(r.TimerFitMin, len(xs)/2)]
 	ts := make([]float64, len(xs))
 	for i, x := range xs {

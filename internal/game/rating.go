@@ -49,10 +49,7 @@ func PlayerRating(r *rules.Rules, m *Meta, topic string) float64 {
 // to close a 200-point gap, all the while aiming its doors at a player who
 // is no longer there.
 func rate(r *rules.Rules, m *Meta, d Door, score float64) {
-	overall := m.Rating
-	if overall <= 0 {
-		overall = r.ColdStartRating
-	}
+	overall := m.Rating // NewBoot and NewTrial set a cold start
 	k := ratingK(r, m)
 	m.Rated++
 	m.Rating = overall + k*(score-Expected(overall, float64(d.Rating)))
@@ -63,7 +60,7 @@ func rate(r *rules.Rules, m *Meta, d Door, score float64) {
 			m.TopicRating[t] += follow
 		}
 	}
-	if d.Topic == "" || d.Topic == Mixed {
+	if d.Topic == Mixed {
 		return
 	}
 	if m.TopicRating == nil {
@@ -90,21 +87,17 @@ func rate(r *rules.Rules, m *Meta, d Door, score float64) {
 // the same K: a topic first seen during the cold start starts from a cold
 // overall rating and has to catch up with it.
 func ratingK(r *rules.Rules, m *Meta) float64 {
-	if Warm(r, m) {
+	if rated(m) >= r.RatingColdAttempts {
 		return r.RatingK
 	}
 	return max(r.RatingKCold, r.RatingK)
 }
 
-// Warm reports whether m is past the cold start (rules.RatingColdAttempts
-// rated attempts).
-func Warm(r *rules.Rules, m *Meta) bool { return Rated(m) >= r.RatingColdAttempts }
-
-// Rated is how many rated attempts m has made. Saves from before Meta.Rated
+// rated is how many rated attempts m has made. Saves from before Meta.Rated
 // existed count their topic attempts instead, which undercounts (mixed
 // doors were never counted) but keeps an old player from being put back
 // into a cold start.
-func Rated(m *Meta) int {
+func rated(m *Meta) int {
 	t := 0
 	for _, c := range m.TopicAttempts {
 		t += c

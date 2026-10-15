@@ -31,7 +31,7 @@ func TestCalibrationTier(t *testing.T) {
 func TestCalibrate(t *testing.T) {
 	t.Parallel()
 	const k = math.Ln10 / 400
-	pool := dense(allTopics(), 800, 2600, 20)
+	pool := dense(catalog.Topics, 800, 2600, 20)
 	base := plain()
 	base.Biomes = []rules.Biome{{Kind: rules.Fixed, Rooms: 2, TargetClear: 0.5, Timer: rules.Duration{Duration: 30 * time.Minute}}}
 	tier := game.CalibrationTier(base.Biomes[0])

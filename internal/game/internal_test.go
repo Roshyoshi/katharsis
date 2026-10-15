@@ -75,6 +75,12 @@ func TestFitTimer(t *testing.T) {
 		}
 		return ss
 	}
+	// 30 solves near gap 0 at 20 min, 30 far away (gap -600) that would
+	// move onto gap 0 at 80 min.
+	var mixed []Solve
+	for range 30 {
+		mixed = append(mixed, solves(1, 0, 20*time.Minute)[0], solves(1, -600, 10*time.Minute)[0])
+	}
 	tests := []struct {
 		name   string
 		solves []Solve
@@ -88,6 +94,8 @@ func TestFitTimer(t *testing.T) {
 		{"solves were easier", solves(20, -200, 10*time.Minute), 0, 25 * time.Minute},
 		{"upsolves ignored", append(solves(19, 0, 20*time.Minute), Solve{Kind: Independent, Elapsed: time.Hour, Upsolve: true}), 0, 0},
 		{"editorial ignored", append(solves(19, 0, 20*time.Minute), Solve{Kind: Editorial, Elapsed: time.Hour}), 0, 0},
+		{"trials ignored", append(solves(19, 0, 20*time.Minute), Solve{Kind: Independent, Elapsed: time.Hour, Trial: true}), 0, 0},
+		{"the nearest half decide", mixed, 0, 25 * time.Minute},
 	}
 	for _, tc := range tests {
 		got, ok := fitTimer(&r, tc.solves, tc.gap)
@@ -100,21 +108,5 @@ func TestFitTimer(t *testing.T) {
 		if !ok || (got-tc.want).Abs() > time.Second {
 			t.Errorf("%s: fitTimer = %v, %v; want %v", tc.name, got, ok, tc.want)
 		}
-	}
-}
-
-func TestFitTimerNearestGaps(t *testing.T) {
-	t.Parallel()
-	r := rules.Standard()
-	// 30 solves near gap 0 at 20 min, 30 far away (gap -600) that would
-	// normalize to 80 min. The nearest half decide.
-	var ss []Solve
-	for range 30 {
-		ss = append(ss, Solve{Kind: Independent, Elapsed: 20 * time.Minute, Gap: 0})
-		ss = append(ss, Solve{Kind: Independent, Elapsed: 10 * time.Minute, Gap: -600})
-	}
-	got, ok := fitTimer(&r, ss, 0)
-	if !ok || (got-25*time.Minute).Abs() > time.Second {
-		t.Fatalf("fitTimer = %v, %v; want 25m from the near solves only", got, ok)
 	}
 }

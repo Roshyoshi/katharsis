@@ -71,8 +71,9 @@ type Rules struct {
 	// BlindAll hides tags on every door (a run modifier).
 	BlindAll bool `toml:"blind_all"`
 
-	// Bytes for clearing a door at TargetClear 0.5; easier doors pay less
-	// (scaled by difficulty relative to the player), bosses pay BossMult.
+	// BaseBytes pays for clearing a door the player clears half the time;
+	// easier doors pay less and harder ones more, so a door's expected
+	// payout stays near BaseBytes/2. Bosses pay BossMult on top.
 	BaseBytes int64   `toml:"base_bytes"`
 	BossMult  float64 `toml:"boss_mult"`
 	// O3Frac: AC within this fraction of the timer grants a free upgrade.
@@ -81,8 +82,9 @@ type Rules struct {
 	// Upgrade sizes.
 	OverclockFrac float64 `toml:"overclock_frac"` // timer bonus per Overclock
 
-	// Regressions: days after a crash or editorial-assisted solve when the
-	// problem returns.
+	// RegressionDays schedules a problem that crashed you: it returns as a
+	// door RegressionDays[0] days after the crash, RegressionDays[i] days
+	// after its i-th re-solve, and retires after the last.
 	RegressionDays []int `toml:"regression_days"`
 
 	// TimerFit: once the player has this many solves, door timers come from

@@ -97,41 +97,6 @@ func TestCalibrationHitsTargets(t *testing.T) {
 	}
 }
 
-// TestStandardBalance logs rules.Standard() for the two reference players
-// (go test -v shows the reports). It asserts accounting only: balance is a
-// judgment call made from these numbers, not a test outcome.
-func TestStandardBalance(t *testing.T) {
-	t.Parallel()
-	pool := sim.SyntheticPool(600, 1)
-	for _, rating := range []float64{1000, 1600} {
-		for _, prestige := range []int{0, -1} {
-			rep := sim.Run(sim.Config{
-				Rules:    rules.Standard(),
-				Pool:     pool,
-				Player:   sim.DefaultPlayer(rating),
-				Boots:    300,
-				Warmup:   20,
-				Seed:     7,
-				Prestige: prestige,
-			})
-			t.Logf("player %.0f, prestige %d:\n%s", rating, prestige, rep)
-			if rep.Errors != 0 {
-				t.Errorf("%d engine errors", rep.Errors)
-			}
-			crashes := 0
-			for _, n := range rep.CrashBiome {
-				crashes += n
-			}
-			if rep.FullClears+crashes != rep.Boots {
-				t.Errorf("clears %d + crashes %d != boots %d", rep.FullClears, crashes, rep.Boots)
-			}
-			if rep.ClearRate <= 0 || rep.ClearRate >= 1 {
-				t.Errorf("full-clear rate %.3f", rep.ClearRate)
-			}
-		}
-	}
-}
-
 func TestSimulateDeterministic(t *testing.T) {
 	t.Parallel()
 	pool := sim.SyntheticPool(600, 2)
@@ -140,8 +105,12 @@ func TestSimulateDeterministic(t *testing.T) {
 	if a.String() != b.String() {
 		t.Fatalf("same seed, different reports:\n%s\n%s", a, b)
 	}
-	if a.Boots != 200 || a.Errors != 0 {
-		t.Errorf("boots %d errors %d", a.Boots, a.Errors)
+	crashes := 0
+	for _, n := range a.CrashBiome {
+		crashes += n
+	}
+	if a.Boots != 200 || a.Errors != 0 || a.FullClears+crashes != a.Boots || a.FullClears == 0 {
+		t.Errorf("boots %d errors %d clears %d crashes %d", a.Boots, a.Errors, a.FullClears, crashes)
 	}
 }
 

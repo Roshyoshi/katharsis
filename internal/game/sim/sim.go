@@ -34,16 +34,12 @@ type Player struct {
 	Sigma    float64
 	GapScale float64
 
-	WAProb      float64 // chance each submit before the AC fails
-	StuckWAs    float64 // mean failed submits on a door it can't solve
-	DuckBoost   float64 // chance a quack un-sticks it; 0 never quacks
-	BlindCost   float64 // effective rating lost when tags are hidden
-	UpsolveProb float64 // chance it upsolves the crash between boots
-	Overhead    time.Duration
-
-	// Daemons is the model's pick order at a merge window; nil is fork,
-	// kexec, dev-random, strace, nice.
-	Daemons []game.Daemon
+	WAProb      float64       // chance each submit before the AC fails
+	StuckWAs    float64       // mean failed submits on a door it can't solve
+	DuckBoost   float64       // chance a quack un-sticks it; 0 never quacks
+	BlindCost   float64       // effective rating lost when tags are hidden
+	UpsolveProb float64       // chance it upsolves the crash between boots
+	Overhead    time.Duration // clock time per choice outside a door
 }
 
 // DefaultPlayer is the model the reports in this package's tests use.
@@ -413,11 +409,7 @@ func (b *boot) upgrade() game.Upgrade {
 }
 
 func (b *boot) daemon() game.Daemon {
-	order := b.p.Daemons
-	if order == nil {
-		order = []game.Daemon{game.Fork, game.Kexec, game.DevRandom, game.Strace, game.Nice}
-	}
-	for _, d := range order {
+	for _, d := range []game.Daemon{game.Fork, game.Kexec, game.DevRandom, game.Strace, game.Nice} {
 		if slices.Contains(b.s.DaemonOffers, d) {
 			return d
 		}

@@ -69,28 +69,35 @@ func NewBoot(r rules.Rules, meta *Meta, pool []catalog.Problem, prestige int, se
 		return nil, nil, errors.New("game: no judgeable problems in the pool")
 	}
 
-	meta.Boots++
-	if meta.Rating <= 0 {
-		meta.Rating = r.ColdStartRating
-	}
-	asc := r.Ascend(prestige)
-	s := &State{
-		Boot:     meta.Boots,
-		Seed:     seed,
-		RNG:      seed,
-		Rules:    r,
-		Prestige: prestige,
-		Started:  now,
-	}
-	s.Lives = max(1, r.Lives+asc.Lives)
-	s.MaxLives = max(r.MaxLives, s.Lives)
-	s.Ducks = max(0, r.Ducks+asc.Ducks)
-
+	s := &State{Seed: seed, RNG: seed, Rules: r, Prestige: prestige, Started: now}
 	e := newEngine(s, meta, pool, now)
+	e.begin()
 	e.logf("boot #%d: prestige %d, rules %s, seed %#x, rating %.0f", s.Boot, prestige, r.Name, seed, meta.Rating)
 	e.layout()
 	e.enterBiome(0)
 	return s, e.fx, nil
+}
+
+// begin numbers the boot and deals its lives and ducks. It is the first
+// write to Meta, so NewBoot and NewTrial call it once their arguments have
+// checked out.
+func (e *engine) begin() {
+	s, m, r := e.s, e.meta, &e.s.Rules
+	m.Boots++
+	if m.Rating <= 0 {
+		m.Rating = r.ColdStartRating
+	}
+	s.Boot = m.Boots
+	s.Lives = max(1, r.Lives+r.Ascend(s.Prestige).Lives)
+	s.MaxLives = max(r.MaxLives, s.Lives)
+	s.Ducks = e.baseDucks()
+}
+
+// baseDucks is what the boot starts with and merge windows refill to,
+// before Duck upgrades.
+func (e *engine) baseDucks() int {
+	r := &e.s.Rules
+	return max(0, r.Ducks+r.Ascend(e.s.Prestige).Ducks)
 }
 
 // Step applies one action. Tick is accepted in every phase (it only matters
@@ -406,23 +413,23 @@ func (e *engine) clear() {
 	e.logf("%s: AC in %s, +%s%s", name, clock(elapsed), fmtBytes(paid), over)
 	e.emit(CloseProblem{Door: d})
 
+	s.Room++
+	more := s.Room < s.Biomes[s.Biome].Rooms
+	if !more && s.Biome == len(s.Biomes)-1 {
+		e.finish()
+		return
+	}
 	picks := 1
 	if a.O3 {
 		picks++
 		e.logf("%s: -O3, under %s, free upgrade", name, clock(scale(d.Timer, r.O3Frac)))
 	}
-	s.Room++
-	switch {
-	case s.Room < s.Biomes[s.Biome].Rooms:
-		e.emit(Sound{Name: "ac"})
-		e.owe(picks)
+	e.emit(Sound{Name: "ac"})
+	e.owe(picks)
+	if more {
 		s.Phase = PhaseDoors
 		e.rollRoom(true)
-	case s.Biome == len(s.Biomes)-1:
-		e.finish()
-	default:
-		e.emit(Sound{Name: "ac"})
-		e.owe(picks)
+	} else {
 		e.enterMerge()
 	}
 }
@@ -435,12 +442,11 @@ func (e *engine) clear() {
 // A failed trial loses its uncommitted bytes but leaves no core dump and
 // schedules no regression. A dump would destroy a real boot's shade over a
 // practice failure. A regression would come back in boots, where a trial
-// problem is rarely near the player's level (trial doors are the module's,
-// not aimed), and the one regression slot per boot, oldest first, would
-// sit behind it; retrying the trial brings the unit back anyway.
+// problem is rarely near the player's level, and take the boot's one
+// regression slot; retrying the trial brings the unit back anyway.
 //
-// cursed marks a crash the curse caused (a failed submit on a cursed door)
-// rather than the lives running out; Cause is OutOfLives either way.
+// cursed marks a crash the curse caused rather than the lives running out;
+// Cause is OutOfLives either way.
 func (e *engine) crash(cause Outcome, cursed bool) {
 	s, m := e.s, e.meta
 	name := e.door()
@@ -481,7 +487,6 @@ func (e *engine) crash(cause Outcome, cursed bool) {
 	}
 	s.Crash = &c
 	s.Phase = PhaseCrashed
-	e.dropPicks()
 	why := map[Outcome]string{
 		TimedOut:   "Kernel panic - not syncing: timer expired on " + name,
 		OutOfLives: "Kernel panic - not syncing: out of lives on " + name,
@@ -499,11 +504,13 @@ func (e *engine) crash(cause Outcome, cursed bool) {
 
 // ---- upgrades --------------------------------------------------------------
 
+// owe adds n upgrade picks to what is owed (n < 0 pays) and draws the next
+// pick's offers while any is owed. No pick is on offer when it is called.
 func (e *engine) owe(n int) {
 	s := e.s
 	s.UpgradePicks += n
 	s.PendingUpgrade = s.UpgradePicks > 0
-	if s.PendingUpgrade && len(s.UpgradeOffers) == 0 {
+	if s.PendingUpgrade {
 		e.offerUpgrades()
 	}
 }
@@ -521,14 +528,11 @@ func (e *engine) offerUpgrades() {
 	s.UpgradeOffers = sample(e.rng, pool, s.Rules.UpgradeOffers)
 }
 
-func (e *engine) dropPicks() {
-	e.s.UpgradePicks, e.s.PendingUpgrade, e.s.UpgradeOffers = 0, false, nil
-	e.s.Doors, e.s.DaemonOffers = nil, nil
-}
-
+// pickUpgrade takes one owed pick. Picks are owed only outside a problem:
+// a door cannot open with one pending, and the boot's last clear owes none.
 func (e *engine) pickUpgrade(u Upgrade) error {
 	s := e.s
-	if !s.PendingUpgrade || s.Phase == PhaseProblem || s.Phase == PhaseCrashed || s.Phase == PhaseCleared {
+	if !s.PendingUpgrade {
 		return invalid("no upgrade pick pending")
 	}
 	if !slices.Contains(s.UpgradeOffers, u) {
@@ -548,12 +552,8 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 		s.Ducks++
 	}
 	e.logf("upgrade: %s (lives %d, ducks %d)", u, s.Lives, s.Ducks)
-	s.UpgradePicks--
 	s.UpgradeOffers = nil
-	s.PendingUpgrade = s.UpgradePicks > 0
-	if s.PendingUpgrade {
-		e.offerUpgrades()
-	}
+	e.owe(-1)
 	return nil
 }
 
@@ -566,15 +566,13 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 func (e *engine) enterMerge() {
 	s, r := e.s, &e.s.Rules
 	s.Phase = PhaseMerge
-	s.Doors = nil
-	refill := max(0, r.Ducks+r.Ascend(s.Prestige).Ducks)
+	refill := e.baseDucks()
 	for _, u := range s.Upgrades {
 		if u == Duck {
 			refill++
 		}
 	}
 	s.Ducks = max(s.Ducks, refill)
-	s.DaemonOffers = nil
 	if len(s.Daemons) < r.MaxDaemons && s.Trial == nil {
 		var pool []Daemon
 		for _, d := range AllDaemons {
@@ -613,11 +611,9 @@ func (e *engine) pickDaemon(d Daemon) error {
 	if err := e.need(PhaseMerge, "pick daemon"); err != nil {
 		return err
 	}
+	// A window offers daemons only below MaxDaemons, and only one pick.
 	if !slices.Contains(s.DaemonOffers, d) {
 		return invalid("daemon %q not on offer", d)
-	}
-	if len(s.Daemons) >= s.Rules.MaxDaemons {
-		return invalid("already running %d daemons", len(s.Daemons))
 	}
 	s.Daemons = append(s.Daemons, d)
 	s.DaemonOffers = nil
@@ -679,18 +675,17 @@ func (e *engine) finish() {
 		e.bank()
 	}
 	s.Phase = PhaseCleared
-	e.dropPicks()
 	switch {
 	case s.Trial != nil:
 		e.passTrial()
 	// No unlock while the engine is still learning the player: before
 	// calibration starts, a strong newcomer's early boots are easy and
 	// would climb every prestige in a handful of clears.
-	case s.Prestige == m.Prestige && m.Prestige < MaxPrestige && Rated(m) >= s.Rules.CalibAfter:
+	case s.Prestige == m.Prestige && m.Prestige < MaxPrestige && rated(m) >= s.Rules.CalibAfter:
 		m.Prestige++
 		e.logf("prestige %d unlocked", m.Prestige)
 	case s.Prestige == m.Prestige && m.Prestige < MaxPrestige:
-		e.logf("prestige %d locked until %d rated doors (%d so far)", m.Prestige+1, s.Rules.CalibAfter, Rated(m))
+		e.logf("prestige %d locked until %d rated doors (%d so far)", m.Prestige+1, s.Rules.CalibAfter, rated(m))
 	}
 	e.logf("boot #%d: cleared in %s, %s committed", s.Boot, clock(e.now.Sub(s.Started)), fmtBytes(s.Committed))
 	e.emit(Sound{Name: "cleared"}, ShowCleared{})
@@ -723,18 +718,12 @@ func (s *State) Paid(a Attempt) int64 {
 // past the deadline the HUD counts overtime up instead of crashing.
 func (s *State) SoftTimer() bool { return s.Rules.OnExpire == rules.ExpireOvertime }
 
-// ShowsFailingInput reports whether the HUD may show what a failing full
-// test contains: its input, the expected output and the program's output,
-// and whether :Debug may run the debugger on it. Inside a boot this is
-// hidden unless the strace daemon runs (or the rules show it to everyone,
-// as rules.Trial does): the full tests are the judge's, and a failing case
-// on screen turns a wrong answer into a diff to match, which is the perk
-// strace sells. What stays visible either way is the verdict, the HP bar
-// (tests passed of the total) and the samples, which are the statement's.
-//
-// A boot that has ended (crashed or cleared) shows everything, as does a
-// nil State, meaning no boot at all (practice, an upsolve between boots):
-// nothing is at stake any more.
+// ShowsFailingInput reports whether the HUD may show a failing full test
+// (input, expected and actual output) and :Debug may run it. A running boot
+// hides it unless strace runs or the rules show it (rules.Trial): a failing
+// case on screen turns a wrong answer into a diff to match, which is the
+// perk strace sells. A nil State (practice, an upsolve) and an ended boot
+// show it, as nothing is at stake.
 func (s *State) ShowsFailingInput() bool {
 	if s == nil || s.Phase == PhaseCrashed || s.Phase == PhaseCleared {
 		return true

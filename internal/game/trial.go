@@ -19,17 +19,15 @@ import (
 //
 // The unit plays t.Unit in order, with tags shown, skipping problems the
 // pool cannot judge. A unit shorter than the minimum is topped up from the
-// pool (only 41 of 149 guide modules list 4 playable USACO problems, and
-// none of the Advanced ones); top-ups are merged in by rating so the unit
-// still ramps, and the module's own order is never changed. The
-// integration draws blind doors the same way (see trialDraw).
+// pool (only 41 of 149 guide modules list 4 playable USACO problems);
+// top-ups are merged in by rating so the unit still ramps, and the module's
+// own order is never changed. The integration draws blind doors the same
+// way (see trialDraw).
 //
-// Lives apply. The timer does what r.OnExpire says; rules.Trial's soft
-// timer lets an attempt run into overtime, which costs bytes and rating but
-// not the trial. Clearing grants t.Capability and records t.Module in
-// Meta.TrialsPassed; failing ends the trial like a crash, without a core
-// dump or a regression (see crash). Doors cannot be swapped, merge windows
-// offer no daemons, and trial doors do not teach the aim calibration.
+// Clearing grants t.Capability and records t.Module in Meta.TrialsPassed;
+// failing ends the trial like a crash, without a core dump or a regression
+// (see crash). Doors cannot be swapped, merge windows offer no daemons, and
+// trial doors are not aimed, so they teach no calibration.
 func NewTrial(r rules.Rules, meta *Meta, pool []catalog.Problem, t TrialSpec, seed uint64, now time.Time) (*State, []Effect, error) {
 	if meta == nil {
 		return nil, nil, errors.New("game: nil meta")
@@ -54,14 +52,7 @@ func NewTrial(r rules.Rules, meta *Meta, pool []catalog.Problem, t TrialSpec, se
 		return nil, nil, err
 	}
 
-	meta.Boots++
-	if meta.Rating <= 0 {
-		meta.Rating = r.ColdStartRating
-	}
-	s.Boot = meta.Boots
-	s.Lives = max(1, r.Lives)
-	s.MaxLives = max(r.MaxLives, s.Lives)
-	s.Ducks = max(0, r.Ducks)
+	e.begin()
 	topic := t.IntegTopic
 	if topic == "" {
 		topic = Mixed

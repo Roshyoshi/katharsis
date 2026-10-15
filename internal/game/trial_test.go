@@ -246,7 +246,7 @@ func TestTrialNoRetreat(t *testing.T) {
 // most OvertimeScore. Boots can run on a soft timer too, so this uses one.
 func TestOvertime(t *testing.T) {
 	t.Parallel()
-	pool := dense(allTopics(), 800, 2600, 20)
+	pool := dense(catalog.Topics, 800, 2600, 20)
 	r := plain()
 	r.OnExpire = rules.ExpireOvertime
 	r.RatingColdAttempts = 0 // K 40, so the score is readable off the rating
@@ -312,7 +312,7 @@ func TestOvertime(t *testing.T) {
 
 func TestShowsFailingInput(t *testing.T) {
 	t.Parallel()
-	pool := dense(allTopics(), 800, 2600, 20)
+	pool := dense(catalog.Topics, 800, 2600, 20)
 	open := func(r rules.Rules, daemons ...game.Daemon) *game.State {
 		h := newHarness(t, r, nil, pool, 0, 1)
 		h.s.Daemons = daemons
