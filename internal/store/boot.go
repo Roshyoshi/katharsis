@@ -162,12 +162,19 @@ func (s *Store) putBoot(tx *sql.Tx, st *game.State, raw []byte, now time.Time) e
 
 // putAttempts inserts History[next:], where next is one past the highest
 // index already stored. History is append-only, so the earlier entries are
-// already there and need not be re-encoded on every Tick.
+// already there and need not be re-encoded on every Tick, and a snapshot
+// with fewer attempts than the store is older than what it would replace:
+// a second game on the same boot, still showing a door the first one
+// cleared. It is refused, which rolls the whole checkpoint back.
 func (s *Store) putAttempts(tx *sql.Tx, st *game.State) error {
 	var next int
 	if err := tx.QueryRow(`SELECT COALESCE(MAX(idx) + 1, 0) FROM attempts WHERE boot = ?`,
 		st.Boot).Scan(&next); err != nil {
 		return err
+	}
+	if next > len(st.History) {
+		return fmt.Errorf("%w: boot %d has %d attempts stored, the snapshot %d",
+			ErrStaleBoot, st.Boot, next, len(st.History))
 	}
 	for i := next; i < len(st.History); i++ {
 		a := &st.History[i]

@@ -86,6 +86,14 @@ func runGame(args []string) error {
 	if err != nil {
 		return err
 	}
+	// One game per store: a second one resumes the same boot and saves its
+	// stale copy of it over this one's. The kernel drops the lock however
+	// the process ends.
+	lock, err := store.Acquire(path)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
 	st, err := store.Open(path)
 	if err != nil {
 		return err

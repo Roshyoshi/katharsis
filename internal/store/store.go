@@ -10,7 +10,8 @@
 // A Store is safe for concurrent use, and several processes may open the
 // same file (a `top` pane next to a running boot): WAL lets readers proceed
 // while a writer commits, and every write is one transaction, so a reader
-// sees either all of a Checkpoint or none of it.
+// sees either all of a Checkpoint or none of it. Only one game plays against
+// a file at a time (Acquire): two would each resume the same boot.
 package store
 
 import (
@@ -47,6 +48,10 @@ var (
 	// different boot (another seed or start time), which would splice two
 	// boots' attempts together.
 	ErrBootReused = errors.New("store: boot id belongs to another boot")
+	// ErrStaleBoot refuses a Checkpoint whose snapshot has fewer attempts
+	// than the store already holds for its boot: it predates them, and
+	// saving it would undo them.
+	ErrStaleBoot = errors.New("store: boot snapshot is older than the store")
 )
 
 type Store struct {
