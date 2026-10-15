@@ -223,7 +223,15 @@ Cleanup done; story-wire merged ({days} from the regression schedule; merge.full
 at MaxDaemons; regression.door in the strip; trial pass/fail Gryphon lines; the
 Mock Turtle on module pages; RTFM index WORDS/CURRICULUM/EXAMPLES/BUGS with tail
 scrolling so COLOPHON stays reachable; mid-boot boss defeat over the merge
-window's upgrade). Core-loop QA running (qa-loop); wave 1 done.
+window's upgrade). Core-loop QA done: verdict ready to play; 9 fixes merged (resize resets the
+scroll region so the end line no longer lands mid-panic; merge cursor; vim reply
+heads; flash wraps; merge leave row; top "-"; trial cleared title; crash tick
+cost; refusal text). Speed: GRUB 0.2 s, :w warm 0.55 s, :Submit 10 tests 3.5 s,
+idle 0.5-1.4% CPU. Disk: /tmp agent scratch removed (1.2 -> 5.3 GiB free); go
+build cache 16 GB is the user's call. Running: fix-orphans (RLIMIT_CPU backstop +
+start sweep for orphaned solutions), fix-polish (O2 via editorial_open events,
+J21, J24, at +5:00, RTFM next-step name/level, strip ellipsis, resume note,
+after-pass step). Then alpha; wave 1 done.
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
 retired milestone); cleanup wave 1: g-store, g-qa
