@@ -23,7 +23,7 @@
 
                         kept   rating 1214 → 1262 ▲48
                         lever  "Cow Poetry" ◆1700 cleared in 36:22 of 50:00 · 1 duck · ≈47% predicted
-                        next ▸ r reboot at Gold
+                        next ▸ r retry the dp-intro trial
 
                                      ╭─ Userland ─╮   ╭─ The Heap ─╮   ╭─ The Mesh ─╮   ╭─ Heisenbug ─╮
                                      │    ✓ ✓     │───│    ✓ ✓     │───│    ✓ ✓     │───│      ✓      │
@@ -37,4 +37,4 @@
 
 
 
-r reboot · l git log · g GRUB
+r retry · l git log · g GRUB

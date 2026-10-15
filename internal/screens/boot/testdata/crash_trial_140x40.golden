@@ -36,5 +36,5 @@
   no core dump: a trial loses its 96 B outright
   kept   rating 1214 → 1180 ▼34 · graphs 1240 → 1210 ▼30 · bank 2.1 KiB
   lever  2 failed submits, the best WA 37/52 tests → a case the samples missed; an upsolve shows the failing test · ≈74% predicted
-  next ▸ r reboot at Silver
+  next ▸ r retry the dp-intro trial
   [u] upsolve  [e] editorial  [l] git log  [g] GRUB
