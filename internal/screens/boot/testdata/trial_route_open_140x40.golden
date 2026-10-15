@@ -1,0 +1,40 @@
+Boot #42 · Silver · route · act II                                                                                            uptime 1:03:05
+♥ 50/50 cycles  🦆1  0 B uncommitted · 1.2 KiB committed                                                                      daemons strace
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+                                        Pick an exit. It sets the next door and the boss behind it.
+
+  ╔═ ▸ 1 ════════════════════════════════════╗  ╔═ 2 ══════════════════════════════════════╗  ╔═ 3 ══════════════════════════════════════╗
+  ║ ⚔ Heisenbug                              ║  ║ ⚔ Race Condition                         ║  ║ ⚔ trial                                  ║
+  ║ act II boss                              ║  ║ act II boss                              ║  ║ the Court of Hearts                      ║
+  ║ It disappears the moment you add a print ║  ║ It disappears the moment you add a print ║  ║ It disappears the moment you add a print ║
+  ║ statement.                               ║  ║ statement.                               ║  ║ statement.                               ║
+  ║                                          ║  ║                                          ║  ║                                          ║
+  ║ 1 room · ⏱ ~39:00                        ║  ║ 1 room · ⏱ ~39:00                        ║  ║ 1 room · ⏱ ~39:00                        ║
+  ║ ◆1150–1350 · aim 45% clear               ║  ║ ◆1150–1350 · aim 45% clear               ║  ║ ◆1150–1350 · aim 45% clear               ║
+  ║ a fail −20 ♥, a new boss door            ║  ║ a fail −20 ♥, a new boss door            ║  ║ a fail ends the boot                     ║
+  ║                                          ║  ║                                          ║  ║ ☠ cursed · one shot                      ║
+  ║                                          ║  ║                                          ║  ║ ↩ retreat: a new cursed door             ║
+  ║                                          ║  ║                                          ║  ║ ends the boot here                       ║
+  ║                                          ║  ║                                          ║  ║ no prestige unlock                       ║
+  ╚══════════════════════════════════════════╝  ╚══════════════════════════════════════════╝  ╚══════════════════════════════════════════╝
+
+                                                              the boot so far
+             ╭─ Userland ─╮   ╭─ The Scheduler ─╮   ╭─ Off-by-One ─╮   ╭─ The ALU ─╮   ╭─ boss ─╮   ╭─ act III ─╮   ╭─ boss ─╮
+             │    ✓ ✗     │───│        ✓        │───│      ✓       │───│     ✓     │───│   ⚔    │───│     ○     │───│   ⚔    │
+             ╰────────────╯   ╰─────────────────╯   ╰──────────────╯   ╰───────────╯   ╰────────╯   ╰───────────╯   ╰────────╯
+
+
+
+
+
+
+
+
+←/→ choose · enter take exit · m map

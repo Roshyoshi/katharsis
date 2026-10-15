@@ -238,6 +238,8 @@ func shortHash(b BootRow) string {
 // gives way first: the cause is the part worth reading.
 func outcomeText(b BootRow, room int) string {
 	switch {
+	case b.Cleared && b.Ending == game.EndingWake:
+		return "awake (the Trial)" // achievements.md (f): never "woke"
 	case b.Cleared:
 		return "cleared"
 	case b.Cause == "":

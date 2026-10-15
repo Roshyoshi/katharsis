@@ -65,6 +65,9 @@ func mapNodes(st *game.State) (nodes [][]node, merge, here int) {
 		}
 	case game.PhaseCleared:
 		b, r = len(st.Biomes), 0
+		if st.Ending != "" {
+			b = st.Biome + 1 // an ending (the Trial) leaves the tiers after it unplayed
+		}
 	default:
 		here = b
 	}
@@ -283,13 +286,17 @@ func tierSpots(st *game.State, t int, reach map[string]bool, nodes [][]node, off
 		if n.Tier != t {
 			continue
 		}
-		// A hidden node (the Trial) is on the map only where the engine put
-		// it on the route, or the tier played it.
-		if n.Hidden && bs.Node != n.ID && !slices.ContainsFunc(bs.Exits, func(e game.Exit) bool { return e.Node == n.ID }) {
+		// A secret node (the Trial) is on the map only where the engine
+		// wrote it into the tier's exits, or once taken; locked, it has no
+		// name (achievements.md (f)).
+		ex := slices.IndexFunc(bs.Exits, func(e game.Exit) bool { return e.Node == n.ID })
+		if n.Hidden && ex < 0 && bs.Node != n.ID {
 			continue
 		}
 		s := spot{id: n.ID, name: n.Name, boss: n.Boss != "", skip: n.Skip, picks: n.Picks, reach: reach[n.ID]}
 		switch {
+		case n.Hidden && ex >= 0 && bs.Exits[ex].Locked != "":
+			s.name = "???"
 		case s.name == "" && s.boss:
 			s.name = bossLabel(n.Boss)
 		case s.name == "":
@@ -299,11 +306,8 @@ func tierSpots(st *game.State, t int, reach map[string]bool, nodes [][]node, off
 			s.oneShot = oneShotAt(st, t)
 		}
 		s.gate = gateOf(st, n)
-		if i := slices.IndexFunc(bs.Exits, func(e game.Exit) bool { return e.Node == n.ID }); i >= 0 {
-			s.gate = exitGate(st, bs.Exits[i])
-			if e := bs.Exits[i]; e.Hidden && e.Locked != "" {
-				s.name = "???" // the Trial, hinted: its name waits for it to open
-			}
+		if ex >= 0 {
+			s.gate = exitGate(st, bs.Exits[ex])
 		}
 		if bs.Node == n.ID {
 			s.taken, s.rooms = true, nodes[t]
@@ -341,6 +345,8 @@ func exitGate(st *game.State, e game.Exit) string {
 		return fmt.Sprintf("P%d", g.Prestige)
 	case CapLocked(st, e):
 		return g.Capability
+	case g.Full:
+		return game.LockedFull
 	}
 	return "pool"
 }

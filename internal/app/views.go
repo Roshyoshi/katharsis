@@ -22,6 +22,7 @@ func (m *Model) bootRow(b store.BootSummary, atts []store.AttemptRecord) meta.Bo
 		Started:  b.Started.Local(),
 		Uptime:   b.Uptime,
 		Cleared:  b.Outcome == store.BootCleared,
+		Ending:   b.Ending,
 		Cause:    b.Cause,
 		Banked:   b.Committed,
 		Dumped:   b.Dumped,

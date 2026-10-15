@@ -56,6 +56,9 @@ type Scene struct {
 	// title, whose art says its own "press any key", and whose fire
 	// fills the screen at every frame.
 	bare bool
+	// noSkip leaves esc to do what any key does: a scene that plays once in
+	// full (the Trial's first wake) shows every page.
+	noSkip bool
 
 	i    int // the page showing
 	p    *anim.Player
@@ -126,7 +129,7 @@ func (s *Scene) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	}
 	if k, ok := msg.(tea.KeyPressMsg); ok {
 		switch {
-		case k.String() == "esc":
+		case k.String() == "esc" && !s.noSkip:
 			return s, s.leave(true)
 		case s.auto > 0:
 			return s, s.leave(false)
@@ -164,8 +167,12 @@ func (s *Scene) View(width, height int) string {
 	switch {
 	case s.auto > 0:
 		f = ui.Footer(width, "any key", "continue")
+	case !s.p.Done() && s.noSkip:
+		f = ui.Footer(width, "any key", "show all")
 	case !s.p.Done():
 		f = ui.Footer(width, "any key", "show all", "esc", "skip")
+	case s.i+1 < len(s.pages) && s.noSkip:
+		f = ui.Footer(width, "any key", "next")
 	case s.i+1 < len(s.pages):
 		f = ui.Footer(width, "any key", "next", "esc", "skip")
 	default:

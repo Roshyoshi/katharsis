@@ -19,6 +19,7 @@ func voice() lipgloss.Style  { return ui.Voice.Style() }
 func strong() lipgloss.Style { return ui.Strong.Style() }
 func muted() lipgloss.Style  { return ui.Muted.Style() }
 func plain() lipgloss.Style  { return ui.FG.Style() }
+func danger() lipgloss.Style { return ui.Danger.Style() }
 
 // acBanner paints the ACCEPTED banner: the frame and its "exit 0" in the
 // OK hue, the lettering strong. A hue never paints bold (ui-system R3),

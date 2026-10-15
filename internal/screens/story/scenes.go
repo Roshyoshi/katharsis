@@ -120,11 +120,14 @@ func NewBossIntro(key string, seed uint64, first bool) *Scene {
 // doors bend the boss's rule (game.Door.Twist), named in the boss's voice
 // (boss.rule.<key>); Price, what a fail or :q! costs ("a fail or :q!
 // burns 20 cycles and deals a new boss door (22 left)"); OneShot when
-// either ends the boot, said once more by the story (boss.oneshot).
+// either ends the boot, said once more by the story (boss.oneshot); Cursed
+// when its doors are (the Trial's, achievements.md (f)): no ducks, and
+// one failed submit ends the boot.
 type BossRules struct {
 	Twist   bool
 	Price   string
 	OneShot bool
+	Cursed  bool
 }
 
 // NewBossCard is NewBossIntro with the boss's rules under its lines: its
@@ -157,6 +160,9 @@ func NewBossCard(key string, seed uint64, first bool, br BossRules) *Scene {
 	}
 	if br.Twist {
 		paras = append(paras, para{anim.Para{Text: flavor.Story("boss.rule."+key, seed), Style: voice()}, 0})
+	}
+	if br.Cursed {
+		paras = append(paras, para{anim.Para{Text: CursedRule, Style: danger()}, 0})
 	}
 	if br.Price != "" {
 		paras = append(paras, para{anim.Para{Text: br.Price, Style: plain()}, 0})
@@ -359,3 +365,7 @@ func NewBootSplash(boot, p int) *Scene {
 			anim.Reveal{Lines: log, Total: revealTime, Style: muted()}, blank, typed(motd, w))
 	})
 }
+
+// CursedRule is a cursed boss's rule on its card, the mechanic in the
+// door modifier's words.
+const CursedRule = "cursed: no ducks, one failed submit ends the boot"

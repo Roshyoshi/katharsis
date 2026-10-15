@@ -1,0 +1,40 @@
+Boot #42 · Silver · route · act II                                                                                            uptime 1:03:05
+♥ 34/50 cycles  🦆1  0 B uncommitted · 1.2 KiB committed                                                                      daemons strace
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+                                        Pick an exit. It sets the next door and the boss behind it.
+
+  ╔═ ▸ 1 ════════════════════════════════════╗  ╔═ 2 ══════════════════════════════════════╗  ╔═ 3 ══════════════════════════════════════╗
+  ║ ⚔ Heisenbug                              ║  ║ ⚔ Race Condition                         ║  ║ ⚔ ???                                    ║
+  ║ act II boss                              ║  ║ act II boss                              ║  ║                                          ║
+  ║ It disappears the moment you add a print ║  ║ It disappears the moment you add a print ║  ║                                          ║
+  ║ statement.                               ║  ║ statement.                               ║  ║                                          ║
+  ║                                          ║  ║                                          ║  ║                                          ║
+  ║ 1 room · ⏱ ~39:00                        ║  ║ 1 room · ⏱ ~39:00                        ║  ║                                          ║
+  ║ ◆1150–1350 · aim 45% clear               ║  ║ ◆1150–1350 · aim 45% clear               ║  ║ □ locked: a mile high                    ║
+  ║ a fail −20 ♥, a new boss door            ║  ║ a fail −20 ♥, a new boss door            ║  ║ Stub line for route.locked.full.         ║
+  ╚══════════════════════════════════════════╝  ╚══════════════════════════════════════════╝  ╚══════════════════════════════════════════╝
+
+                                                              the boot so far
+             ╭─ Userland ─╮   ╭─ The Scheduler ─╮   ╭─ Off-by-One ─╮   ╭─ The ALU ─╮   ╭─ boss ─╮   ╭─ act III ─╮   ╭─ boss ─╮
+             │    ✓ ✗     │───│        ✓        │───│      ✓       │───│     ✓     │───│   ⚔    │───│     ○     │───│   ⚔    │
+             ╰────────────╯   ╰─────────────────╯   ╰──────────────╯   ╰───────────╯   ╰────────╯   ╰───────────╯   ╰────────╯
+
+
+
+
+
+
+
+
+
+
+←/→ choose · enter take exit · m map

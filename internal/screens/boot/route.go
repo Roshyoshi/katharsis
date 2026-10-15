@@ -192,7 +192,13 @@ type card struct {
 	picks            string   // "+1 upgrade pick"
 	behind           []string // the bosses it leads to: "→ ⚔ Heisenbug"
 	locked           []string // why it cannot be taken and what opens it; nil when open
-	boss             bool
+	// rule and ends are an ending's (the Trial): its door's rules, "☠ cursed
+	// · one shot" and "↩ retreat: a new cursed door", and what its clear
+	// does, "ends the boot here", "no prestige unlock". The card says what
+	// the route costs (tone rule 5).
+	rule []string
+	ends []string
+	boss bool
 }
 
 // topicCard is a linear boot's card: a topic biome on offer.
@@ -220,6 +226,16 @@ func (r *Route) exitCard(e game.Exit) card {
 	case e.Skip:
 		c.name, c.sub, c.blurb = "skip", "no room", ""
 		c.rooms = "no room, no bytes"
+	case e.Hidden && e.Locked != "":
+		// A secret exit shows locked only once its hint was met
+		// (Meta.Capped), and never by name: ⚔ ??? (achievements.md (f)).
+		c.boss = true
+		c.name, c.sub, c.blurb = ui.G.Boss+" ???", "", ""
+		c.locked = r.lockLines(e)
+		return c
+	case e.Ending != "":
+		c.boss = true
+		c.name, c.sub, c.blurb = ui.G.Boss+" "+bossLabel(e.Boss), courtOfHearts, fl.BossBlurb(e.Boss)
 	case e.Boss != "":
 		c.boss = true
 		c.name, c.sub, c.blurb = ui.G.Boss+" "+bossLabel(e.Boss), actName(st.ActOf(st.Biome))+" boss", fl.BossBlurb(e.Boss)
@@ -240,6 +256,9 @@ func (r *Route) exitCard(e game.Exit) card {
 		c.band, c.mine = r.band(e.Topic)
 		c.fail = failText(st)
 	}
+	if e.Ending != "" {
+		c.fail, c.rule, c.ends = endingLines(st, e)
+	}
 	if e.Picks > 0 {
 		word := " upgrade pick"
 		if e.Picks != 1 {
@@ -252,7 +271,7 @@ func (r *Route) exitCard(e game.Exit) card {
 	}
 	if e.Skip && len(e.Bosses) == 0 {
 		for _, n := range st.Rules.Nodes {
-			if n.Tier == st.Biome+1 && n.Boss != "" {
+			if n.Tier == st.Biome+1 && n.Boss != "" && !n.Hidden {
 				c.behind = append(c.behind, ui.Muted.Render(ui.G.Arrow+" ")+ui.Special.Render(ui.G.Boss+" "+bossLabel(n.Boss)))
 			}
 		}
@@ -274,6 +293,14 @@ func (r *Route) lockLines(e game.Exit) []string {
 		out := []string{ui.Muted.Render(ui.G.CapLocked+" locked: ") + prestigeLabel(e.Gate.Prestige)}
 		if s := fl.Story("route.locked.prestige", 0); s != "" {
 			out = append(out, ui.Voice.Render(flavor.Fill(s, "ring", strconv.Itoa(ring))))
+		}
+		return out
+	case e.Gate.Full && e.Locked == game.LockedFull:
+		// The Trial's gate: the pool at its cap, Rule Forty-two read
+		// backwards (route.locked.full alludes to it).
+		out := []string{ui.Muted.Render(ui.G.CapLocked+" locked: ") + game.LockedFull}
+		if s := fl.Story("route.locked.full", 0); s != "" {
+			out = append(out, ui.Voice.Render(s))
 		}
 		return out
 	case CapLocked(st, e):
@@ -378,7 +405,7 @@ func (c card) wide(cw int) (top, bottom []string) {
 			bottom = append(bottom, ui.WrapN(l, cw, 3)...)
 		}
 	} else {
-		for _, l := range []string{c.band, c.mine, c.fail} {
+		for _, l := range append([]string{c.band, c.mine, c.fail}, c.rule...) {
 			if l != "" {
 				bottom = append(bottom, ui.Clip(l, cw))
 			}
@@ -387,7 +414,7 @@ func (c card) wide(cw int) (top, bottom []string) {
 	if c.picks != "" {
 		bottom = append(bottom, c.picks)
 	}
-	for _, b := range c.behind {
+	for _, b := range append(slices.Clone(c.behind), c.ends...) {
 		bottom = append(bottom, ui.Clip(b, cw))
 	}
 	return top, bottom
@@ -407,15 +434,25 @@ func (c card) stacked(cw int) []string {
 	if c.locked != nil {
 		right, mid = c.locked[0], strings.Join(c.locked[1:], " ")
 	}
+	// An ending's costs take the blurb's line, and a line more, and the
+	// bosses' place: the mechanic before the story.
+	behind, more := strings.Join(c.behind, " "), []string(nil)
+	if c.ends != nil {
+		sep := ui.Muted.Render(ui.G.Sep)
+		mid, more, behind = c.rule[0]+sep+c.fail, c.rule[1:], strings.Join(c.ends, sep)
+	}
 	out := []string{ui.Spread(name, right, cw)}
 	if strings.TrimSpace(mid) != "" {
 		out = append(out, ui.Clip(mid, cw))
+	}
+	for _, l := range more {
+		out = append(out, ui.Clip(l, cw))
 	}
 	left := c.rooms
 	if c.picks != "" {
 		left += ui.Muted.Render(ui.G.Sep) + c.picks
 	}
-	return append(out, ui.Spread(left, cmp.Or(strings.Join(c.behind, " "), c.mine), cw))
+	return append(out, ui.Spread(left, cmp.Or(behind, c.mine), cw))
 }
 
 // tierFail is the price of a fail the cards carry, "" when none does (a
@@ -455,6 +492,9 @@ func (r *Route) compactRows(cards []card, width int) []string {
 		if c.locked != nil {
 			right = c.locked[0]
 		}
+		if c.ends != nil {
+			right = c.fail
+		}
 		if c.picks != "" && right != "" {
 			right = c.picks + ui.Muted.Render(ui.G.Sep) + right
 		} else if c.picks != "" {
@@ -468,4 +508,22 @@ func (r *Route) compactRows(cards []card, width int) []string {
 		out = append(out, ui.Spread(head+name, right, width))
 	}
 	return out
+}
+
+// courtOfHearts is the Trial's place, under its name on its card.
+const courtOfHearts = "the Court of Hearts"
+
+// endingLines are the card lines of an exit that ends the boot (the
+// Trial, rules.Biome.Ending), what the route costs before it is taken
+// (tone rule 5): its door cursed and one shot, a fail the end, a retreat
+// a new cursed door (the engine swaps one in, as for any door), and its
+// clear the end too, with no act III and no prestige unlock.
+func endingLines(st *game.State, e game.Exit) (fail string, rule, ends []string) {
+	fail, shot := ui.Danger.Render("a fail ends the boot"), ui.Danger.Render("one shot")
+	door := "a new door"
+	if n, ok := st.Rules.Node(e.Node); ok && n.Cursed {
+		shot, door = ui.Danger.Render(ui.G.Cursed+" cursed"+ui.G.Sep+"one shot"), "a new cursed door"
+	}
+	rule = []string{shot, ui.Warn.Render(ui.G.Retreat + " retreat: " + door)}
+	return fail, rule, []string{ui.Warn.Render("ends the boot here"), ui.Muted.Render("no prestige unlock")}
 }

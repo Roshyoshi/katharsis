@@ -32,6 +32,7 @@ import (
 //	                boss
 //	crash           the Cat, once the panic has printed (the first crash
 //	                that left bytes: flavor.NextBeat)
+//	the Trial won    the wake (ending.wake): in full once, beats 4 to 6 after
 //
 // The rules every scene keeps:
 //   - It never covers an open door. None is queued in the problem phase,
@@ -126,6 +127,9 @@ func (m *Model) storyAfter(before baseKey) tea.Cmd {
 	}
 	if m.realBoot() {
 		q = append(q, m.mapScenes()...) // acts II and III, the skip, a lock (hub.go)
+		if s.Phase == game.PhaseCleared && s.Ending == game.EndingWake && before.phase != game.PhaseCleared {
+			q = append(q, m.wake())
+		}
 		switch {
 		case s.Phase == game.PhaseMerge && before.phase != game.PhaseMerge:
 			if m.unseen("story.first-merge") {
@@ -152,6 +156,8 @@ func (m *Model) storyResume() tea.Cmd {
 	switch {
 	case s.Phase == game.PhaseCrashed:
 		return m.storyCrash()
+	case s.Phase == game.PhaseCleared && s.Ending == game.EndingWake && m.unseen("ending.wake"):
+		q = append(q, m.wake()) // a quit cut the first wake short
 	case s.Phase == game.PhaseMerge && m.unseen("story.first-merge"):
 		q = append(q, queued{"story.first-merge", story.NewFirstMerge})
 	case s.Phase == game.PhaseDoors && s.Room == 0:
@@ -187,7 +193,8 @@ func (m *Model) arrival(noDrop bool) []queued {
 		// The card says the boss's rules as the boot meets it (map.md
 		// §(g), D54): its twist, its price, one shot or a retry.
 		twist, _ := bootui.BossTwist(s)
-		br := story.BossRules{Twist: twist == key, Price: bootui.BossPrice(s), OneShot: s.OneShot()}
+		br := story.BossRules{Twist: twist == key, Price: bootui.BossPrice(s), OneShot: s.OneShot(),
+			Cursed: slices.ContainsFunc(s.Doors, func(d game.Door) bool { return d.Cursed })}
 		q = append(q, queued{id, func() *story.Scene { return story.NewBossCard(key, seed, first, br) }})
 	case !noDrop && b.Topic != "":
 		q = append(q, queued{"", func() *story.Scene { return m.biomeFall(b) }}) // a map node's own line (hub.go)
@@ -328,4 +335,26 @@ func acLine(a game.Attempt) string {
 		parts = append(parts, units.Clock(a.Closed.Sub(a.Opened))+" / "+units.Clock(a.Door.Timer))
 	}
 	return strings.Join(parts, ui.G.Sep)
+}
+
+// wake is the Trial's ending (story.NewWake, ending.wake): every beat the
+// first time, the last three after. It starts from the screen the door
+// was won on, the last one drawn, and its man page lists the boot's
+// cleared doors.
+func (m *Model) wake() queued {
+	s := m.state
+	w := story.Wake{From: m.drawnLines(), First: m.unseen("ending.wake"), Seed: s.Seed}
+	for _, a := range s.History {
+		if a.Outcome == game.Cleared {
+			w.Examples = append(w.Examples, m.title(a.Door.Problem))
+		}
+	}
+	if n := len(s.History); n > 0 {
+		w.AC = acLine(s.History[n-1])
+	}
+	id := ""
+	if w.First {
+		id = "ending.wake"
+	}
+	return queued{id, func() *story.Scene { return story.NewWake(w) }}
 }

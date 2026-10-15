@@ -224,3 +224,20 @@ func TestSetuidASCII(t *testing.T) {
 		}
 	}
 }
+
+// git log marks a boot the Trial ended "awake (the Trial)", never
+// "woke", and the cleared filter keeps it: it is a clear.
+func TestLogAwake(t *testing.T) {
+	boots := fixture.Boots()
+	boots[0].Cleared, boots[0].Cause, boots[0].Ending = true, "", game.EndingWake
+	s := meta.NewLog(boots, fixture.PrestigeName)
+	for _, sz := range sizes {
+		if v := plain(s.View(sz[0], sz[1])); !strings.Contains(v, "awake (the Trial)") || strings.Contains(v, "woke") {
+			t.Errorf("at %v:\n%s", sz, v)
+		}
+	}
+	press(t, s, "f") // cleared only
+	if v := plain(s.View(80, 24)); !strings.Contains(v, "awake (the Trial)") {
+		t.Errorf("the cleared filter drops the awake boot:\n%s", v)
+	}
+}

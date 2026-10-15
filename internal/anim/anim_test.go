@@ -44,6 +44,7 @@ func clips() map[string]Clip {
 		"stack": Stack(Reveal{Lines: lines, Total: 300 * time.Millisecond},
 			Delay(100*time.Millisecond, Fade{Lines: lines, From: Gone, To: Faint, D: 300 * time.Millisecond})),
 		"wipe": Wipe{Lines: []string{italic.Render("styled ") + "and plain", "short"}, D: 360 * time.Millisecond},
+		"pack": Pack{From: packScreen, W: 40, H: 8, D: 900 * time.Millisecond, Seed: 7}.Clip(),
 	}
 }
 

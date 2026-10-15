@@ -14,6 +14,7 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
+	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/story"
 )
@@ -363,5 +364,62 @@ func TestStoryRead(t *testing.T) {
 		h.send(game.ChooseDoor{})
 		h.send(story.Read{ID: "reveal.prestige.2"})
 		h.noSceneOverDoor()
+	})
+}
+
+// wakeAt ends the boot on its open door the way the Trial does, awake
+// (game.EndingWake: the engine's), and has the app take the step: the
+// scenes it queues for it.
+func (h *harness) wakeAt() {
+	h.t.Helper()
+	h.send(screens.StartBoot{Preset: "standard"})
+	h.watch()
+	h.enterDoor()
+	h.watch()
+	h.send(tea.WindowSizeMsg{Width: 80, Height: 24}) // the court is the door's pane
+	st := h.m.state
+	a := *st.Current
+	a.Outcome, a.Closed, a.BestPass, a.Total = game.Cleared, h.clock.t, 10, 10
+	st.History, st.Current = append(st.History, a), nil
+	st.Phase, st.Ending = game.PhaseCleared, game.EndingWake
+	h.m.closeDoor()
+	h.m.reset()
+	h.run(h.m.storyAfter(baseKey{phase: game.PhaseProblem}))
+}
+
+// The Trial's win plays the wake over the cleared screen: in full the
+// first time (ending.wake, seen once shown), from the court the door was
+// won on and with the boot's doors as the man page's examples; after,
+// its last three beats.
+func TestWakeAfterTheTrial(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newStoryHarness(t)
+		h.wakeAt()
+		s := h.scene()
+		if s == nil || s.ID() != "ending.wake" || s.Pages() != 6 {
+			t.Fatalf("scene %v", h.sceneName())
+		}
+		title := h.m.title(h.m.state.History[0].Door.Problem)
+		var shown strings.Builder
+		for i := range s.Pages() {
+			s.Seek(i, s.PageLen(i))
+			shown.WriteString(ansi.Strip(h.m.View().Content))
+		}
+		if !strings.Contains(shown.String(), "EXAMPLES") || !strings.Contains(shown.String(), title) ||
+			!strings.Contains(shown.String(), "AC · 10/10 tests") {
+			t.Errorf("the wake lacks the boot's doors or its AC:\n%s", shown.String())
+		}
+		h.watch()
+		if !game.HasSeen(&h.m.meta, "ending.wake") {
+			t.Error("the first wake is not seen")
+		}
+		if _, ok := h.m.top().(*bootui.Cleared); !ok {
+			t.Errorf("after the wake %T is on top", h.m.top())
+		}
+		h.send(screens.OpenGrub{})
+		h.wakeAt()
+		if s := h.scene(); s == nil || s.ID() != "" || s.Pages() != 3 {
+			t.Errorf("a later wake: %v", h.sceneName())
+		}
 	})
 }

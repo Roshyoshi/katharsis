@@ -32,6 +32,9 @@ type BootRow struct {
 	// when the boot ended without a crash (the app quit mid-boot).
 	Cleared bool
 	Cause   game.Outcome
+	// Ending is how a cleared boot ended short of its last boss
+	// (game.State.Ending): game.EndingWake, the Trial, reads "awake".
+	Ending  string
 	Biome   string // display name of the biome it crashed in
 	Problem string // title of the problem it crashed on
 

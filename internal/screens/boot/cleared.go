@@ -122,6 +122,12 @@ func (c *Cleared) View(width, height int) string {
 	if st.Trial != nil {
 		what = st.Trial.Title + " trial cleared"
 	}
+	// The Trial's ending (achievements.md (f)): the boot is cleared, awake,
+	// and unlocks nothing. "Awake", never "woke".
+	awake := st.Ending == game.EndingWake
+	if awake {
+		what = fmt.Sprintf("Boot #%d", st.Boot) + ui.G.Sep + "awake"
+	}
 	head := []string{ui.Center(ui.OK.Render(ui.G.Pass)+" "+ui.Strong.Render(what)+
 		ui.Muted.Render(ui.G.Sep)+prestigeLabel(st.Prestige), width)}
 	if boss != "" {
@@ -133,6 +139,7 @@ func (c *Cleared) View(width, height int) string {
 		defeat = centerVoice(tale.Story("boss.defeat."+boss, seed), width)
 	}
 	switch {
+	case awake: // the scene said it all
 	case st.Trial == nil:
 		said = centerVoice(c.clearedLine(seed), width)
 	case st.Trial.Granted != "":
@@ -175,6 +182,7 @@ func (c *Cleared) View(width, height int) string {
 	star := ui.Warn.Render(ui.G.Star) + " "
 	kept := []string{ratingItem(b.Rating, "rating", false)}
 	switch {
+	case awake: // no prestige line: the ending unlocks none
 	case b.Unlocked > 0:
 		kept = append(kept, star+ui.Strong.Render("prestige unlocked: "+prestigeLabel(b.Unlocked)))
 	case b.Top:

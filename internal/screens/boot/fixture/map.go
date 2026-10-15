@@ -25,7 +25,7 @@ func Exits(r rules.Rules, from string, caps, pkgs []string, p int) []game.Exit {
 	var out []game.Exit
 	for _, id := range byID[from].Next {
 		n := byID[id]
-		if n.Hidden { // the Trial: off the route until the engine shows it
+		if n.Hidden { // the Trial: off the route until the engine shows it (TrialExit)
 			continue
 		}
 		e := game.Exit{Node: n.ID, Name: n.Name, Topic: n.Topic, Rooms: n.Rooms, Boss: n.Boss, Picks: n.Picks, Skip: n.Skip}
@@ -37,8 +37,8 @@ func Exits(r rules.Rules, from string, caps, pkgs []string, p int) []game.Exit {
 		}
 		if n.Boss == "" {
 			for _, next := range n.Next {
-				if b := byID[next].Boss; b != "" && !byID[next].Hidden {
-					e.Bosses = append(e.Bosses, b)
+				if b := byID[next]; b.Boss != "" && !b.Hidden { // no card names a secret boss ahead
+					e.Bosses = append(e.Bosses, b.Boss)
 				}
 			}
 		}
@@ -212,5 +212,71 @@ func MapMerge() *game.State {
 	st.Biome, st.Room = 2, 1
 	st.Uncommitted, st.Committed = 464, 48
 	st.Fountain = 5
+	return st
+}
+
+// MapRouteTrial is the route into Boss II from The ALU, act II's room
+// cleared, with the Trial's exit among Heisenbug's and Race Condition's:
+// locked behind its ??? while the pool is short of its cap (34/50) and
+// once its hint was met (Meta.Capped); open at 50/50.
+func MapRouteTrial(open bool) *game.State {
+	st := MapRouteFinal()
+	exits := append(Exits(st.Rules, "alu", st.Caps, nil, 1), TrialExit(st.Rules, open))
+	st.Biomes[4] = game.BiomeState{Kind: rules.Boss, Rooms: 1, Exits: exits, Offers: topics(exits)}
+	st.Biomes[5] = game.BiomeState{Kind: rules.Choice, Rooms: 1}
+	st.History = st.History[:5]
+	st.Biome = 4
+	st.Phase = game.PhaseRoute
+	st.Cycles, st.Committed, st.Fountained = 34, 1216, 10
+	if open {
+		st.Cycles, st.Capped = 50, true
+	}
+	st.Log = st.Log[:7]
+	rebase(st, at(71, 0))
+	return st
+}
+
+// TrialExit is the Trial's exit as the engine writes it (game.Exit): hidden,
+// the boot's end, gated on a full pool, and locked behind its ??? unless
+// open.
+func TrialExit(r rules.Rules, open bool) game.Exit {
+	n, _ := r.Node(rules.TrialNode)
+	e := game.Exit{Node: n.ID, Name: n.Name, Topic: game.Mixed, Rooms: n.Rooms, Boss: n.Boss,
+		Hidden: n.Hidden, Ending: n.Ending, Gate: game.Gate{Full: n.NeedFull}}
+	if !open {
+		e.Locked = game.LockedFull
+	}
+	return e
+}
+
+// TrialDoor is the Trial's one door, cursed and one shot, at its room's
+// doors (game.TrialBoss).
+func TrialDoor() *game.State {
+	st := MapRouteTrial(true)
+	st.Phase = game.PhaseDoors
+	st.Biomes[4] = game.BiomeState{Name: "The Trial", Topic: game.Mixed, Kind: rules.Boss, Rooms: 1, Boss: game.TrialBoss,
+		Node: rules.TrialNode, Exits: st.Biomes[4].Exits, Offers: st.Biomes[4].Offers}
+	st.Rules.Biomes = slices.Clone(st.Rules.Biomes)
+	st.Rules.Biomes[4].FailCycles = 0 // the node's, as the engine applies it: one shot
+	d := boss(cowPoetry, 36*time.Minute, 576, 0.55, game.TrialBoss)
+	d.Cursed = true
+	st.Doors = []game.Door{d}
+	return st
+}
+
+// TrialAwake is the boot the Trial ended, awake (game.EndingWake): no act
+// III, no final, no prestige unlocked.
+func TrialAwake() *game.State {
+	st := TrialDoor()
+	start := st.Started
+	d := st.Doors[0]
+	a := attempt(start, d, at(72, 0), at(99, 48), game.Cleared)
+	a.Biome = 4
+	st.History = append(st.History, a)
+	st.Doors = nil
+	st.Phase, st.Ending, st.Room = game.PhaseCleared, game.EndingWake, 1
+	st.Committed += st.Uncommitted + d.Bytes
+	st.Uncommitted = 0
+	rebase(st, at(100, 0))
 	return st
 }
