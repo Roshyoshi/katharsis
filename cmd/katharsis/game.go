@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"sync/atomic"
@@ -19,7 +18,6 @@ import (
 	"katharsis/internal/content/codeforces"
 	"katharsis/internal/content/guide"
 	"katharsis/internal/content/usaco"
-	"katharsis/internal/flavor"
 	"katharsis/internal/hud"
 	"katharsis/internal/screens"
 	"katharsis/internal/session"
@@ -34,7 +32,7 @@ func runGame(args []string) error {
 	editor := fs.String("editor", "vim", "editor command line, run by sh; the source path is appended")
 	split := fs.Int("split", 65, "editor width in percent")
 	scale := fs.Float64("scale", 1, "multiply CPU time limits (below 1 is stricter than the judge)")
-	quiet := fs.Bool("quiet", false, "no sounds")
+	af := addAudioFlags(fs)
 	stdioT := fs.String("template", filepath.Join(home, "cp", "atcoder", "template.cpp"), "C++ template for stdin/stdout problems")
 	fileT := fs.String("template-fileio", filepath.Join(home, "cp", "template.cpp"), "C++ template for file-I/O problems (\"problem\" becomes the file stem)")
 	var presetFiles []string
@@ -81,6 +79,8 @@ func runGame(args []string) error {
 		return session.ExecInTmux("katharsis", append([]string{self}, args...))
 	}
 	warnPresets(ps.loadDir(dir))
+	sink, audioSet, credits, audioErrs := openAudio(af)
+	warnAudio(audioErrs)
 
 	// tmux sends SIGHUP when the game's pane or window is killed; quit
 	// through Bubble Tea so the deferred cleanup still runs. Before the
@@ -144,17 +144,16 @@ func runGame(args []string) error {
 		Templates: app.Templates{Stdio: *stdioT, FileIO: *fileT},
 		Scale:     *scale,
 	}
-	var sound func(string)
-	if !*quiet {
-		sound = play
-	}
 	m, err := app.New(app.Deps{
 		Store:   st,
 		Catalog: catalog.NewUnion(cats...),
 		Presets: ps.byName,
 		Runner:  runner,
 		Now:     time.Now,
-		Sound:   sound,
+
+		Audio:         sink,
+		AudioSettings: audioSet,
+		Credits:       credits,
 	})
 	if err != nil {
 		return err
@@ -198,21 +197,5 @@ func showDownload() (done func()) {
 		if shown.Load() >= 0 {
 			fmt.Fprintln(os.Stderr)
 		}
-	}
-}
-
-// play runs afplay in the background; a missing sound is silence.
-func play(name string) {
-	if f := flavor.SoundFile(name); f != "" {
-		start(exec.Command("afplay", f))
-	}
-}
-
-// start runs cmd without waiting on it, but reaps it once it exits: a
-// child never waited on stays a zombie until the game exits, one per sound
-// played.
-func start(cmd *exec.Cmd) {
-	if cmd.Start() == nil {
-		go func() { _ = cmd.Wait() }()
 	}
 }

@@ -37,6 +37,7 @@ type (
 	OpenLearn     struct{}
 	OpenLog       struct{}                     // git log
 	OpenTop       struct{}                     // stats
+	OpenCredits   struct{}                     // music, licenses, sources
 	Upsolve       struct{ Problem catalog.ID } // a core dump or regression
 	OpenStatement struct{ Problem catalog.ID }
 	OpenEditorial struct{ Problem catalog.ID }

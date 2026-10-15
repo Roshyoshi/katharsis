@@ -33,6 +33,8 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 		return m.openLog(), true
 	case screens.OpenTop:
 		return m.openTop(), true
+	case screens.OpenCredits:
+		return m.openCredits(), true
 	case screens.OpenLearn:
 		return m.openLearn(), true
 	case screens.OpenShop:

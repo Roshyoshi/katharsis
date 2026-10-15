@@ -38,6 +38,8 @@ func main() {
 			os.Exit(session.CtlMain(args[1:], os.Stdout, os.Stderr))
 		case "practice":
 			run, args = runPractice, args[1:]
+		case "audio":
+			run, args = runAudio, args[1:]
 		}
 	}
 	if err := run(args); errors.Is(err, flag.ErrHelp) {
@@ -65,6 +67,7 @@ func usage(fs *flag.FlagSet) {
 	fmt.Fprint(os.Stderr, `usage: katharsis [flags]                 play (GRUB menu, boots, learn mode)
        katharsis practice [flags] <dir>
        katharsis ctl <submit|debug [n]|quack|giveup|retreat|status>
+       katharsis audio fetch|list|credits
 
 <dir> holds <dir>.cpp (or sol.cpp) and tests/N.in + tests/N.out.
 ctl talks to the game whose socket $KATHARSIS_SOCK names; the game's vim

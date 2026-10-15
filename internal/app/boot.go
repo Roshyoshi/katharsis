@@ -248,9 +248,7 @@ func (m *Model) effects(effs []game.Effect) tea.Cmd {
 		case game.CloseProblem:
 			m.closeDoor()
 		case game.Sound:
-			if m.d.Sound != nil {
-				m.d.Sound(e.Name)
-			}
+			m.d.Audio.Play(e.Name)
 		case game.Prefetch:
 			cmds = append(cmds, m.prefetch(e.Problems))
 		}

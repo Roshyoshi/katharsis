@@ -14,6 +14,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"katharsis/internal/audio"
 	"katharsis/internal/catalog"
 	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
@@ -67,8 +68,14 @@ type Deps struct {
 	Runner  Runner
 	Judge   Judge
 	Now     func() time.Time
-	Sound   func(name string) // nil plays nothing
-	Seed    func() uint64     // nil uses math/rand
+	Seed    func() uint64 // nil uses math/rand
+	// Audio plays the effects and the music the state calls for
+	// (audio.go); nil is silence. AudioSettings gives the timer warning
+	// and how long a track's credit shows, and Credits is the credits
+	// page GRUB opens.
+	Audio         audio.Sink
+	AudioSettings audio.Settings
+	Credits       func() string
 }
 
 // Model is the root tea.Model.
@@ -114,6 +121,14 @@ type Model struct {
 	fetches sync.WaitGroup
 
 	width, height int
+
+	// Sound (audio.go): the last state effects were diffed from, the door
+	// whose timer warning sounded, and the credit toast.
+	audioPrev   audioSnap
+	warned      time.Time
+	toast       string
+	toastUntil  time.Time
+	toastSerial uint64
 }
 
 func New(d Deps) (*Model, error) {
@@ -122,6 +137,9 @@ func New(d Deps) (*Model, error) {
 	}
 	if d.Seed == nil {
 		d.Seed = func() uint64 { return rand.Uint64() }
+	}
+	if d.Audio == nil {
+		d.Audio = audio.Null{}
 	}
 	if d.Presets == nil {
 		d.Presets = map[string]rules.Rules{}
@@ -217,6 +235,7 @@ func (m *Model) initTop() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	defer m.syncAudio()
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -224,7 +243,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.flash = ""
 		armed := m.quitArmed
 		m.quitArmed = false
-		if msg.String() == "ctrl+c" {
+		switch msg.String() {
+		case "ctrl+c":
 			// The door's deadline is absolute (D31): quitting does not
 			// pause it, so a quit with a door open asks twice.
 			if left, ok := m.doorLeft(); ok && !armed {
@@ -234,6 +254,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			return m, m.quit()
+		case musicKey:
+			return m, m.toggleMusic()
 		}
 	case tickMsg:
 		return m, tea.Batch(tick(), m.onTick())
@@ -317,6 +339,8 @@ func (m *Model) View() tea.View {
 	}
 	if m.flash != "" {
 		body = overlayFlash(body, m.flash, w)
+	} else if t := m.toastLine(); t != "" {
+		body = overlayFlash(body, t, w)
 	}
 	v := tea.NewView(body)
 	v.AltScreen = true

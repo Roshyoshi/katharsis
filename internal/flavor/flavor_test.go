@@ -4,9 +4,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -314,26 +312,6 @@ func TestBanners(t *testing.T) {
 	}
 	if Banner("nope") != "" {
 		t.Error("unknown banner kind is not empty")
-	}
-}
-
-func TestSoundFile(t *testing.T) {
-	_, err := os.Stat(soundDir)
-	mac := runtime.GOOS == "darwin" && err == nil
-	for _, name := range []string{"ac", "wa", "crash", "commit", "boss", "cleared"} {
-		p := SoundFile(name)
-		if p == "" {
-			if mac {
-				t.Errorf("SoundFile(%q) is empty on macOS", name)
-			}
-			continue
-		}
-		if _, err := os.Stat(p); err != nil {
-			t.Errorf("SoundFile(%q) = %q: %v", name, p, err)
-		}
-	}
-	if SoundFile("nope") != "" {
-		t.Error("unknown sound is not empty")
 	}
 }
 

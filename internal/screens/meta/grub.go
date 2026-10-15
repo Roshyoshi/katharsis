@@ -154,6 +154,7 @@ func NewGrub(c GrubConfig) *Menu {
 	es = append(es,
 		entry{label: "git log", msg: screens.OpenLog{}},
 		entry{label: "top", msg: screens.OpenTop{}},
+		entry{label: "credits", msg: screens.OpenCredits{}},
 		entry{label: "poweroff", msg: screens.Quit{}},
 	)
 	m.stack = []*page{{entries: es}}

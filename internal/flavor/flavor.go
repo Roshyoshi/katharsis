@@ -1,6 +1,6 @@
 // Package flavor is the game's text: crash quotes, biome and boss names,
-// upgrade and daemon descriptions, banners, and sound files. Screens call
-// these functions; nothing here affects rules.
+// upgrade and daemon descriptions, and banners. Screens call these
+// functions; nothing here affects rules.
 package flavor
 
 import (
