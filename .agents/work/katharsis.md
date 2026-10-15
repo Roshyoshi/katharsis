@@ -190,6 +190,13 @@ D50 settled 10-15  Time is bought, the base clock is tight: "keep the prevous ti
                    in standard too, 10 -> 9 -> 8 by prestige, and prices every time source
                    (nice, at, overclock, ECC). Supersedes D47's 12/10/8.
 
+D51 settled 10-15  DOOM-style title at launch (user: "a DOOM style title screen lol with
+                   some kind of graphic"): hand-drawn KATHARSIS block logo, PSX fire in
+                   half-blocks, tagline title.tagline, press any key; reduced motion, ASCII
+                   and Mono variants; ~6 s, once per launch, only when landing on GRUB.
+                   Defaults: bright ANSI 9/11/15 as an homage exception; no off flag.
+                   QA: qa/chaos kc_through does not know the title (waits it out).
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
