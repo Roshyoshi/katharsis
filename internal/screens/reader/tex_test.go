@@ -92,12 +92,18 @@ func TestTeXToUnicode(t *testing.T) {
 		{"daggers", `$^\dagger$ and $^\ddagger$`, `^† and ^‡`},
 		{"xrightarrow", `$a \xrightarrow{\text{up}} b$`, `a —up→ b`},
 		{"operatorname", `$\operatorname{gcd}(x, y)$`, `gcd(x, y)`},
-		{"overset", `$\overset{3}{\rightarrow}$ and $a \stackrel{\mathrm{def}}{=} b$`, `→ and a = b`},
-		{"underbrace", `$\underbrace{p \times p}_{k \text{ times}}$`, `p × p`},
+		// The note over a symbol says something: the step, the relation's
+		// name, the definition.
+		{"overset", `$1 \overset{+7}{\longrightarrow} 8$ and $a \stackrel{\mathrm{def}}{=} b$`, `1 —+7⟶ 8 and a ≝ b`},
+		{"stackrel relation", `$a \stackrel{\rho}{\sim} b$`, `a ∼\[ρ] b`},
+		{"underset limits", `$\underset{1 \leq i \leq n}{\max} a_i$`, `max\[1 ≤ i ≤ n] aᵢ`},
+		// An underbrace's label counts what it spans: it stays, as an index.
+		{"underbrace", `$\underbrace{p \times p}_{k \text{ times}}$`, `(p × p)\[k times]`},
+		{"underbrace index", `$[\underbrace{a, \dots, a}_{x}, b]$`, `\[(a, …, a)ₓ, b]`},
 		{"cancel", `$\require{cancel}\cancel{a_i}$`, `aᵢ`},
 		{"bigcirc", `$x \bigcirc y$`, `x ◯ y`},
 		{"over", `$2\over 12$`, `2/12`},
-		{"array", `$\begin{array}{|c|c|}\hline a & b\end{array}$`, `a b`},
+		{"array", `$\begin{array}{|c|c|}\hline a & b\end{array}$`, `a, b`},
 		{"font switch", `$\bf{1 \le t \le 5}$`, `1 ≤ t ≤ 5`},
 		{"overrightarrow", `$\overrightarrow{y}$`, "y⃗"},
 
@@ -110,13 +116,124 @@ func TestTeXToUnicode(t *testing.T) {
 		{"inline code", "Use `$x_i$` and $x_i$", "Use `$x_i$` and xᵢ"},
 		{"double backtick code", "``a `$b$` c`` $b$", "``a `$b$` c`` b"},
 	}
+	runTeX(t, tests)
+}
+
+type texCase struct{ name, in, want string }
+
+func runTeX[T ~struct{ name, in, want string }](t *testing.T, tests []T) {
+	t.Helper()
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := TeXToUnicode(tt.in); got != tt.want {
-				t.Errorf("TeXToUnicode(%q)\n got  %q\n want %q", tt.in, got, tt.want)
+		c := texCase(tt)
+		t.Run(c.name, func(t *testing.T) {
+			if got := TeXToUnicode(c.in); got != c.want {
+				t.Errorf("TeXToUnicode(%q)\n got  %q\n want %q", c.in, got, c.want)
 			}
 		})
 	}
+}
+
+// Environments are laid out on one line, rows and cells joined into the
+// shape that reads as the same structure. Rows ran together before: "y - x,
+// if |x-y| > 1 0, if |x-y| ≤ 1" (cf:903D).
+func TestTeXEnvironments(t *testing.T) {
+	runTeX(t, []texCase{
+		{"cases", `$d(x,y) = \begin{cases} y - x, & \text{if } |x-y| > 1 \\ 0, & \text{if } |x-y| \leq 1 \end{cases}$`,
+			`d(x, y) = {y - x, if \|x-y\| > 1; 0, if \|x-y\| ≤ 1}`},
+		{"cases value, condition", `$\begin{cases} n & n < 10 \\ g(f(n)) & \text{otherwise} \end{cases}$`,
+			`{n, n \< 10; g(f(n)), otherwise}`},
+		// A row's own punctuation stands in for the separator, and a final
+		// period ends the sentence, outside the braces.
+		{"cases punctuation", `$\begin{cases} a, & x \geq 0; \\ 0, & x < 0. \end{cases}$`, `{a, x ≥ 0; 0, x \< 0}.`},
+		{"doc example", `$\begin{cases} x & x > 0 \\ 0 & \text{else} \end{cases}$`, `{x, x > 0; 0, else}`},
+		{"pmatrix", `$A=\begin{pmatrix}a&b\\c&d\end{pmatrix}$`, `A = (a, b; c, d)`},
+		{"bmatrix row", `$\begin{bmatrix} 2 & 1 & 3 \end{bmatrix} \rightarrow \begin{bmatrix} 1 & 0 & 3 \end{bmatrix}$`,
+			`\[2, 1, 3] → \[1, 0, 3]`},
+		{"vmatrix", `$\begin{vmatrix} a & b \\ c & d \end{vmatrix}$`, `\|a, b; c, d\|`},
+		{"plain TeX matrix", `$\matrix{a & b \cr c & d}$`, `a, b; c, d`},
+		{"array in brackets", `$\left(\begin{array}{cc} 1 & 2 \\ 3 & 4 \end{array}\right)$`, `(1, 2; 3, 4)`},
+		{"array empty cells", `$\begin{array}{ccc} a & \to & b \\ & & c \end{array}$`, `a, →, b; c`},
+		{"aligned", `$\begin{aligned} y &= x + p \\ y &= -x + q \end{aligned}$`, `y = x + p; y = -x + q`},
+		{"align columns", `$\begin{align*} a &= 1 & b &= 2 \\ c &= 3 \end{align*}$`, `a = 1, b = 2; c = 3`},
+		{"row spacing", `$\begin{aligned} a \\[2pt] b \\ \end{aligned}$`, `a; b`},
+		{"nested", `$\begin{cases} \begin{pmatrix} 1 & 0 \end{pmatrix} & k = 0 \\ 0 & k > 0 \end{cases}$`,
+			`{(1, 0), k = 0; 0, k > 0}`},
+		{"substack", `$\sum_{\substack{i < j \\ j < k}} x$`, `∑\[i \< j, j \< k] x`},
+		{"substack punctuation", `$\max_{\substack{i < k, \\ i \text{ odd}}} a_i$`, `max\[i \< k, i odd] aᵢ`},
+	})
+}
+
+// A linear a/b binds to whatever touches it, where the stacked fraction
+// did not: it is parenthesized when a factor or a power is next to it, and
+// a whole number before a numeric fraction makes a mixed number.
+func TestTeXFractionGrouping(t *testing.T) {
+	runTeX(t, []texCase{
+		{"factor after", `$r \leq \frac{3}{2}r$`, `r ≤ (3/2)r`},
+		{"factor after a space", `$\frac{1}{2} k \frac{360}{n}$`, `(1/2) k (360/n)`},
+		{"bracket after", `$\frac{n}{k}(k - 1) \ge 1$`, `(n/k)(k - 1) ≥ 1`},
+		{"power", `$\frac{n}{2}^2$`, `(n/2)²`},
+		{"factor before", `$x\frac{d}{dx}$`, `x(d/dx)`},
+		{"function", `$4\sin^2\frac{\pi}{n}$`, `4 sin²(π/n)`},
+		{"over a fraction", `$a/\frac{b}{c}$`, `a/(b/c)`},
+		{"root denominator stays bare", `$\frac{1}{\sqrt{2}}(a+b)$`, `(1/√2)(a+b)`},
+		{"mixed number", `$[2\frac{2}{3}; 3 \frac{1}{2}]$`, `\[2⅔; 3½]`},
+		{"mixed number without a glyph", `$5\frac{3}{11}$`, `5³⁄₁₁`},
+		{"decimal is not a whole number", `$0.5\frac{1}{2}$`, `0.5(1/2)`},
+		{"big operator leaves room", `$\sum_{i=1}^{n} \frac{1}{i}$`, `∑ᵢ₌₁ⁿ 1/i`},
+		{"apart stays bare", `$\frac{a}{b} + \frac{c}{d} \cdot e$`, `a/b + c/d · e`},
+		{"in brackets", `$\left\lceil \frac{n}{2} \right\rceil$`, `⌈n/2⌉`},
+	})
+}
+
+// \over, \choose and \atop take the group around them. Unbraced, that is
+// the whole formula, which the author rarely meant: the operands stop at a
+// relation, a comma or a bracket.
+func TestTeXInfix(t *testing.T) {
+	runTeX(t, []texCase{
+		{"choose", `$\sum_{i=1}^{10} {10 \choose i} i^2$`, `∑ᵢ₌₁¹⁰ C(10, i) i²`},
+		{"choose in a product", `${p \choose j} \cdot {q \choose B-1-j}$`, `C(p, j) · C(q, B-1-j)`},
+		{"over group", `${a+b \over c}$`, `(a+b)/c`},
+		{"over stops at a relation", `$(3 + 4) + (4 + 7) \over 2 = 9$`, `((3 + 4) + (4 + 7))/2 = 9`},
+		{"choose in parentheses", `$s(A,N)*(A+B \choose A)$`, `s(A, N)\*(C(A+B, A))`},
+		{"atop", `$\left\{ {n \atop k} \right\}$`, `{n¦k}`},
+	})
+}
+
+// A script takes a command with its arguments, as MathJax reads it, and a
+// few scripts are something else: a degree, a misplaced \limits, layout.
+func TestTeXScripts(t *testing.T) {
+	runTeX(t, []texCase{
+		{"command argument", `$w_\mathrm{max}$`, `wₘₐₓ`},
+		{"text argument", `$\delta_\text{mean of x}$`, `δ\[mean of x]`},
+		{"frac argument", `$n^\frac43$`, `n^(4/3)`},
+		{"color argument", `$a_\color{red}{p_1}$`, `a\[p\[1]]`},
+		{"degree", `$0^\circ < \alpha < 90^{\circ}$`, `0° \< α \< 90°`},
+		{"limits misplaced", `$\sum_\limits{i=1}^n a_i$`, `∑ᵢ₌₁ⁿ aᵢ`},
+		{"empty script spaces", `$1_{\ \ }1$`, `1 1`},
+		{"transpose", `$v^\mathrm{T}$`, `vᵀ`},
+		{"script after a space", `$x _ { 1 } + d ^ 2$`, `x₁ + d²`},
+		{"script on a relation", `$a \ominus_k b$`, `a ⊖ₖ b`},
+		{"root index", `$\sqrt[\leftroot{-2}\uproot{2}4]{x}$`, `∜x`},
+		// An escaped underscore with nothing before it is a blank to fill.
+		{"blank", `$[998, \_, \_]$ and $\_ x^2$`, `\[998, \_, \_] and \_ x²`},
+	})
+}
+
+// Commands statements use that the converter printed as TeX.
+func TestTeXSymbols(t *testing.T) {
+	runTeX(t, []texCase{
+		{"relations", `$p \nmid i$, $a \perp b$, $A \subsetneq B$, $p \Longleftrightarrow q$`, `p ∤ i, a ⊥ b, A ⊊ B, p ⟺ q`},
+		{"proof marks", `$\therefore x$, $\blacksquare$, $\Box$`, `∴ x, ■, □`},
+		{"backslash", `$[1, N] \backslash S$`, `\[1, N] \\ S`},
+		{"spacing", `$a \> \& \> b \hspace{2pt} c \mkern-3mu d$`, `a & b c d`},
+		{"tag", `$x = 1 \tag{1}$`, `x = 1 (1)`},
+		{"sizing", `$\Biggl\lceil x \Biggr\rceil$`, `⌈x⌉`},
+		{"functions", `$\cot x + \sinh y$`, `cot x + sinh y`},
+		{"Bbb", `$x \in \Bbb R$`, `x ∈ ℝ`},
+		// Math nested in \text, its dollars escaped by the Codeforces
+		// converter; a price in \text stays a price.
+		{"text math", `$\text{if \$d_u \leq \ell\$}$ and $\text{costs \$5}$`, `if dᵤ ≤ ℓ and costs $5`},
+	})
 }
 
 // TestTeXToUnicodeLeavesCodeBlocks feeds a statement whose sample block is
