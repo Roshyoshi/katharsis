@@ -11,7 +11,6 @@ import (
 
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
-	"katharsis/internal/screens/meta"
 	"katharsis/internal/store"
 )
 
@@ -34,7 +33,7 @@ func motdStore(t *testing.T, n int, m game.Meta, nightly bool) string {
 			Phase: game.PhaseCrashed, Crash: &game.Crash{Cause: game.TimedOut, At: start.Add(time.Duration(i)*time.Minute + 30*time.Second)},
 		}
 		if nightly && i == n {
-			st.Seed = meta.NightlySeed(motdNow)
+			st.Seed = game.NightlySeed(motdNow)
 		}
 		m.Boots = i
 		if err := s.Checkpoint(m, st); err != nil {

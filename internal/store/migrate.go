@@ -158,6 +158,15 @@ var migrations = []string{
 		SELECT COALESCE(SUM(MAX(closed - opened, 0)), 0) FROM attempts
 		WHERE attempts.boot = boots.id AND opened > 0 AND closed > 0);
 	`,
+
+	// 4: boots.ending is how a cleared boot ended short of its last boss
+	// (game.State.Ending: 'wake', the Trial; docs/design/achievements.md
+	// §(i)). A wake keeps outcome 'cleared', so the outcome CHECK stays;
+	// what counts full clears reads ending = ''. Rows from before have no
+	// ending, which is right: there was none to reach.
+	`
+	ALTER TABLE boots ADD COLUMN ending TEXT NOT NULL DEFAULT '';
+	`,
 }
 
 // migrate applies the missing steps in one transaction, so a failed step

@@ -119,6 +119,7 @@ func (e *engine) begin() {
 	s.MaxCycles = max(r.MaxCycles, s.Cycles)
 	s.Packages = slices.Clone(m.Installed)
 	s.Caps = slices.Clone(m.Capabilities) // what a map's exits read
+	s.CountsSamples = true
 	// A package's ducks come once, at the start; merge windows refill to
 	// the base.
 	s.Ducks = e.baseDucks() + r.Grants(s.Packages).Ducks
@@ -143,6 +144,8 @@ func Step(s *State, meta *Meta, pool []catalog.Problem, a Action, now time.Time)
 	switch a := a.(type) {
 	case Tick:
 		err = e.tick()
+	case SamplesRun:
+		err = e.samplesRun()
 	case ChooseRoute:
 		err = e.chooseRoute(a.Index)
 	case ChooseDoor:
@@ -311,7 +314,7 @@ func (e *engine) submit(v SubmitResult) error {
 		a.Total = v.Total
 	}
 	a.BestPass = max(a.BestPass, v.Passed)
-	e.event(AttemptEvent{Kind: "submit", Verdict: v.Verdict, Passed: v.Passed, Total: v.Total})
+	e.event(AttemptEvent{Kind: "submit", Verdict: v.Verdict, Passed: v.Passed, Total: v.Total, SampleFailed: v.SampleFailed})
 	if v.Verdict == Accepted {
 		e.clear()
 		return nil
@@ -351,6 +354,19 @@ func (e *engine) submit(v SubmitResult) error {
 		return nil
 	}
 	e.emit(Sound{Name: "wa"})
+	return nil
+}
+
+// samplesRun counts a :w on the open door (Attempt.Samples). A deadline
+// already past is the timeout's first, as for every in-door action.
+func (e *engine) samplesRun() error {
+	if err := e.need(PhaseProblem, "samples"); err != nil {
+		return err
+	}
+	if e.expired() {
+		return nil
+	}
+	e.s.Current.Samples++
 	return nil
 }
 
@@ -858,7 +874,7 @@ func (e *engine) finish() {
 		e.logf("prestige %d locked until %d rated doors (%d so far)", g.Next, g.Need, g.Rated)
 	}
 	e.logf("boot #%d: cleared in %s, %s committed", s.Boot, units.Clock(s.Uptime(e.now)), units.Bytes(s.Committed))
-	e.emit(Sound{Name: "cleared"}, ShowCleared{})
+	e.emit(Sound{Name: "cleared"}, ShowCleared{Ending: s.Ending})
 }
 
 // ---- small helpers ---------------------------------------------------------
@@ -890,6 +906,33 @@ func (s *State) Uptime(at time.Time) time.Duration {
 		up += s.Current.ran(at)
 	}
 	return up
+}
+
+// EndTime is when a finished boot ended: a crash at its Crash.At, a clear
+// at its last door's close. at stands in where the boot records no end,
+// and for a boot still running.
+func (s *State) EndTime(at time.Time) time.Time {
+	switch s.Phase {
+	case PhaseCrashed:
+		if c := s.Crash; c != nil && !c.At.IsZero() {
+			return c.At
+		}
+	case PhaseCleared:
+		if n := len(s.History); n > 0 && !s.History[n-1].Closed.IsZero() {
+			return s.History[n-1].Closed
+		}
+	}
+	return at
+}
+
+// BootTime is the boot's Uptime to its end (EndTime, at for a boot still
+// running): the number its end screen, git log and the store's
+// boots.uptime show, a crash's being the panic screen's.
+func (s *State) BootTime(at time.Time) time.Duration {
+	if c := s.Crash; c != nil && c.Uptime > 0 {
+		return c.Uptime
+	}
+	return s.Uptime(s.EndTime(at))
 }
 
 // ran is how long a's door clock ran up to at: from Opened to the first of

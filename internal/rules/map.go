@@ -112,6 +112,16 @@ const (
 	TierFinal
 )
 
+// TrialNode is the Trial's node and boss key (docs/design/achievements.md
+// §(f)): the Court of Hearts, a hidden exit of act II's nodes into Boss
+// II's tier that opens only to a full cycle pool. Its one cursed door is
+// one shot, and clearing it ends the boot awake (EndingWake).
+const TrialNode = "trial"
+
+// EndingWake is the Trial's ending (Biome.Ending), Dull Reality: the boot
+// is cleared there, with no prestige unlocked and no full clear counted.
+const EndingWake = "wake"
+
 // node is a node of tier t on that tier's skeleton defaults.
 func node(t int, id, name, topic string, next ...string) Biome {
 	b := MapBiomes()[t]

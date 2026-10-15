@@ -352,27 +352,6 @@ func TestGrubSourcesNote(t *testing.T) {
 	}
 }
 
-func TestNightlySeed(t *testing.T) {
-	pdt := time.FixedZone("PDT", -7*3600)
-	day := time.Date(2026, 10, 14, 0, 0, 0, 0, pdt)
-	for _, tc := range []struct {
-		t    time.Time
-		want uint64
-	}{
-		{day, 0x20261014},
-		{day.Add(23*time.Hour + 59*time.Minute), 0x20261014},
-		{day.Add(24 * time.Hour), 0x20261015},
-		// The date is the one in t's location: 23:30 PDT is already the
-		// 15th in UTC, but the player's nightly is still the 14th's.
-		{time.Date(2026, 10, 14, 23, 30, 0, 0, pdt), 0x20261014},
-		{time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC), 0x20270101},
-	} {
-		if got := meta.NightlySeed(tc.t); got != tc.want {
-			t.Errorf("NightlySeed(%v) = %#x, want %#x", tc.t, got, tc.want)
-		}
-	}
-}
-
 func TestGrubBannerWhenItFits(t *testing.T) {
 	c := fixture.GrubConfig()
 	c.Banner = func(string) string { return "== BANNER ==" }

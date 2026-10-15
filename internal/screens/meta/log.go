@@ -354,14 +354,14 @@ func attemptLine(a AttemptRow, lay attemptLayout) string {
 }
 
 // markNightlies tags the nightly builds among boots (newest first): a
-// boot on its own day's NightlySeed, the first played on a seed marked
+// boot on its own day's game.NightlySeed, the first played on a seed marked
 // First; the rest on that seed are practice (retention RT15). Boots older
 // than the list are not seen, so the oldest listed counts as first.
 func markNightlies(boots []BootRow) {
 	seen := map[uint64]bool{}
 	for i := len(boots) - 1; i >= 0; i-- {
 		b := &boots[i]
-		if b.Seed == 0 || b.Seed != NightlySeed(b.Started) {
+		if b.Seed == 0 || b.Seed != game.NightlySeed(b.Started) {
 			continue
 		}
 		b.Nightly, b.First = true, !seen[b.Seed]

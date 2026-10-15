@@ -300,7 +300,7 @@ func recoveredNote(got int64) string {
 // session budget (RT12). A query that fails leaves its line out.
 func (m *Model) grubEnd(c meta.GrubConfig) meta.GrubConfig {
 	now := m.d.Now()
-	if r, ok, err := m.d.Store.SeedBest(meta.NightlySeed(now)); err != nil {
+	if r, ok, err := m.d.Store.SeedBest(game.NightlySeed(now)); err != nil {
 		m.logErr("nightly best", err)
 	} else if ok {
 		c.Nightly = &meta.NightlyBest{Played: r.Boots, Cleared: r.Cleared, Uptime: r.Uptime, Doors: r.Doors}

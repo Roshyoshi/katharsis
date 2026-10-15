@@ -16,6 +16,7 @@ import (
 // its Mult (retention RT4); the bytes past the dump are new earnings, so
 // they count toward LifetimeBytes too. A Mult under 1 (a preset's) takes
 // nothing back from LifetimeBytes: the doors paid the dump when cleared.
+// Meta.Record counts the recovery for the setuid bits.
 //
 // A non-editorial upsolve made on or after a regression's due date counts as
 // that stage's re-solve: the regression moves to its next stage, or is
@@ -39,6 +40,10 @@ func Upsolve(m *Meta, id catalog.ID, kind SolveKind, elapsed time.Duration, now 
 		m.Bank += recovered
 		m.LifetimeBytes += max(recovered-d.Bytes, 0)
 		m.CoreDump = nil
+		m.Record.Recovered++
+		if kind == Independent {
+			m.Record.RecoveredFree++
+		}
 	}
 	if kind != Editorial {
 		advanceRegression(m, id, now)

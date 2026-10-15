@@ -108,7 +108,7 @@ const standardPreset = "standard"
 // NewGrub builds the start screen. The highest unlocked prestige is listed
 // first and highlighted, as GRUB lists the newest kernel first. Under the
 // prestiges is the nightly build, the daily run: the highest prestige,
-// standard rules and the day's NightlySeed.
+// standard rules and the day's game.NightlySeed.
 func NewGrub(c GrubConfig) *Menu {
 	if c.PrestigeName == nil {
 		c.PrestigeName = flavor.PrestigeName
@@ -203,7 +203,7 @@ func NewGrub(c GrubConfig) *Menu {
 	}
 	es = append(es, entry{
 		label: "katharsis (nightly build " + now.Format(time.DateOnly) + ")" + nightlyBest(c.Nightly),
-		boot:  &screens.StartBoot{Prestige: m.maxP, Preset: standardPreset, Seed: NightlySeed(now)},
+		boot:  &screens.StartBoot{Prestige: m.maxP, Preset: standardPreset, Seed: game.NightlySeed(now)},
 		note:  sub("nightly"),
 	})
 	es = append(es, entry{label: "katharsis (RTFM — learn mode)", msg: screens.OpenLearn{}, note: sub("rtfm")})
@@ -282,20 +282,6 @@ func nightlyBest(b *NightlyBest) string {
 		return ui.G.Sep + "best: cleared in " + units.Clock(b.Uptime)
 	}
 	return ui.G.Sep + "best: " + units.Plural(b.Doors, "door") + " cleared"
-}
-
-// NightlySeed is the nightly build's seed for the day t falls on in t's own
-// location (hand it local time): the date's decimal digits read as hex, so
-// 2026-10-14 is seed 0x20261014. Each day has one seed, git log shows it as
-// the date, and it is never 0 (which StartBoot takes as random). The engine
-// mixes its seed through splitmix64, so neighbouring days still roll
-// unrelated boots. The seed fixes the engine's draws, but doors are still
-// aimed at the player's rating and history, so a replay can meet other
-// doors.
-func NightlySeed(t time.Time) uint64 {
-	y, mo, d := t.Date()
-	seed, _ := strconv.ParseUint(fmt.Sprintf("%04d%02d%02d", y, int(mo), d), 16, 64)
-	return seed
 }
 
 // dueRegressions is the regressions due at or before now, oldest due first.

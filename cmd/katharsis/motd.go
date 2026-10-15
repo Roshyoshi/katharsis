@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"katharsis/internal/game"
-	"katharsis/internal/screens/meta"
 	"katharsis/internal/store"
 	"katharsis/internal/ui"
 	"katharsis/internal/units"
@@ -64,7 +63,7 @@ func motd(path string, now time.Time) (string, error) {
 	if d := m.CoreDump; d != nil && d.Bytes > 0 {
 		parts = append(parts, ui.G.Crash+" "+units.Bytes(d.Bytes)+" core dump to upsolve")
 	}
-	played, err := s.Played(meta.NightlySeed(now))
+	played, err := s.Played(game.NightlySeed(now))
 	if err != nil {
 		return "", err
 	}

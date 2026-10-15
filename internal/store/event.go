@@ -46,7 +46,36 @@ const (
 	EventAptInstall     = "apt_install"
 	EventWorthIt        = "worth_it"    // json answer: yes | no | skip
 	EventAlarmShown     = "alarm_shown" // json alarm: a retention alarm's name
+
+	// The setuid bits (docs/design/achievements.md §(h)), local only
+	// (GR12): their payloads are SetuidSet, SetuidOpen and SetuidHint.
+	EventSetuidSet  = "setuid_set"  // a bit set
+	EventSetuidOpen = "setuid_open" // the find / -perm -4000 screen opened
+	EventSetuidHint = "setuid_hint" // a secret row's hint shown
 )
+
+// SetuidSet is a setuid_set event's Data: the bit (setuid.Def's ID and
+// Kind), whether the backfill set it, and the phase the boot was in when
+// it was noticed ("" outside a boot).
+type SetuidSet struct {
+	ID       string `json:"id"`
+	Kind     string `json:"kind"`
+	Backfill bool   `json:"backfill"`
+	Phase    string `json:"phase"`
+}
+
+// SetuidOpen is a setuid_open event's Data: the spoilers setting
+// (none | hints | all) and how many bits were set of how many.
+type SetuidOpen struct {
+	Spoilers string `json:"spoilers"`
+	Set      int    `json:"set"`
+	Of       int    `json:"of"`
+}
+
+// SetuidHint is a setuid_hint event's Data: the secret whose hint showed.
+type SetuidHint struct {
+	ID string `json:"id"`
+}
 
 // Event is one fact only the app sees: no game struct records it. Data is
 // its payload, stored as JSON.

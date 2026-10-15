@@ -159,7 +159,7 @@ func TestGrubNightlyBest(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
 		h.m.d.Budget = time.Minute
-		h.send(screens.StartBoot{Preset: "standard", Seed: meta.NightlySeed(h.clock.t)})
+		h.send(screens.StartBoot{Preset: "standard", Seed: game.NightlySeed(h.clock.t)})
 		h.verdict = "WA"
 		if got := h.play(); got != game.PhaseCrashed {
 			t.Fatalf("boot ended %q", got)

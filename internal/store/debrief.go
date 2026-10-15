@@ -118,10 +118,11 @@ func (s *Store) BossClearedBefore(boss string, boot int) (bool, error) {
 }
 
 // BestClear is the fastest clear before boot on preset at prestige, ok
-// false when there was none: the clear's personal-best line (RT1).
+// false when there was none: the clear's personal-best line (RT1). A wake
+// (the Trial's ending) stops a boss short, so it is no clear here.
 func (s *Store) BestClear(preset string, prestige, boot int) (best time.Duration, ok bool, err error) {
 	var u sql.NullInt64
-	err = s.db.QueryRow(`SELECT MIN(uptime) FROM boots WHERE outcome = 'cleared' AND rules = ? AND prestige = ? AND id < ?
+	err = s.db.QueryRow(`SELECT MIN(uptime) FROM boots WHERE outcome = 'cleared' AND ending = '' AND rules = ? AND prestige = ? AND id < ?
 		AND json_extract(state, '$.Trial') IS NULL`, preset, prestige, boot).Scan(&u)
 	if err != nil || !u.Valid {
 		return 0, false, err
@@ -141,21 +142,21 @@ type SeedRun struct {
 // SeedBest is how the seed has been played, ok false when it never has.
 func (s *Store) SeedBest(seed uint64) (r SeedRun, ok bool, err error) {
 	err = eachRow(s.db, `
-		SELECT b.outcome, b.uptime,
+		SELECT b.outcome = 'cleared' AND b.ending = '', b.uptime,
 			(SELECT COUNT(*) FROM attempts a WHERE a.boot = b.id AND a.outcome = 'cleared')
 		FROM boots b WHERE b.seed = ? AND json_extract(b.state, '$.Trial') IS NULL`,
 		[]any{int64(seed)}, func(rows *sql.Rows) error {
 			var (
-				outcome BootOutcome
+				cleared bool // to its last boss: a wake is not a clear of the seed
 				uptime  int64
 				doors   int
 			)
-			if err := rows.Scan(&outcome, &uptime, &doors); err != nil {
+			if err := rows.Scan(&cleared, &uptime, &doors); err != nil {
 				return err
 			}
 			r.Boots++
 			up := time.Duration(uptime)
-			switch cleared := outcome == BootCleared; {
+			switch {
 			case cleared && (!r.Cleared || up < r.Uptime):
 				r.Cleared, r.Uptime, r.Doors = true, up, doors
 			case !cleared && !r.Cleared && (doors > r.Doors || doors == r.Doors && up > r.Uptime):

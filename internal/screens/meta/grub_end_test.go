@@ -79,7 +79,7 @@ func TestGrubRegressionsCapped(t *testing.T) {
 // nightly's included (RT15).
 func TestLogNightlies(t *testing.T) {
 	day := time.Date(2026, 10, 12, 21, 0, 0, 0, time.UTC)
-	seed := meta.NightlySeed(day)
+	seed := game.NightlySeed(day)
 	rows := []meta.BootRow{
 		{Boot: 3, Seed: seed, Preset: "standard", Prestige: 1, Started: day.Add(2 * time.Hour), Cause: game.TimedOut},
 		{Boot: 2, Seed: seed, Preset: "standard", Prestige: 1, Started: day.Add(time.Hour), Cleared: true},

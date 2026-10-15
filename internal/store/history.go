@@ -29,6 +29,9 @@ type BootSummary struct {
 	// loses its bytes without a dump.
 	Dumped   int64
 	LastDoor catalog.ID
+	// Ending is how a cleared boot ended short of its last boss
+	// (game.State.Ending): "wake" is the Trial, git log's "awake".
+	Ending string
 }
 
 // dumpedSQL reads Dumped out of the stored State. It has no column of its
@@ -42,7 +45,7 @@ func (s *Store) Boots(limit int) ([]BootSummary, error) {
 	var out []BootSummary
 	err := eachRow(s.db, `
 		SELECT id, seed, prestige, rules, started, outcome, cause, uptime,
-			committed, `+dumpedSQL+`, last_door
+			committed, `+dumpedSQL+`, last_door, ending
 		FROM boots ORDER BY id DESC LIMIT ?`, []any{sqlLimit(limit)},
 		func(rows *sql.Rows) error {
 			var (
@@ -50,7 +53,7 @@ func (s *Store) Boots(limit int) ([]BootSummary, error) {
 				seed, started, uptime int64
 			)
 			if err := rows.Scan(&b.Boot, &seed, &b.Prestige, &b.Rules, &started,
-				&b.Outcome, &b.Cause, &uptime, &b.Committed, &b.Dumped, &b.LastDoor); err != nil {
+				&b.Outcome, &b.Cause, &uptime, &b.Committed, &b.Dumped, &b.LastDoor, &b.Ending); err != nil {
 				return err
 			}
 			b.Seed = uint64(seed)
@@ -149,7 +152,9 @@ type TopicStats struct {
 
 // Stats is the totals behind `top`.
 type Stats struct {
-	Boots      int
+	Boots int
+	// FullClears counts the boots cleared to their last boss: a wake (the
+	// Trial's ending, BootSummary.Ending) is cleared but no full clear.
 	FullClears int
 	Crashes    map[game.Outcome]int   // by cause
 	Solves     map[game.SolveKind]int // from Meta.Solves, upsolves included
@@ -167,7 +172,7 @@ func (s *Store) Stats() (Stats, error) {
 	}
 	err := s.read(func(tx *sql.Tx) error {
 		if err := tx.QueryRow(`
-			SELECT COUNT(*), COALESCE(SUM(outcome = 'cleared'), 0)
+			SELECT COUNT(*), COALESCE(SUM(outcome = 'cleared' AND ending = ''), 0)
 			FROM boots`).Scan(&st.Boots, &st.FullClears); err != nil {
 			return err
 		}

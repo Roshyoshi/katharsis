@@ -115,6 +115,24 @@ type Biome struct {
 	// entered at once (Dead Cells' Guardian's Haven: two scrolls for the
 	// level skipped).
 	Skip bool `toml:"skip"`
+
+	// ---- a secret node (docs/design/achievements.md §(f)) -------------------
+
+	// Hidden keeps the node's exit off the route until it opens, or until
+	// the player has met its gate's hint (game.Meta.Capped for NeedFull):
+	// the map never names it before.
+	Hidden bool `toml:"hidden"`
+	// NeedFull opens the node's exit only to a full cycle pool: the boot's
+	// cycles at its cap (game.State.MaxCycles) as the tier is entered.
+	NeedFull bool `toml:"need_full"`
+	// Cursed makes every door of the node cursed (no ducks; one failed
+	// submit ends the boot), as a door's roll would.
+	Cursed bool `toml:"cursed"`
+	// Ending, when set, ends the boot once the node's last room is
+	// cleared: cleared with this ending (game.State.Ending), banking what
+	// is uncommitted, unlocking no prestige and counting as no full clear.
+	// Such a node has no exits.
+	Ending string `toml:"ending"`
 }
 
 type Rules struct {
@@ -1209,7 +1227,7 @@ const MaxTimerMult = 10
 // (rooms, aim and timer as a biome's; a skip plays no room), IDs unique,
 // one node in tier 0, a boss key on the nodes of boss tiers and no other,
 // and every exit to a node of the next tier, which the last tier's nodes
-// have none of.
+// and an ending have none of.
 func (r Rules) validateNodes() error {
 	if len(r.Nodes) == 0 {
 		return nil
@@ -1235,6 +1253,9 @@ func (r Rules) validateNodes() error {
 		if n.Tier == 0 && n.Skip {
 			return fmt.Errorf("rules %q: node %q: the start is no skip", r.Name, n.ID)
 		}
+		if (n.Hidden || n.Ending != "") && (n.Tier == 0 || n.Skip) {
+			return fmt.Errorf("rules %q: node %q: the start and a skip can be neither hidden nor an ending", r.Name, n.ID)
+		}
 		ids[n.ID] = n
 		if n.Tier == 0 {
 			starts++
@@ -1244,7 +1265,8 @@ func (r Rules) validateNodes() error {
 		return fmt.Errorf("rules %q: the map needs one tier-0 node, has %d", r.Name, starts)
 	}
 	for _, n := range r.Nodes {
-		if len(n.Next) == 0 && n.Tier < last || len(n.Next) > 0 && n.Tier == last {
+		// An ending ends the boot where it stands: no exits.
+		if len(n.Next) == 0 && n.Tier < last && n.Ending == "" || len(n.Next) > 0 && (n.Tier == last || n.Ending != "") {
 			return fmt.Errorf("rules %q: node %q of tier %d has %d exits", r.Name, n.ID, n.Tier, len(n.Next))
 		}
 		for i, id := range n.Next {

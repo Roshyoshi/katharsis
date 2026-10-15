@@ -132,6 +132,75 @@ type Meta struct {
 	// LastPlayed is when the player last started or ended a boot or trial,
 	// or upsolved: what a comeback (rules.ComebackDays) counts from.
 	LastPlayed time.Time `json:",omitzero"`
+
+	// Setuid lists the setuid bits set (docs/design/achievements.md), each
+	// once, in the order set; internal/setuid sets them. The engine never
+	// reads them (GR7): a bit steers nothing.
+	Setuid []SetuidBit `json:",omitempty"`
+	// Record is what the bits read of the boots already finished: their
+	// fold, kept by internal/setuid (Fold), and the core dumps upsolves
+	// recovered (Upsolve).
+	Record Record `json:",omitzero"`
+	// Capped is the boot whose cycle pool first reached its cap on a map
+	// (State.Capped), 0 before it ever did: the Trial's hint. From then on
+	// Boss II's tier shows the Trial's exit while it is still locked
+	// (rules.Biome.Hidden).
+	Capped int `json:",omitempty"`
+}
+
+// SetuidBit is one setuid bit set: its id (setuid.Table), when, and in
+// which boot (0 outside one: an upsolve, a trial's end, an install).
+// Backfill marks a bit set from the store's history ("from git log"), At
+// then being the end of the boot that proved it, or the backfill's time
+// for a bit only Meta proves.
+type SetuidBit struct {
+	ID       string
+	At       time.Time
+	Boot     int  `json:",omitempty"`
+	Backfill bool `json:",omitempty"`
+}
+
+// Record folds the finished boots for the setuid bits (setuid.Fold):
+// what they reach across boots. It is small and bounded (17 nodes, 6
+// bosses, 8 verdicts, 7 daemons, 8 levels). Only the built-in presets'
+// boots count, trials aside; BootTime counts every boot but trials.
+type Record struct {
+	// Folded is the last boot folded (State.Boot): a boot is folded once,
+	// when it ends, and boots end in the order they began.
+	Folded int `json:",omitempty"`
+
+	// Nodes are the map nodes with a cleared room, Bosses the boss keys
+	// defeated (the Trial's aside), Verdicts every full-test verdict heard
+	// on a door, and Daemons those that ran in a cleared boot, each in the
+	// order first seen.
+	Nodes    []string  `json:",omitempty"`
+	Bosses   []string  `json:",omitempty"`
+	Verdicts []Verdict `json:",omitempty"`
+	Daemons  []Daemon  `json:",omitempty"`
+	// Unlocked are the prestiges a clear unlocked (State.Unlocked), and
+	// Cleared the prestiges of three-act clears, ascending.
+	Unlocked []int `json:",omitempty"`
+	Cleared  []int `json:",omitempty"`
+	// Endings are the endings other than a clear that boots reached
+	// (State.Ending: EndingWake).
+	Endings []string `json:",omitempty"`
+	// Skips and Nightly count three-act clears that took act III's skip,
+	// and that played their day's nightly seed (NightlySeed).
+	Skips   int `json:",omitempty"`
+	Nightly int `json:",omitempty"`
+
+	// BootTime is the time inside doors of every finished boot but trials:
+	// TIME+ less upsolves and trials, the clock of the speed completions
+	// (achievements.md §(a)). It counts custom presets too, as a cost.
+	BootTime time.Duration `json:",omitempty"`
+	// Recovered counts the core dumps an upsolve recovered (Upsolve), and
+	// RecoveredFree those an independent one did (no editorial, no duck).
+	Recovered     int `json:",omitempty"`
+	RecoveredFree int `json:",omitempty"`
+
+	// Backfilled is set once the bits were set from the store's history
+	// (setuid.Backfill), which a save from before them needs once.
+	Backfilled bool `json:",omitempty"`
 }
 
 // Governor is Meta's count of recent boot endings (ml-pipeline M4's streak
@@ -279,17 +348,32 @@ type Exit struct {
 	// Gate is what the node needs, zero when nothing (always open).
 	Gate Gate `json:",omitzero"`
 	// Locked is why it cannot be taken, "" when it can: the gate's terms
-	// ("CAP_BSEARCH or apt git", "prestige 1"), or "pool" when the pool
-	// holds too few problems for its rooms near the player.
+	// ("CAP_BSEARCH or apt git", "prestige 1"), LockedFull for a pool
+	// short of its cap, or "pool" when the pool holds too few problems for
+	// its rooms near the player.
 	Locked string `json:",omitempty"`
+	// Hidden marks a secret node's exit (rules.Biome.Hidden, the Trial):
+	// on the route only while open, or locked once Meta.Capped gave its
+	// hint. A screen draws a locked one without its name (⚔ ???).
+	Hidden bool `json:",omitempty"`
+	// Ending is the node's ending (rules.Biome.Ending): taking it ends the
+	// boot there once its room is cleared, with no prestige unlock.
+	Ending string `json:",omitempty"`
 }
 
+// LockedFull is Exit.Locked for a node that needs a full cycle pool
+// (Gate.Full): Rule Forty-two, "All persons more than a mile high to leave
+// the court", read backwards.
+const LockedFull = "a mile high"
+
 // Gate is what a map node needs to be taken: its topic's capability
-// (earned in an RTFM trial), unless Package is installed; and a prestige.
+// (earned in an RTFM trial), unless Package is installed; a prestige; and
+// for the Trial, Full: the cycle pool at its cap.
 type Gate struct {
 	Capability string `json:",omitempty"`
 	Package    string `json:",omitempty"`
 	Prestige   int    `json:",omitempty"`
+	Full       bool   `json:",omitempty"`
 }
 
 // Outcome of one attempt.
@@ -360,6 +444,10 @@ type Attempt struct {
 	// -O3 measures the timer without it (rules.O3OnBase).
 	At     time.Duration  `json:",omitempty"`
 	Events []AttemptEvent `json:",omitempty"`
+
+	// Samples counts the sample runs (:w) made on this door (SamplesRun),
+	// where State.CountsSamples says they were counted.
+	Samples int `json:",omitempty"`
 }
 
 // Upgrade is picked after each cleared door.
@@ -506,6 +594,20 @@ type State struct {
 	// offer, in order, with the propensity of each item: the data for
 	// evaluating another door policy off this one's (ml-pipeline §4, §5.3).
 	Offers []Offer `json:",omitempty"`
+
+	// Ending is how a cleared boot ended short of its last boss: "" for a
+	// clear (and while running, and on a crash), EndingWake for the Trial
+	// (rules.Biome.Ending). Such a boot unlocked no prestige and is no
+	// full clear.
+	Ending string `json:",omitempty"`
+	// Capped is set once the cycle pool stood at its cap (MaxCycles) on a
+	// map, between doors: what the Trial's exit needs, and its hint
+	// (Meta.Capped).
+	Capped bool `json:",omitempty"`
+	// CountsSamples says the boot counts each door's sample runs
+	// (Attempt.Samples, SamplesRun): false in a boot saved before it, whose
+	// doors' :w runs are unknown.
+	CountsSamples bool `json:",omitempty"`
 }
 
 // Start is what the player had when a boot began (State.AtStart).
@@ -628,6 +730,11 @@ type Judging struct{ On bool }
 
 type Tick struct{} // the clock moved; checks the deadline
 
+// SamplesRun reports a sample run (:w) of the open door (PhaseProblem). It
+// only counts it (Attempt.Samples): Heisenbug's setuid bit asks for none.
+// The samples_judged event cannot stand in, being best-effort.
+type SamplesRun struct{}
+
 // Merge window choices.
 type Commit struct{} // bank Uncommitted
 type PickUpgrade struct{ Upgrade Upgrade }
@@ -665,6 +772,7 @@ func (GiveUp) isAction()       {}
 func (SubmitResult) isAction() {}
 func (Judging) isAction()      {}
 func (Tick) isAction()         {}
+func (SamplesRun) isAction()   {}
 func (Commit) isAction()       {}
 func (PickUpgrade) isAction()  {}
 func (PickDaemon) isAction()   {}
@@ -687,7 +795,10 @@ type RevealTags struct {
 } // 1 tags, 2 technique
 type OpenEditorial struct{ Problem catalog.ID }
 type ShowCrash struct{ Crash Crash }
-type ShowCleared struct{}
+
+// ShowCleared shows the cleared screen; Ending is the boot's (State.Ending):
+// EndingWake plays the Trial's scene first.
+type ShowCleared struct{ Ending string }
 type Sound struct{ Name string }              // "ac", "wa", "crash", "commit", "boss", "cleared"
 type Prefetch struct{ Problems []catalog.ID } // doors on offer: fetch ahead
 
@@ -706,6 +817,14 @@ func (Prefetch) isEffect()      {}
 var BossKeys = []string{"off-by-one", "heisenbug", "oom-killer", "race-condition", "undefined-behavior"}
 
 const FinalBoss = "halting-problem"
+
+// TrialBoss is the Trial's boss key (rules.TrialNode), the Court of Hearts:
+// not one of BossKeys, which a linear boot draws its bosses from, and no
+// boss the setuid bits count among the six. EndingWake is its ending.
+const (
+	TrialBoss  = rules.TrialNode
+	EndingWake = rules.EndingWake
+)
 
 // MaxPrestige is the highest prestige level a boot can play: the map's
 // ladder runs to P8 (map.md §(d), rules.MapAscensions). The story names
@@ -726,6 +845,10 @@ type AttemptEvent struct {
 	Total     int     `json:",omitempty"`
 	FirstFail int     `json:",omitempty"` // 1-based first failing test; 0 unknown
 	Level     int     `json:",omitempty"` // quack level
+	// SampleFailed marks a submit whose failing test was a sample
+	// (SubmitResult.SampleFailed): it cost nothing and failed no hidden
+	// test. Events saved before it never set it.
+	SampleFailed bool `json:",omitempty"`
 }
 
 // Offer is one set of doors, or of route topics, the engine put on offer,

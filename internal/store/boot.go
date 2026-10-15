@@ -68,39 +68,30 @@ func (s *Store) Checkpoint(meta game.Meta, st *game.State) error {
 type bootRow struct {
 	outcome  BootOutcome
 	cause    game.Outcome
+	ending   string // game.State.Ending
 	ended    sql.NullInt64
 	uptime   time.Duration
 	lastDoor catalog.ID
 }
 
 // summarize derives the boots columns. Uptime is the boot's time inside
-// doors (game.State.Uptime): a running boot's as of this checkpoint, a
+// doors (game.State.BootTime): a running boot's as of this checkpoint, a
 // finished one's fixed by how it ended. Wall time is the row's started to
 // its ended, or to saved while it runs (retention.go reads it that way).
 func summarize(st *game.State, now time.Time) bootRow {
-	var r bootRow
-	end := now
+	r := bootRow{ending: st.Ending}
 	switch st.Phase {
 	case game.PhaseCrashed:
 		r.outcome = BootCrashed
 		if c := st.Crash; c != nil {
 			r.cause = c.Cause
-			if !c.At.IsZero() {
-				end = c.At
-			}
 		}
-		r.ended = sql.NullInt64{Int64: unixNano(end), Valid: true}
+		r.ended = sql.NullInt64{Int64: unixNano(st.EndTime(now)), Valid: true}
 	case game.PhaseCleared:
 		r.outcome = BootCleared
-		if n := len(st.History); n > 0 && !st.History[n-1].Closed.IsZero() {
-			end = st.History[n-1].Closed
-		}
-		r.ended = sql.NullInt64{Int64: unixNano(end), Valid: true}
+		r.ended = sql.NullInt64{Int64: unixNano(st.EndTime(now)), Valid: true}
 	}
-	r.uptime = st.Uptime(end)
-	if c := st.Crash; c != nil && c.Uptime > 0 {
-		r.uptime = c.Uptime // the engine's number is what the panic screen showed
-	}
+	r.uptime = st.BootTime(now)
 
 	switch {
 	case st.Crash != nil:
@@ -140,8 +131,8 @@ func (s *Store) putBoot(tx *sql.Tx, st *game.State, raw []byte, rulesHash string
 	// same crash (say, a log line) must not stretch it.
 	_, err = tx.Exec(`
 		INSERT INTO boots (id, seed, prestige, rules, started, ended, phase,
-			outcome, cause, uptime, committed, last_door, state, saved, rules_hash)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			outcome, cause, uptime, committed, last_door, state, saved, rules_hash, ending)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (id) DO UPDATE SET
 			prestige   = excluded.prestige,
 			rules      = excluded.rules,
@@ -154,10 +145,11 @@ func (s *Store) putBoot(tx *sql.Tx, st *game.State, raw []byte, rulesHash string
 			last_door  = excluded.last_door,
 			state      = excluded.state,
 			saved      = excluded.saved,
-			rules_hash = excluded.rules_hash`,
+			rules_hash = excluded.rules_hash,
+			ending     = excluded.ending`,
 		st.Boot, int64(st.Seed), st.Prestige, st.Rules.Name, unixNano(st.Started),
 		r.ended, st.Phase, r.outcome, r.cause, int64(r.uptime), st.Committed,
-		r.lastDoor, raw, unixNano(now), rulesHash)
+		r.lastDoor, raw, unixNano(now), rulesHash, r.ending)
 	if err != nil {
 		return err
 	}
