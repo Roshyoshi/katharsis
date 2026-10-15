@@ -90,8 +90,8 @@ func TestTrialIntegration(t *testing.T) {
 	}
 }
 
-// TestTrialSpec: the curriculum's trial is what the engine plays, and a short unit
-// is the engine's to top up.
+// TestTrialSpec: the curriculum's trial is what the engine plays, and a
+// short unit is the engine's to top up.
 func TestTrialSpec(t *testing.T) {
 	tr := TrialForN(trialModule, nil, 2)
 	spec := tr.Spec()

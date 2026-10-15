@@ -24,7 +24,7 @@ type Module struct {
 	e      entry
 	prereq []string // prerequisites as display names
 	caps   map[string]bool
-	lookup Lookup
+	lookup screens.Lookup
 
 	top int // first body line shown, when the body does not fit
 	h   int // body rows at the last View
@@ -32,11 +32,11 @@ type Module struct {
 
 // NewModule builds the page for mod. c resolves prerequisite ids to titles
 // and may be nil; judgeable and lookup are as for NewBrowser.
-func NewModule(c *curriculum.Curriculum, mod curriculum.Module, m game.Meta, judgeable Judgeable, lookup Lookup) *Module {
+func NewModule(c *curriculum.Curriculum, mod curriculum.Module, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Module {
 	return newModule(c, newEntry(mod, judgeable), capSet(m), lookup)
 }
 
-func newModule(c *curriculum.Curriculum, e entry, caps map[string]bool, lookup Lookup) *Module {
+func newModule(c *curriculum.Curriculum, e entry, caps map[string]bool, lookup screens.Lookup) *Module {
 	p := &Module{e: e, caps: caps, lookup: lookup}
 	for _, id := range e.mod.Prerequisites {
 		name := id

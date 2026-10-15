@@ -86,10 +86,10 @@ func (c *Crash) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		st := c.env.State
 		switch msg.String() {
 		case "u":
-			return c, screens.Emit(screens.Upsolve{Problem: string(c.crash().Door.Problem)})
+			return c, screens.Emit(screens.Upsolve{Problem: c.crash().Door.Problem})
 		case "e":
 			if id := c.crash().Door.Problem; c.env.hasEditorial(id) {
-				return c, screens.Emit(screens.OpenEditorial{Problem: string(id)})
+				return c, screens.Emit(screens.OpenEditorial{Problem: id})
 			}
 		case "r":
 			return c, screens.Emit(screens.StartBoot{Prestige: st.Prestige, Preset: st.Rules.Name})

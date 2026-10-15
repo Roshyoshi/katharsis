@@ -44,11 +44,11 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 	case linkMsg:
 		return m.onLink(msg), true
 	case screens.Upsolve:
-		return m.startUpsolve(catalog.ID(msg.Problem)), true
+		return m.startUpsolve(msg.Problem), true
 	case screens.OpenStatement:
-		return m.openDoc(catalog.ID(msg.Problem), false), true
+		return m.openDoc(msg.Problem, false), true
 	case screens.OpenEditorial:
-		return m.openDoc(catalog.ID(msg.Problem), true), true
+		return m.openDoc(msg.Problem, true), true
 	case reader.OpenURL:
 		return openURL(msg.URL), true
 	case docMsg:
@@ -70,7 +70,7 @@ func (m *Model) grub() screens.Screen {
 	return meta.NewGrub(meta.GrubConfig{
 		Meta:    m.meta,
 		Presets: presets,
-		Title:   m.title,
+		Lookup:  m.d.Catalog.Get,
 		Now:     m.d.Now(),
 	})
 }

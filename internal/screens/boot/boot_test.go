@@ -520,7 +520,7 @@ func TestCrashKeys(t *testing.T) {
 func TestCrashEditorialKey(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
-		lookup Lookup
+		lookup screens.Lookup
 		want   tea.Msg // nil: e does nothing and the footer omits it
 	}{
 		{"has editorial", fixture.Lookup, screens.OpenEditorial{Problem: "usaco:644"}},

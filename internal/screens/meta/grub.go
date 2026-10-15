@@ -22,9 +22,9 @@ type GrubConfig struct {
 	Meta game.Meta
 	// Presets are custom rules preset names; "standard" is always offered.
 	Presets []string
-	// Title resolves problem titles for the core dump and regressions; nil
+	// Lookup resolves problem titles for the core dump and regressions; nil
 	// shows catalog IDs.
-	Title func(catalog.ID) string
+	Lookup screens.Lookup
 	// Now decides which regressions are due and, by its date in its own
 	// location, the nightly build; zero means time.Now().
 	Now time.Time
@@ -79,9 +79,9 @@ func NewGrub(c GrubConfig) *Menu {
 		now = time.Now()
 	}
 	title := func(id catalog.ID) string {
-		if c.Title != nil {
-			if t := c.Title(id); t != "" {
-				return t
+		if c.Lookup != nil {
+			if p, ok := c.Lookup(id); ok && p.Title != "" {
+				return p.Title
 			}
 		}
 		return string(id)
@@ -119,7 +119,7 @@ func NewGrub(c GrubConfig) *Menu {
 	if d := c.Meta.CoreDump; d != nil {
 		es = append(es, entry{
 			label: fmt.Sprintf("upsolve core dump: %s (%s)", title(d.Problem), units.Bytes(d.Bytes)),
-			msg:   screens.Upsolve{Problem: string(d.Problem)},
+			msg:   screens.Upsolve{Problem: d.Problem},
 		})
 	}
 	if regs := dueRegressions(c.Meta.Regressions, now); len(regs) > 0 {
@@ -127,7 +127,7 @@ func NewGrub(c GrubConfig) *Menu {
 		for _, r := range regs {
 			sub.entries = append(sub.entries, entry{
 				label: fmt.Sprintf("regression: %s (due %s, stage %d)", title(r.Problem), ago(r.Due, now), r.Stage+1),
-				msg:   screens.Upsolve{Problem: string(r.Problem)},
+				msg:   screens.Upsolve{Problem: r.Problem},
 			})
 		}
 		es = append(es, entry{label: fmt.Sprintf("regressions due: %d", len(regs)), sub: sub})

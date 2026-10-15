@@ -408,13 +408,13 @@ func TestTopKeys(t *testing.T) {
 
 func TestGrubConfigDefaults(t *testing.T) {
 	c := fixture.GrubConfig()
-	c.Now, c.Title = time.Time{}, nil
+	c.Now, c.Lookup = time.Time{}, nil
 	c.Meta.Regressions = []game.Regression{{Problem: "usaco:1205", Due: time.Now().Add(-time.Minute)}}
 	v := plain(meta.NewGrub(c).View(80, 24))
 	if !strings.Contains(v, "regressions due: 1") {
 		t.Errorf("zero Now should mean time.Now():\n%s", v)
 	}
 	if !strings.Contains(v, "upsolve core dump: usaco:1014") {
-		t.Errorf("nil Title should show catalog IDs:\n%s", v)
+		t.Errorf("nil Lookup should show catalog IDs:\n%s", v)
 	}
 }

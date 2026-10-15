@@ -348,7 +348,7 @@ func TestCrashThenUpsolveRecoversCoreDump(t *testing.T) {
 	bank := h.m.meta.Bank
 
 	h.verdict = "AC"
-	h.send(screens.Upsolve{Problem: string(dump.Problem)})
+	h.send(screens.Upsolve{Problem: dump.Problem})
 	if h.m.open == nil || !h.m.open.Upsolve {
 		t.Fatal("upsolve did not open the problem")
 	}
@@ -532,7 +532,7 @@ func TestLateFetchOpensNothing(t *testing.T) {
 	h.m.d.Catalog = c
 	opened := h.runner.opened
 
-	h.send(screens.Upsolve{Problem: string(id)}) // the fetch hangs
+	h.send(screens.Upsolve{Problem: id}) // the fetch hangs
 	if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "fetching") || strings.Contains(v, "e retries") {
 		t.Errorf("upsolve while fetching shows %q, want fetching without e (the editorial key)", v)
 	}
@@ -563,7 +563,7 @@ func TestUnsavedUpsolveClosesTheDoor(t *testing.T) {
 	h.send(screens.StartBoot{Preset: "standard"})
 	h.enterDoor()
 	h.send(game.GiveUp{})
-	h.send(screens.Upsolve{Problem: string(h.m.state.Crash.Door.Problem)})
+	h.send(screens.Upsolve{Problem: h.m.state.Crash.Door.Problem})
 	if err := h.st.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -588,7 +588,7 @@ func TestUpsolveAfterGiveUpIsEditorial(t *testing.T) {
 	}
 
 	h.restart()
-	h.send(screens.Upsolve{Problem: string(id)})
+	h.send(screens.Upsolve{Problem: id})
 	h.send(submitMsg{})
 	last := h.m.meta.Solves[len(h.m.meta.Solves)-1]
 	if last.Problem != id || !last.Upsolve || last.Kind != game.Editorial {

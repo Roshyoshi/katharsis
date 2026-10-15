@@ -1,4 +1,4 @@
-// Package learn holds the RTFM (learn mode) screens: the curriculum browser,
+// Package rtfm holds the RTFM (learn mode) screens: the curriculum browser,
 // laid out like a man page index over the USACO Guide's divisions, chapters
 // and modules, and the module page, which shows one module's facts and the
 // trial that passing it takes.
@@ -10,8 +10,8 @@
 // (read the module), screens.StartTrial, reader.OpenURL and screens.Back.
 //
 // The guide is CC BY-NC-SA 4.0. The browser names it in its header and
-// prints the collection notice (curriculum.Attribution) at the end of the index;
-// the module page prints the module's own attribution line.
+// prints the collection notice (curriculum.Attribution) at the end of the
+// index; the module page prints the module's own attribution line.
 package rtfm
 
 import (
@@ -32,10 +32,6 @@ import (
 // decides which of a module's problems make its trial unit. nil accepts
 // every USACO and CSES reference, as curriculum.TrialFor does.
 type Judgeable = func(catalog.ID) bool
-
-// Lookup resolves a catalog problem for display (title, rating, contest).
-// nil, or a miss, falls back to the guide's own name for the problem.
-type Lookup = func(catalog.ID) (catalog.Problem, bool)
 
 // SPONGE: read this from the trial rules once the engine has them, so the
 //         plan cannot drift from what a trial boot plays.

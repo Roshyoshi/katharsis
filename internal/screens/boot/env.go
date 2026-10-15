@@ -15,11 +15,9 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
+	"katharsis/internal/screens"
 	"katharsis/internal/units"
 )
-
-// Lookup resolves a door's problem. catalog.Catalog.Get satisfies it.
-type Lookup func(catalog.ID) (catalog.Problem, bool)
 
 // Env is everything a boot screen reads. State is the boot in progress,
 // never nil: the app builds these screens only during a boot. Screens never
@@ -29,7 +27,7 @@ type Lookup func(catalog.ID) (catalog.Problem, bool)
 type Env struct {
 	State  *game.State
 	Meta   game.Meta
-	Lookup Lookup
+	Lookup screens.Lookup
 	Now    time.Time
 }
 

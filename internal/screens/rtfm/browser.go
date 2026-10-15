@@ -23,7 +23,7 @@ type Browser struct {
 	all    []entry // every module, for column widths and the totals
 	cur    *curriculum.Curriculum
 	caps   map[string]bool
-	lookup Lookup
+	lookup screens.Lookup
 
 	rows     []row // what is visible: folds and the filter applied
 	sel, top int   // sel indexes rows; top is the first visible line
@@ -66,10 +66,11 @@ type row struct {
 }
 
 // NewBrowser builds the index over c, with capability marks from m.
-// judgeable picks each module's trial unit (see curriculum.TrialFor) and lookup
-// resolves problem titles and ratings for module pages; either may be nil.
-// A nil curriculum shows man's "No manual entry".
-func NewBrowser(c *curriculum.Curriculum, m game.Meta, judgeable Judgeable, lookup Lookup) *Browser {
+// judgeable picks each module's trial unit (see curriculum.TrialFor) and
+// lookup resolves problem titles and ratings for module pages, which show
+// the guide's own name for a problem it misses; either may be nil. A nil
+// curriculum shows man's "No manual entry".
+func NewBrowser(c *curriculum.Curriculum, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Browser {
 	b := &Browser{cur: c, caps: capSet(m), lookup: lookup}
 	if c != nil {
 		for _, d := range c.Divisions {

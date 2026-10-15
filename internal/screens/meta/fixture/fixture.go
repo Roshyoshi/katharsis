@@ -37,6 +37,12 @@ var titles = map[catalog.ID]string{
 	"usaco:920":  "Social Distancing",
 }
 
+// lookup resolves the fixture's titles, as the app's catalog would.
+func lookup(id catalog.ID) (catalog.Problem, bool) {
+	t, ok := titles[id]
+	return catalog.Problem{ID: id, Title: t}, ok
+}
+
 // PrestigeName pins prestige labels so goldens do not follow flavor edits.
 func PrestigeName(p int) string {
 	names := []string{"Bronze", "Silver", "Gold", "Platinum", "Advanced"}
@@ -72,7 +78,7 @@ func GrubConfig() meta.GrubConfig {
 	return meta.GrubConfig{
 		Meta:         Meta(),
 		Presets:      presets,
-		Title:        func(id catalog.ID) string { return titles[id] },
+		Lookup:       lookup,
 		Now:          Now,
 		PrestigeName: PrestigeName,
 		Banner:       func(string) string { return "" }, // flavor's art stays out of goldens

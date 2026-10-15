@@ -100,7 +100,7 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	case "s":
 		return s, screens.Emit(submitMsg{})
 	case "t":
-		return s, screens.Emit(screens.OpenStatement{Problem: string(s.door.Problem)})
+		return s, screens.Emit(screens.OpenStatement{Problem: s.door.Problem})
 	case "?":
 		if !s.upsolve {
 			return s, screens.Emit(game.Quack{})
@@ -119,7 +119,7 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 			return s, s.m.openDoor(s.door, false)
 		}
 		if s.upsolve {
-			return s, screens.Emit(screens.OpenEditorial{Problem: string(s.door.Problem)})
+			return s, screens.Emit(screens.OpenEditorial{Problem: s.door.Problem})
 		}
 	case "R":
 		if !s.upsolve {
