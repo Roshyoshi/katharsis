@@ -283,14 +283,15 @@ func onSale(st *game.State) []game.Item {
 func itemOptions(st *game.State) []option {
 	var out []option
 	for _, it := range onSale(st) {
-		desc := itemDesc(it, st) + ui.G.Sep + units.Bytes(st.Price(it))
+		name, desc := itemText(it, st.Rules)
+		desc += ui.G.Sep + units.Bytes(st.Price(it))
 		switch {
 		case it == game.Fsck && st.Lives >= st.MaxLives:
 			desc += ui.G.Sep + "lives full"
 		case st.Uncommitted < st.Price(it):
 			desc += ui.G.Sep + units.Bytes(st.Price(it)-st.Uncommitted) + " short"
 		}
-		out = append(out, option{name: string(it), desc: desc})
+		out = append(out, option{name: name, desc: desc})
 	}
 	return out
 }
@@ -313,14 +314,4 @@ func (m *Merge) next() string {
 		return fmt.Sprintf("biome %d: route choice", b+1)
 	}
 	return fmt.Sprintf("biome %d: %s", b+1, biomeLabel(st, b))
-}
-
-// itemDesc is what an item on sale does, in the boot's numbers.
-func itemDesc(it game.Item, st *game.State) string {
-	return map[game.Item]string{
-		game.Fsck: "+1 life now",
-		game.Dup:  "+1 rubber duck",
-		game.Shuf: "re-roll one room's doors (s at the doors)",
-		game.At:   "+" + units.Clock(st.Rules.AtTime.Duration) + " on the next door's timer",
-	}[it]
 }

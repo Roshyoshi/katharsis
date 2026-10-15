@@ -347,3 +347,20 @@ func TestStripPriority(t *testing.T) {
 		t.Errorf("a moment of two keeps both lines over the flavor: %q", got)
 	}
 }
+
+// An OLE is a resource blowout like an MLE: the strip folds it onto MLE as
+// flavor does (flavor.NormVerdict), so it gets the MLE verdict line rather
+// than none, and its own word stays on the mechanic line.
+func TestTrackerFoldsOLE(t *testing.T) {
+	b := newEngineBoot(t, rules.Standard())
+	b.toDoors()
+	b.step(game.ChooseDoor{})
+	b.now = b.now.Add(time.Minute)
+	evs := b.step(game.SubmitResult{Verdict: "OLE", Passed: 3, Total: 30})
+	if len(evs) == 0 || evs[0].Kind != EvVerdict || evs[0].Hook != "verdict.MLE" || !strings.Contains(plain(evs[:1]), "judge: OLE") {
+		t.Fatalf("an OLE: got %+v\n%s", evs, plain(evs))
+	}
+	if realFlavor.Story(evs[0].Hook, evs[0].Seed) == "" {
+		t.Errorf("flavor has no line for %s", evs[0].Hook)
+	}
+}

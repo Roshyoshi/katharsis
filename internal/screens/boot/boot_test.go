@@ -71,6 +71,13 @@ var stubFlavor = flavorSource{
 		}
 		return string(d), ""
 	},
+	// Full stops as flavor writes them: a spend row drops them.
+	ItemText: func(it game.Item, r rules.Rules) (string, string) {
+		return string(it), map[game.Item]string{
+			game.Fsck: "+1 life now.", game.Dup: "+1 rubber duck.", game.Shuf: "re-roll one room's doors.",
+			game.At: "+" + units.Clock(r.AtTime.Duration) + " on the next door's timer.",
+		}[it]
+	},
 	QuoteFor: func(c game.Outcome, _ string, _ uint64) flavor.Quote {
 		switch c {
 		case game.OutOfLives:
@@ -1388,5 +1395,30 @@ func TestASCIISeparators(t *testing.T) {
 	prob, _ := fixture.Lookup("usaco:764")
 	if v := ansi.Strip(HUDBar(st, prob, fixture.Now, 48)); strings.Contains(v, "·") {
 		t.Errorf("the HUD bar draws a literal ·:\n%s", v)
+	}
+}
+
+// The spend rows quote flavor's item text (flavor.ItemTextFor), each
+// effect one part of its " · " row, so without its full stop.
+func TestMergeItemText(t *testing.T) {
+	fl = realFlavor
+	defer func() { fl = stubFlavor }()
+	st := fixture.Merge()
+	v := ansi.Strip(NewMerge(env(st)).View(140, 40))
+	for _, it := range onSale(st) {
+		name, desc := flavor.ItemTextFor(it, st.Rules)
+		if want := strings.TrimSuffix(desc, ".") + ui.G.Sep + units.Bytes(st.Price(it)); !strings.Contains(v, name) || !strings.Contains(v, want) {
+			t.Errorf("%s: want %q:\n%s", it, want, v)
+		}
+	}
+}
+
+// An out-of-lives crash on an OLE gets the MLE epitaph, as flavor folds
+// the verdict for its quotes.
+func TestCrashEpitaphFoldsOLE(t *testing.T) {
+	c := NewCrash(crashEnv(game.OutOfLives))
+	got := c.epitaph(c.crash(), "OLE", 1)
+	if want := tale.Story("crash.epitaph.out-of-lives.MLE", 1); len(got) != 1 || got[0] != want {
+		t.Errorf("OLE epitaph %q, want the MLE one %q", got, want)
 	}
 }

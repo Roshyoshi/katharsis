@@ -91,6 +91,10 @@ func normVerdict(v string) string {
 	return v
 }
 
+// NormVerdict is normVerdict for the screens' verdict hooks (verdict.*,
+// crash.epitaph.out-of-lives.*), so an OLE meets the MLE line there too.
+func NormVerdict(v string) string { return normVerdict(v) }
+
 // stride is a step coprime to n, so stepping by it from any start visits
 // every index before repeating one.
 func stride(h, n uint64) uint64 {

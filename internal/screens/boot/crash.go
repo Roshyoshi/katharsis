@@ -426,14 +426,11 @@ func (c *Crash) keys(b game.Brief, width int) []string {
 // the curse first, and out of lives by its verdict where it has one.
 func (c *Crash) epitaph(cr game.Crash, verdict string, seed uint64) []string {
 	hook := "crash.epitaph." + string(cr.Cause)
-	switch v := verdict; {
+	switch {
 	case cr.Cursed:
 		hook = "crash.epitaph.cursed"
-	case cr.Cause == game.OutOfLives && v != "":
-		if v == "OLE" {
-			v = "MLE" // as normVerdict folds it
-		}
-		if s := tale.Story(hook+"."+v, seed); s != "" {
+	case cr.Cause == game.OutOfLives && verdict != "":
+		if s := tale.Story(hook+"."+flavor.NormVerdict(verdict), seed); s != "" {
 			return []string{s}
 		}
 	}

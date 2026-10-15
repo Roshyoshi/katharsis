@@ -246,7 +246,8 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 		} else {
 			kind, text = EvFree, text+ui.Muted.Render(ui.G.Sep+"no charge")
 		}
-		add(kind, text, "verdict."+v)
+		// The flavor line keys on the fold, an OLE on the MLE line.
+		add(kind, text, "verdict."+flavor.NormVerdict(v))
 	}
 
 	// Doors that closed since: a clear, a swap, or a timeout.
@@ -357,7 +358,8 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 		}
 		text := "spend: " + units.Bytes(n.spent-p.spent)
 		if it != "" {
-			text = "spend: " + ui.Strong.Render(string(it)) + ui.Muted.Render(ui.G.Sep+itemDesc(it, st)+ui.G.Sep) + units.Bytes(n.spent-p.spent)
+			name, desc := itemText(it, st.Rules)
+			text = "spend: " + ui.Strong.Render(name) + ui.Muted.Render(ui.G.Sep+desc+ui.G.Sep) + units.Bytes(n.spent-p.spent)
 		}
 		add(EvSpend, text, "")
 	}

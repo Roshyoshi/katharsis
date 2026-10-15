@@ -49,10 +49,11 @@ type flavorSource struct {
 	BossName     func(key string) string
 	BossBlurb    func(key string) string
 	PrestigeName func(p int) string
-	// The upgrade and daemon texts quote the boot's own rules, so a preset
-	// that changes a number shows what it actually grants.
+	// The upgrade, daemon and item texts quote the boot's own rules, so a
+	// preset that changes a number shows what it actually grants.
 	UpgradeText func(u game.Upgrade, r rules.Rules) (name, desc string)
 	DaemonText  func(d game.Daemon, r rules.Rules) (name, desc string)
+	ItemText    func(it game.Item, r rules.Rules) (name, desc string)
 	QuoteFor    func(cause game.Outcome, verdict string, seed uint64) flavor.Quote
 	Banner      func(kind string) string
 	// PanicReason and CallTrace are the kernel's words for a crash: the
@@ -73,6 +74,7 @@ var realFlavor = flavorSource{
 	PrestigeName: flavor.PrestigeName,
 	UpgradeText:  flavor.UpgradeTextFor,
 	DaemonText:   flavor.DaemonTextFor,
+	ItemText:     flavor.ItemTextFor,
 	QuoteFor:     flavor.QuoteFor,
 	Banner:       flavor.Banner,
 	PanicReason:  flavor.PanicReason,
@@ -134,6 +136,16 @@ func upgradeText(u game.Upgrade, r rules.Rules) (string, string) {
 		name = string(u)
 	}
 	return name, desc
+}
+
+// itemText is an item on sale's name and effect in the boot's numbers,
+// the effect without its full stop: it is one part of a " · " line.
+func itemText(it game.Item, r rules.Rules) (string, string) {
+	name, desc := fl.ItemText(it, r)
+	if name == "" {
+		name = string(it)
+	}
+	return name, strings.TrimSuffix(desc, ".")
 }
 
 // daemonText is a daemon's name and effect in the boot's numbers. A
