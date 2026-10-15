@@ -214,6 +214,12 @@ D54 settled 10-15  Each boss bends one rule (user: "we can also ..."): off-by-on
                    samples without sanitizers; halting-problem hidden clock. Named on the
                    boss card; settings; sim-checked.
 
+10-15 story-map merged (map text, boss.rule.<key>, rings -2/-3, cycles wording); its
+      RTFM-tail cut (xpyomooq) is held for the UI lane; wiring list in
+      .agents/work/ui-lane-hooks.md. Defaults: P5-P8 names fall back to
+      "Prestige N"; GRUB prestige subtitles stay; boss twist lines may name
+      numbers (the bible's one exception).
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
