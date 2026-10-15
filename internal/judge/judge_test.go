@@ -29,6 +29,9 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	if bin := os.Getenv(orphanEnv); bin != "" {
+		os.Exit(runOrphanHelper(bin))
+	}
 	// Compile caches binaries (and SampleProfile its probe) under
 	// os.UserCacheDir, which is $HOME/Library/Caches on macOS. Point HOME at a
 	// scratch dir so every run starts cold and the real cache is left alone.

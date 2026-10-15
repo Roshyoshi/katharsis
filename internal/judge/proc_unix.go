@@ -4,9 +4,12 @@ package judge
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
+	"sync"
 	"syscall"
+	"time"
 )
 
 // inGroup starts cmd as the leader of a new process group and makes a
@@ -30,3 +33,32 @@ func killGroup(pid int) error {
 	}
 	return err
 }
+
+// limitCPU has cmd's program run under an RLIMIT_CPU of limit, rounded up
+// to the whole seconds the limit counts in. It is a backstop, not the
+// judge's CPU check (watch is): a kill -9 of the game, or a panic off the
+// main goroutine, skips the watchdog and every deferred kill, and the run
+// it leaves would spin on as launchd's child until reboot. At the limit
+// the kernel sends SIGXCPU, which ends a program that does not catch it;
+// macOS sends nothing more at the hard limit (Linux sends SIGKILL).
+//
+// Go sets no limits between fork and exec, so a shell sets this one and
+// execs the program in its own place, under the same pid. The run's CPU
+// time counts the shell: a judged a+b on an M4 read 0.9 ms more CPU and
+// 1.0 ms more wall with dash, 2.0 and 2.4 ms with bash (macOS's sh).
+// Should the game run under a lower hard limit, ulimit fails and the
+// program runs under that one.
+func limitCPU(cmd *exec.Cmd, limit time.Duration) {
+	secs := (limit + time.Second - 1) / time.Second
+	sh := limitShell()
+	script := fmt.Sprintf(`ulimit -t %d; exec "$0" "$@"`, secs)
+	cmd.Path, cmd.Args = sh, append([]string{sh, "-c", script}, cmd.Args...)
+}
+
+// limitShell is dash where there is one, as on macOS since 10.15.
+var limitShell = sync.OnceValue(func() string {
+	if _, err := os.Stat("/bin/dash"); err == nil {
+		return "/bin/dash"
+	}
+	return "/bin/sh"
+})

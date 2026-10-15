@@ -121,8 +121,17 @@ const DefaultOutputLimit = 64 << 20
 // a binary whose static data alone is over Mem is MLE without running.
 //
 // Processes: the program leads its own process group, which is killed when
-// the run ends, so whatever it forked dies with it.
+// the run ends, so whatever it forked dies with it. It also carries its
+// own CPU limit, a second or two past the watchdog's kill, so it dies on
+// its own should the judge die first (limitCPU). That limit decides no
+// verdict: the watchdog kills sooner, and a run that reaches the limit is
+// past its budget, TLE, either way.
 func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result, error) {
+	// A missing binary is an error, as Start would report it, not the
+	// exit 127 limitCPU's shell would.
+	if _, err := os.Stat(bin); err != nil {
+		return Result{}, err
+	}
 	if lim.Output <= 0 {
 		lim.Output = DefaultOutputLimit
 	}
@@ -188,6 +197,7 @@ func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result
 	cmd.Env = append(os.Environ(), asan, "UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
 	cmd.WaitDelay = time.Second
 	inGroup(cmd)
+	limitCPU(cmd, cpuKill+time.Second)
 
 	start := time.Now()
 	err = cmd.Start()

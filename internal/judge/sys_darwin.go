@@ -81,9 +81,52 @@ var tbFrequency = sync.OnceValue(func() uint64 {
 	return binary.LittleEndian.Uint64(b[:])
 })
 
+// children lists the processes whose parent is ppid, from
+// proc_listpids(3); nil if there are none or the call fails.
+func children(ppid int) []int {
+	const ppidOnly = 6 // PROC_PPID_ONLY from <sys/proc_info.h>
+	// Both calls return a C int, the low 32 bits of the register: with no
+	// buffer, the bytes a list of every process would take, with room to
+	// spare; with one, the bytes it wrote. 0 is a failure.
+	size, _, _ := syscall_syscall6(libc_proc_listpids_trampoline_addr, ppidOnly, uintptr(ppid), 0, 0, 0, 0)
+	if int32(size) < 4 {
+		return nil
+	}
+	pids := make([]int32, int32(size)/4)
+	n, _, _ := syscall_syscall6(libc_proc_listpids_trampoline_addr, ppidOnly, uintptr(ppid),
+		uintptr(unsafe.Pointer(&pids[0])), uintptr(4*len(pids)), 0, 0)
+	out := make([]int, min(max(int(int32(n)), 0)/4, len(pids)))
+	for i := range out {
+		out[i] = int(pids[i])
+	}
+	return out
+}
+
+// exePath is the path of the executable pid runs, from proc_pidpath(3),
+// with symlinks resolved (/private/var, not /var); "" if pid is gone or
+// the kernel withholds it.
+func exePath(pid int) string {
+	var buf [4096]byte // PROC_PIDPATHINFO_MAXSIZE
+	n, _, _ := syscall_syscall(libc_proc_pidpath_trampoline_addr, uintptr(pid), uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
+	k := int(int32(n)) // the path's length, a C int; 0 is a failure
+	if k <= 0 || k > len(buf) {
+		return ""
+	}
+	return string(buf[:k])
+}
+
 //go:linkname syscall_syscall syscall.syscall
 func syscall_syscall(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno)
 
-var libc_proc_pid_rusage_trampoline_addr uintptr
+//go:linkname syscall_syscall6 syscall.syscall6
+func syscall_syscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err syscall.Errno)
+
+var (
+	libc_proc_pid_rusage_trampoline_addr uintptr
+	libc_proc_listpids_trampoline_addr   uintptr
+	libc_proc_pidpath_trampoline_addr    uintptr
+)
 
 //go:cgo_import_dynamic libc_proc_pid_rusage proc_pid_rusage "/usr/lib/libSystem.B.dylib"
+//go:cgo_import_dynamic libc_proc_listpids proc_listpids "/usr/lib/libSystem.B.dylib"
+//go:cgo_import_dynamic libc_proc_pidpath proc_pidpath "/usr/lib/libSystem.B.dylib"

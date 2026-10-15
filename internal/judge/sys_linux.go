@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+// children and exePath find a dead judge's runs on darwin only: here a
+// dead parent's children may go to a subreaper (systemd --user) instead
+// of pid 1, so a parent of 1 does not mark them.
+func children(ppid int) []int { return nil }
+
+func exePath(pid int) string { return "" }
+
 func osRelease() string {
 	b, _ := os.ReadFile("/proc/sys/kernel/osrelease")
 	return strings.TrimSpace(string(b))

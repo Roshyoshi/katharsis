@@ -12,3 +12,9 @@ import (
 func usage(pid int) (int64, time.Duration, error) { return 0, 0, errors.ErrUnsupported }
 
 func osRelease() string { return "" }
+
+// children and exePath are unsupported here: a dead judge's runs go
+// unfound.
+func children(ppid int) []int { return nil }
+
+func exePath(pid int) string { return "" }

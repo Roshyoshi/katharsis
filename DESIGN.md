@@ -201,6 +201,10 @@ internal/
   1e6-deep recursion.
 - macOS rejects `setrlimit(RLIMIT_AS)` and `RLIMIT_DATA` (returns -1); memory
   limits need a watchdog plus `ru_maxrss` (bytes on macOS).
+- macOS enforces `RLIMIT_CPU` with one SIGXCPU at the soft limit and nothing
+  at the hard limit (Linux SIGKILLs there): a program that ignores SIGXCPU
+  runs on (checked 2026-10-15, macOS 26.5). A dead parent's children go to
+  launchd, pid 1.
 - Apple's libc++ reads ints through `cin` ~25x slower than libstdc++, synced
   off: 1e6 ints in ~970 ms against ~37 ms (scanf ~60 ms), so the judge times
   with GCC 14 (D28, `docs/research/gcc-toolchain.md`).
