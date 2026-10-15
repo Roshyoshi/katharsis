@@ -1184,3 +1184,33 @@ func TestShopInstall(t *testing.T) {
 		t.Errorf("after a restart: installed %v, bank %d", h.m.meta.Installed, h.m.meta.Bank)
 	}
 }
+
+// After an install the app rebuilds GRUB under the shop; its cursor stays
+// on apt, not back at the top (A2 leftover).
+func TestShopInstallKeepsGrubCursor(t *testing.T) {
+	h := newHarness(t)
+	h.m.meta.Bank = 100
+	onApt := func() bool {
+		for _, l := range strings.Split(ansi.Strip(h.m.stack[0].View(100, 30)), "\n") {
+			if strings.Contains(l, "│*apt") {
+				return true
+			}
+		}
+		return false
+	}
+	for i := 0; i < 30 && !onApt(); i++ {
+		h.send(tea.KeyPressMsg{Code: tea.KeyDown})
+	}
+	if !onApt() {
+		t.Fatalf("no apt entry in GRUB:\n%s", h.m.stack[0].View(100, 30))
+	}
+	h.send(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if _, ok := h.m.top().(*meta.Shop); !ok {
+		t.Fatalf("enter on apt: top is %T, want the shop", h.m.top())
+	}
+	h.send(screens.Install{Package: "cowsay"})
+	h.send(screens.Back{})
+	if !onApt() {
+		t.Errorf("GRUB's cursor left apt after the install:\n%s", h.m.stack[0].View(100, 30))
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -211,8 +212,10 @@ func TestGrubEntries(t *testing.T) {
 		{"apt", append(down(8), "enter"), screens.OpenShop{}},
 		{"git log", append(down(9), "enter"), screens.OpenLog{}},
 		{"top", append(down(10), "enter"), screens.OpenTop{}},
-		{"credits", append(down(11), "enter"), screens.OpenCredits{}},
-		{"poweroff", append(down(12), "enter"), screens.Quit{}},
+		{"poweroff", append(down(11), "enter"), screens.Quit{}},
+		// The credits are a key, as real GRUB's command line is, in any menu.
+		{"c opens the credits", []string{"c"}, screens.OpenCredits{}},
+		{"c in a submenu too", append(down(5), "enter", "c"), screens.OpenCredits{}},
 		{"end is poweroff", []string{"G", "enter"}, screens.Quit{}},
 		{"down stops at the end", append(down(30), "enter"), screens.Quit{}},
 		{"ctrl+x boots like enter", []string{"ctrl+x"}, screens.StartBoot{Prestige: 2, Preset: "standard"}},
@@ -238,6 +241,8 @@ func TestGrubEdit(t *testing.T) {
 			screens.StartBoot{Prestige: 2, Preset: "standard", Seed: 0x8f3a}},
 		{"seed ignores non-hex", []string{"e", "down", "down", "1", "x", "z", "2", "enter"},
 			screens.StartBoot{Prestige: 2, Preset: "standard", Seed: 0x12}},
+		{"c is a hex digit, not the credits", []string{"e", "down", "down", "c", "enter"},
+			screens.StartBoot{Prestige: 2, Preset: "standard", Seed: 0xc}},
 		{"seed backspace", []string{"e", "down", "down", "a", "b", "backspace", "enter"},
 			screens.StartBoot{Prestige: 2, Preset: "standard", Seed: 0xa}},
 		{"preset and prestige", []string{"e", "down", "tab", "tab", "up", "left", "enter"},
@@ -318,15 +323,38 @@ func TestGrubBannerWhenItFits(t *testing.T) {
 	c := fixture.GrubConfig()
 	c.Banner = func(string) string { return "== BANNER ==" }
 	g := meta.NewGrub(c)
-	// SPONGE: 80x24 lost the banner when apt, credits and the prestige
-	//         gate line all joined GRUB; the visual pass (C part 2, P4)
-	//         decides whether credits leaves the menu to win it back.
-	if s := plain(g.View(80, 25)); !strings.Contains(s, "== BANNER ==") {
-		t.Errorf("banner missing at 80x25:\n%s", s)
+	// With apt and the prestige gate line, 80x24 keeps the banner because
+	// the credits are a key (c), not an entry.
+	if s := plain(g.View(80, 24)); !strings.Contains(s, "== BANNER ==") {
+		t.Errorf("banner missing at 80x24:\n%s", s)
 	}
 	if s := plain(g.View(80, 14)); strings.Contains(s, "== BANNER ==") {
 		t.Errorf("banner should give way to entries at 80x14:\n%s", s)
 	}
+}
+
+// After an install the app rebuilds GRUB: the cursor stays on apt, whose
+// label now names the next package, instead of jumping to the top.
+func TestGrubFollowKeepsTheCursor(t *testing.T) {
+	down := func(n int) []string { return slices.Repeat([]string{"down"}, n) }
+	old := grub()
+	press(t, old, down(8)...) // apt
+	c := fixture.GrubConfig()
+	c.Packages[2].Installed = true // rng-tools: apt's line names strace now
+	c.Meta.Bank -= c.Packages[2].Price
+	g := meta.NewGrub(c)
+	g.Follow(old)
+	wantMsg(t, press(t, g, "enter"), screens.OpenShop{})
+
+	// An entry that is gone leaves the cursor at its row.
+	old = grub()
+	press(t, old, down(6)...) // the core dump, since upsolved
+	c = fixture.GrubConfig()
+	c.Meta.CoreDump = nil
+	g = meta.NewGrub(c)
+	g.Follow(old)
+	// Row 6 is the regressions submenu now; its first is usaco:891.
+	wantMsg(t, press(t, g, "enter", "enter"), screens.Upsolve{Problem: "usaco:891"})
 }
 
 // TestGrubFlavorBanner uses flavor's real art, the default and each apt

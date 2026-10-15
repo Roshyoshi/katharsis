@@ -166,7 +166,6 @@ func NewGrub(c GrubConfig) *Menu {
 	es = append(es,
 		entry{label: "git log", msg: screens.OpenLog{}},
 		entry{label: "top", msg: screens.OpenTop{}},
-		entry{label: "credits", msg: screens.OpenCredits{}},
 		entry{label: "poweroff", msg: screens.Quit{}},
 	)
 	m.stack = []*page{{entries: es}}
@@ -208,6 +207,40 @@ func (m *Menu) bootEntry(prestige int, preset string) entry {
 }
 
 func (m *Menu) cur() *page { return m.stack[len(m.stack)-1] }
+
+// Follow puts the cursor where prev had it, for an app that rebuilds the
+// menu under a screen (an apt install changes the bank and apt's own
+// line): on the same entry when the new menu still has it, matched by what
+// it does, not its label, since apt's names the next package to buy.
+func (m *Menu) Follow(prev *Menu) {
+	if prev == nil || len(prev.stack) == 0 {
+		return
+	}
+	old, root := prev.stack[0], m.stack[0]
+	if old.sel < 0 || old.sel >= len(old.entries) || len(root.entries) == 0 {
+		return
+	}
+	root.sel, root.top = min(old.sel, len(root.entries)-1), old.top
+	want := old.entries[old.sel].key()
+	for i, e := range root.entries {
+		if e.key() == want {
+			root.sel = i
+			return
+		}
+	}
+}
+
+// key names what an entry does: the boot it starts, the screen it opens,
+// or, for a submenu, its label without the count it ends with.
+func (e entry) key() string {
+	switch {
+	case e.boot != nil:
+		return fmt.Sprintf("boot %+v", *e.boot)
+	case e.sub != nil:
+		return "menu " + strings.TrimRight(e.label, "0123456789 ")
+	}
+	return fmt.Sprintf("%T %+v", e.msg, e.msg)
+}
 
 // Editing reports whether the `e` editor is open. The editor wants tab and
 // hex digits for itself, so an app with global keys should pass them through
@@ -251,6 +284,10 @@ func (m *Menu) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		if e := p.entries[p.sel]; e.boot != nil {
 			m.edit = m.newEditor(e)
 		}
+	case "c":
+		// Where real GRUB opens its command line, the credits: a key, not an
+		// entry, so the menu keeps its row for the banner at 80x24.
+		return m, screens.Emit(screens.OpenCredits{})
 	case "esc", "q", "left", "backspace":
 		if len(m.stack) > 1 {
 			m.stack = m.stack[:len(m.stack)-1]
@@ -346,9 +383,11 @@ func (ed *editor) seedText() string {
 
 func (m *Menu) editLines() []string {
 	ed := m.edit
+	// One cursor: the cell after the value under edit, in reverse, the way
+	// a terminal draws its own.
 	val := func(field int, s string) string {
 		if ed.field == field {
-			return ui.Select.Render(s) + "█"
+			return s + ui.Select.Render(" ")
 		}
 		return s
 	}
@@ -376,8 +415,8 @@ const grubVersion = "GNU GRUB  version 2.12"
 
 var (
 	helpMenu = "Use the ↑ and ↓ keys to select which entry is highlighted. " +
-		"Press enter to boot the selected entry, `e' to edit the commands " +
-		"before booting."
+		"Press enter to boot the selected entry, `e' to edit the commands, " +
+		"`c' for credits."
 	helpSub  = helpMenu + " ESC to return previous menu."
 	helpPick = "Use the ↑ and ↓ keys to select which entry is highlighted. " +
 		"Press enter to upsolve the selected problem, or ESC to return " +

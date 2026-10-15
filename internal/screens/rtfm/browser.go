@@ -604,6 +604,10 @@ func (b *Browser) lines(cols columns, w int) []string {
 	for _, l := range wrap(curriculum.Attribution(), modIndent, min(w, 80)) {
 		out = append(out, ui.Muted.Render(l))
 	}
+	// The game's own credits (music, licenses, sources) are a GRUB key.
+	for _, l := range wrap("Music, licenses and sources: press c in the GRUB menu.", modIndent, min(w, 80)) {
+		out = append(out, ui.Muted.Render(l))
+	}
 	out = append(out, "", ui.Spread("katharsis", manName, min(cols.width(), w)))
 	return out
 }

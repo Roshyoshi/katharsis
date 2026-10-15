@@ -5,7 +5,7 @@
  │                                                                                                                                        │
  │        set prestige=2                                                                                                                  │
  │        set preset=hardcore                                                                                                             │
- │        set seed=8f3a█   # hex; 0 is random                                                                                             │
+ │        set seed=8f3a    # hex; 0 is random                                                                                             │
  │        boot                                                                                                                            │
  │                                                                                                                                        │
  │                                                                                                                                        │

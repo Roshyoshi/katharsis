@@ -12,13 +12,13 @@
  │ apt install rng-tools (256 B, affordable)                                  │
  │ git log                                                                    │
  │ top                                                                        │
- │ credits                                                                    │
  │ poweroff                                                                   │
+ │                                                                            │
  │                                                                            │
  └────────────────────────────────────────────────────────────────────────────┘
 
      Use the ↑ and ↓ keys to select which entry is highlighted. Press enter
-     to boot the selected entry, `e' to edit the commands before booting.
+     to boot the selected entry, `e' to edit the commands, `c' for credits.
 
                    bank 1.3 KiB · rating 1432 · next boot #43
      Platinum unlocks after 60 rated doors (34 so far) and a clear at Gold

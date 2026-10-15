@@ -79,10 +79,17 @@ func (m *Model) useTheme(theme string) tea.Cmd {
 	return note("GRUB banner: %s", theme)
 }
 
-// shopChanged rebuilds GRUB under the shop and refreshes the shop.
+// shopChanged rebuilds GRUB under the shop, its cursor where it was (on
+// apt, whose line now names the next package), and refreshes the shop.
 func (m *Model) shopChanged() {
 	if m.state == nil {
-		m.stack[0] = m.grub()
+		g := m.grub()
+		if old, ok := m.stack[0].(*meta.Menu); ok {
+			if nw, ok := g.(*meta.Menu); ok {
+				nw.Follow(old)
+			}
+		}
+		m.stack[0] = g
 	}
 	for _, s := range m.stack {
 		if shop, ok := s.(*meta.Shop); ok {
