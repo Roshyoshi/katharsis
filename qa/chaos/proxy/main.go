@@ -73,16 +73,16 @@ func serve(c net.Conn) {
 		return
 	}
 	if req.Method != http.MethodConnect {
-		io.WriteString(c, "HTTP/1.1 405 Method Not Allowed\r\n\r\n")
+		_, _ = io.WriteString(c, "HTTP/1.1 405 Method Not Allowed\r\n\r\n")
 		return
 	}
 	up, err := net.DialTimeout("tcp", req.Host, 10*time.Second)
 	if err != nil {
-		io.WriteString(c, "HTTP/1.1 502 Bad Gateway\r\n\r\n")
+		_, _ = io.WriteString(c, "HTTP/1.1 502 Bad Gateway\r\n\r\n")
 		return
 	}
 	defer up.Close()
-	io.WriteString(c, "HTTP/1.1 200 Connection established\r\n\r\n")
+	_, _ = io.WriteString(c, "HTTP/1.1 200 Connection established\r\n\r\n")
 
 	var moved atomic.Int64
 	done := make(chan struct{}, 2)

@@ -11,7 +11,7 @@
 #   KC_WARM   a HOME whose Library/Caches/katharsis is a warm cache copy
 #   KC_TMPL   dir with template.cpp and atcoder-template.cpp
 #
-# kc_case NAME [warm|cold]   make a fresh case dir and set KC (its path)
+# kc_case NAME [warm|cold|usaco]  make a fresh case dir and set KC (its path)
 # kc_start [game args...]    start the game in the case's tmux server
 # kc_t ARGS...               tmux against the case's server
 # kc_cap [pane]              capture a pane (default: the game pane)
@@ -20,10 +20,11 @@
 # kc_db SQL                  sqlite3 on the case's store
 # kc_kill                    kill the case's tmux server and its processes
 # kc_direct [game args...]   run the game from this shell; print its output
+# kc_through TEXT [secs]     wait for TEXT on the game pane, past story scenes
 
-REPO=${REPO:-/Users/roshanhegde/katharsis}
-# KC_ROOT is made by kc_setup (below); the default is this run's.
-KC_ROOT=${KC_ROOT:-/tmp/kchaos.LKHhqU}
+REPO=${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}
+# KC_ROOT is made by kc_setup (below).
+KC_ROOT=${KC_ROOT:?set KC_ROOT to a dir kc_setup made}
 KC_BIN=${KC_BIN:-$KC_ROOT/bin/kat}
 KC_WARM=${KC_WARM:-$KC_ROOT/warmhome}
 KC_TMPL=${KC_TMPL:-$KC_ROOT/tmpl}
@@ -68,11 +69,13 @@ kc_env() {
 
 kc_t() { TMUX_TMPDIR="$KC/tmux" tmux -L "$KC_SOCK" "$@"; }
 
-# kc_gamecmd prints the shell command line that runs the game.
+# kc_gamecmd prints the shell command line that runs the game. Prompts are
+# off: the first-launch rating question would stand between every fresh
+# case and GRUB.
 kc_gamecmd() {
 	local q=""
 	for a in "$@"; do q="$q '${a//\'/\'\\\'\'}'"; done
-	echo "exec '$KC_BIN' --root '$KC/runs' --quiet --editor '$KC_EDITOR'" \
+	echo "exec '$KC_BIN' --root '$KC/runs' --quiet --no-prompts --editor '$KC_EDITOR'" \
 		"--template '$KC_TMPL/atcoder-template.cpp' --template-fileio '$KC_TMPL/template.cpp'$q" \
 		${KC_NOLOG:+"#"} "2>>'$KC/log/stderr'"
 }
@@ -82,7 +85,7 @@ kc_start() {
 	cmd=$(kc_gamecmd "$@")
 	# shellcheck disable=SC2046
 	# The plain user environment, as a player's shell has; KC_BIN wraps the
-	# binary with the judge's clang on PATH, as the nix package does.
+	# binary with the judge's tools on PATH, as the nix package does.
 	env $(kc_env) tmux -L "$KC_SOCK" -f /dev/null new-session -d -s chaos \
 		-x "${KC_W:-160}" -y "${KC_H:-45}" "$cmd"
 	kc_t set-option -g remain-on-exit off >/dev/null 2>&1
@@ -224,13 +227,40 @@ kc_wait_ed() {
 	return 1
 }
 
+# kc_through TEXT [secs] waits until the game pane shows TEXT, sending esc
+# to any story scene (S9) in the way: a boot starts with its splash, and a
+# fresh store's first boot with the prologue and the first-door scene too.
+# KC_INNER=1 watches kc_outside's game session instead.
+kc_through() {
+	local text=$1 n=${2:-20} s
+	for _ in $(seq 1 $((n * 4))); do
+		if [ -n "${KC_INNER:-}" ]; then
+			s=$(kc_inner capture-pane -p -t katharsis 2>/dev/null)
+		else
+			s=$(kc_cap)
+		fi
+		case $s in
+		*"esc skip"* | *"any key continue"*)
+			if [ -n "${KC_INNER:-}" ]; then
+				kc_inner send-keys -t katharsis Escape
+			else
+				kc_keys Escape
+			fi
+			;;
+		*"$text"*) return 0 ;;
+		esac
+		kc_pause 0.25
+	done
+	return 1
+}
+
 # kc_first_door [game args...]: start the game, boot from GRUB's first
 # entry, open door 1 and wait for its editor.
 kc_first_door() {
 	KC_BOOTWAIT=0 kc_start "$@"
 	kc_wait_for "GNU GRUB" 90 || { echo "kc_first_door: no GRUB" >&2; return 1; }
 	kc_keys Enter
-	kc_wait_for "enter open door" 20
+	kc_through "enter open door" 20
 	kc_keys Enter
 	kc_wait_ed 60
 }
@@ -240,20 +270,20 @@ kc_first_door() {
 kc_pause() { perl -e "select undef, undef, undef, $1"; }
 
 # kc_setup makes KC_ROOT from scratch: the game built from the tree, a
-# wrapper that puts the dev shell's clang++ (and dsymutil) first on PATH as
-# the nix package does, the chaos proxy, copies of the ~/cp templates, and
-# an APFS clone of the warm cache (read only from the player's cache).
+# wrapper that puts the judge's tools (clang++, g++, clang++-libstdc++,
+# dsymutil) first on PATH as the nix package does, the chaos proxy, copies
+# of the ~/cp templates, and an APFS clone of the warm cache (read only
+# from the player's cache). path: lets it build a jj workspace too.
 #
 #   KC_ROOT=$(mktemp -d /tmp/kchaos.XXXXXX) bash -c '. qa/chaos/lib.sh; kc_setup'
 kc_setup() {
-	mkdir -p "$KC_ROOT"/{bin,judgetools,tmpl,warmhome/Library/Caches}
-	(cd "$REPO" && nix develop -c go build -o "$KC_ROOT/bin/katharsis" ./cmd/katharsis &&
-		nix develop -c go build -tags qa -o "$KC_ROOT/bin/proxy" ./qa/chaos/proxy) || return 1
+	mkdir -p "$KC_ROOT"/{bin,tmpl,warmhome/Library/Caches}
 	local tools
-	tools=$(cd "$REPO" && nix develop -c sh -c 'command -v clang++; command -v dsymutil')
-	ln -sf "$(echo "$tools" | sed -n 1p)" "$KC_ROOT/judgetools/clang++"
-	ln -sf "$(echo "$tools" | sed -n 2p)" "$KC_ROOT/judgetools/dsymutil"
-	printf '#!/bin/sh\nPATH=%s/judgetools:$PATH exec %s/bin/katharsis "$@"\n' "$KC_ROOT" "$KC_ROOT" >"$KC_ROOT/bin/kat"
+	tools=$(cd "$REPO" && nix develop path:. -c sh -c \
+		"go build -o '$KC_ROOT/bin/katharsis' ./cmd/katharsis &&
+		 go build -tags qa -o '$KC_ROOT/bin/proxy' ./qa/chaos/proxy &&
+		 dirname \"\$(command -v clang++-libstdc++)\"") || return 1
+	printf '#!/bin/sh\nPATH=%s:$PATH exec %s/bin/katharsis "$@"\n' "$tools" "$KC_ROOT" >"$KC_ROOT/bin/kat"
 	chmod +x "$KC_ROOT/bin/kat"
 	cp ~/cp/template.cpp "$KC_ROOT/tmpl/template.cpp"
 	cp ~/cp/atcoder/template.cpp "$KC_ROOT/tmpl/atcoder-template.cpp"

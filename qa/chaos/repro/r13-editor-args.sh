@@ -10,8 +10,11 @@ set -u
 . "$(dirname "$0")/../lib.sh"
 kc_case r13 usaco
 KC_EDITOR='vim -u NONE -N -c "set nu"' kc_first_door
-kc_ed Escape ":ls" Enter; kc_pause 0.5
-echo "== quoted editor arg, vim's buffers:"; kc_cap "$(kc_edpane)" | grep -E '^ +[0-9]+ ' | head -3
+# :ls into a file, not off the screen: with `set nu` the window's
+# numbered source lines look like buffer lines.
+kc_ed Escape ":redir! > $KC/log/ls.txt | silent ls | redir END" Enter; kc_pause 0.5
+echo "== quoted editor arg, vim's buffers (one, the solution):"; grep . "$KC/log/ls.txt"
+echo "== line numbers on (set nu reached vim):"; kc_cap "$(kc_edpane)" | grep -cE '^ +1 '
 kc_kill
 
 kc_case r13b usaco

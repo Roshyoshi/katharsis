@@ -7,6 +7,6 @@ set -u
 kc_case r11 usaco
 KC_BOOTWAIT=0 kc_start
 kc_wait_for "GNU GRUB" 90
-kc_keys Enter; kc_wait_for "enter open door" 20
+kc_keys Enter; kc_through "enter open door" 20
 echo "== map on the first doors screen:"; kc_cap | grep -E "Userland|⚔" | head -3
 kc_kill

@@ -11,9 +11,10 @@
 set -u
 . "$(dirname "$0")/../lib.sh"
 
-# midpass waits for the HP bar to show a test judged.
+# midpass waits for the HP bar to show a test judged: up to a minute, as
+# the -O2 build alone can take seconds on a loaded machine.
 midpass() {
-	for _ in $(seq 1 100); do kc_cap | grep -q "judging [1-9]/" && break; kc_pause 0.1; done
+	for _ in $(seq 1 600); do kc_cap | grep -q "judging [1-9]/" && break; kc_pause 0.1; done
 }
 # charged N waits up to 3 min for the open door's Nth verdict, or for the
 # door to end.
@@ -35,24 +36,26 @@ kc_case r05 usaco
 kc_first_door || exit 1
 kc_solve slowwa; kc_pause 6
 echo "== before:"; live
-kc_ed Escape ":Submit" Enter; midpass
-echo "== mid-pass HP bar:"; kc_cap | grep "submit "
-kc_keys C-c; kc_pause 3
+# A wrong answer fails its samples, so it goes in with :Submit!.
+kc_ed Escape ":Submit!" Enter; midpass
+echo "== mid-pass HP bar:"; kc_cap | grep "^HP "
+# With a door open ctrl+c asks first (D31): the second one quits.
+kc_keys C-c; kc_pause 0.3; kc_keys C-c; kc_pause 3
 echo "== after ctrl+c: nothing charged yet, the submit saved (SubmitAt):"; live
 
 KC_BOOTWAIT=0 kc_start; kc_wait_ed 90; kc_pause 3
-echo "== resumed: the saved submit judges again:"; kc_cap | grep "submit "
+echo "== resumed: the saved submit judges again:"; kc_cap | grep "^HP "
 # The fix, sent while that judge runs: it must not replace it.
 kc_solve ac; kc_pause 2
 kc_ed Escape ":Submit" Enter; kc_pause 2
 echo "== a fixed :Submit during the resumed judge, vim says:"; kc_cap "$(kc_edpane)" | grep katharsis: | tail -1
 charged 1
-echo "== resumed verdict:"; live; kc_cap | grep "submit "
+echo "== resumed verdict:"; live; kc_cap | grep "^HP "
 
 kc_solve slowwa; kc_pause 3
-kc_ed Escape ":Submit" Enter; midpass
-echo "== mid-pass HP bar:"; kc_cap | grep "submit "
+kc_ed Escape ":Submit!" Enter; midpass
+echo "== mid-pass HP bar:"; kc_cap | grep "^HP "
 kc_ed Escape ":q" Enter
 charged 2
-echo "== after :q in vim, the verdict lands:"; kc_cap | grep -E "editor closed|submit "; live
+echo "== after :q in vim, the verdict lands:"; kc_cap | grep -E "editor closed|^HP "; live
 kc_kill

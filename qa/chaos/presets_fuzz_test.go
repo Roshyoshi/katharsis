@@ -9,6 +9,7 @@
 package chaos
 
 import (
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"path/filepath"
@@ -136,7 +137,11 @@ func play(t *testing.T, r rules.Rules, ps []catalog.Problem, seed uint64, mp *ga
 				a = game.LeaveMerge{}
 			}
 		}
-		game.Step(st, &meta, ps, a, now)
+		// Random actions are often ones the phase does not allow (a door
+		// past the end, say); Step refuses those and changes nothing.
+		if _, err := game.Step(st, &meta, ps, a, now); err != nil && !errors.Is(err, game.ErrInvalid) {
+			t.Fatalf("seed %d step %d: %T: %v", seed, step, a, err)
+		}
 		if d := st.Current; d != nil && d.Door.Bytes > maxBytes {
 			maxBytes = d.Door.Bytes
 		}

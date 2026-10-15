@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # r14 (time abuse): (a) a door whose deadline passed while the game was
-# closed crashes on resume, as designed; the attempt's elapsed time is the
-# whole absence. (b) a clock that jumped backward (Opened in the future):
+# closed times out on resume, as designed: in Userland, where a timeout
+# costs a life while one is spare (D44), the room is drawn again;
+# elsewhere the boot crashes. The attempt's elapsed time is the whole
+# absence. (b) a clock that jumped backward (Opened in the future):
 # the AC records a negative elapsed time and earns the -O3 free upgrade.
 set -u
 . "$(dirname "$0")/../lib.sh"
@@ -12,8 +14,11 @@ kc_kill
 past=$(date -v-1H +%Y-%m-%dT%H:%M:%S.000000%z | sed 's/\(..\)$/:\1/')
 db "update boots set state = json_set(state, '\$.Current.Deadline', '$past') where outcome = ''"
 KC_BOOTWAIT=0 kc_start
-kc_wait_for "Kernel panic" 90
-echo "== (a) resumed past the deadline:"; kc_state | head -1
+for _ in $(seq 1 180); do
+	[ "$(db "select phase from boots order by id desc limit 1;")" != problem ] && break
+	kc_pause 0.5
+done
+echo "== (a) resumed past the deadline (boot, then lives):"; kc_state | head -2
 db "select 'attempt elapsed s', (closed-opened)/1e9 from attempts"
 kc_kill
 

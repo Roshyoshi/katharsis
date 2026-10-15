@@ -11,7 +11,8 @@ for _ in $(seq 1 120); do
 	kc_inner capture-pane -p -t katharsis 2>/dev/null | grep -q "GNU GRUB" && break
 	kc_pause 0.5
 done
-kc_inner send-keys -t katharsis Enter; kc_pause 2
+kc_inner send-keys -t katharsis Enter
+KC_INNER=1 kc_through "enter open door" 20
 kc_inner send-keys -t katharsis Enter
 for _ in $(seq 1 60); do
 	[ "$(kc_inner list-panes -s -t katharsis | wc -l)" -ge 2 ] && break
