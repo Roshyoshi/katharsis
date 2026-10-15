@@ -210,9 +210,11 @@ rating column; real GRUB art fits 80x24 with up to 13 entries). story-polish (da
 draft revised; milestones carry no counts; the Turing-note thread closes its own
 questions; {days} replaces "Day three" / "Seventeen days on"; regression.door
 and merge.full SPONGEs resolved; dead hooks cut or given a home; text.md
-pointers fixed).
-Cleanup wave 2 running: g-engine, g-app; story-wire (screen wiring of the new
-lines), story-wire2 (storyteller: reveal.prestige first lines to 59 columns); wave 1 done.
+pointers fixed). g-engine (sim panic on presets shorter than boot #1; cron/chrt pay multipliers
+bounded; fork not offered once tmux applies (full clears +3 to +10); a trial
+before the first boot no longer cost boot #1's rules; LifetimeBytes never falls).
+story-wire2 (reveal.prestige first lines fit the 59-column teaser).
+Cleanup wave 2 running: g-app; story-wire (screen wiring of the new lines); wave 1 done.
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
 retired milestone); cleanup wave 1: g-store, g-qa
@@ -311,8 +313,6 @@ Run with the unslop pass (package by package), then core-loop QA, then alpha.
 - Old guide snapshot dirs stay after a Commit bump; Codeforces "offline" never
   retries until the next start; problem dir files are not fsynced;
   katharsis.log may belong in XDG_STATE_HOME.
-- fork adds nothing once tmux is installed (they do not stack, A2): stop
-  offering it then, or give it another effect.
 - top's Solves meter tells parts apart by colour only; expanded git log
   rating not in its own column (E18); real 4-line GRUB art fits 80x24 only
   with <= 11 entries.
