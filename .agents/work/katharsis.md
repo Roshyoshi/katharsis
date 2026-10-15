@@ -143,6 +143,11 @@ D46 settled 10-15  Alpha feedback, boot #1: "the timer shouldnt run in between l
                    time); Userland 15 min in every preset; TimerFitLo 0.8, TimerHeadroom
                    1.5; nice -20 costs bytes (x0.8), not lives; audit the other perks.
 
+D46 merged 10-15: uptime counts in-door time (migration 3 rewrites boots.uptime);
+                   Userland 15 min (D47 later sets 12), TimerFitLo 0.8, TimerHeadroom 1.5;
+                   nice -20 pays 0.8x bytes (NiceBytesFrac); apt prices x9/8; boot #1
+                   bound 75 min. Open: union-pool G1 at 900/1000 late (floor runs dry);
+                   full clear 2h29-2h49 wall vs D13 2 h; chrt ahead in the sim.
 D47 settled 10-15  Meta research before any change to lives: "3 lives seems a little harsh";
                    "a pool of 30 lives, and each time out costs like 10"; "pvz 1 has a
                    great meta"; "we need to consider the meta do some research first in
