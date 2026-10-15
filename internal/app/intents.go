@@ -23,6 +23,9 @@ import (
 
 // intent handles navigation messages; ok is false for anything else.
 func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
+	if cmd, ok := m.hubIntent(msg); ok { // resume, abandon, and a boot over a suspended one (hub.go)
+		return cmd, true
+	}
 	if cmd, ok := m.debriefIntent(msg); ok { // GRUB; logs the end screens' choices (debrief.go)
 		return cmd, true
 	}
@@ -249,6 +252,9 @@ func (m *Model) startUpsolve(id catalog.ID) tea.Cmd {
 	}
 	if m.state != nil && m.state.Phase == game.PhaseProblem {
 		return fail("finish or give up the open door first")
+	}
+	if m.onOffer(id) { // hub.go
+		return fail("%s is a door on offer in boot #%d: open it there", p.Title, m.state.Boot)
 	}
 	door := game.Door{Problem: id, Topic: p.Topic, Rating: p.Rating}
 	return tea.Batch(m.push(newUpsolveScreen(m, door)), m.openDoor(door, true))

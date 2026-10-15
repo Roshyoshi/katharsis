@@ -147,13 +147,7 @@ func TestUpsolveRecoveredNote(t *testing.T) {
 	})
 }
 
-func TestQuitAndResumeWords(t *testing.T) {
-	if s := quitWarn(90 * time.Second); !strings.Contains(s, "01:30 left on this door") || !strings.Contains(s, "ctrl+c again") {
-		t.Errorf("quitWarn %q", s)
-	}
-	if s := quitWarn(-time.Minute); !strings.Contains(s, "overtime") {
-		t.Errorf("quitWarn past a soft deadline %q", s)
-	}
+func TestResumeWords(t *testing.T) {
 	if s := resumeNote(90 * time.Second); !strings.Contains(s, "01:30 left") {
 		t.Errorf("resumeNote %q", s)
 	}

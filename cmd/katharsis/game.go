@@ -193,6 +193,9 @@ func runGame(args []string) error {
 	}()
 
 	_, err = p.Run()
+	if s := m.Farewell(); s != "" && err == nil {
+		fmt.Println(s) // a boot suspended on the way out (map.suspend)
+	}
 	return err
 }
 

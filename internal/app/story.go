@@ -124,6 +124,7 @@ func (m *Model) storyAfter(before baseKey) tea.Cmd {
 		}
 	}
 	if m.realBoot() {
+		q = append(q, m.mapScenes()...) // acts II and III, the skip, a lock (hub.go)
 		switch {
 		case s.Phase == game.PhaseMerge && before.phase != game.PhaseMerge:
 			if m.unseen("story.first-merge") {
@@ -146,7 +147,7 @@ func (m *Model) storyResume() tea.Cmd {
 		return nil
 	}
 	s := m.state
-	var q []queued
+	q := m.mapScenes() // acts II and III, the skip, a lock (hub.go)
 	switch {
 	case s.Phase == game.PhaseCrashed:
 		return m.storyCrash()
@@ -184,8 +185,7 @@ func (m *Model) arrival(noDrop bool) []queued {
 		}
 		q = append(q, queued{id, func() *story.Scene { return story.NewBossIntro(key, seed, first) }})
 	case !noDrop && b.Topic != "":
-		topic := b.Topic
-		q = append(q, queued{"", func() *story.Scene { return story.NewBiome(topic, m.drawnLines()) }})
+		q = append(q, queued{"", func() *story.Scene { return m.biomeFall(b) }}) // a map node's own line (hub.go)
 	}
 	if s.Biome == 0 && m.unseen("door.first.inscription") {
 		q = append(q, queued{"door.first.inscription", story.NewFirstDoor})

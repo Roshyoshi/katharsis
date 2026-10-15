@@ -21,8 +21,8 @@ import (
 
 // The end of a boot, app side (retention RT1, RT3, RT4, RT6, RT7, RT12;
 // UX J12): the figures the end screens show from the store and the
-// settings, the intents they emit, and the story's words on quit and
-// resume (D31).
+// settings, the intents they emit, and the story's words on resuming a
+// door (D31).
 
 // Telemetry kinds this file adds (retention RT13): what the player did
 // at the end of a boot and the budget's nudge shown (story.go logs the
@@ -245,16 +245,6 @@ func (m *Model) toGrub() tea.Cmd {
 	m.end = endCache{}
 	m.reset()
 	return m.initTop()
-}
-
-// quitWarn is D31's warning on quitting with a door open, in the story's
-// words (quit.warn) while the door has time left. A soft timer past its
-// deadline keeps the plain words: the Rabbit's line counts time left.
-func quitWarn(left time.Duration) string {
-	if s := flavor.Story("quit.warn", 0); s != "" && left > 0 {
-		return flavor.Fill(s, "time", units.Countdown(left)) + " · ctrl+c again to quit"
-	}
-	return "the door's timer keeps running while katharsis is closed (" + leftText(left) + ") · ctrl+c again to quit"
 }
 
 // resumeNote is D31's note on resuming a door, in the story's words

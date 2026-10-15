@@ -57,8 +57,10 @@ func TestLibsHarvestedOnACAndLinkedNextBoot(t *testing.T) {
 			t.Fatalf("libs after an AC = %+v, want dsu", h.m.meta.Libs)
 		}
 
-		// A new boot offers the link screen; link dsu and open a door.
+		// A new boot offers the link screen; link dsu and open a door. The
+		// boot in flight ends first, the hub asking.
 		h.send(screens.StartBoot{Preset: "standard"})
+		h.send(key("y"))
 		if _, ok := h.m.top().(*linkScreen); !ok {
 			t.Fatalf("top screen %T, want the link screen", h.m.top())
 		}

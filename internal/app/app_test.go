@@ -1312,6 +1312,7 @@ func TestLateSourceWaitsForTheNextBoot(t *testing.T) {
 			t.Fatalf("the recheck did not happen: %s still judgeable", id)
 		}
 		h.send(screens.StartBoot{Preset: "standard"})
+		h.send(key("y")) // the hub asks before the boot in flight ends
 		if !slices.ContainsFunc(h.m.pool, func(p catalog.Problem) bool { return p.Source == catalog.CF }) {
 			t.Error("the next boot does not draw from the source that joined")
 		}
@@ -1445,63 +1446,6 @@ func TestMergeSpend(t *testing.T) {
 		h.restart()
 		if s := h.m.state; s == nil || s.Spent != s.Rules.DupPrice+s.Rules.ShufPrice || s.Ducks != ducks+1 {
 			t.Fatalf("resumed boot lost the spending: %+v", s)
-		}
-	})
-}
-
-// A door's deadline is absolute, so quitting with one open asks first
-// (D31): ctrl+c warns, any other key takes the warning back, and a second
-// ctrl+c in a row quits. The resumed door says how long it has left.
-func TestQuitMidDoorConfirms(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		h := newHarness(t)
-		h.send(screens.StartBoot{Preset: "standard"})
-		h.enterDoor()
-		ctrlC := tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
-		if _, cmd := h.m.Update(ctrlC); cmd != nil || !strings.Contains(h.m.flash, "won't stop his watch") { // quit.warn
-			t.Fatalf("first ctrl+c: cmd %v, flash %q; want a warning and no quit", cmd != nil, h.m.flash)
-		}
-		h.m.Update(key("j"))
-		if _, cmd := h.m.Update(ctrlC); cmd != nil {
-			t.Fatal("ctrl+c after another key quit without warning again")
-		}
-		_, cmd := h.m.Update(ctrlC)
-		if cmd == nil {
-			t.Fatal("second ctrl+c in a row did not quit")
-		}
-		if _, ok := cmd().(tea.QuitMsg); !ok {
-			t.Fatal("second ctrl+c: not tea.Quit")
-		}
-		h.clock.t = h.clock.t.Add(10 * time.Minute)
-		h.restart()
-		if !strings.Contains(h.m.flash, "kept time") || !strings.Contains(h.m.flash, "left") { // resume.note
-			t.Errorf("resumed door: flash %q, want how long it has left", h.m.flash)
-		}
-	})
-}
-
-// With a door open the game's pane is the HUD, 36 to 48 columns: the quit
-// warning wraps there instead of losing its end ("ctrl+c again to quit")
-// to the one row a flash had. A save-failed banner stays above it.
-func TestQuitWarningFitsTheHUD(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		h := newHarness(t)
-		h.send(screens.StartBoot{Preset: "standard"})
-		h.enterDoor()
-		h.send(tea.WindowSizeMsg{Width: 48, Height: 30})
-		h.m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
-		h.m.saveErr = errors.New("disk full")
-		v := ansi.Strip(h.m.View().Content)
-		if flat := strings.Join(strings.Fields(v), " "); !strings.Contains(flat, "ctrl+c again to quit") {
-			t.Errorf("the quit warning lost its end at 48 columns:\n%s", v)
-		}
-		if !strings.Contains(v, "save failed") {
-			t.Errorf("the flash covered the save banner:\n%s", v)
-		}
-		for _, l := range strings.Split(v, "\n") {
-			if ansi.StringWidth(l) > 48 {
-				t.Errorf("a line %d wide at 48 columns: %q", ansi.StringWidth(l), l)
-			}
 		}
 	})
 }

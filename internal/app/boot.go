@@ -59,7 +59,8 @@ func (m *Model) baseKey() baseKey {
 }
 
 func (m *Model) env() bootui.Env {
-	e := bootui.Env{State: m.state, Meta: m.meta, Lookup: m.d.Catalog.Get, Now: m.d.Now(), End: m.endInfo(), Events: m.dmesg.Events()}
+	e := bootui.Env{State: m.state, Meta: m.meta, Lookup: m.d.Catalog.Get, Now: m.d.Now(), End: m.endInfo(), Events: m.dmesg.Events(),
+		Module: m.rtfmModule} // hub.go
 	m.fetchEnv(&e) // door readiness (fetch.go)
 	return e
 }
@@ -131,23 +132,21 @@ func (m *Model) tickMark() tickMark {
 	return k
 }
 
-// abandon gives up a boot still running, so leaving one costs what quitting
-// a door costs. In a door that is :q!; elsewhere there is no engine action
-// for it, so the store just marks the boot abandoned.
+// abandon ends a boot still running as a crash (game.Abandon, meta.md
+// §(c)): one boot is in flight at a time, and a new one over it must not
+// park it. With a door open it is that door's :q!.
 func (m *Model) abandon() error {
-	switch {
-	case m.state == nil || m.state.Phase == game.PhaseCrashed || m.state.Phase == game.PhaseCleared:
+	if !m.inBoot() {
 		return nil
-	case m.state.Phase == game.PhaseProblem:
-		if _, err := game.Step(m.state, &m.meta, m.pool, game.GiveUp{}, m.d.Now()); err != nil {
-			return err
-		}
-		m.closeDoor()
-		err := m.d.Store.Checkpoint(m.meta, m.state)
-		m.saved(err)
+	}
+	door := m.state.Phase == game.PhaseProblem
+	if _, err := game.Step(m.state, &m.meta, m.pool, game.Abandon{}, m.d.Now()); err != nil {
 		return err
 	}
-	err := m.d.Store.AbandonBoot(m.state.Boot)
+	if door {
+		m.closeDoor()
+	}
+	err := m.d.Store.Checkpoint(m.meta, m.state)
 	m.saved(err)
 	return err
 }
@@ -196,7 +195,7 @@ func (m *Model) tryAt(a game.Action, now time.Time) (tea.Cmd, error) {
 	cmds := []tea.Cmd{m.effects(effs)}
 	if m.baseKey() != before {
 		m.reset()
-		cmds = append(cmds, m.initTop(), m.storyAfter(before))
+		cmds = append(cmds, m.initTop(), m.storyAfter(before), m.preloadRTFM()) // hub.go
 	} else {
 		m.refresh()
 	}

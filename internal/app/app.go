@@ -127,9 +127,11 @@ type Model struct {
 	// game could not write played a whole boot and kept none of it.
 	saveErr    error
 	saveFailed time.Time // when saveErr happened
-	// quitArmed is set by a ctrl+c that asked to confirm quitting with a
-	// door open; the next key clears it, and a second ctrl+c quits.
-	quitArmed bool
+	// doorQuit is a ctrl+c refused inside a door (hub.go), until the next
+	// key; the problem pane draws it.
+	doorQuit quitRefusal
+	// rtfmLoading is set while RTFM loads for a route's locked exits.
+	rtfmLoading bool
 
 	// editorials are when each problem's editorial was last opened this
 	// session, such as from the crash screen before any upsolve exists.
@@ -226,7 +228,7 @@ func (m *Model) Init() tea.Cmd {
 		m.resumeFlash = m.flash
 		return tea.Batch(tick(), m.initTop(), m.openDoor(c.Door, false))
 	}
-	return tea.Batch(tick(), m.initTop(), m.storyResume(), m.titleAtLaunch())
+	return tea.Batch(tick(), m.initTop(), m.launchAt(), m.titleAtLaunch()) // the hub between doors (hub.go)
 }
 
 // doorLeft is the time left on the boot's open door, ok false when no
@@ -300,24 +302,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case tea.KeyPressMsg:
-		m.flash = ""
-		armed := m.quitArmed
-		m.quitArmed = false
+		m.flash, m.doorQuit = "", quitRefusal{}
 		switch msg.String() {
 		case "ctrl+c":
-			// The door's deadline is absolute (D31): quitting does not
-			// pause it, so a quit with a door open asks twice.
-			if left, ok := m.doorLeft(); ok && !armed {
-				m.quitArmed = true
-				m.flash = quitWarn(left) // debrief.go
-				return m, nil
-			}
-			return m, m.quit()
+			return m, m.ctrlC() // never from inside a door (hub.go)
 		case musicKey:
 			return m, m.toggleMusic()
 		}
 		if m.endKey(msg) {
 			return m, nil
+		}
+		if cmd, ok := m.hubKey(msg); ok { // m: the hub; q: suspend (hub.go)
+			return m, cmd
 		}
 	case tickMsg:
 		return m, tea.Batch(tick(), m.onTick())

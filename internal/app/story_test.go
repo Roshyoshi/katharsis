@@ -240,6 +240,7 @@ func TestStoryResume(t *testing.T) {
 			t.Fatalf("prologue not up: %q", h.sceneName())
 		}
 		h.storyRestart() // quit mid-prologue
+		h.resumeHub()
 		if got, _ := h.watch(); !slices.Equal(got, []string{"story.prologue", "door.first.inscription"}) {
 			t.Errorf("resume shows %v, want the prologue and the first door", got)
 		}
