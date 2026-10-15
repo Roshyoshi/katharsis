@@ -228,8 +228,9 @@ kc_wait_ed() {
 }
 
 # kc_through TEXT [secs] waits until the game pane shows TEXT, sending esc
-# to any story scene (S9) in the way: a boot starts with its splash, and a
-# fresh store's first boot with the prologue and the first-door scene too.
+# to any story scene (S9) in the way: a launch onto GRUB starts with the
+# title (D51, "press any key"), a boot with its splash, and a fresh
+# store's first boot with the prologue and the first-door scene too.
 # KC_INNER=1 watches kc_outside's game session instead.
 kc_through() {
 	local text=$1 n=${2:-20} s
@@ -240,7 +241,7 @@ kc_through() {
 			s=$(kc_cap)
 		fi
 		case $s in
-		*"esc skip"* | *"any key continue"*)
+		*"esc skip"* | *"any key continue"* | *"press any key"*)
 			if [ -n "${KC_INNER:-}" ]; then
 				kc_inner send-keys -t katharsis Escape
 			else
@@ -258,7 +259,7 @@ kc_through() {
 # entry, open door 1 and wait for its editor.
 kc_first_door() {
 	KC_BOOTWAIT=0 kc_start "$@"
-	kc_wait_for "GNU GRUB" 90 || { echo "kc_first_door: no GRUB" >&2; return 1; }
+	kc_through "GNU GRUB" 90 || { echo "kc_first_door: no GRUB" >&2; return 1; }
 	kc_keys Enter
 	kc_through "enter open door" 20
 	kc_keys Enter
