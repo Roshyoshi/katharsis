@@ -75,6 +75,14 @@ struct DSU { ... };
 // end lib
 ```
 
+**Judge.** `:Submit` judges with GCC 14 (`g++ -O2`, libstdc++, as on
+Codeforces), and `:Debug` builds with the same g++ at `-O0 -g`. Saves run
+the samples under clang's ASan and UBSan, built against that libstdc++.
+`<bits/stdc++.h>`, `__gnu_pbds` and `std::__gcd` work as on the judge;
+`#pragma GCC target(...)` lines are dropped, since arm64 g++ rejects x86
+targets. Where the bundled g++ does not run, all three use clang and libc++.
+In a tmux session the game starts, `g++` and `clang++` on PATH are these.
+
 ## Files
 
 | | |

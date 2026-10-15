@@ -201,6 +201,18 @@ internal/
   1e6-deep recursion.
 - macOS rejects `setrlimit(RLIMIT_AS)` and `RLIMIT_DATA` (returns -1); memory
   limits need a watchdog plus `ru_maxrss` (bytes on macOS).
+- Apple's libc++ reads ints through `cin` ~25x slower than libstdc++, synced
+  off: 1e6 ints in ~970 ms against ~37 ms (scanf ~60 ms), so the judge times
+  with GCC 14 (D28, `docs/research/gcc-toolchain.md`).
+- nixpkgs' `gcc14` runs natively on aarch64-darwin with its own libstdc++; an
+  `exec format error` from a nix g++ means an aarch64-linux store path. GCC
+  has no ASan or UBSan runtime there (`-lasan` not found);
+  `-fsanitize-trap=undefined` works.
+- arm64 g++ rejects x86 `#pragma GCC target("avx2")` with an error no flag
+  downgrades; clang ignores it.
+- libstdc++'s vector annotations poison spare capacity only after `reserve()`,
+  and its string and deque have none, so ASan misses indexing past `size()`;
+  `_GLIBCXX_ASSERTIONS` catches it.
 - USACO: tests at `usaco.org/current/data/{stem}.zip`, analysis at
   `sol_{stem}.html`; stems come from USACO Guide's `id_to_sol.json`. File I/O
   through the 2020 US Open, stdin/stdout from Dec 2020. Zips use
