@@ -293,7 +293,7 @@ func TestFloorRating(t *testing.T) {
 			t.Errorf("%dx%d:\n%s", sz[0], sz[1], ansi.Strip(v))
 		}
 	}
-	if s := doorStats(st.Doors[1]); strings.Contains(ansi.Strip(s), "≤") {
+	if s := NewDoors(env(st)).doorStats(st.Doors[1]); strings.Contains(ansi.Strip(s), "≤") {
 		t.Errorf("a door above the floor: %q", ansi.Strip(s))
 	}
 }
@@ -337,6 +337,21 @@ func TestRouteTimerOverclocked(t *testing.T) {
 			v := ansi.Strip(NewRoute(e).View(sz[0], sz[1]))
 			if !strings.Contains(v, want) || strings.Contains(v, bare) {
 				t.Errorf("%dx%d: want %s, not %s:\n%s", sz[0], sz[1], want, bare, v)
+			}
+		}
+	}
+}
+
+// A door card shows the timer the door opens with: with at bought, its
+// time is on every card, since it goes to whichever door opens next.
+func TestDoorsShowAtTime(t *testing.T) {
+	st := fixture.Doors()
+	st.AtTime = 5 * time.Minute
+	for _, sz := range [][2]int{{140, 40}, {80, 24}, {80, 12}} {
+		v := ansi.Strip(NewDoors(env(st)).View(sz[0], sz[1]))
+		for _, d := range st.Doors {
+			if want := units.Clock(d.Timer + st.AtTime); !strings.Contains(v, want) || strings.Contains(v, units.Clock(d.Timer)) {
+				t.Errorf("%dx%d: door %s shows no %s, or its bare %s:\n%s", sz[0], sz[1], d.Problem, want, units.Clock(d.Timer), v)
 			}
 		}
 	}

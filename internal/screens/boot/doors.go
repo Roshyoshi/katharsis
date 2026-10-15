@@ -283,7 +283,7 @@ func (d *Doors) wideBody(door game.Door, cw int) (top, bottom []string) {
 	}
 	top = append(top, tagLines(t, cw, 2)...)
 	// The download's state shares the stats row when it fits.
-	bottom = []string{"", doorStats(door)}
+	bottom = []string{"", d.doorStats(door)}
 	if f := d.env.fetchNote(door); f != "" && widthOf(bottom[1])+2+widthOf(f) <= cw {
 		bottom[1] = ui.Spread(bottom[1], f, cw)
 	} else if f != "" {
@@ -300,7 +300,7 @@ func (d *Doors) stackedBody(door game.Door, cw int) []string {
 		return d.bossBody(door, cw)
 	}
 	t := d.env.doorText(door)
-	stats := doorStats(door)
+	stats := d.doorStats(door)
 	var out []string
 	title := titleToken(door).Render(t.Title)
 	if widthOf(title)+2+widthOf(stats) <= cw {
@@ -333,17 +333,18 @@ func tagLines(t doorText, cw, n int) []string {
 	return ui.WrapN(strings.Join(t.Tags, ui.G.Sep), cw, n)
 }
 
-// doorStats is the card's stats row: rating, timer, reward. The engine's clear
+// doorStats is the card's stats row: rating, the timer the door opens
+// with (State.OpenTimer: at's time too), reward. The engine's clear
 // chance (Door.SolveP) stays off the card (D36): shown before the pick, the
 // pick stops measuring the player's own read of the door; the end of the
 // boot shows it afterwards, as calibration. A rating on its source's floor
 // is a ceiling, "◆≤800" (Door.Floor).
-func doorStats(door game.Door) string {
+func (d *Doors) doorStats(door game.Door) string {
 	rating := ui.Rating(door.Rating)
 	if door.Floor {
 		rating = ui.RatingAtMost(door.Rating)
 	}
-	return rating + "  " + ui.G.Timer + units.Clock(door.Timer) +
+	return rating + "  " + ui.G.Timer + units.Clock(d.env.State.OpenTimer(door)) +
 		"  " + ui.OK.Render("+"+units.Bytes(door.Bytes))
 }
 
@@ -478,7 +479,7 @@ func (d *Doors) bossBody(door game.Door, cw int) []string {
 	for _, l := range tagLines(t, cw, 1) {
 		out = append(out, ui.Center(l, cw))
 	}
-	out = append(out, ui.Center(doorStats(door), cw))
+	out = append(out, ui.Center(d.doorStats(door), cw))
 	if f := d.env.fetchNote(door); f != "" {
 		out = append(out, ui.Center(f, cw))
 	}
@@ -517,7 +518,7 @@ func (d *Doors) compact(width int) []string {
 		} else if door.Blind {
 			flag(ui.ModBlind)
 		}
-		head, tail, stats := mark+fmt.Sprintf("%d ", i+1), "", doorStats(door)
+		head, tail, stats := mark+fmt.Sprintf("%d ", i+1), "", d.doorStats(door)
 		if len(flags) > 0 {
 			tail = " " + strings.Join(flags, " ")
 		}

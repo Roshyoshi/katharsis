@@ -1473,9 +1473,10 @@ func TestHUDBarOvertime(t *testing.T) {
 // or its rating band (§2.6).
 func TestCompactRowsKeepTheNumbers(t *testing.T) {
 	st := fixture.Doors()
-	v := ansi.Strip(NewDoors(env(st)).View(40, 16))
+	doors := NewDoors(env(st))
+	v := ansi.Strip(doors.View(40, 16))
 	for _, d := range st.Doors {
-		if s := ansi.Strip(doorStats(d)); !strings.Contains(v, s) {
+		if s := ansi.Strip(doors.doorStats(d)); !strings.Contains(v, s) {
 			t.Errorf("door %s lost %q:\n%s", d.Problem, s, v)
 		}
 	}

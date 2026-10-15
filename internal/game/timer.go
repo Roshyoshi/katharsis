@@ -38,6 +38,12 @@ func (s *State) RouteTimer(m *Meta, topic string) time.Duration {
 	return e.doorTimer(rb, rb.Kind == rules.Boss, gap)
 }
 
+// OpenTimer is the timer door d of those on offer opens with: its own,
+// plus the time bought with at, which goes to whichever door opens next.
+// Door cards show it, so the clock a door starts on is the one its card
+// said.
+func (s *State) OpenTimer(d Door) time.Duration { return d.Timer + s.AtTime }
+
 // timerMult is the product of every timer modifier this boot runs with:
 // ascension, each Overclock (compounding), nice and chrt.
 func (e *engine) timerMult() float64 {

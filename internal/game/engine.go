@@ -221,7 +221,7 @@ func (e *engine) chooseDoor(i int) error {
 	}
 	d := s.Doors[i]
 	if s.AtTime > 0 { // bought with at: the next door, whichever it is
-		d.Timer += s.AtTime
+		d.Timer = s.OpenTimer(d)
 		e.logf("at: +%s on the next door", units.Clock(s.AtTime))
 		s.AtTime = 0
 	}

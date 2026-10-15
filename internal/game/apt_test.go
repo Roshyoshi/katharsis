@@ -232,6 +232,9 @@ func TestPackageEffects(t *testing.T) {
 		h.do(game.ChooseRoute{})
 	}
 	offered := h.s.Doors[0].Timer
+	if shown := h.s.OpenTimer(h.s.Doors[0]); shown != offered+h.s.Rules.AtTime.Duration {
+		t.Errorf("at: the card shows %v (offered %v), not the timer the door opens with", shown, offered)
+	}
 	h.open(0)
 	if got := h.s.Current.Door.Timer; got != offered+h.s.Rules.AtTime.Duration || h.s.AtTime != 0 {
 		t.Errorf("at: door timer %v (offered %v), %v still held", got, offered, h.s.AtTime)
