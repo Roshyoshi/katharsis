@@ -336,6 +336,10 @@ type PickUpgrade struct{ Upgrade Upgrade }
 type PickDaemon struct{ Daemon Daemon }
 type LeaveMerge struct{}
 
+// Link chooses the libs (by name, from Meta.Libs) pasted into this boot's
+// templates. Allowed until the first door opens, up to rules.LinkSlots.
+type Link struct{ Libs []string }
+
 func (ChooseRoute) isAction()  {}
 func (ChooseDoor) isAction()   {}
 func (Retreat) isAction()      {}
@@ -347,6 +351,7 @@ func (Commit) isAction()       {}
 func (PickUpgrade) isAction()  {}
 func (PickDaemon) isAction()   {}
 func (LeaveMerge) isAction()   {}
+func (Link) isAction()         {}
 
 // ---- outputs -----------------------------------------------------------------
 

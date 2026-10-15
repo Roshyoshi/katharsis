@@ -125,6 +125,8 @@ func Step(s *State, meta *Meta, pool []catalog.Problem, a Action, now time.Time)
 		err = e.pickDaemon(a.Daemon)
 	case LeaveMerge:
 		err = e.leaveMerge()
+	case Link:
+		err = e.link(a.Libs)
 	default:
 		err = invalid("unknown action %T", a)
 	}

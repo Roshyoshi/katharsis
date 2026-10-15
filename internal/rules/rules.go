@@ -169,6 +169,8 @@ type Rules struct {
 	// them. RatingColdAttempts 0 turns the boost off.
 	RatingKCold        float64 `toml:"rating_k_cold"`
 	RatingColdAttempts int     `toml:"rating_cold_attempts"`
+	// LinkSlots is how many libs a boot may link before its first door.
+	LinkSlots int `toml:"link_slots"`
 	// CalibRate is the gain of the aim calibration (game.Calibration): the
 	// share of one plain door's surprise that moves its tier's offset, so a
 	// tier forgets its past over about 1/CalibRate doors. 0 turns it off.
@@ -264,6 +266,7 @@ func (r Rules) WithDefaults() Rules {
 		{&r.MaxDaemons, &d.MaxDaemons}, {&r.ForkDoors, &d.ForkDoors},
 		{&r.NiceLifeCost, &d.NiceLifeCost}, {&r.TimerFitMin, &d.TimerFitMin},
 		{&r.TimerFitHistory, &d.TimerFitHistory},
+		{&r.LinkSlots, &d.LinkSlots},
 	}
 	for _, f := range ints {
 		if *f.v <= 0 {
@@ -357,6 +360,7 @@ func Standard() Rules {
 
 		RatingKCold:        100,
 		RatingColdAttempts: 20,
+		LinkSlots:          2,
 		CalibRate:          0.02,
 		CalibWarm:          10,
 		CalibAfter:         60,
