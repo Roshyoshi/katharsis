@@ -1,11 +1,13 @@
 package hud
 
 import (
+	"fmt"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"katharsis/internal/judge"
+	"katharsis/internal/ui"
 )
 
 // SamplesMsg is emitted when a sample pass (a save's rejudge) finishes,
@@ -49,5 +51,58 @@ func (m *Model) Samples() Samples {
 	s := Samples{Total: len(m.rows), Passed: m.passed()}
 	s.Done = m.build != nil && !m.running && m.passErr == nil
 	s.Compiled = m.build != nil && m.build.OK
+	return s
+}
+
+// Pinned is the judgement in two lines w cells wide, for a host that pins
+// it over the statement (the game's problem pane, UX J8): the HP bar, then
+// the samples in one line, the first failure's detail folded into it.
+//
+//	HP ░░░░░░░░░░░░░░░░░░░░ not submitted
+//	samples 1/2 · #2 WA line 3 · want NO got YES
+func (m *Model) Pinned(w int) []string {
+	out := m.submitLines(w)
+	if len(out) == 0 {
+		out = []string{ui.HP(w, 0, 0, "")}
+	}
+	return append(out, ui.Clip(m.samplesLine(), w))
+}
+
+// samplesLine is the sample pass in one line.
+func (m *Model) samplesLine() string {
+	label := "samples "
+	switch {
+	case m.loadErr != nil:
+		return ui.Danger.Render(m.loadErr.Error())
+	case m.watchErr != nil:
+		return ui.Danger.Render("watcher: " + m.watchErr.Error() + " (r rejudges)")
+	case m.passErr != nil:
+		return ui.Danger.Render("error: " + m.passErr.Error())
+	case m.waiting:
+		return label + ui.Muted.Render("not run"+ui.G.Sep+":w judges")
+	case m.build == nil && m.running:
+		return label + ui.Muted.Render("compiling…")
+	case m.build == nil:
+		return label + ui.Muted.Render("not run")
+	case !m.build.OK:
+		return label + ui.Danger.Render("CE") + " " + ui.Muted.Render(firstError(m.compilerLog(m.build.Log)))
+	}
+	s := fmt.Sprintf("%s%d/%d", label, m.passed(), len(m.rows))
+	i := m.firstFailure()
+	switch {
+	case i >= 0:
+		res := m.rows[i].res
+		s += ui.Muted.Render(ui.G.Sep) + ui.Verdict(string(res.Verdict)).Render(fmt.Sprintf("#%s %s", m.prob.Tests[i].Name, res.Verdict))
+		if res.Reason != "" {
+			s += " " + res.Reason
+		}
+		if d := res.Diff; d != nil {
+			s += ui.Muted.Render(ui.G.Sep+"want ") + d.Want + ui.Muted.Render(" got ") + d.Got
+		}
+	case m.running:
+		s += ui.Muted.Render(" running…")
+	case len(m.rows) > 0:
+		s += " " + ui.OK.Render(ui.G.Pass) + " " + ui.Strong.Render("ALL PASS")
+	}
 	return s
 }

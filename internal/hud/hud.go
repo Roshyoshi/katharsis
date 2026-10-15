@@ -89,6 +89,10 @@ type Options struct {
 	// practice hint to add tests. It is exactly as tall as the last
 	// WindowSizeMsg, so the host's footer keeps its row.
 	Embedded bool
+	// Unjudged is for a source that is still the template it started as:
+	// the samples wait for the first save (or r) instead of judging it on
+	// open, where it could only fail (UX J13).
+	Unjudged bool
 }
 
 type row struct {
@@ -110,6 +114,9 @@ type Model struct {
 	passErr error
 	rows    []row
 	sel     int
+	// waiting is set while an Unjudged source has not been saved: the
+	// tests are loaded, and none has run.
+	waiting bool
 
 	sub      submission
 	dbg      debugger
@@ -156,7 +163,14 @@ func closeTick() tea.Cmd {
 	return tea.Tick(100*time.Millisecond, func(time.Time) tea.Msg { return closeTickMsg{} })
 }
 
-func (m *Model) Init() tea.Cmd { return tea.Batch(m.tick(), m.rejudge(), m.updateBorder()) }
+func (m *Model) Init() tea.Cmd {
+	if m.opt.Unjudged {
+		m.load()
+		m.waiting = m.loadErr == nil
+		return tea.Batch(m.tick(), m.updateBorder())
+	}
+	return tea.Batch(m.tick(), m.rejudge(), m.updateBorder())
+}
 
 // limits fills in the problem's own time limit when the options leave it
 // unset.
@@ -174,21 +188,30 @@ func (m *Model) rejudge() tea.Cmd {
 	if m.cancel != nil {
 		m.cancel()
 	}
-	m.pass, m.build, m.passErr = nil, nil, nil
-	m.prob, m.loadErr = problem.Load(m.opt.Dir)
-	if m.loadErr != nil {
-		m.running, m.rows = false, nil
+	m.pass, m.build, m.passErr, m.waiting = nil, nil, nil, false
+	if !m.load() {
 		return nil
 	}
 	m.running = true
-	m.rows = make([]row, len(m.prob.Tests))
-	m.sel = min(m.sel, max(len(m.rows)-1, 0))
 
 	prob, prof, lim := m.prob, m.opt.Profile, m.limits()
 	m.pass, m.cancel = start(func(ctx context.Context, emit func(judge.Event)) {
 		judge.Judge(ctx, prob, prof, lim, emit)
 	})
 	return next(m.pass)
+}
+
+// load reads the problem (tests may have been added since) and resets the
+// rows, none judged; it reports whether the problem loaded.
+func (m *Model) load() bool {
+	m.prob, m.loadErr = problem.Load(m.opt.Dir)
+	if m.loadErr != nil {
+		m.running, m.rows = false, nil
+		return false
+	}
+	m.rows = make([]row, len(m.prob.Tests))
+	m.sel = min(m.sel, max(len(m.rows)-1, 0))
+	return true
 }
 
 // start runs a judge pass in the background and streams its events into
@@ -410,6 +433,8 @@ func (m *Model) status(clock string, paint func(ui.Token, string) string) string
 	switch {
 	case m.loadErr != nil:
 		parts = append(parts, paint(ui.FG, "problem not loaded"))
+	case m.waiting:
+		parts = append(parts, paint(ui.FG, "samples not run"))
 	case m.build != nil && !m.build.OK:
 		parts = append(parts, paint(ui.FG, "samples ")+paint(ui.Danger, "CE"))
 	case len(m.rows) > 0:
@@ -549,6 +574,8 @@ func (m *Model) statusLine() string {
 		return ui.Danger.Render("watcher: " + m.watchErr.Error() + " (r rejudges)")
 	case m.passErr != nil:
 		return ui.Danger.Render("error: " + m.passErr.Error())
+	case m.waiting:
+		return "samples " + ui.Muted.Render("not run"+ui.G.Sep+":w judges")
 	case m.build == nil && m.running:
 		return ui.Muted.Render(prof + ui.G.Sep + "compiling…")
 	case m.build == nil:
@@ -596,6 +623,9 @@ func (m *Model) detail(w int) []string {
 		return nil
 	}
 	r, t := m.rows[m.sel], m.prob.Tests[m.sel]
+	if !r.done && m.waiting {
+		return []string{ui.Muted.Render("#" + t.Name + " not run" + ui.G.Sep + ":w judges")}
+	}
 	if !r.done {
 		return []string{ui.Muted.Render("#" + t.Name + " pending")}
 	}

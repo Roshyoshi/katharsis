@@ -14,6 +14,7 @@ import (
 	"katharsis/internal/hud"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
+	"katharsis/internal/screens/reader"
 	"katharsis/internal/session"
 	"katharsis/internal/ui"
 	"katharsis/internal/units"
@@ -79,6 +80,11 @@ type problemScreen struct {
 	// editorErr, with closed, is why the editor could not start.
 	editorErr string
 	hudSize   [2]int
+	// stmt is the door's statement under the pinned judgement (pane.go),
+	// nil until its files are in; shown says the last View drew it. tests
+	// shows the tests in full in its place (enter), help every key (h).
+	stmt               *reader.Model
+	shown, tests, help bool
 }
 
 func newProblemScreen(m *Model) *problemScreen {
@@ -99,9 +105,21 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		return s, nil
 	}
 	key := k.String()
+	if s.help {
+		s.help = false // any key closes it, and does nothing else
+		return s, nil
+	}
 	asked := s.confirm == key
 	s.confirm, s.ask = "", ""
 	switch key {
+	case "h":
+		s.help = true
+		return s, nil
+	case "enter":
+		if s.stmt != nil {
+			s.tests = !s.tests
+			return s, nil
+		}
 	case "s":
 		if ask, ok := s.m.samplesFail("s again submits"); ok && !asked && !s.upsolve {
 			s.confirm, s.ask = key, ask
@@ -152,7 +170,12 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	case "q":
 		return s, nil // the HUD's q would close the editor; the door decides
 	}
-	// The rest (j/k, r to rerun samples) is the HUD's.
+	// The statement on screen scrolls; the rest (j/k in the tests, r to
+	// rerun the samples) is the HUD's.
+	if s.shown && statementKeys[key] {
+		s.stmt.Update(msg)
+		return s, nil
+	}
 	if h := s.m.hud(); h != nil {
 		_, cmd := h.Update(msg)
 		return s, guard(cmd)
@@ -196,7 +219,20 @@ func (s *problemScreen) View(w, h int) string {
 	// HUD runs embedded (no header or key help of its own) and is exactly
 	// as tall as the room it is given.
 	room := h - len(top) - 2
-	if hm := s.m.hud(); hm != nil && room > 1 {
+	s.shown = false
+	switch hm := s.m.hud(); {
+	case s.help && room > 0:
+		for _, l := range ui.PadLines(s.helpLines(w), room)[:room] {
+			b.WriteString(ui.Clip(l, w) + "\n")
+		}
+		b.WriteString(ui.Clip(vimHelp, w) + "\n")
+	case s.showsStatement(room):
+		s.shown = true
+		for _, l := range s.statementView(w, room) {
+			b.WriteString(ui.Clip(l, w) + "\n")
+		}
+		b.WriteString(ui.Clip(vimHelp, w) + "\n")
+	case hm != nil && room > 1:
 		// The HUD sizes itself from WindowSizeMsg; give it the room left.
 		if s.hudSize != [2]int{w, room} {
 			s.hudSize = [2]int{w, room}
@@ -206,7 +242,7 @@ func (s *problemScreen) View(w, h int) string {
 		// a trailing newline here would drop a row and lift the footer.
 		b.WriteString(hm.View().Content + "\n")
 		b.WriteString(ui.Clip(vimHelp, w) + "\n")
-	} else {
+	default:
 		b.WriteString(s.headless(w))
 		for i := strings.Count(b.String(), "\n"); i < h-1; i++ {
 			b.WriteString("\n")
@@ -217,25 +253,36 @@ func (s *problemScreen) View(w, h int) string {
 }
 
 // footers are the two key rows (C8): the editor's commands, then this
-// pane's keys. Under 52 columns the editor's are bare names, and the
-// pane's drop Q, whose :q! the editor row already has.
+// pane's keys, only the ones that matter and h for the rest (J17). Under
+// 52 columns the editor's are bare names, and the pane's drop Q, whose
+// :q! the editor row already has. enter names what it swaps to.
 func (s *problemScreen) footers(w int) (vim, keys string) {
 	narrow := w < 52
+	var swap []string
+	switch {
+	case s.stmt == nil:
+	case s.tests:
+		swap = []string{"enter", "statement"}
+	default:
+		swap = []string{"enter", "tests"}
+	}
+	pairs := func(ps ...string) string {
+		out := append([]string{"s", "submit"}, swap...)
+		return ui.Footer(w, append(append(out, ps...), "h", "help")...)
+	}
 	switch {
 	case s.upsolve && narrow:
-		return ui.Muted.Render(":w :Submit :Debug n"),
-			ui.Footer(w, "s", "submit", "t", "stmt", "e", "editorial", "Q", "leave")
+		return ui.Muted.Render(":w :Submit :Debug n"), ui.Footer(w, "s", "submit", "e", "editorial", "Q", "leave", "h", "help")
 	case s.upsolve:
 		return ui.Footer(w, ":w", "samples", ":Submit", "judge", ":Debug n", "debug"),
-			ui.Footer(w, "s", "submit", "t", "statement", "e", "editorial", "r", "rerun", "j/k", "move", "Q", "leave")
+			pairs("e", "editorial", "Q", "leave")
 	case narrow:
 		return ui.Muted.Render(":w :Submit :Debug n :Quack :Retreat :q!"),
-			ui.Footer(w, "s", "submit", "t", "stmt", "?", "duck", "R", "retreat")
+			ui.Footer(w, append(append(append([]string{"s", "submit"}, swap...), "?", "duck", "R", "retreat"), "h", "help")...)
 	}
 	return ui.Footer(w, ":w", "samples", ":Submit", "judge", ":Debug n", "debug", ":Quack", "duck",
 			":Retreat", "retreat", ":q!", "give up"),
-		ui.Footer(w, "s", "submit", "t", "statement", "?", "duck", "R", "retreat", "r", "rerun",
-			"j/k", "move", "Q", "give up")
+		pairs("?", "duck", "R", "retreat", "Q", "give up")
 }
 
 // headless is the body without a HUD: the pane's one HP bar (C6), the
