@@ -97,6 +97,7 @@ func NewBoot(r rules.Rules, meta *Meta, pool []catalog.Problem, prestige int, se
 	e.layout()
 	e.planFloor()
 	e.enterBiome(0)
+	e.noteCap()
 	return s, e.fx, nil
 }
 
@@ -184,7 +185,23 @@ func Step(s *State, meta *Meta, pool []catalog.Problem, a Action, now time.Time)
 	if err != nil {
 		return nil, err
 	}
+	e.noteCap()
 	return e.fx, nil
+}
+
+// noteCap marks the boot once its cycle pool stands at its cap on a map
+// (State.Capped), and Meta the first boot it did (Meta.Capped): the
+// Trial's gate is the cap, and the cap its hint. Cycles rise only between
+// doors (fsck, an ECC heal, the easings), so this is a safe point.
+func (e *engine) noteCap() {
+	s := e.s
+	if s.Capped || !s.mapped() || s.Trial != nil || s.Cycles < s.MaxCycles {
+		return
+	}
+	s.Capped = true
+	if e.meta.Capped == 0 {
+		e.meta.Capped = s.Boot
+	}
 }
 
 func (e *engine) need(p Phase, what string) error {
@@ -535,7 +552,8 @@ func (e *engine) clear() {
 
 	s.Room++
 	more := s.Room < s.Biomes[s.Biome].Rooms
-	if !more && s.Biome == len(s.Biomes)-1 {
+	// The last tier ends the boot, and so does an ending's node (the Trial).
+	if !more && (s.Biome == len(s.Biomes)-1 || r.Biomes[s.Biome].Ending != "") {
 		e.finish()
 		return
 	}
@@ -852,18 +870,23 @@ func (e *engine) openBiome(i int) {
 
 // finish clears the boot: what is still uncommitted is banked, and beating
 // the top unlocked prestige unlocks the next. A trial unlocks no prestige;
-// it grants its capability instead.
+// it grants its capability instead. An ending (rules.Biome.Ending: the
+// Trial's wake) clears the boot where it stands with no unlock and no
+// full clear: State.Ending says so.
 func (e *engine) finish() {
 	s, m := e.s, e.meta
 	if s.Uncommitted > 0 {
 		e.bank()
 	}
 	s.Phase = PhaseCleared
+	s.Ending = s.Rules.Biomes[s.Biome].Ending
 	e.countEnd(false)
 	m.LastPlayed = e.now
 	switch {
 	case s.Trial != nil:
 		e.passTrial()
+	case s.Ending != "":
+		e.logf("boot #%d: %s, no prestige unlocked", s.Boot, s.Ending)
 	// Not before the engine knows the player (PrestigeGate).
 	case s.Prestige == m.Prestige && NextPrestige(s.Rules, m).Open():
 		m.Prestige++

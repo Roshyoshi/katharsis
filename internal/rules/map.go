@@ -147,9 +147,10 @@ func gated(b Biome) Biome {
 // no capability can take (the Bronze topics, The ALU, Kernel Space), as
 // Dead Cells always leaves a rune-less route; the exit taken picks the
 // boss. Names and keys are the story bible's but Kernel Space's, which the
-// storyteller owns.
+// storyteller owns. Every act II node also leads, hidden, to the Trial
+// (trialNode).
 func MapNodes() []Biome {
-	bisect := gated(node(TierActII, "bisect", "Bisect Bridge", "binary-search", "heisenbug"))
+	bisect := gated(node(TierActII, "bisect", "Bisect Bridge", "binary-search", "heisenbug", TrialNode))
 	bisect.Package = "git" // git bisect
 	ub := bossNode(TierBossII, "undefined-behavior", "Undefined Behavior", "trees", "geometry", "kernel", "skip")
 	ub.MinPrestige = 1 // through the glass
@@ -169,14 +170,15 @@ func MapNodes() []Biome {
 		bossNode(TierBossI, "oom-killer", "OOM Killer", "alu", "heap", "lexer"),
 
 		bisect,
-		gated(node(TierActII, "window", "The Sliding Window", "two-pointers", "race-condition")),
-		node(TierActII, "alu", "The ALU", "math", "heisenbug", "race-condition"),
-		gated(node(TierActII, "heap", "The Heap", "data-structures", "heisenbug", "undefined-behavior")),
-		gated(node(TierActII, "lexer", "The Lexer", "strings", "race-condition", "undefined-behavior")),
+		gated(node(TierActII, "window", "The Sliding Window", "two-pointers", "race-condition", TrialNode)),
+		node(TierActII, "alu", "The ALU", "math", "heisenbug", "race-condition", TrialNode),
+		gated(node(TierActII, "heap", "The Heap", "data-structures", "heisenbug", "undefined-behavior", TrialNode)),
+		gated(node(TierActII, "lexer", "The Lexer", "strings", "race-condition", "undefined-behavior", TrialNode)),
 
 		bossNode(TierBossII, "heisenbug", "Heisenbug", "graphs", "dp", "kernel", "skip"),
 		bossNode(TierBossII, "race-condition", "Race Condition", "dsu", "sssp", "kernel", "skip"),
 		ub,
+		trialNode(),
 
 		gated(node(TierActIII, "graphs", "Routing Table", "graphs", "halting-problem")),
 		gated(node(TierActIII, "dp", "The Cache", "dp", "halting-problem")),
@@ -189,6 +191,25 @@ func MapNodes() []Biome {
 
 		bossNode(TierFinal, "halting-problem", "The Halting Problem"),
 	}
+}
+
+// trialNode is the Court of Hearts (achievements.md §(f)): a hidden exit of
+// every act II node into Boss II's tier, open only to a cycle pool at its
+// cap ("All persons more than a mile high to leave the court"). Its door is
+// cursed (no ducks, one failed submit ends the boot) and one shot (no
+// failure price: a timeout or :q! ends it too); it is aimed at Boss I's
+// 0.55 to offset the curse, on Boss II's clock, and pays as any cursed
+// boss door. Clearing it ends the boot awake: no act III, no final, no
+// prestige unlock. In the simulator (sim TestTrialCheck) about half the
+// models that take it wake, 43 to 53%, over the design's 35-45%; aims from
+// 0.40 to 0.55 move that by less than the noise, so the aim stays Boss I's.
+func trialNode() Biome {
+	b := bossNode(TierBossII, TrialNode, "The Trial")
+	boss1 := MapBiomes()[TierBossI]
+	b.TargetClear, b.MinClear, b.EaseClear = boss1.TargetClear, boss1.MinClear, boss1.EaseClear
+	b.FailCycles = 0
+	b.Hidden, b.NeedFull, b.Cursed, b.Ending = true, true, true, EndingWake
+	return b
 }
 
 // MapAscensions is the prestige ladder across the three acts (map.md §(d)):

@@ -389,7 +389,8 @@ func (e *engine) declineEase() error {
 }
 
 // countEnd updates Meta.Governor as a boot ends, crashed or cleared. A
-// trial does not count.
+// trial does not count. An ending (the Trial's wake) is no crash and no
+// full clear: it starts the early crashes over and leaves the clears.
 func (e *engine) countEnd(crashed bool) {
 	if e.s.Trial != nil {
 		return
@@ -403,7 +404,9 @@ func (e *engine) countEnd(crashed bool) {
 		return
 	}
 	g.EarlyCrashes = 0
-	g.FullClears++
+	if e.s.Ending == "" {
+		g.FullClears++
+	}
 }
 
 // reachMerge starts the early-crash count over: the boot got past its

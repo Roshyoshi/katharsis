@@ -199,7 +199,10 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 			if d.Bytes < 1 || d.Timer < time.Minute || d.SolveP <= 0 || d.SolveP >= 1 {
 				fail("door %+v", d)
 			}
-			if d.Boss != "" && d.Cursed || d.Mystery && !d.Blind {
+			// A boss is never cursed but by its node (the Trial), whose
+			// every door is.
+			cursedNode := s.Rules.Biomes[s.Biome].Cursed
+			if d.Boss != "" && d.Cursed && !cursedNode || cursedNode && !d.Cursed || d.Mystery && !d.Blind {
 				fail("door modifiers %+v", d)
 			}
 			// A twist is its boss's, and its flags are that twist's alone.
@@ -240,6 +243,22 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 		}
 	} else if len(s.Doors) != 0 {
 		fail("%d doors outside the doors phase", len(s.Doors))
+	}
+	// The Trial: its hidden exit is on a route only open, or once a pool
+	// hit its cap (the hint); an ending is a clear at the ending's node,
+	// which unlocks nothing.
+	for _, b := range s.Biomes {
+		for _, x := range b.Exits {
+			if x.Hidden && x.Locked != "" && m.Capped == 0 {
+				fail("hidden exit %+v shown before the hint", x)
+			}
+		}
+	}
+	if s.Ending != "" && (s.Phase != game.PhaseCleared || s.Rules.Biomes[s.Biome].Ending != s.Ending || s.Unlocked != 0) {
+		fail("ending %q in phase %s at biome %d, unlocked %d", s.Ending, s.Phase, s.Biome, s.Unlocked)
+	}
+	if s.Capped != (s.Capped && len(s.Rules.Nodes) > 0) || s.Capped && m.Capped == 0 || !s.Capped && s.Cycles >= s.MaxCycles && len(s.Rules.Nodes) > 0 && s.Trial == nil {
+		fail("capped %v at %d/%d, meta %d", s.Capped, s.Cycles, s.MaxCycles, m.Capped)
 	}
 	if s.Phase != game.PhaseMerge && len(s.DaemonOffers) != 0 {
 		fail("daemons %v on offer outside a merge window", s.DaemonOffers)
@@ -550,6 +569,8 @@ func (c *checker) checkEase(s *game.State, m *game.Meta, a game.Action, err erro
 			if c.merged || s.Biome > 0 || s.Room >= s.Biomes[s.Biome].Rooms {
 				want.EarlyCrashes = 0
 			}
+		case s.Phase == game.PhaseCleared && s.Ending != "":
+			want.EarlyCrashes = 0 // the Trial's wake: no crash, no full clear
 		case s.Phase == game.PhaseCleared:
 			want = game.Governor{FullClears: want.FullClears + 1}
 		case s.Biome == 0:
@@ -817,6 +838,9 @@ func fuzzBoots(t *testing.T, r rules.Rules, name string, ps []catalog.Problem) {
 		}
 		if s.Crash != nil {
 			eases["crash "+string(s.Crash.Cause)]++
+		}
+		if s.Ending != "" {
+			eases["ending "+s.Ending]++
 		}
 		for _, mv := range moves {
 			if !mv.Err {

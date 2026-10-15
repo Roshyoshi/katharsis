@@ -13,8 +13,11 @@ import (
 // engine's own, so a screen never shows a figure the game did not use
 // (retention GR3).
 type Brief struct {
-	Cleared bool // the boot beat its last boss; otherwise it crashed
+	Cleared bool // the boot beat its last boss (or reached an ending); otherwise it crashed
 	Trial   bool // a learn-mode trial: no prestige, no core dump
+	// Ending is the cleared boot's ending (State.Ending): "wake" for the
+	// Trial, which unlocks no prestige and is never the top's clear.
+	Ending string
 
 	// ---- kept ----
 
@@ -136,6 +139,7 @@ func Debrief(st *State, m *Meta) Brief {
 	d := Brief{
 		Cleared:   st.Phase == PhaseCleared,
 		Trial:     st.Trial != nil,
+		Ending:    st.Ending,
 		Bank:      m.Bank,
 		Committed: st.Committed,
 		Rating:    Change{After: m.Rating},
@@ -146,7 +150,7 @@ func Debrief(st *State, m *Meta) Brief {
 	}
 	if !d.Trial {
 		d.Gate, d.Unlocked = NextPrestige(st.Rules, m), st.Unlocked
-		d.Top = d.Cleared && st.Prestige >= MaxPrestige
+		d.Top = d.Cleared && st.Ending == "" && st.Prestige >= MaxPrestige
 	}
 	if d.Cleared {
 		if a, ok := lastClear(st); ok {

@@ -131,14 +131,15 @@ func TestCostsBeforeCycles(t *testing.T) {
 // node names a boss the story knows; every node's gate is its topic's
 // capability or a package; and a player with no capability, no package and
 // no prestige reaches the final through open nodes alone, as Dead Cells
-// always leaves a rune-less route.
+// always leaves a rune-less route. The Trial, hidden behind a full pool,
+// is no part of that route: it ends the boot where it stands.
 func TestMapGraph(t *testing.T) {
 	t.Parallel()
 	r := rules.Map()
 	nodes := map[string]rules.Biome{}
 	for _, n := range r.Nodes {
 		nodes[n.ID] = n
-		if n.Boss != "" && !slices.Contains(game.BossKeys, n.Boss) && n.Boss != game.FinalBoss {
+		if n.Boss != "" && !slices.Contains(game.BossKeys, n.Boss) && n.Boss != game.FinalBoss && n.Boss != game.TrialBoss {
 			t.Errorf("node %s: boss %q unknown", n.ID, n.Boss)
 		}
 		if n.Topic != "" && !slices.Contains(catalog.Topics, n.Topic) {
@@ -156,7 +157,9 @@ func TestMapGraph(t *testing.T) {
 	if nodes["halting-problem"].Tier != rules.TierFinal {
 		t.Fatal("The Halting Problem is not the final")
 	}
-	open := func(n rules.Biome) bool { return n.MinPrestige == 0 && game.CapabilityFor(n.Topic) == "" }
+	open := func(n rules.Biome) bool {
+		return n.MinPrestige == 0 && game.CapabilityFor(n.Topic) == "" && !n.Hidden && !n.NeedFull && n.Ending == ""
+	}
 	reach := map[string]bool{"userland": true}
 	for tier := range len(r.Biomes) - 1 {
 		for _, n := range r.Nodes {
@@ -187,5 +190,15 @@ func TestMapGraph(t *testing.T) {
 	}
 	if s := nodes["skip"]; !s.Skip || s.Picks != 2 {
 		t.Errorf("skip %+v", s)
+	}
+	// Every act II node leads, hidden, to the Trial at Boss II's tier.
+	if tr := nodes[rules.TrialNode]; tr.Tier != rules.TierBossII || tr.Boss != game.TrialBoss || !tr.Hidden || !tr.NeedFull ||
+		!tr.Cursed || tr.Ending != game.EndingWake || len(tr.Next) != 0 || tr.FailCycles != 0 {
+		t.Errorf("the Trial %+v", tr)
+	}
+	for _, n := range r.Nodes {
+		if n.Tier == rules.TierActII && !slices.Contains(n.Next, rules.TrialNode) {
+			t.Errorf("%s does not lead to the Trial: %v", n.ID, n.Next)
+		}
 	}
 }

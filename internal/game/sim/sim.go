@@ -107,6 +107,13 @@ type Player struct {
 	// clock are the engine's.
 	TwistCost map[string]float64
 
+	// Trial has the model set out for the Trial (achievements.md §(f)): it
+	// keeps its bytes uncommitted until the merge window before Boss II,
+	// buys fsck there up to the cycle cap while it can afford one, and takes
+	// the Trial's exit whenever it is open. Without it the model never takes
+	// a hidden exit.
+	Trial bool
+
 	// Install lists the packages (rules.Package) the model buys at GRUB
 	// between boots, in this order, each once the bank covers it; nil buys
 	// none.
@@ -284,6 +291,13 @@ type Report struct {
 	Fountained, BossSaves, Fscks int
 	Nodes                        map[string]int
 	Bosses                       map[string]BossTally
+
+	// The Trial (achievements.md §(f)): Wakes are the boots it ended awake,
+	// cleared but no full clear (FullClears and the clear means leave them
+	// out); TrialOpen counts the boots that met its exit open at Boss II's
+	// tier, TrialTaken those that took it, and Capped the boots whose pool
+	// reached its cap (State.Capped), the Trial's gate and hint.
+	Wakes, TrialOpen, TrialTaken, Capped int
 }
 
 // BossTally is one boss's boots: how many reached it, how many it ended,
@@ -375,13 +389,17 @@ func Run(c Config) Report {
 		in := s.Committed
 		wall := b.clock.Sub(s.Started)
 		sm.wall += wall
-		switch s.Phase {
-		case game.PhaseCleared:
+		sm.trial(s)
+		switch {
+		case s.Phase == game.PhaseCleared && s.Ending != "":
+			rep.Wakes++
+			sm.upWake += s.Uptime(b.clock)
+		case s.Phase == game.PhaseCleared:
 			rep.FullClears++
 			rep.ByPrestige[p].FullClears++
 			sm.upClear += s.Uptime(b.clock)
 			sm.wallClear += wall
-		case game.PhaseCrashed:
+		case s.Phase == game.PhaseCrashed:
 			rep.CrashBiome[s.Biome]++
 			switch s.Crash.Cause {
 			case game.TimedOut:
@@ -420,7 +438,7 @@ func Run(c Config) Report {
 				main.rep.PrestigeAt[lvl-1] = i + 1
 			}
 		}
-		cleared := s.Phase == game.PhaseCleared
+		cleared := s.Phase == game.PhaseCleared && s.Ending == ""
 		recent[p] = append(recent[p], cleared)
 		quit := false
 		if lr == nil || !lr.l.Sessions {
@@ -468,7 +486,7 @@ func Run(c Config) Report {
 			}
 			bl := &blocks[len(blocks)-1]
 			bl.Boots++
-			if s.Phase == game.PhaseCleared {
+			if cleared {
 				bl.FullClears++
 			}
 			bl.Opened += b.opened
@@ -514,7 +532,7 @@ func Run(c Config) Report {
 type sums struct {
 	rep                            Report
 	timerSum                       []time.Duration
-	upClear, upCrash               time.Duration
+	upClear, upCrash, upWake       time.Duration
 	wall, wallClear                time.Duration
 	crashUps                       []time.Duration
 	earned, committed, spent, lost int64
@@ -554,14 +572,14 @@ func (sm *sums) finish() Report {
 		rep.MeanCommitted = float64(sm.committed) / float64(n)
 		rep.MeanLost = float64(sm.lost) / float64(n)
 		rep.MeanSpent = float64(sm.spent) / float64(n)
-		rep.MeanUptime = (sm.upClear + sm.upCrash) / time.Duration(n)
+		rep.MeanUptime = (sm.upClear + sm.upCrash + sm.upWake) / time.Duration(n)
 		rep.MeanWall = sm.wall / time.Duration(n)
 	}
 	if rep.FullClears > 0 {
 		rep.MeanClearUptime = sm.upClear / time.Duration(rep.FullClears)
 		rep.MeanClearWall = sm.wallClear / time.Duration(rep.FullClears)
 	}
-	if n := rep.Boots - rep.FullClears; n > 0 {
+	if n := rep.Boots - rep.FullClears - rep.Wakes; n > 0 {
 		rep.MeanCrashUptime = sm.upCrash / time.Duration(n)
 	}
 	if len(sm.crashUps) > 0 {
@@ -674,7 +692,7 @@ func (b *boot) play() {
 					b.sums.rep.Fscks++
 				}
 				b.step(game.Spend{Item: it})
-			case s.Uncommitted > 0:
+			case s.Uncommitted > 0 && !b.hoard():
 				b.step(game.Commit{})
 			case pick:
 				b.step(game.PickDaemon{Daemon: d})
@@ -831,10 +849,13 @@ func (b *boot) buy() game.Item {
 		return ""
 	}
 	bossNext := s.Biome+1 < len(s.Biomes) && s.Biomes[s.Biome+1].Kind == rules.Boss
+	// Set out for the Trial: fsck to the cap in the window before Boss II.
+	trial := b.p.Trial && len(s.Rules.Nodes) > 0 && s.Biome == rules.TierActII
 	for _, want := range []struct {
 		it game.Item
 		ok bool
 	}{
+		{game.Fsck, trial},
 		// An fsck for each life lost below the boot's start (a life is
 		// LifeCycles under cycles: 10 of 30).
 		{game.Fsck, s.Cycles <= b.lives0-s.Rules.Life()},
@@ -1109,7 +1130,8 @@ func (r Report) String() string {
 }
 
 // route is the model's pick of the route on offer: a topic at random, or on
-// a map an open exit by Player.Route.
+// a map an open exit by Player.Route. A hidden exit (the Trial) only a
+// model set out for it takes, at once.
 func (b *boot) route() int {
 	bs := b.s.Biomes[b.s.Biome]
 	if len(bs.Exits) == 0 {
@@ -1117,11 +1139,20 @@ func (b *boot) route() int {
 	}
 	var open []int
 	for i, x := range bs.Exits {
-		if x.Locked == "" {
+		if x.Locked != "" {
+			continue
+		}
+		if x.Hidden && b.p.Trial {
+			return i // the Trial, whenever it opens
+		}
+		if !x.Hidden {
 			open = append(open, i)
 		}
 	}
-	if b.p.Route == "" {
+	switch {
+	case len(open) == 1:
+		return open[0] // beside an open Trial the model does not take
+	case b.p.Route == "":
 		return open[b.rng.IntN(len(open))]
 	}
 	best, bi := math.Inf(-1), open[0]
@@ -1158,7 +1189,7 @@ func (sm *sums) mapped(s *game.State) {
 		}
 	}
 	rep.DoorTime = append(rep.DoorTime, inDoors)
-	if s.Phase == game.PhaseCleared {
+	if s.Phase == game.PhaseCleared && s.Ending == "" {
 		rep.DoorTimeClear = append(rep.DoorTimeClear, inDoors)
 	}
 	rep.Fountained += s.Fountained
@@ -1188,4 +1219,29 @@ func recentClear(xs []bool) float64 {
 		}
 	}
 	return float64(c+10-n) / 10
+}
+
+// trial sums what the Trial's check reads of a played boot: whether its
+// Boss II tier met the Trial's exit open, and took it.
+func (sm *sums) trial(s *game.State) {
+	if s.Capped {
+		sm.rep.Capped++
+	}
+	if rules.TierBossII >= len(s.Biomes) || len(s.Rules.Nodes) == 0 {
+		return
+	}
+	b := s.Biomes[rules.TierBossII]
+	if slices.ContainsFunc(b.Exits, func(x game.Exit) bool { return x.Ending != "" && x.Locked == "" }) {
+		sm.rep.TrialOpen++
+	}
+	if b.Node == rules.TrialNode {
+		sm.rep.TrialTaken++
+	}
+}
+
+// hoard reports whether the model, set out for the Trial, keeps its bytes
+// uncommitted in this merge window: every one before act II's, so the one
+// before Boss II can buy fsck to the cap.
+func (b *boot) hoard() bool {
+	return b.p.Trial && len(b.s.Rules.Nodes) > 0 && b.s.Biome < rules.TierActII
 }

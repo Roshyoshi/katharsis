@@ -122,18 +122,27 @@ func (e *engine) takeNode(i int, id string) {
 }
 
 // exits are the exits into tier i from the node tier i-1 took, in the
-// graph's order, locked ones included. When every one is locked the first
-// is opened, so a boot never stalls.
+// graph's order, locked ones included. A hidden node's exit (the Trial)
+// is left out while locked, until the player has met its gate's hint
+// (Meta.Capped): before that the route never names it. When no exit but a
+// hidden one is open, the first other is opened: a boot never stalls, and
+// an open Trial never stands alone, so it is never the one exit taken at
+// once.
 func (e *engine) exits(i int) []Exit {
 	s := e.s
 	from, _ := s.Rules.Node(s.Biomes[i-1].Node)
 	var out []Exit
 	for _, id := range from.Next {
 		n, _ := s.Rules.Node(id)
-		out = append(out, e.exitOf(n, i))
+		x := e.exitOf(n, i)
+		if x.Hidden && x.Locked != "" && e.meta.Capped == 0 {
+			continue
+		}
+		out = append(out, x)
 	}
-	if len(out) > 0 && openExits(out) == 0 {
-		out[0].Locked = ""
+	plain := func(x Exit) bool { return !x.Hidden }
+	if j := slices.IndexFunc(out, plain); j >= 0 && !slices.ContainsFunc(out, func(x Exit) bool { return plain(x) && x.Locked == "" }) {
+		out[j].Locked = ""
 	}
 	return out
 }
@@ -141,7 +150,8 @@ func (e *engine) exits(i int) []Exit {
 // exitOf is node n's exit card as tier i's.
 func (e *engine) exitOf(n rules.Biome, i int) Exit {
 	s := e.s
-	x := Exit{Node: n.ID, Name: n.Name, Topic: n.Topic, Rooms: n.Rooms, Boss: n.Boss, Picks: n.Picks, Skip: n.Skip}
+	x := Exit{Node: n.ID, Name: n.Name, Topic: n.Topic, Rooms: n.Rooms, Boss: n.Boss, Picks: n.Picks, Skip: n.Skip,
+		Hidden: n.Hidden, Ending: n.Ending}
 	if x.Topic == "" {
 		x.Topic = Mixed
 	}
@@ -150,12 +160,13 @@ func (e *engine) exitOf(n rules.Biome, i int) Exit {
 	}
 	if n.Boss == "" {
 		for _, id := range n.Next {
-			if m, ok := s.Rules.Node(id); ok && m.Boss != "" && !slices.Contains(x.Bosses, m.Boss) {
+			// A hidden boss is no boss the card names ahead.
+			if m, ok := s.Rules.Node(id); ok && m.Boss != "" && !m.Hidden && !slices.Contains(x.Bosses, m.Boss) {
 				x.Bosses = append(x.Bosses, m.Boss)
 			}
 		}
 	}
-	x.Gate = Gate{Capability: CapabilityFor(n.Topic), Package: n.Package, Prestige: n.MinPrestige}
+	x.Gate = Gate{Capability: CapabilityFor(n.Topic), Package: n.Package, Prestige: n.MinPrestige, Full: n.NeedFull}
 	if x.Gate.Capability == "" {
 		x.Gate.Package = "" // a package opens only what a capability closes
 	}
@@ -172,12 +183,17 @@ func (e *engine) exitOf(n rules.Biome, i int) Exit {
 
 // locked is why node n cannot be taken as tier i, "" when it can: a
 // prestige short of its gate, its capability neither earned at boot start
-// (State.Caps) nor opened by an installed package, or too few problems for
-// its rooms near the player's aim.
+// (State.Caps) nor opened by an installed package, a cycle pool short of
+// its cap where the gate wants it full (LockedFull), or too few problems
+// for its rooms near the player's aim. The pool is read as the tier is
+// entered and draws no random number.
 func (e *engine) locked(n rules.Biome, g Gate, i int) string {
 	s := e.s
 	if s.Prestige < g.Prestige {
 		return "prestige " + strconv.Itoa(g.Prestige)
+	}
+	if g.Full && s.Cycles < s.MaxCycles {
+		return LockedFull
 	}
 	if c := g.Capability; c != "" && !slices.Contains(s.Caps, c) && (g.Package == "" || !slices.Contains(s.Packages, g.Package)) {
 		if g.Package != "" {

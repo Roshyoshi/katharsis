@@ -32,9 +32,18 @@ func TestMapValid(t *testing.T) {
 		}
 	}
 	// Every node of a tier shares its tier's aim, clock and price, so the
-	// route screen's numbers for a tier are its exits'.
+	// route screen's numbers for a tier are its exits'. The Trial is the
+	// one exception: Boss I's aim on Boss II's clock, one shot.
 	for _, n := range r.Nodes {
 		tb := r.Biomes[n.Tier]
+		if n.ID == rules.TrialNode {
+			b1 := r.Biomes[rules.TierBossI]
+			if n.TargetClear != b1.TargetClear || n.MinClear != b1.MinClear || n.EaseClear != b1.EaseClear ||
+				n.Timer != tb.Timer || n.FailCycles != 0 || n.Rooms != 1 {
+				t.Errorf("the Trial %+v", n)
+			}
+			continue
+		}
 		if n.TargetClear != tb.TargetClear || n.MinClear != tb.MinClear || n.Timer != tb.Timer || n.FailCycles != tb.FailCycles ||
 			!n.Skip && n.Rooms != tb.Rooms {
 			t.Errorf("node %s differs from tier %d: %+v vs %+v", n.ID, n.Tier, n, tb)
@@ -134,6 +143,9 @@ func TestValidateNodes(t *testing.T) {
 		"negative lock":    edit(func(r *rules.Rules) { r.RetreatLock = rules.Duration{Duration: -time.Second} }),
 		"bad race pay":     edit(func(r *rules.Rules) { r.Twists.RacePay = math.Inf(1) }),
 		"negative oneshot": edit(func(r *rules.Rules) { r.OneShot = -1 }),
+		"ending with exit": edit(func(r *rules.Rules) { at(r, rules.TrialNode).Next = []string{"kernel"} }),
+		"hidden start":     edit(func(r *rules.Rules) { at(r, "userland").Hidden = true }),
+		"ending skip":      edit(func(r *rules.Rules) { at(r, "skip").Ending = "wake" }),
 	}
 	for name, r := range tests {
 		if err := r.Validate(); err == nil {

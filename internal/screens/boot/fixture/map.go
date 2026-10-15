@@ -25,6 +25,9 @@ func Exits(r rules.Rules, from string, caps, pkgs []string, p int) []game.Exit {
 	var out []game.Exit
 	for _, id := range byID[from].Next {
 		n := byID[id]
+		if n.Hidden { // the Trial: off the route until the engine shows it
+			continue
+		}
 		e := game.Exit{Node: n.ID, Name: n.Name, Topic: n.Topic, Rooms: n.Rooms, Boss: n.Boss, Picks: n.Picks, Skip: n.Skip}
 		switch {
 		case n.Skip:
@@ -34,7 +37,7 @@ func Exits(r rules.Rules, from string, caps, pkgs []string, p int) []game.Exit {
 		}
 		if n.Boss == "" {
 			for _, next := range n.Next {
-				if b := byID[next].Boss; b != "" {
+				if b := byID[next].Boss; b != "" && !byID[next].Hidden {
 					e.Bosses = append(e.Bosses, b)
 				}
 			}

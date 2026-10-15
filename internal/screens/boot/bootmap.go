@@ -283,6 +283,11 @@ func tierSpots(st *game.State, t int, reach map[string]bool, nodes [][]node, off
 		if n.Tier != t {
 			continue
 		}
+		// A hidden node (the Trial) is on the map only where the engine put
+		// it on the route, or the tier played it.
+		if n.Hidden && bs.Node != n.ID && !slices.ContainsFunc(bs.Exits, func(e game.Exit) bool { return e.Node == n.ID }) {
+			continue
+		}
 		s := spot{id: n.ID, name: n.Name, boss: n.Boss != "", skip: n.Skip, picks: n.Picks, reach: reach[n.ID]}
 		switch {
 		case s.name == "" && s.boss:
@@ -296,6 +301,9 @@ func tierSpots(st *game.State, t int, reach map[string]bool, nodes [][]node, off
 		s.gate = gateOf(st, n)
 		if i := slices.IndexFunc(bs.Exits, func(e game.Exit) bool { return e.Node == n.ID }); i >= 0 {
 			s.gate = exitGate(st, bs.Exits[i])
+			if e := bs.Exits[i]; e.Hidden && e.Locked != "" {
+				s.name = "???" // the Trial, hinted: its name waits for it to open
+			}
 		}
 		if bs.Node == n.ID {
 			s.taken, s.rooms = true, nodes[t]
@@ -321,11 +329,14 @@ func gateOf(st *game.State, n rules.Biome) string {
 }
 
 // exitGate is gateOf for an exit the engine wrote: "" when it can be
-// taken. A lock with no gate unmet is the pool's.
+// taken. A lock with no gate unmet is the pool's, or the cycles' (the
+// Trial's full pool).
 func exitGate(st *game.State, e game.Exit) string {
 	switch g := e.Gate; {
 	case e.Locked == "":
 		return ""
+	case e.Locked == game.LockedFull:
+		return "full"
 	case g.Prestige > st.Prestige:
 		return fmt.Sprintf("P%d", g.Prestige)
 	case CapLocked(st, e):

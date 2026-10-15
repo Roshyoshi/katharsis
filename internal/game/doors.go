@@ -376,7 +376,8 @@ func (e *engine) makeDoor(p *catalog.Problem, i int, boss string, regression boo
 	blind, mystery, cursed := e.rng.Float64(), e.rng.Float64(), e.rng.Float64()
 	d.Mystery = mystery < r.MysteryChance+asc.MysteryChance
 	d.Blind = r.BlindAll || d.Mystery || blind < r.BlindChance+asc.BlindChance
-	d.Cursed = boss == "" && !regression && cursed < r.CursedChance+asc.CursedChance
+	// A cursed node (the Trial) curses every door; the roll is drawn anyway.
+	d.Cursed = rb.Cursed || boss == "" && !regression && cursed < r.CursedChance+asc.CursedChance
 	if e.s.Trial != nil {
 		// The unit shows tags; the integration doors are blind.
 		d.Blind, d.Mystery, d.Cursed = e.s.Biome > 0 || r.BlindAll, false, false
