@@ -30,6 +30,13 @@ func Rating(r int) string {
 	return Rank(float64(r)).Render(G.Rating + strconv.Itoa(r))
 }
 
+// RatingAtMost is a difficulty known only as a ceiling, "◆≤800": a problem
+// rated at its source's floor (Codeforces rates nothing under 800, so its
+// 800s are that hard or less), in the ceiling's rank color.
+func RatingAtMost(r int) string {
+	return Rank(float64(r)).Render(G.Rating + G.AtMost + strconv.Itoa(r))
+}
+
 // RatingBand is a span of difficulties, "◆850–1050", in the rank color of
 // its middle.
 func RatingBand(lo, hi int) string {

@@ -17,6 +17,7 @@ import (
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 	"katharsis/internal/screens/boot/fixture"
+	"katharsis/internal/ui"
 )
 
 // D36: a door card never shows the engine's clear chance, at any width;
@@ -273,5 +274,24 @@ func TestRouteAim(t *testing.T) {
 	st.Declined = true
 	if v := ansi.Strip(NewRoute(env(st)).View(140, 40)); !strings.Contains(v, "aim 70% clear") || strings.Contains(v, "78%") {
 		t.Errorf("declined route:\n%s", v)
+	}
+}
+
+// A door on its source's floor shows its rating as a ceiling, "◆≤800", in
+// the Rating token's rank color, wherever its stats row goes; others keep
+// "◆1000".
+func TestFloorRating(t *testing.T) {
+	st := fixture.Userland()
+	if !st.Doors[0].Floor || st.Doors[1].Floor {
+		t.Fatal("the fixture's first door is not the floor's")
+	}
+	for _, sz := range [][2]int{{140, 40}, {80, 24}, {80, 12}} {
+		v := NewDoors(env(st)).View(sz[0], sz[1])
+		if !strings.Contains(v, ui.RatingAtMost(800)) || !strings.Contains(ansi.Strip(v), "◆1000") {
+			t.Errorf("%dx%d:\n%s", sz[0], sz[1], ansi.Strip(v))
+		}
+	}
+	if s := doorStats(st.Doors[1]); strings.Contains(ansi.Strip(s), "≤") {
+		t.Errorf("a door above the floor: %q", ansi.Strip(s))
 	}
 }

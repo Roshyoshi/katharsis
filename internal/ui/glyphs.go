@@ -31,6 +31,7 @@ type Glyphs struct {
 	Here       string // you are here
 	Ahead      string // a place ahead
 	Rating     string // difficulty prefix: "◆1300" (D27)
+	AtMost     string // a ceiling, after Rating: "◆≤800", a problem rated at its source's floor
 	Cap        string // capability held
 	CapLocked  string // capability not yet held
 	Cursor     string // the cursor
@@ -60,7 +61,7 @@ var Unicode = Glyphs{
 	Timer: "⏱ ", Life: "♥", LifeLost: "♡", Duck: "🦆",
 	Pass: "✓", Fail: "✗", Crash: "☠",
 	Boss: "⚔", Mystery: "?", Blind: "◌", Cursed: "☠", Regression: "↺", Retreat: "↩",
-	Here: "●", Ahead: "○", Rating: "◆", Cap: "■", CapLocked: "□",
+	Here: "●", Ahead: "○", Rating: "◆", AtMost: "≤", Cap: "■", CapLocked: "□",
 	Cursor: "▸", FoldOpen: "▾", FoldShut: "▹", Crumb: " › ", Sep: " · ",
 	Fill: "▓", Empty: "░", Star: "★", StarOff: "☆", Ellipsis: "…",
 	Times: "×", Approx: "≈", Range: "–", Arrow: "→", Rule: "─",
@@ -74,7 +75,7 @@ var ASCII = Glyphs{
 	Timer: "T-", Life: "#", LifeLost: "-", Duck: "duck ",
 	Pass: "+", Fail: "x", Crash: "!",
 	Boss: "X", Mystery: "M", Blind: "B", Cursed: "C", Regression: "R", Retreat: "<",
-	Here: "@", Ahead: ".", Rating: "*", Cap: "[x]", CapLocked: "[ ]",
+	Here: "@", Ahead: ".", Rating: "*", AtMost: "<=", Cap: "[x]", CapLocked: "[ ]",
 	Cursor: ">", FoldOpen: "-", FoldShut: "+", Crumb: " / ", Sep: " | ",
 	Fill: "#", Empty: ".", Star: "*", StarOff: ".", Ellipsis: "...",
 	Times: "x", Approx: "~", Range: "-", Arrow: "->", Rule: "-",

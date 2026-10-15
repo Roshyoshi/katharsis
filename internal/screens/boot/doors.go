@@ -344,9 +344,14 @@ func tagLines(t doorText, cw, n int) []string {
 // doorStats is the card's stats row: rating, timer, reward. The engine's clear
 // chance (Door.SolveP) stays off the card (D36): shown before the pick, the
 // pick stops measuring the player's own read of the door; the end of the
-// boot shows it afterwards, as calibration.
+// boot shows it afterwards, as calibration. A rating on its source's floor
+// is a ceiling, "◆≤800" (Door.Floor).
 func doorStats(door game.Door) string {
-	return ui.Rating(door.Rating) + "  " + ui.G.Timer + units.Clock(door.Timer) +
+	rating := ui.Rating(door.Rating)
+	if door.Floor {
+		rating = ui.RatingAtMost(door.Rating)
+	}
+	return rating + "  " + ui.G.Timer + units.Clock(door.Timer) +
 		"  " + ui.OK.Render("+"+units.Bytes(door.Bytes))
 }
 

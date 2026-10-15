@@ -124,6 +124,7 @@ func catalogue() string {
 	}
 	row("band 850-1050", RatingBand(850, 1050))
 	row("band 1350-1650", RatingBand(1350, 1650))
+	row("at most 800", RatingAtMost(800))
 
 	section("timer")
 	m := time.Minute
