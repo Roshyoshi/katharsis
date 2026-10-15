@@ -214,9 +214,11 @@ type floorCast struct {
 // fall short of the aim when the pool's floor cuts the rating window off
 // below the target: the window keeps only its harder half.
 //
-// It counts no lives, as if a failed door ended the boot. Under Userland's
-// timeout rule (D44) a timeout costs a life instead, so it reads two to
-// three times the crashes the model players have (sim
+// Under cycles it counts the pool: the chance the biome's failures burn
+// the cycles the boot was dealt (burnOut). Before cycles it counts no
+// lives, as if a failed door ended the boot. Under Userland's timeout rule
+// (D44) a timeout costs a life instead, so that reads two to three times
+// the crashes the model players have (sim
 // TestBalanceReport/guardrails), the safe side for the easing it gates. Nor
 // does it count the buy-back's time: what a longer timer is worth
 // (BuybackBeta) is a prior no player has confirmed, and in the simulator
@@ -239,8 +241,35 @@ func (e *engine) forecast() floorCast {
 	}
 	aim := s.AimClear(0)
 	f.floor = f.door < aim-s.Rules.BuybackMargin
-	f.crash = 1 - math.Pow(min(aim, f.door), float64(b.Rooms))
+	p := min(aim, f.door)
+	f.crash = 1 - math.Pow(p, float64(b.Rooms))
+	if fail := s.Rules.Biomes[0].FailCycles; fail > 0 {
+		f.crash = burnOut(p, b.Rooms, int(math.Ceil(float64(s.Cycles)/float64(fail))), s.Rules.FailMoveOn)
+	}
 	return f
+}
+
+// burnOut is the chance that a biome of rooms rooms, each door cleared with
+// chance p, fails k doors or more before it is done: what burns the pool
+// under cycles (meta.md §(b): D34's forecast counts the cycles), each
+// failure costing the biome's price. With the room lost on a failure
+// (moveOn) the failures are binomial over the rooms; with it drawn again
+// they come before the rooms-th clear (negative binomial). Failed submits
+// are left out: they are a small tax the engine cannot forecast.
+func burnOut(p float64, rooms, k int, moveOn bool) float64 {
+	q := 1 - p
+	under := 0.0 // P(fewer than k failures)
+	for j := range k {
+		if moveOn {
+			if j > rooms {
+				break
+			}
+			under += binomial(rooms, j) * math.Pow(q, float64(j)) * math.Pow(p, float64(rooms-j))
+		} else {
+			under += binomial(rooms-1+j, j) * math.Pow(p, float64(rooms)) * math.Pow(q, float64(j))
+		}
+	}
+	return min(max(1-under, 0), 1)
 }
 
 // offered is what the engine expects of a door biome i offers on topic:

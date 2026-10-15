@@ -117,7 +117,11 @@ func (c *checker) start(s *game.State, m *game.Meta) {
 	if gov := r.GovernorAfter > 0 && m.Governor.EarlyCrashes >= r.GovernorAfter; gov != kinds[game.EaseGovernor] {
 		t.Fatalf("governor eased %v after %d early crashes (rules %d)", kinds[game.EaseGovernor], m.Governor.EarlyCrashes, r.GovernorAfter)
 	}
-	if s.Forecast < 0 || s.Forecast > 1 || kinds[game.EaseFloor] && s.Forecast <= 1-math.Pow(s.AimClear(0)-r.BuybackMargin, float64(s.Biomes[0].Rooms))-1e-9 {
+	// Before cycles the forecast counts no lives: a floor easing then
+	// forecasts more crashes than the aim allows. Under cycles it counts
+	// the pool, and is lower.
+	legacy := r.Biomes[0].FailCycles == 0
+	if s.Forecast < 0 || s.Forecast > 1 || legacy && kinds[game.EaseFloor] && s.Forecast <= 1-math.Pow(s.AimClear(0)-r.BuybackMargin, float64(s.Biomes[0].Rooms))-1e-9 {
 		t.Fatalf("forecast %v with easings %+v", s.Forecast, s.Ease)
 	}
 }

@@ -421,3 +421,40 @@ func TestLadderBitesLate(t *testing.T) {
 		t.Errorf("P4 starts at %d (start %d), want 25", p4.s.Cycles, p4.s.StartCycles())
 	}
 }
+
+// TestForecastCycles: under cycles D34's forecast is the chance Userland's
+// failures burn the pool (meta.md §(b)), not the chance of one failure: at
+// 30 cycles two 10-cycle rooms cannot crash a boot, at 20 both must fail.
+// D34's easing, when it fires, adds a life of 10 cycles, as the governor
+// does.
+func TestForecastCycles(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	low := &game.Meta{Rating: 700, Boots: 3} // aimed under the pool's floor
+	r := calm(cyclesLinear())
+	r.EaseAbove, r.EaseLives = 0.2, 1
+	h := newHarness(t, r, low, ps, 0, 1)
+	if h.s.Forecast != 0 || len(h.s.Ease) != 0 {
+		t.Errorf("30 cycles: forecast %v easings %+v, want none", h.s.Forecast, h.s.Ease)
+	}
+	lives := r
+	lives.Biomes = slices.Clone(r.Biomes)
+	lives.Biomes[0].FailCycles = 0
+	l := newHarness(t, lives, &game.Meta{Rating: 700, Boots: 3}, ps, 0, 1)
+	p := math.Sqrt(1 - l.s.Forecast) // the door's clear chance the old forecast used
+	twenty := r
+	twenty.Cycles, twenty.EaseAbove = 20, 0.01
+	h = newHarness(t, twenty, &game.Meta{Rating: 700, Boots: 3}, ps, 0, 1)
+	if want := (1 - p) * (1 - p); math.Abs(h.s.Forecast-want) > 1e-9 {
+		t.Errorf("20 cycles: forecast %v, want both rooms failed, %v", h.s.Forecast, want)
+	}
+	if es, ok := active(h.s, game.EaseFloor); !ok || es.Cycles != 10 || h.s.Cycles != 30 {
+		t.Errorf("D34 past 1%%: eased %+v (forecast %v), cycles %d, want +10", es, h.s.Forecast, h.s.Cycles)
+	}
+	gov := &game.Meta{Boots: 3, Governor: game.Governor{EarlyCrashes: 2}}
+	r.GovernorAfter, r.GovernorLives = 2, 1
+	h = newHarness(t, r, gov, ps, 0, 1)
+	if es, ok := active(h.s, game.EaseGovernor); !ok || es.Cycles != 10 || h.s.Cycles != 40 {
+		t.Errorf("governor %+v, cycles %d, want +10", es, h.s.Cycles)
+	}
+}
