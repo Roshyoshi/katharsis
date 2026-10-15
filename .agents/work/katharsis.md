@@ -219,8 +219,11 @@ reader skips TeX on RTFM pages; katharsis.log -> XDG state dir; RT1 RTFM next
 step after 2 crashes on a topic in 14 days; r after a trial retries it; bugs: a
 new room kept the downloading choice, upsolves paid the editorial rate without
 one shown; story.first-rtfm and rtfm.trial.start wired).
-Cleanup wave 2 done except story-wire (screen wiring of the new lines). Core-loop
-QA running (qa-loop); wave 1 done.
+Cleanup done; story-wire merged ({days} from the regression schedule; merge.full
+at MaxDaemons; regression.door in the strip; trial pass/fail Gryphon lines; the
+Mock Turtle on module pages; RTFM index WORDS/CURRICULUM/EXAMPLES/BUGS with tail
+scrolling so COLOPHON stays reachable; mid-boot boss defeat over the merge
+window's upgrade). Core-loop QA running (qa-loop); wave 1 done.
 FINAL PASS (D45) running: f-hooks (engine -> UI: D44 notice, easing + decline,
 comeback, short/patch built-ins, route aim, Door.Floor, Forecast after, the
 retired milestone); cleanup wave 1: g-store, g-qa
