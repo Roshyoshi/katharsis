@@ -16,6 +16,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	"katharsis/internal/ui"
 	"katharsis/internal/units"
 )
 
@@ -240,19 +241,31 @@ func (e Env) doorText(d game.Door) doorText {
 	return t
 }
 
+// sourceLabel is where a door's problem is from: the site, then the
+// contest when contest is set, without naming the site twice. Codeforces
+// is CF, since the round number is what a door edge has room for:
+// "CF Round 690 (Div. 3) · A" (the contest names the site), "USACO ·
+// 2017 December, Silver P1", "CF · VK Cup 2019 · B".
 func sourceLabel(p catalog.Problem, contest bool) string {
 	src := p.Source
 	if src == "" {
 		src = p.ID.Source()
 	}
-	name := src.Label()
-	if contest && p.Contest != "" {
-		if name == "" {
-			return p.Contest
-		}
-		return name + " · " + p.Contest
+	site := src.Label()
+	short := site
+	if src == catalog.CF {
+		short = "CF"
 	}
-	return name
+	switch c := p.Contest; {
+	case !contest || c == "":
+		return short
+	case site == "":
+		return c
+	case strings.Contains(c, site):
+		return strings.Replace(c, site, short, 1)
+	default:
+		return short + ui.G.Sep + c
+	}
 }
 
 // regressionAge is how many days ago the regression on id crashed the
@@ -274,16 +287,17 @@ func (e Env) regressionAge(id catalog.ID) (int, bool) {
 // lives, ducks and bytes on the second, then a rule.
 func (e Env) header(where string, width int) []string {
 	st := e.State
-	dot := sFaint.Render(" · ")
-	left := sBold.Render(fmt.Sprintf("Boot #%d", st.Boot)) + dot + prestigeLabel(st.Prestige)
+	dot := ui.Muted.Render(ui.G.Sep)
+	left := ui.Strong.Render(fmt.Sprintf("Boot #%d", st.Boot)) + dot + prestigeLabel(st.Prestige)
 	if where != "" {
 		left += dot + where
 	}
-	right := sFaint.Render("uptime ") + units.Clock(e.uptime())
+	right := ui.Muted.Render("uptime ") + units.Clock(e.uptime())
 
-	status := hearts(st.Lives, st.MaxLives) + "  " + fmt.Sprintf("🦆%d", st.Ducks) + "  " +
-		sGreen.Render(units.Bytes(st.Uncommitted)) + sFaint.Render(" uncommitted") + dot +
-		units.Bytes(st.Committed) + sFaint.Render(" committed")
+	// The bytes at stake are plain, not OK: a crash loses them.
+	status := ui.Hearts(st.Lives, st.MaxLives) + "  " + fmt.Sprintf("%s%d", ui.G.Duck, st.Ducks) + "  " +
+		units.Bytes(st.Uncommitted) + ui.Muted.Render(" uncommitted") + dot +
+		units.Bytes(st.Committed) + ui.Muted.Render(" committed")
 	var ds []string
 	for _, d := range st.Daemons {
 		n, _ := daemonText(d, st.Rules)
@@ -291,12 +305,12 @@ func (e Env) header(where string, width int) []string {
 	}
 	daemons := ""
 	if len(ds) > 0 {
-		daemons = sFaint.Render("daemons ") + strings.Join(ds, " ")
+		daemons = ui.Muted.Render("daemons ") + strings.Join(ds, " ")
 	}
 	return []string{
-		spread(left, right, width),
-		spread(status, daemons, width),
-		sFaint.Render(strings.Repeat("─", max(width, 0))),
+		ui.Spread(left, right, width),
+		ui.Spread(status, daemons, width),
+		ui.Rule(width),
 	}
 }
 

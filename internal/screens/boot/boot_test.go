@@ -1238,3 +1238,27 @@ func TestClearedGate(t *testing.T) {
 		}
 	}
 }
+
+// A door names its source without saying the site twice; the fixtures are
+// all USACO, so Codeforces is checked here.
+func TestSourceLabel(t *testing.T) {
+	for _, c := range []struct {
+		id, contest string
+		mystery     bool
+		want        string
+	}{
+		{"cf:1462A", "Codeforces Round 690 (Div. 3) · A", false, "CF Round 690 (Div. 3) · A"},
+		{"cf:1463A", "Educational Codeforces Round 100 (Rated for Div. 2) · A", false, "Educational CF Round 100 (Rated for Div. 2) · A"},
+		{"cf:1170A", "VK Cup 2019 · A", false, "CF · VK Cup 2019 · A"},
+		{"cf:2000Z", "Codeforces · Z", false, "CF · Z"},
+		{"cf:1462A", "Codeforces Round 690 (Div. 3) · A", true, "CF"},
+		{"usaco:764", "2017 December, Silver P1", false, "USACO · 2017 December, Silver P1"},
+		{"cses:1094", "", false, "CSES"},
+	} {
+		id := catalog.ID(c.id)
+		p := catalog.Problem{ID: id, Source: id.Source(), Contest: c.contest}
+		if got := sourceLabel(p, !c.mystery); got != c.want {
+			t.Errorf("sourceLabel(%s, %q) = %q, want %q", c.id, c.contest, got, c.want)
+		}
+	}
+}
