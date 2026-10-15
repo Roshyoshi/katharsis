@@ -137,6 +137,12 @@ D45 settled 10-15  Once D (both halves), S9 part 2 and the S10 engine lane are m
                    engine and UI work finishes then you can get started on finishing
                    the final pass".
 
+D46 settled 10-15  Alpha feedback, boot #1: "the timer shouldnt run in between levels lol";
+                   "10 min for A is crazy"; "20% time addition shouldnt come w 2 live
+                   penalty". Uptime counts only in-door time (session budget stays wall
+                   time); Userland 15 min in every preset; TimerFitLo 0.8, TimerHeadroom
+                   1.5; nice -20 costs bytes (x0.8), not lives; audit the other perks.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
