@@ -114,7 +114,7 @@ func play(t *testing.T, r rules.Rules, ps []catalog.Problem, seed uint64, mp *ga
 			case 2:
 				a = game.Tick{}
 			default:
-				v := []string{"AC", "AC", "AC", "AC", "AC", "WA", "TLE", "CE"}[rng.IntN(8)]
+				v := []game.Verdict{"AC", "AC", "AC", "AC", "AC", "WA", "TLE", "CE"}[rng.IntN(8)]
 				a = game.SubmitResult{Verdict: v, Passed: 1, Total: 10}
 			}
 		case game.PhaseMerge:
