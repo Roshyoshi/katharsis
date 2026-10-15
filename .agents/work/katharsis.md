@@ -234,6 +234,14 @@ D54 settled 10-15  Each boss bends one rule (user: "we can also ..."): off-by-on
       GRUB; no title before the hub; trials share the one boot slot (asks, then
       abandons); after an upsolve from the hub you land on the boot screen.
 
+10-15 ui-door merged (♥ 24/30 cycles everywhere; costs as they happen in strip, HUD,
+      vim replies, :q! asks the game; retreat lock in the pane; boss cards with rule
+      lines; fountain and fsck rows; Overclock and ECC cards; twists wired: OOM x0.5
+      memory, UB samples without sanitizers, Heisenbug pass/fail, Halting hidden
+      clock ??:??; end screens in cycles). Defaults: the count is out of
+      StartCycles (fsck can show 38/30); strip fail lines omit "N left"; R past the
+      lock does nothing. Engine behaviour next, then full-boot QA.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
