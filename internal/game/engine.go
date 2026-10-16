@@ -924,10 +924,10 @@ func (s *State) Earned() int64 {
 func (s *State) Uptime(at time.Time) time.Duration {
 	var up time.Duration
 	for i := range s.History {
-		up += s.History[i].ran(at)
+		up += s.History[i].Ran(at)
 	}
 	if s.Current != nil {
-		up += s.Current.ran(at)
+		up += s.Current.Ran(at)
 	}
 	return up
 }
@@ -959,11 +959,12 @@ func (s *State) BootTime(at time.Time) time.Duration {
 	return s.Uptime(s.EndTime(at))
 }
 
-// ran is how long a's door clock ran up to at: from Opened to the first of
+// Ran is how long a's door clock ran up to at: from Opened to the first of
 // at and its close, 0 for a clock that stepped back. A door that timed out
 // counts to its deadline: a game closed over an open door times it out on
-// resume, maybe days after its clock hit zero.
-func (a *Attempt) ran(at time.Time) time.Duration {
+// resume, maybe days after its clock hit zero. Uptime is its sum; the
+// store splits it by topic and by day.
+func (a *Attempt) Ran(at time.Time) time.Duration {
 	if a.Opened.IsZero() {
 		return 0
 	}
