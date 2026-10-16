@@ -303,6 +303,10 @@ D57 settled 10-15  A GitHub-style contribution graph (user: "a git commit graph 
       1:00). Open: OOM samples lose ASan (accepted); trials keep legacy lives prices
       under "cycles"; a quick double enter takes the same upgrade twice.
 
+10-15 Rename (user: "yeah sure the court is good rename there"): the secret boss "The
+      Trial" is "The Court" everywhere visible, so "trial" means RTFM only. Keys
+      rules.TrialNode "trial" and game.TrialBoss kept for saves and setuid holds.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
