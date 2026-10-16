@@ -35,7 +35,7 @@ func TestCyclesSubmit(t *testing.T) {
 		t.Fatalf("start %d/%d, want 30/50", h.s.Cycles, h.s.MaxCycles)
 	}
 	h.open(0)
-	if c, k := h.s.SubmitCost(1); c != 2 || k != 0 {
+	if c, k := h.s.SubmitCost(1, h.now); c != 2 || k != 0 {
 		t.Errorf("SubmitCost %d %s", c, k)
 	}
 	h.do(wa)
@@ -205,8 +205,8 @@ func TestRetreatCycles(t *testing.T) {
 }
 
 // TestECCConversion: under cycles ECC is offered once a boot, and from its
-// pick a failed submit costs 5:00 of the door's clock, not 2 cycles; a door
-// whose clock that empties times out.
+// pick a failed submit costs 5:00 of the door's clock, not 2 cycles, while
+// more than 5:00 is left; with less it burns the 2 cycles.
 func TestECCConversion(t *testing.T) {
 	t.Parallel()
 	ps := dense(catalog.Topics, 800, 2600, 20)
@@ -223,17 +223,29 @@ func TestECCConversion(t *testing.T) {
 	h.open(0)
 	c0 := h.s.Cycles // the -O3 pick may have been an Overclock
 	deadline := h.s.Current.Deadline
-	if c, k := h.s.SubmitCost(2); c != 0 || k != 5*time.Minute {
+	if c, k := h.s.SubmitCost(2, h.now); c != 0 || k != 5*time.Minute {
 		t.Errorf("SubmitCost under ECC %d %s", c, k)
 	}
 	h.do(wa)
 	if h.s.Cycles != c0 || !h.s.Current.Deadline.Equal(deadline.Add(-5*time.Minute)) {
 		t.Fatalf("ECC WA: cycles %d, deadline moved %s", h.s.Cycles, deadline.Sub(h.s.Current.Deadline))
 	}
-	h.now = h.s.Current.Deadline.Add(-4 * time.Minute)
+	// With 5:00 or less left, the 5:00 would run the clock out, and a
+	// timeout burns 10: the WA burns its 2 cycles instead, and the clock
+	// is left alone.
+	h.now = h.s.Current.Deadline.Add(-6 * time.Minute) // judged at 05:00 left
+	deadline = h.s.Current.Deadline
 	h.do(wa)
-	if h.s.Cycles != c0-10 || len(h.s.History) != 2 || h.s.History[1].Outcome != game.TimedOut {
-		t.Fatalf("a WA that emptied the clock: cycles %d history %d", h.s.Cycles, len(h.s.History))
+	if h.s.Cycles != c0-2 || h.s.Phase != game.PhaseProblem {
+		t.Fatalf("a WA with 05:00 left: cycles %d (want %d), phase %s", h.s.Cycles, c0-2, h.s.Phase)
+	}
+	if !h.s.Current.Deadline.Equal(deadline) {
+		t.Errorf("a WA with 05:00 left moved the deadline %s", deadline.Sub(h.s.Current.Deadline))
+	}
+	h.now = h.s.Current.Deadline.Add(-time.Minute)
+	h.do(wa) // judged as the clock runs out
+	if h.s.Cycles != c0-4 || h.s.Phase != game.PhaseProblem {
+		t.Fatalf("a WA at 00:00: cycles %d (want %d), phase %s", h.s.Cycles, c0-4, h.s.Phase)
 	}
 	for range 50 {
 		if h.s.Phase == game.PhaseDoors && h.s.PendingUpgrade && slices.Contains(h.s.UpgradeOffers, game.ECC) {
@@ -349,14 +361,33 @@ func TestTwists(t *testing.T) {
 			continue
 		}
 		h.open(0)
-		if c, _ := h.s.SubmitCost(1); c != 4 {
+		if c, _ := h.s.SubmitCost(1, h.now); c != 4 {
 			t.Errorf("off-by-one, one test failing: %d", c)
 		}
-		if c, _ := h.s.SubmitCost(2); c != 2 {
+		if c, _ := h.s.SubmitCost(2, h.now); c != 2 {
 			t.Errorf("off-by-one, two failing: %d", c)
 		}
 		if err := stepNow(h, game.SubmitResult{Verdict: "WA", Passed: 9, Total: 10}); err != nil || h.s.Cycles != 26 {
 			t.Errorf("off-by-one WA 9/10: %v, cycles %d", err, h.s.Cycles)
+		}
+		// Under ECC the double is 10:00 of the clock, and with 7:00 left
+		// the near miss burns its 4 cycles instead; two short still pay
+		// their 5:00.
+		h.s.Upgrades = append(h.s.Upgrades, game.ECC)
+		h.now = h.s.Current.Deadline.Add(-7 * time.Minute)
+		deadline := h.s.Current.Deadline
+		for _, c := range []struct {
+			passed, cycles int
+			moved          time.Duration
+		}{{9, 22, 0}, {8, 22, 5 * time.Minute}} {
+			err := stepNow(h, game.SubmitResult{Verdict: "WA", Passed: c.passed, Total: 10})
+			if err != nil || h.s.Current == nil {
+				t.Fatalf("off-by-one WA %d/10 under ECC, 07:00 left: %v, phase %s", c.passed, err, h.s.Phase)
+			}
+			if moved := deadline.Sub(h.s.Current.Deadline); h.s.Cycles != c.cycles || moved != c.moved {
+				t.Errorf("off-by-one WA %d/10 under ECC, 07:00 left: cycles %d, clock -%s; want %d, -%s",
+					c.passed, h.s.Cycles, moved, c.cycles, c.moved)
+			}
 		}
 		return
 	}

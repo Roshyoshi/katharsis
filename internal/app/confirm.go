@@ -104,8 +104,9 @@ func (m *Model) doorLives() doorCost {
 // charged is what the verdict just stepped cost, for vim's :Submit reply:
 // the cycles it burned, "burned 2 cycles, 22 left"; under ECC the clock it
 // took, "ECC: -05:00 on the clock, 12:34 left" (no time left on a hidden
-// clock); "kernel panic" after either when it ended the boot; "" for
-// nothing (an AC, a CE, an upsolve).
+// clock), or why it burned cycles instead, "burned 2 cycles, 22 left (ECC:
+// clock too short)"; "kernel panic" after either when it ended the boot;
+// "" for nothing (an AC, a CE, an upsolve).
 func (m *Model) charged(before doorCost) string {
 	s := m.state
 	if !before.ok || s == nil {
@@ -114,6 +115,12 @@ func (m *Model) charged(before doorCost) string {
 	lost := ""
 	if n := before.cycles - s.Cycles; n > 0 {
 		lost = bootui.Burned(n, s.Cycles)
+		// The submit's own burn, the door open still or the boot out of
+		// cycles: a verdict past the deadline is a timeout's instead.
+		own := s.Phase == game.PhaseProblem || s.Crash != nil && s.Crash.Cause == game.OutOfLives
+		if own && s.ECCConverts() {
+			lost += " (" + bootui.ECCShort + ")"
+		}
 	} else if c := s.Current; c != nil && s.Phase == game.PhaseProblem {
 		if took := before.deadline.Sub(c.Deadline); took > 0 {
 			lost = "ECC: -" + units.Clock(took) + " on the clock"

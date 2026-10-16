@@ -185,6 +185,19 @@ func TestCyclesHUDBar(t *testing.T) {
 	if s := ansi.Strip(HUDBar(final, prob, fixture.Now, 48)); strings.Contains(s, left) || !strings.Contains(s, "⏱ ??:??") {
 		t.Errorf("the hidden clock shows %s:\n%s", left, s)
 	}
+
+	// Under ECC, the bar says a fail burns cycles once the clock is too
+	// short to pay in, and nothing of it before.
+	ecc := fixture.CyclesProblem(fixture.CyclesRoom())
+	ecc.Upgrades = append(ecc.Upgrades, game.ECC)
+	prob, _ = fixture.Lookup(ecc.Current.Door.Problem)
+	if s := flat(ansi.Strip(HUDBar(ecc, prob, fixture.Now, 48))); strings.Contains(s, "a fail") {
+		t.Errorf("ECC with 14:50 left:\n%s", s)
+	}
+	late := ecc.Current.Deadline.Add(-4 * time.Minute)
+	if s := flat(ansi.Strip(HUDBar(ecc, prob, late, 48))); !strings.Contains(s, "a fail burns 3 cycles (ECC: clock too short)") {
+		t.Errorf("ECC with 04:00 left:\n%s", s)
+	}
 }
 
 // stripStep shows a tracker p, then n, and returns the events n makes.
@@ -216,6 +229,10 @@ func TestCyclesStrip(t *testing.T) {
 			n.Current.Submits, n.Current.LastVerdict = 1, "WA"
 			n.Current.Deadline = n.Current.Deadline.Add(-5 * time.Minute)
 		}, EvVerdict, "verdict.WA.ecc", "judge: WA · ECC: -05:00 on the clock, 14:50 left"},
+		{"ECC, the clock too short", func(n *game.State) {
+			n.Upgrades = append(n.Upgrades, game.ECC)
+			n.Current.Submits, n.Current.LastVerdict, n.Cycles = 1, "WA", n.Cycles-2
+		}, EvVerdict, "verdict.WA", "judge: WA · burned 2 cycles, 22 left (ECC: clock too short)"},
 		{"a timeout", func(n *game.State) {
 			a := *n.Current
 			a.Outcome, a.Closed = game.TimedOut, a.Deadline
@@ -313,29 +330,43 @@ func TestRetreatLock(t *testing.T) {
 
 // TestSubmitPrice: what a failed submit will cost, said before it is
 // made: the map's 2 cycles, Off-by-One's near miss, ECC's clock, the last
-// cycles and the curse.
+// cycles and the curse; and under ECC, the cycles once the clock is too
+// short to pay in.
 func TestSubmitPrice(t *testing.T) {
+	now := fixture.Now
 	room := fixture.CyclesProblem(fixture.CyclesRoom())
-	if got := SubmitPrice(room); got != "a fail burns 3 cycles" { // 2, and 1 more at Silver (P1)
+	if got := SubmitPrice(room, now); got != "a fail burns 3 cycles" { // 2, and 1 more at Silver (P1)
 		t.Errorf("room: %q", got)
 	}
 	obo := fixture.CyclesProblem(fixture.CyclesBoss("off-by-one"))
-	if got := SubmitPrice(obo); got != "a fail burns 3 cycles, 6 one test short" {
+	if got := SubmitPrice(obo, now); got != "a fail burns 3 cycles, 6 one test short" {
 		t.Errorf("Off-by-One: %q", got)
 	}
 	ecc := fixture.CyclesProblem(fixture.CyclesRoom())
 	ecc.Upgrades = append(ecc.Upgrades, game.ECC)
-	if got := SubmitPrice(ecc); got != "a fail costs 05:00 of the clock (ECC)" {
+	if got := SubmitPrice(ecc, now); got != "a fail costs 05:00 of the clock (ECC)" {
 		t.Errorf("ECC: %q", got)
+	}
+	late := ecc.Current.Deadline.Add(-5 * time.Minute)
+	if got := SubmitPrice(ecc, late); got != "a fail burns 3 cycles (ECC: clock too short)" {
+		t.Errorf("ECC at 05:00 left: %q", got)
+	}
+	ecc.Cycles = 2
+	if got := SubmitPrice(ecc, late); got != "a fail ends the boot (2 cycles left; ECC: clock too short)" {
+		t.Errorf("ECC at 05:00 left, the last cycles: %q", got)
+	}
+	obo.Upgrades = append(obo.Upgrades, game.ECC)
+	if got := SubmitPrice(obo, obo.Current.Deadline.Add(-7*time.Minute)); got != "a fail costs 05:00 of the clock (ECC), 6 cycles one test short" {
+		t.Errorf("Off-by-One under ECC at 07:00 left: %q", got)
 	}
 	last := fixture.CyclesProblem(fixture.CyclesRoom())
 	last.Cycles = 2
-	if got := SubmitPrice(last); got != "a fail ends the boot (2 cycles left)" {
+	if got := SubmitPrice(last, now); got != "a fail ends the boot (2 cycles left)" {
 		t.Errorf("last cycles: %q", got)
 	}
 	cursed := fixture.CyclesProblem(fixture.CyclesRoom())
 	cursed.Current.Door.Cursed = true
-	if got := SubmitPrice(cursed); got != "a fail ends the boot (cursed)" {
+	if got := SubmitPrice(cursed, now); got != "a fail ends the boot (cursed)" {
 		t.Errorf("cursed: %q", got)
 	}
 }

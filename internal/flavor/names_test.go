@@ -40,7 +40,7 @@ func TestCyclesTexts(t *testing.T) {
 	m := rules.Map()
 	for _, c := range []struct{ got, want string }{
 		{text(UpgradeTextFor(game.Overclock, m)), "+15% timer on later doors; 5 cycles a pick, 2 at most."},
-		{text(UpgradeTextFor(game.ECC, m)), "A failed submit costs 05:00 of the door's clock, not cycles."},
+		{text(UpgradeTextFor(game.ECC, m)), "A failed submit costs 05:00 of the door's clock, not cycles, while more is left."},
 		{text(ItemTextFor(game.Fsck, m)), "+10 cycles now."},
 		{text(DaemonTextFor(game.Kexec, m)), "One free door swap per act; a swap normally burns 5 cycles."},
 	} {

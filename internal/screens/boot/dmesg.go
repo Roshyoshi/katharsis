@@ -256,6 +256,9 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 		switch lost, clock := p.cycles-n.cycles, p.deadline.Sub(n.deadline); {
 		case lost > 0:
 			text += sep + Burned(lost, n.cycles)
+			if st.ECCConverts() { // ECC held, the clock too short to pay in
+				text += " (" + ECCShort + ")"
+			}
 			if k := st.Rules.Twists.OffByOne; k > 1 && st.Current.Door.Twist == "off-by-one" && judged[1]-judged[0] == 1 {
 				text += sep + "one test short " + fmtMult(float64(k))
 			}
@@ -679,7 +682,7 @@ func tips(st *game.State, m *game.Meta, now time.Time, out []Event) []Event {
 	has := func(kind string) bool {
 		return slices.ContainsFunc(out, func(e Event) bool { return e.Kind == kind })
 	}
-	price := SubmitPrice(st) // "a fail burns 2 cycles"
+	price := SubmitPrice(st, now) // "a fail burns 2 cycles"
 	for _, t := range []struct {
 		id, text string
 		due      bool

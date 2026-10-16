@@ -37,33 +37,53 @@ func Burned(n, left int) string {
 	return "burned " + units.Plural(n, "cycle") + fmt.Sprintf(", %d left", max(left, 0))
 }
 
-// SubmitPrice is what a failed full submit of the open door will cost,
-// said before it is made (the samples' confirm, the door's tip): "a fail
-// burns 2 cycles"; under ECC's conversion "a fail costs 05:00 of the clock
-// (ECC)"; on Off-by-One's door the near miss too, "a fail burns 2 cycles,
-// 4 one test short"; and where it ends the boot, why: "(cursed)", "(2
-// cycles left)".
-func SubmitPrice(st *game.State) string {
-	cyc, clock := st.SubmitCost(0)
-	near, nearClock := st.SubmitCost(1)
+// SubmitPrice is what a failed full submit of the open door will cost at
+// now, said before it is made (the door's tip; the HUD bar once ECC cannot
+// pay): "a fail burns 2 cycles"; under ECC's conversion "a fail costs
+// 05:00 of the clock (ECC)"; on Off-by-One's door the near miss too, "a
+// fail burns 2 cycles, 4 one test short"; where it ends the boot, why:
+// "(cursed)", "(2 cycles left)"; and when ECC is held but the clock is too
+// short to pay in (game.State.ECCShort), that this is why it burns cycles.
+func SubmitPrice(st *game.State, now time.Time) string {
+	cyc, clock := st.SubmitCost(0, now)
+	near, nearClock := st.SubmitCost(1, now)
 	switch {
 	case st.Current != nil && st.Current.Door.Cursed:
 		return "a fail ends the boot (cursed)"
 	case clock > 0:
 		s := "a fail costs " + units.Clock(clock) + " of the clock (ECC)"
-		if nearClock > clock {
+		switch {
+		case nearClock > clock:
 			s += ", " + units.Clock(nearClock) + " one test short"
+		case near > 0: // the near miss's double does not fit the clock
+			s += ", " + units.Plural(near, "cycle") + " one test short"
 		}
 		return s
-	case cyc >= st.Cycles:
-		return "a fail ends the boot (" + units.Plural(st.Cycles, "cycle") + " left)"
+	}
+	why := ""
+	if st.ECCShort(0, now) {
+		why = ECCShort
+	}
+	if cyc >= st.Cycles {
+		left := units.Plural(st.Cycles, "cycle") + " left"
+		if why != "" {
+			left += "; " + why
+		}
+		return "a fail ends the boot (" + left + ")"
 	}
 	s := "a fail burns " + units.Plural(cyc, "cycle")
 	if near > cyc {
 		s += fmt.Sprintf(", %d one test short", near)
 	}
+	if why != "" {
+		s += " (" + why + ")"
+	}
 	return s
 }
+
+// ECCShort says why a failed submit burns cycles though ECC is held: the
+// door's clock is too short to pay in (game.State.ECCShort).
+const ECCShort = "ECC: clock too short"
 
 // inBoss reports whether the boot stands in a boss biome.
 func inBoss(st *game.State) bool {

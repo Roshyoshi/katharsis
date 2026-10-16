@@ -352,20 +352,21 @@ func (e *engine) submit(v SubmitResult) error {
 	if v.Total > 0 {
 		failing = v.Total - v.Passed
 	}
-	cost, clock := s.SubmitCost(failing)
+	cost, clock := s.SubmitCost(failing, e.now)
 	if clock > 0 {
-		// ECC: the failed submit costs the door's clock, not cycles.
+		// ECC: the failed submit costs the door's clock, not cycles. It
+		// does only while more than that is left, so the door stays open.
 		a.Deadline = a.Deadline.Add(-clock)
 		e.logf("%s: %s %d/%d, ecc: -%s on the clock", e.door(), v.Verdict, v.Passed, v.Total, units.Clock(clock))
-		if !e.now.Before(a.Deadline) {
-			e.fail(TimedOut)
-			return nil
-		}
 		e.emit(Sound{Name: "wa"})
 		return nil
 	}
 	s.Cycles = max(0, s.Cycles-cost)
-	e.logf("%s: %s %d/%d, -%s, %d left", e.door(), v.Verdict, v.Passed, v.Total, units.Plural(cost, "cycle"), s.Cycles)
+	short := ""
+	if s.ECCShort(failing, e.now) {
+		short = ", ecc: clock too short"
+	}
+	e.logf("%s: %s %d/%d, -%s, %d left%s", e.door(), v.Verdict, v.Passed, v.Total, units.Plural(cost, "cycle"), s.Cycles, short)
 	if s.Cycles == 0 {
 		e.crash(OutOfLives, false)
 		return nil

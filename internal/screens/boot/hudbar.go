@@ -14,10 +14,10 @@ import (
 // HUDBar is the top of the in-problem HUD pane (35 to 60 columns), its
 // vitals: the countdown (hidden on The Halting Problem's doors), cycles,
 // ducks and bytes; the door's modifiers, a boss's twist among them; what a
-// timeout or :q! burns; the tags as far as the ducks have revealed them.
-// Every line fits width. The
-// pane's one HP bar is the HUD's, or the problem screen's without a HUD
-// (C6).
+// timeout or :q! burns, and a failed submit once ECC's clock is too short
+// to pay it; the tags as far as the ducks have revealed them. Every line
+// fits width. The pane's one HP bar is the HUD's, or the problem screen's
+// without a HUD (C6).
 func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) string {
 	if width <= 0 {
 		width = 40
@@ -99,6 +99,15 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 	if ok && open {
 		for _, l := range ui.WrapN(ui.G.Timer+t, width, 2) {
 			out = append(out, ui.Muted.Render(l))
+		}
+	}
+	// Under ECC, a failed submit's price once the clock is too short to pay
+	// it in, Off-by-One's near miss included: from then on it burns cycles.
+	// On a hidden clock this comes as the strip's 05:00 warning does, at
+	// ECC's 5:00.
+	if open && !door.Cursed && st.ECCShort(1, now) {
+		for _, l := range ui.WrapN(SubmitPrice(st, now), width, 2) {
+			out = append(out, ui.Warn.Render(l))
 		}
 	}
 

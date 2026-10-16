@@ -12,7 +12,8 @@ import (
 // and every failure burns from it at a price shown before it is paid:
 //
 //	door open ─┬─ :w                 samples, free
-//	           ├─ :Submit fails a hidden test   SubmitCost (ECC: clock, not cycles)
+//	           ├─ :Submit fails a hidden test   SubmitCost (ECC: clock, not cycles, while
+//	           │                                more than its 5:00 is left)
 //	           ├─ timer runs out / :q!          FailCost: the room is lost, the boot goes on;
 //	           │                                a boss draws a new boss door; a one-shot boss ends it
 //	           ├─ R retreat                     RetreatCost, only before RetreatLockAt
@@ -60,19 +61,19 @@ func (s *State) TimeoutCostsLife() bool {
 }
 
 // SubmitCost is what a charged failed submit (not CE, not a free verdict)
-// of the open door costs now, failing being how many of its tests fail (0
-// when not known yet): cycles burned, or, under ECC's conversion
+// of the open door costs at now, failing being how many of its tests fail
+// (0 when not known yet): cycles burned, or, under ECC's conversion
 // (rules.ECCPenalty), clock taken off the door. Off-by-One's twist
 // multiplies either when exactly one test fails (rules.Twists.OffByOne);
 // a screen showing the price before a submit asks with failing 1 for the
-// worst. A cursed door's curse is apart: one failed submit ends the boot.
-func (s *State) SubmitCost(failing int) (cycles int, clock time.Duration) {
+// worst. ECC pays in clock only while the door has more than that left
+// (ECCShort): paid from less, it would run the clock out, and a timeout
+// burns far more than the cycles. A cursed door's curse is apart: one
+// failed submit ends the boot.
+func (s *State) SubmitCost(failing int, now time.Time) (cycles int, clock time.Duration) {
 	r := &s.Rules
-	k := 1
-	if m := r.Twists.OffByOne; m > 1 && failing == 1 && s.Current != nil && s.Current.Door.Twist == "off-by-one" {
-		k = m
-	}
-	if s.ECCConverts() {
+	k := s.submitMult(failing)
+	if s.ECCConverts() && !s.ECCShort(failing, now) {
 		return 0, time.Duration(k) * r.ECCPenalty.Duration
 	}
 	cycles = max(1, r.SubmitPrice()+r.Ascend(s.Prestige).SubmitCycles)
@@ -82,10 +83,31 @@ func (s *State) SubmitCost(failing int) (cycles int, clock time.Duration) {
 	return k * cycles, 0
 }
 
+// submitMult is Off-by-One's multiplier on a failed submit of the open
+// door with failing tests failing, 1 off its door.
+func (s *State) submitMult(failing int) int {
+	if m := s.Rules.Twists.OffByOne; m > 1 && failing == 1 && s.Current != nil && s.Current.Door.Twist == "off-by-one" {
+		return m
+	}
+	return 1
+}
+
 // ECCConverts reports whether the boot holds ECC as the conversion: failed
 // submits cost the door's clock, not cycles.
 func (s *State) ECCConverts() bool {
 	return s.Rules.ECCPenalty.Duration > 0 && slices.Contains(s.Upgrades, ECC)
+}
+
+// ECCShort reports whether, under ECC's conversion, the open door's clock
+// at now holds no more than a failed submit's penalty (failing as for
+// SubmitCost, Off-by-One's double included), so the submit burns cycles
+// instead.
+func (s *State) ECCShort(failing int, now time.Time) bool {
+	if !s.ECCConverts() || s.Current == nil {
+		return false
+	}
+	pen := time.Duration(s.submitMult(failing)) * s.Rules.ECCPenalty.Duration
+	return s.Current.Deadline.Sub(now) <= pen
 }
 
 // RetreatCost is what a retreat of the open door burns, 0 with free set

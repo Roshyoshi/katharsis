@@ -105,7 +105,7 @@ func TestCostsBeforeCycles(t *testing.T) {
 	if c, ok := s.FailCost(game.GaveUp); c != 0 || ok {
 		t.Errorf("give-up costs %d (%v), want the boot", c, ok)
 	}
-	if c, k := s.SubmitCost(1); c != 1 || k != 0 {
+	if c, k := s.SubmitCost(1, t0); c != 1 || k != 0 {
 		t.Errorf("failed submit costs %d and %s", c, k)
 	}
 	if c, free := s.RetreatCost(); c != 1 || free || !s.RetreatLockAt().IsZero() {

@@ -442,7 +442,8 @@ type Rules struct {
 	// ECCPenalty, above 0, makes the ECC upgrade a conversion, offered
 	// once a boot: from its pick on, a charged failed submit burns no
 	// cycles and takes ECCPenalty off the open door's clock instead (the
-	// user's 5:00). A door whose clock that empties times out.
+	// user's 5:00), while the door has more than that left; with less it
+	// burns the cycles (game.State.ECCShort).
 	ECCPenalty Duration `toml:"ecc_penalty"`
 	// RetreatLock, above 0, refuses a retreat (kexec's free swap too) this
 	// long into a door: a swap is for a statement read, not a door fought.

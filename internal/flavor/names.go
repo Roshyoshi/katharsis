@@ -83,7 +83,7 @@ func UpgradeTextFor(u game.Upgrade, r rules.Rules) (name, desc string) {
 		return "Overclock", desc + "."
 	case game.ECC:
 		if p := r.ECCPenalty.Duration; p > 0 {
-			return "ECC", "A failed submit costs " + units.Clock(p) + " of the door's clock, not cycles."
+			return "ECC", "A failed submit costs " + units.Clock(p) + " of the door's clock, not cycles, while more is left."
 		}
 		return "ECC", "+" + plural(r.ECCHeal(), "cycle", "cycles") + "."
 	case game.Duck:

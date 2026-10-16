@@ -14,6 +14,7 @@ import (
 	"katharsis/internal/judge"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/session"
 )
 
@@ -153,11 +154,11 @@ func TestRetreatLock(t *testing.T) {
 
 // TestSubmitReplyCosts: vim's :Submit reply carries what the verdict cost
 // in the boot's terms: the cycles burned, ECC's clock instead (a hidden
-// clock keeps its time left to itself), and the panic when it ended the
-// boot; nothing when it cost nothing.
+// clock keeps its time left to itself) or why ECC did not pay, and the
+// panic when it ended the boot; nothing when it cost nothing.
 func TestSubmitReplyCosts(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		h := cyclesBoot(t, func(*rules.Rules) {})
+		h := cyclesBoot(t, func(r *rules.Rules) { r.ECCPenalty = rules.Duration{Duration: 5 * time.Minute} })
 		s := h.m.state
 		s.Cycles = 24
 		before := h.m.doorLives()
@@ -179,12 +180,25 @@ func TestSubmitReplyCosts(t *testing.T) {
 		if got := h.m.charged(before); got != "" {
 			t.Errorf("nothing charged: %q", got)
 		}
-		// The real engine's burn, to the end of the boot.
-		h.m.state.Cycles = 1
+		// The real engine under ECC with 04:00 left, too short to pay its
+		// 5:00 in: the WA burns cycles, the door stays open, and the reply
+		// says why.
+		s.Current.Door.HiddenClock = false
+		s.Upgrades = append(s.Upgrades, game.ECC)
+		s.Current.Deadline = h.clock.t.Add(4 * time.Minute)
 		before = h.m.doorLives()
 		h.verdict = "WA"
 		h.send(submitMsg{})
-		if got := h.m.charged(before); h.m.state.Phase != game.PhaseCrashed || got != "burned 1 cycle, 0 left · kernel panic" {
+		got := h.m.charged(before)
+		if s := h.m.state; s.Phase != game.PhaseProblem || s.Cycles >= before.cycles || !s.Current.Deadline.Equal(before.deadline) ||
+			got != bootui.Burned(before.cycles-s.Cycles, s.Cycles)+" (ECC: clock too short)" {
+			t.Errorf("ECC, the clock too short: phase %s, cycles %d → %d, %q", s.Phase, before.cycles, s.Cycles, got)
+		}
+		// The real engine's burn, to the end of the boot.
+		h.m.state.Cycles = 1
+		before = h.m.doorLives()
+		h.send(submitMsg{})
+		if got := h.m.charged(before); h.m.state.Phase != game.PhaseCrashed || got != "burned 1 cycle, 0 left (ECC: clock too short) · kernel panic" {
 			t.Errorf("the last cycle: phase %s, %q", h.m.state.Phase, got)
 		}
 	})
