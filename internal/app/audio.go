@@ -166,15 +166,16 @@ func (m *Model) audioCue() audio.Cue {
 		return audio.Cue{Pool: audio.PoolGrub}
 	}
 	b := s.Biomes[s.Biome]
+	act := s.ActOf(s.Biome)
 	switch {
 	case b.Kind == rules.Boss && b.Boss == game.FinalBoss:
 		return audio.Cue{Pool: audio.PoolFinal, Key: b.Boss, Scene: scene}
 	case b.Kind == rules.Boss:
-		return audio.Cue{Pool: audio.PoolBoss, Key: b.Boss, Scene: scene}
+		return audio.Cue{Pool: audio.BossPools[min(act, len(audio.BossPools)-1)], Key: b.Boss, Scene: scene}
 	case s.Biome == 0:
 		return audio.Cue{Pool: audio.PoolUserland, Key: b.Topic, Scene: scene}
 	}
-	return audio.Cue{Pool: audio.PoolMid, Key: b.Topic, Scene: scene}
+	return audio.Cue{Pool: audio.ActPools[min(act, len(audio.ActPools)-1)], Key: b.Topic, Scene: scene}
 }
 
 // toggleMusic is the music key: flip it and say so.

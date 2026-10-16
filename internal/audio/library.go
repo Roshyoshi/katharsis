@@ -207,8 +207,10 @@ func (l *Library) Have(t Track) bool {
 
 // Resolve is what a cue can play, sorted by ID: the player's music/<key>/
 // folder if it has files, else music/<pool>/, then the downloaded
-// manifest tracks of the pool, which an "override" library drops when
-// the player's folder had any.
+// manifest tracks of the pool and those the key leads (Track.Keys), which
+// an "override" library drops when the player's folder had any. A boss's
+// leads join its room from any pool: the short preset's one boss is act
+// I's, and Heisenbug's leads sit in Boss II's.
 func (l *Library) Resolve(pool, key string) []Track {
 	if pool == "" {
 		return nil
@@ -225,7 +227,7 @@ func (l *Library) Resolve(pool, key string) []Track {
 	}
 	var out []Track
 	for _, t := range l.Tracks {
-		if slices.Contains(t.Pools, pool) && l.Have(t) {
+		if (slices.Contains(t.Pools, pool) || key != "" && slices.Contains(t.Keys, key)) && l.Have(t) {
 			t.Path = l.Path(t)
 			out = append(out, t)
 		}

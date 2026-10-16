@@ -219,27 +219,43 @@ and others, non-Touhou) is not needed and is not in the manifest.
 
 Pools follow where the original plays in the games, so a biome sounds
 like the matching part of a Touhou run (`internal/audio/tracks.toml`,
-`pools` and `keys`):
+`pools` and `keys`). The topic biomes and boss rooms climb by act
+(`State.ActOf`, `internal/app/audio.go`) as a run climbs by stage, so act
+III never draws a stage 3 theme. A linear preset (short, patch) is one
+act: its topic biome plays `act1`, its boss `boss1`.
 
 | Pool | Plays in | Touhou role | Tracks |
 |---|---|---|---|
 | `grub` | GRUB menu, git log, top | title screens | 12 |
 | `userland` | the first biome | stage 1-2 themes, plus Misty Lake | 22 |
-| `mid` | topic biomes | stage 3-6 and extra stage themes, PoFV character themes | 54 |
-| `boss` | named-bug boss rooms | stage 1-5 boss themes, plus the leads below | 51 |
+| `act1` | act I's topic biomes | stage 3-4 themes, PoFV themes of early bosses | 23 |
+| `act2` | act II's topic biomes | stage 5-6 and final stage themes, PoFV themes of stage 5 bosses | 19 |
+| `act3` | act III's topic biomes | extra and phantasm stage themes, Last Word, Komachi | 12 |
+| `boss1` | Boss I (Off-by-One, OOM Killer) | stage 1-3 boss themes | 27 |
+| `boss2` | Boss II (Heisenbug, Race Condition, Undefined Behavior, the Court) | stage 4-5 and extra boss themes | 24 |
 | `final` | The Halting Problem | final, extra and phantasm boss themes | 21 |
 | `merge` | merge window | staff rolls and "Player's Score" | 8 |
 | `cleared` | after the last boss | ending themes | 7 |
 | `rtfm` | learn mode | ZUN's music-CD pieces and quiet unused tracks | 6 |
 | `panic` | kernel panic | silent by default (`panic = ""` in audio.toml); one track if set | 1 |
 
-Each named bug opens with a theme of its own (`keys`); then its pool
-shuffles as usual. Taste, labelled as such: Off-by-One gets Cirno (⑨, who
-cannot count); Heisenbug gets Koishi and Nue (the unobservable and the
-unidentifiable); OOM Killer gets Yuyuko (who devours everything); Race
-Condition gets Sakuya (who stops time); Undefined Behavior gets Flandre;
-The Halting Problem gets Eiki (who decides every case) and Yukari (who
-lives on the boundary).
+PoFV's character themes have no stage, so each goes by its character's
+stage as a boss in the first game that has them as one (Reimu and Marisa
+LLS 4, Cirno EoSD 2, Prismriver PCB 4, Mystia IN 2, Aya MoF 4 → act I;
+Sakuya, Youmu, Reisen, Tewi, Yuuka → act II). Medicine and Komachi are
+bosses only in PoFV, so they go by where its story meets them: Medicine
+act II, Komachi, the ferry to the Yama, act III. Taste, labelled as such.
+
+Each boss opens with a theme of its own (`keys`); then its pool shuffles
+as usual. A lead joins its boss's room from whatever pool it sits in
+(`Library.Resolve`), so the short preset's one boss, in `boss1`, still
+opens with Heisenbug's Koishi. Taste, labelled as such: Off-by-One gets
+Cirno (⑨, who cannot count); Heisenbug gets Koishi and Nue (the
+unobservable and the unidentifiable); OOM Killer gets Yuyuko (who devours
+everything); Race Condition gets Sakuya (who stops time); Undefined
+Behavior gets Flandre; the Court gets Alice's Doll Judgement (人形裁判: an
+Alice, and a judgement); The Halting Problem gets Eiki (who decides every
+case) and Yukari (who lives on the boundary).
 
 A track plays `repeats` times (default 2) and the pool moves on without
 repeats; songs without a loop mark, and Misty Lake, which ends in a decay,
@@ -294,118 +310,133 @@ The full lists:
 | `th13-04` | Welcome to Yokai Temple (妖怪寺へようこそ) | ZUN, Touhou 13 TD, Stage 2 theme |
 | `th14-02` | Mist Lake (ミストレイク) | ZUN, Touhou 14 DDC, Stage 1 theme |
 
-#### mid (54)
+#### act1 (23)
 
 | id | title | original |
 |---|---|---|
 | `th04-07` | Bad Apple!! | ZUN, Touhou 4 LLS, Stage 3 theme |
 | `th04-09` | Alice Maestra (アリスマエステラ) | ZUN, Touhou 4 LLS, Stage 4 theme |
-| `th04-12` | Lotus Love | ZUN, Touhou 4 LLS, Stage 5 theme |
-| `th05-10` | Alice in the Wonderland (不思議の国のアリス) | ZUN, Touhou 5 MS, Extra Stage theme |
 | `th06-06` | Shanghai Teahouse　〜 Chinese Tea (上海紅茶館　〜 Chinese Tea) | ZUN, Touhou 6 EoSD, Stage 3 theme |
 | `th06-08` | Voile，the Magic Library (ヴワル魔法図書館) | ZUN, Touhou 6 EoSD, Stage 4 theme |
-| `th06-10` | the Maid and the Pocket Watch of Blood (メイドと血の懐中時計) | ZUN, Touhou 6 EoSD, Stage 5 theme |
-| `th06-12` | the Young Descendant of Tepes (ツェペシュの幼き末裔) | ZUN, Touhou 6 EoSD, Final Stage theme |
-| `th06-14` | the Centennial Festival for Magical Girls (魔法少女達の百年祭) | ZUN, Touhou 6 EoSD, Extra Stage theme |
 | `th07-06` | the Doll Maker of Bucuresti (ブクレシュティの人形師) | ZUN, Touhou 7 PCB, Stage 3 theme |
 | `th07-08` | the Capital City of Flowers in the Sky (天空の花の都) | ZUN, Touhou 7 PCB, Stage 4 theme |
-| `th07-10` | Mystic Oriental Dream　〜 Ancient Temple (東方妖々夢　〜 Ancient Temple) | ZUN, Touhou 7 PCB, Stage 5 theme |
-| `th07-12` | Ultimate Truth (アルティメットトゥルース) | ZUN, Touhou 7 PCB, Final Stage theme |
-| `th07-15` | Charming Domination (妖々跋扈) | ZUN, Touhou 7 PCB, Extra Stage theme |
-| `th07-17` | Charming Domination　〜 Who done it! (妖々跋扈　〜 Who done it!) | ZUN, Touhou 7 PCB, Phantasm Stage theme |
 | `th08-06` | Nostalgic Blood of the Eastern　〜 Old World (懐かしき東方の血　〜 Old World) | ZUN, Touhou 8 IN, Stage 3 theme |
 | `th08-08` | Retribution for the Imperishable Night (永夜の報い　〜 Imperishable Night.) | ZUN, Touhou 8 IN, Stage 4 theme |
-| `th08-11` | Cinderella Cage　〜 Kagome-Kagome (シンデレラケージ　〜 Kagome-Kagome) | ZUN, Touhou 8 IN, Stage 5 theme |
-| `th08-13` | Voyage 1969 (ヴォヤージュ1969) | ZUN, Touhou 8 IN, Final Stage theme |
-| `th08-17` | Extend Ash　〜 Hourai Victim (エクステンドアッシュ　〜 蓬莱人) | ZUN, Touhou 8 IN, Extra Stage theme |
-| `th08-21` | Eastern Youkai Beauty (東方妖怪小町) | ZUN, Touhou 8 IN, Last Word theme |
 | `th09-02` | Spring Lane　〜 Colorful Path (春色小径　〜 Colorful Path) | ZUN, Touhou 9 PoFV, Reimu Hakurei's theme |
 | `th09-03` | Oriental Dark Flight (オリエンタルダークフライト) | ZUN, Touhou 9 PoFV, Marisa Kirisame's theme |
-| `th09-04` | Flowering Knight (フラワリングナイト) | ZUN, Touhou 9 PoFV, Sakuya Izayoi's theme; leads for `race-condition` |
-| `th09-05` | Mystic Oriental Dream　〜 Ancient Temple (東方妖々夢　〜 Ancient Temple) | ZUN, Touhou 9 PoFV, Youmu Konpaku's theme |
-| `th09-06` | Lunatic Eyes　〜 Invisible Full Moon (狂気の瞳　〜 Invisible Full Moon) | ZUN, Touhou 9 PoFV, Reisen Udongein Inaba's theme |
 | `th09-07` | Adventure of the Lovestruck Tomboy (おてんば恋娘の冒険) | ZUN, Touhou 9 PoFV, Cirno's theme; leads for `off-by-one` |
 | `th09-08` | Phantom Ensemble (幽霊楽団　〜 Phantom Ensemble) | ZUN, Touhou 9 PoFV, Prismriver Sisters' (Lyrica, Merlin, and Lunasa) theme |
 | `th09-09` | Unwittingly，Distracted with her Song　〜 Flower Mix (もう歌しか聞こえない　〜 Flower Mix) | ZUN, Touhou 9 PoFV, Mystia Lorelei's theme |
-| `th09-10` | White Flag of the Usa Jingu (お宇佐さまの素い幡) | ZUN, Touhou 9 PoFV, Tewi Inaba's theme |
 | `th09-11` | Fujin Maiden (ShortVersion) (風神少女 (ShortVersion)) | ZUN, Touhou 9 PoFV, Aya Shameimaru's theme |
-| `th09-12` | Poison Body　〜 Forsaken Doll (ポイズンボディ　〜 Forsaken Doll) | ZUN, Touhou 9 PoFV, Medicine Melancholy's theme |
-| `th09-13` | Konjaku Gensokyo　〜 Flower Land (今昔幻想郷　〜 Flower Land) | ZUN, Touhou 9 PoFV, Yuuka Kazami's theme |
-| `th09-14` | Higan Homeward Voyage　〜 Riverside View (彼岸帰航　〜 Riverside View) | ZUN, Touhou 9 PoFV, Komachi Onozuka's theme |
 | `th10-06` | the Gensokyo the Gods Loved (神々が恋した幻想郷) | ZUN, Touhou 10 MoF, Stage 3 theme |
 | `th10-08` | Fall of Fall　〜 Autumnal Waterfall (フォールオブフォール　〜 秋めく滝) | ZUN, Touhou 10 MoF, Stage 4 theme |
-| `th10-10` | The Japanese Wilderness the Girl Saw (少女が見た日本の原風景) | ZUN, Touhou 10 MoF, Stage 5 theme |
-| `th10-12` | Cemetery of Onbashira　〜 Grave of Being (御柱の墓場　〜 Grave of Being) | ZUN, Touhou 10 MoF, Stage 6 theme |
-| `th10-14` | Tomorrow will be Special，Yesterday was not (明日ハレの日、ケの昨日) | ZUN, Touhou 10 MoF, Extra stage theme |
 | `th11-06` | Going along the Old Hell Road (旧地獄街道を行く) | ZUN, Touhou 11 SA, Stage 3 theme |
 | `th11-08` | Heartfelt Fancy (ハートフェルトファンシー) | ZUN, Touhou 11 SA, Stage 4 theme |
-| `th11-12` | Hellfire Mantle (業火マントル) | ZUN, Touhou 11 SA, Stage 6 theme |
-| `th11-14` | Last Remote (ラストリモート) | ZUN, Touhou 11 SA, Extra stage theme |
 | `th12-06` | Sky Ruins (スカイルーイン) | ZUN, Touhou 12 UFO, Stage 3 theme |
 | `th12-08` | A Ghost Liner's Journey Through Time and Space (幽霊客船の時空を越えた旅) | ZUN, Touhou 12 UFO, Stage 4 theme |
-| `th12-10` | Esoteria, a local city in the magical world (魔界地方都市エソテリア) | ZUN, Touhou 12 UFO, Stage 5 theme |
-| `th12-12` | Fire of the Dharmadhatu (法界の火) | ZUN, Touhou 12 UFO, Stage 6 theme |
-| `th12-14` | UFO Romance in the Night Sky (夜空のユーフォーロマンス) | ZUN, Touhou 12 UFO, Extra stage theme |
 | `th12_8-05` | Midnight Fairy Dance (真夜中のフェアリーダンス) | ZUN, Touhou 12.8 Fairy Wars, Stage 3 theme |
-| `th12_8-08` | Loose Rain (ルーズレイン) | ZUN, Touhou 12.8 Fairy Wars, Extra stage theme |
 | `th13-06` | Let's Live in Nice Cemetery (素敵な墓場で暮しましょ) | ZUN, Touhou 13 TD, Stage 3 theme |
 | `th13-08` | Desire Drive (デザイアドライブ) | ZUN, Touhou 13 TD, Stage 4 theme |
-| `th13-10` | Grand Enshrined Mausoleum at Yumedono (夢殿大祀廟) | ZUN, Touhou 13 TD, Stage 5 theme |
-| `th13-14` | Yokai Backstreet (妖怪裏参道) | ZUN, Touhou 13 TD, Extra Stage theme |
 
-#### boss (51)
+#### act2 (19)
 
 | id | title | original |
 |---|---|---|
-| `th01-03` | The Positive and Negative | ZUN, Touhou 1 HRtP, Shingyoku's theme (stage 5 boss) |
+| `th04-12` | Lotus Love | ZUN, Touhou 4 LLS, Stage 5 theme |
+| `th06-10` | the Maid and the Pocket Watch of Blood (メイドと血の懐中時計) | ZUN, Touhou 6 EoSD, Stage 5 theme |
+| `th06-12` | the Young Descendant of Tepes (ツェペシュの幼き末裔) | ZUN, Touhou 6 EoSD, Final Stage theme |
+| `th07-10` | Mystic Oriental Dream　〜 Ancient Temple (東方妖々夢　〜 Ancient Temple) | ZUN, Touhou 7 PCB, Stage 5 theme |
+| `th07-12` | Ultimate Truth (アルティメットトゥルース) | ZUN, Touhou 7 PCB, Final Stage theme |
+| `th08-11` | Cinderella Cage　〜 Kagome-Kagome (シンデレラケージ　〜 Kagome-Kagome) | ZUN, Touhou 8 IN, Stage 5 theme |
+| `th08-13` | Voyage 1969 (ヴォヤージュ1969) | ZUN, Touhou 8 IN, Final Stage theme |
+| `th09-04` | Flowering Knight (フラワリングナイト) | ZUN, Touhou 9 PoFV, Sakuya Izayoi's theme; leads for `race-condition` |
+| `th09-05` | Mystic Oriental Dream　〜 Ancient Temple (東方妖々夢　〜 Ancient Temple) | ZUN, Touhou 9 PoFV, Youmu Konpaku's theme |
+| `th09-06` | Lunatic Eyes　〜 Invisible Full Moon (狂気の瞳　〜 Invisible Full Moon) | ZUN, Touhou 9 PoFV, Reisen Udongein Inaba's theme |
+| `th09-10` | White Flag of the Usa Jingu (お宇佐さまの素い幡) | ZUN, Touhou 9 PoFV, Tewi Inaba's theme |
+| `th09-12` | Poison Body　〜 Forsaken Doll (ポイズンボディ　〜 Forsaken Doll) | ZUN, Touhou 9 PoFV, Medicine Melancholy's theme |
+| `th09-13` | Konjaku Gensokyo　〜 Flower Land (今昔幻想郷　〜 Flower Land) | ZUN, Touhou 9 PoFV, Yuuka Kazami's theme |
+| `th10-10` | The Japanese Wilderness the Girl Saw (少女が見た日本の原風景) | ZUN, Touhou 10 MoF, Stage 5 theme |
+| `th10-12` | Cemetery of Onbashira　〜 Grave of Being (御柱の墓場　〜 Grave of Being) | ZUN, Touhou 10 MoF, Stage 6 theme |
+| `th11-12` | Hellfire Mantle (業火マントル) | ZUN, Touhou 11 SA, Stage 6 theme |
+| `th12-10` | Esoteria, a local city in the magical world (魔界地方都市エソテリア) | ZUN, Touhou 12 UFO, Stage 5 theme |
+| `th12-12` | Fire of the Dharmadhatu (法界の火) | ZUN, Touhou 12 UFO, Stage 6 theme |
+| `th13-10` | Grand Enshrined Mausoleum at Yumedono (夢殿大祀廟) | ZUN, Touhou 13 TD, Stage 5 theme |
+
+#### act3 (12)
+
+| id | title | original |
+|---|---|---|
+| `th05-10` | Alice in the Wonderland (不思議の国のアリス) | ZUN, Touhou 5 MS, Extra Stage theme |
+| `th06-14` | the Centennial Festival for Magical Girls (魔法少女達の百年祭) | ZUN, Touhou 6 EoSD, Extra Stage theme |
+| `th07-15` | Charming Domination (妖々跋扈) | ZUN, Touhou 7 PCB, Extra Stage theme |
+| `th07-17` | Charming Domination　〜 Who done it! (妖々跋扈　〜 Who done it!) | ZUN, Touhou 7 PCB, Phantasm Stage theme |
+| `th08-17` | Extend Ash　〜 Hourai Victim (エクステンドアッシュ　〜 蓬莱人) | ZUN, Touhou 8 IN, Extra Stage theme |
+| `th08-21` | Eastern Youkai Beauty (東方妖怪小町) | ZUN, Touhou 8 IN, Last Word theme |
+| `th09-14` | Higan Homeward Voyage　〜 Riverside View (彼岸帰航　〜 Riverside View) | ZUN, Touhou 9 PoFV, Komachi Onozuka's theme |
+| `th10-14` | Tomorrow will be Special，Yesterday was not (明日ハレの日、ケの昨日) | ZUN, Touhou 10 MoF, Extra stage theme |
+| `th11-14` | Last Remote (ラストリモート) | ZUN, Touhou 11 SA, Extra stage theme |
+| `th12-14` | UFO Romance in the Night Sky (夜空のユーフォーロマンス) | ZUN, Touhou 12 UFO, Extra stage theme |
+| `th12_8-08` | Loose Rain (ルーズレイン) | ZUN, Touhou 12.8 Fairy Wars, Extra stage theme |
+| `th13-14` | Yokai Backstreet (妖怪裏参道) | ZUN, Touhou 13 TD, Extra Stage theme |
+
+#### boss1 (27)
+
+| id | title | original |
+|---|---|---|
 | `th04-04` | Decoration Battle (装飾戦　〜 Decoration Battle) | ZUN, Touhou 4 LLS, Stage 1 Boss - Orange's theme |
 | `th04-06` | Scarlet Symphony　〜 Scarlet Phoneme (紅響曲　〜 Scarlet Phoneme) | ZUN, Touhou 4 LLS, Stage 2 Boss - Kurumi's theme |
 | `th04-08` | Spirit Battle　〜 Perdition Crisis (霊戦　〜 Perdition crisis) | ZUN, Touhou 4 LLS, Stage 3 Boss - Elly's theme |
-| `th04-10` | Maiden's Capriccio (少女綺想曲　〜 Capriccio) | ZUN, Touhou 4 LLS, Stage 4 Boss A - Reimu Hakurei's theme |
-| `th04-11` | Casket of Star (星の器　〜 Casket of Star) | ZUN, Touhou 4 LLS, Stage 4 Boss B - Marisa Kirisame's theme |
-| `th04-13` | Sleeping Terror (眠れる恐怖　〜 Sleeping Terror) | ZUN, Touhou 4 LLS, Stage 5 Boss - Yuuka Kazami's 1st theme |
 | `th06-03` | Mystics Night (妖魔夜行) | ZUN, Touhou 6 EoSD, Stage 1 Boss - Rumia's theme |
 | `th06-05` | Beloved Tomboyish Daughter (おてんば恋娘) | ZUN, Touhou 6 EoSD, Stage 2 Boss - Cirno's theme; leads for `off-by-one` |
 | `th06-07` | Shanghai Alice in 1884 (明治十七年の上海アリス) | ZUN, Touhou 6 EoSD, Stage 3 Boss - Hong Meiling's theme |
-| `th06-09` | Locked Girl　〜 the Girl's Secret Room (ラクトガール　〜 少女密室) | ZUN, Touhou 6 EoSD, Stage 4 Boss - Patchouli Knowledge's theme |
-| `th06-11` | Luna Dial (月時計　〜 ルナ・ダイアル) | ZUN, Touhou 6 EoSD, Stage 5 Boss - Sakuya Izayoi's theme; leads for `race-condition` |
-| `th06-15` | U.N.Owen was her? (U.N.オーエンは彼女なのか？) | ZUN, Touhou 6 EoSD, Extra Boss - Flandre Scarlet's theme; leads for `undefined-behavior` |
 | `th07-03` | Crystalize Silver (クリスタライズシルバー) | ZUN, Touhou 7 PCB, Stage 1 Boss - Letty Whiterock's theme |
 | `th07-05` | Diao Ye Zong (Withered Leaf) (ティアオイエツォン（withered leaf）) | ZUN, Touhou 7 PCB, Stage 2 Boss - Chen's theme |
-| `th07-07` | Doll Judgement (人形裁判　〜 人の形弄びし少女) | ZUN, Touhou 7 PCB, Stage 3 Boss - Alice Margatroid's theme |
-| `th07-09` | Phantom Ensemble (幽霊楽団　〜 Phantom Ensemble) | ZUN, Touhou 7 PCB, Stage 4 Boss - Prismriver Sisters' (Lunasa, Merlin, and Lyrica) theme |
-| `th07-11` | Hiroari Shoots a Strange Bird　〜 Till When? (広有射怪鳥事　〜 Till When?) | ZUN, Touhou 7 PCB, Stage 5 Boss - Youmu Konpaku's theme |
-| `th07-13` | Bloom Nobly，Ink-black Cherry Blossom (幽雅に咲かせ、墨染の桜　〜 Border of Life) | ZUN, Touhou 7 PCB, Final Boss - Yuyuko Saigyouji's theme; leads for `oom-killer` |
+| `th07-07` | Doll Judgement (人形裁判　〜 人の形弄びし少女) | ZUN, Touhou 7 PCB, Stage 3 Boss - Alice Margatroid's theme; leads for `trial` |
 | `th08-03` | Stirring an Autumn Moon　〜 Mooned Insect (蠢々秋月　〜 Mooned Insect) | ZUN, Touhou 8 IN, Stage 1 Boss - Wriggle Nightbug's theme |
 | `th08-05` | Unwittingly，Distracted with her Song (もう歌しか聞こえない) | ZUN, Touhou 8 IN, Stage 2 Boss - Mystia Lorelei's theme |
 | `th08-07` | Plain Asia (プレインエイジア) | ZUN, Touhou 8 IN, Stage 3 Boss - Keine Kamishirasawa's theme |
-| `th08-09` | Maiden's Capriccio　〜 Dream Battle (少女綺想曲　〜 Dream Battle) | ZUN, Touhou 8 IN, Stage 4 uncanny Boss - Reimu Hakurei's theme |
-| `th08a-10` | Love Colors Master Spark (恋色マスタースパーク) | ZUN, Touhou 8 IN, Stage 4 powerful Boss - Marisa Kirisame's theme |
-| `th08-12` | Lunatic Eyes　〜 Invisible Full Moon (狂気の瞳　〜 Invisible Full Moon) | ZUN, Touhou 8 IN, Stage 5 Boss - Reisen Udongein Inaba's theme |
-| `th09-04` | Flowering Knight (フラワリングナイト) | ZUN, Touhou 9 PoFV, Sakuya Izayoi's theme; leads for `race-condition` |
 | `th09-07` | Adventure of the Lovestruck Tomboy (おてんば恋娘の冒険) | ZUN, Touhou 9 PoFV, Cirno's theme; leads for `off-by-one` |
 | `th10-03` | Because Princess Inada is Scolding Me (稲田姫様に叱られるから) | ZUN, Touhou 10 MoF, Stage 1 Boss - Minoriko Aki's theme |
 | `th10-05` | Darkside of Fate (運命のダークサイド) | ZUN, Touhou 10 MoF, Stage 2 Boss - Hina Kagiyama's theme |
 | `th10-07` | Akutagawa Ryuunosuke's "Kappa"　〜 Candid Friend (芥川龍之介の河童　〜 Candid Friend) | ZUN, Touhou 10 MoF, Stage 3 Boss - Nitori Kawashiro's theme |
-| `th10-09` | The Youkai Mountain　〜 Mysterious Mountain (妖怪の山　〜 Mysterious Mountain) | ZUN, Touhou 10 MoF, Stage 4 boss - Aya Shameimaru's theme |
-| `th10-11` | Faith is for the Transient People (信仰は儚き人間の為に) | ZUN, Touhou 10 MoF, Stage 5 boss - Sanae Kochiya's theme |
 | `th11-03` | Sealed Yokai　〜 Lost Place (封じられた妖怪　〜 Lost Place) | ZUN, Touhou 11 SA, Stage 1 boss - Yamame Kurodani's theme |
 | `th11-05` | Green-Eyed Jealousy (緑眼のジェラシー) | ZUN, Touhou 11 SA, Stage 2 boss - Parsee Mizuhashi's theme |
 | `th11-07` | Petals sake cup Ohe Mountain (華のさかづき大江山) | ZUN, Touhou 11 SA, Stage 3 boss - Yuugi Hoshiguma's theme |
-| `th11-09` | Satori Maiden　〜 3rd eye (少女さとり　〜 3rd eye) | ZUN, Touhou 11 SA, Stage 4 boss - Satori Komeiji's theme |
-| `th11-11` | Corpse Voyage　〜 Be of good cheer! (死体旅行　〜 Be of good cheer!) | ZUN, Touhou 11 SA, Stage 5 boss - Rin Kaenbyou's theme |
-| `th11-15` | Hartmann's Specter Girl (ハルトマンの妖怪少女) | ZUN, Touhou 11 SA, Extra stage boss - Koishi Komeiji's theme; leads for `heisenbug` |
 | `th12-03` | Tiny Little Clever Commander (小さな小さな賢将) | ZUN, Touhou 12 UFO, Stage 1 Boss - Nazrin's theme |
 | `th12-05` | Beware of the Ever-Present Umbrella (万年置き傘にご注意を) | ZUN, Touhou 12 UFO, Stage 2 Boss - Kogasa Tatara's theme |
 | `th12-07` | Outdated Father and High-Collar Girl (時代親父とハイカラ少女) | ZUN, Touhou 12 UFO, Stage 3 Boss - Ichirin Kumoi and Unzan's theme |
-| `th12-09` | Captain Murasa (キャプテン・ムラサ) | ZUN, Touhou 12 UFO, Stage 4 Boss - Murasa Minamitsu's theme |
-| `th12-11` | Bishamonten with Tiger Pattern (虎柄の毘沙門天) | ZUN, Touhou 12 UFO, Stage 5 Boss - Shou Toramaru's theme |
-| `th12-15` | Alien in Heian (平安のエイリアン) | ZUN, Touhou 12 UFO, Extra Stage Boss - Nue Houjuu's theme; leads for `heisenbug` |
 | `th12_8-03` | Risking Life for the Sake of Mischief (いたずらに命をかけて) | ZUN, Touhou 12.8 Fairy Wars, Stage 1/2 boss theme |
 | `th12_8-06` | Fairy Wars　〜 Faily Wars (妖精大戦争　〜 Faily Wars) | ZUN, Touhou 12.8 Fairy Wars, Stage 3 boss theme |
 | `th13-03` | Ghost Lead (ゴーストリード) | ZUN, Touhou 13 TD, Stage 1 Boss - Yuyuko Saigyouji's theme; leads for `oom-killer` |
 | `th13-05` | Yokai Girl who at the Gate (門前の妖怪小娘) | ZUN, Touhou 13 TD, Stage 2 Boss - Kyouko Kasodani's theme |
 | `th13-07` | Rigid Paradise (リジッドパラダイス) | ZUN, Touhou 13 TD, Stage 3 Boss - Yoshika Miyako's theme |
+
+#### boss2 (24)
+
+| id | title | original |
+|---|---|---|
+| `th01-03` | The Positive and Negative | ZUN, Touhou 1 HRtP, Shingyoku's theme (stage 5 boss) |
+| `th04-10` | Maiden's Capriccio (少女綺想曲　〜 Capriccio) | ZUN, Touhou 4 LLS, Stage 4 Boss A - Reimu Hakurei's theme |
+| `th04-11` | Casket of Star (星の器　〜 Casket of Star) | ZUN, Touhou 4 LLS, Stage 4 Boss B - Marisa Kirisame's theme |
+| `th04-13` | Sleeping Terror (眠れる恐怖　〜 Sleeping Terror) | ZUN, Touhou 4 LLS, Stage 5 Boss - Yuuka Kazami's 1st theme |
+| `th06-09` | Locked Girl　〜 the Girl's Secret Room (ラクトガール　〜 少女密室) | ZUN, Touhou 6 EoSD, Stage 4 Boss - Patchouli Knowledge's theme |
+| `th06-11` | Luna Dial (月時計　〜 ルナ・ダイアル) | ZUN, Touhou 6 EoSD, Stage 5 Boss - Sakuya Izayoi's theme; leads for `race-condition` |
+| `th06-15` | U.N.Owen was her? (U.N.オーエンは彼女なのか？) | ZUN, Touhou 6 EoSD, Extra Boss - Flandre Scarlet's theme; leads for `undefined-behavior` |
+| `th07-09` | Phantom Ensemble (幽霊楽団　〜 Phantom Ensemble) | ZUN, Touhou 7 PCB, Stage 4 Boss - Prismriver Sisters' (Lunasa, Merlin, and Lyrica) theme |
+| `th07-11` | Hiroari Shoots a Strange Bird　〜 Till When? (広有射怪鳥事　〜 Till When?) | ZUN, Touhou 7 PCB, Stage 5 Boss - Youmu Konpaku's theme |
+| `th07-13` | Bloom Nobly，Ink-black Cherry Blossom (幽雅に咲かせ、墨染の桜　〜 Border of Life) | ZUN, Touhou 7 PCB, Final Boss - Yuyuko Saigyouji's theme; leads for `oom-killer` |
+| `th08-09` | Maiden's Capriccio　〜 Dream Battle (少女綺想曲　〜 Dream Battle) | ZUN, Touhou 8 IN, Stage 4 uncanny Boss - Reimu Hakurei's theme |
+| `th08a-10` | Love Colors Master Spark (恋色マスタースパーク) | ZUN, Touhou 8 IN, Stage 4 powerful Boss - Marisa Kirisame's theme |
+| `th08-12` | Lunatic Eyes　〜 Invisible Full Moon (狂気の瞳　〜 Invisible Full Moon) | ZUN, Touhou 8 IN, Stage 5 Boss - Reisen Udongein Inaba's theme |
+| `th09-04` | Flowering Knight (フラワリングナイト) | ZUN, Touhou 9 PoFV, Sakuya Izayoi's theme; leads for `race-condition` |
+| `th10-09` | The Youkai Mountain　〜 Mysterious Mountain (妖怪の山　〜 Mysterious Mountain) | ZUN, Touhou 10 MoF, Stage 4 boss - Aya Shameimaru's theme |
+| `th10-11` | Faith is for the Transient People (信仰は儚き人間の為に) | ZUN, Touhou 10 MoF, Stage 5 boss - Sanae Kochiya's theme |
+| `th11-09` | Satori Maiden　〜 3rd eye (少女さとり　〜 3rd eye) | ZUN, Touhou 11 SA, Stage 4 boss - Satori Komeiji's theme |
+| `th11-11` | Corpse Voyage　〜 Be of good cheer! (死体旅行　〜 Be of good cheer!) | ZUN, Touhou 11 SA, Stage 5 boss - Rin Kaenbyou's theme |
+| `th11-15` | Hartmann's Specter Girl (ハルトマンの妖怪少女) | ZUN, Touhou 11 SA, Extra stage boss - Koishi Komeiji's theme; leads for `heisenbug` |
+| `th12-09` | Captain Murasa (キャプテン・ムラサ) | ZUN, Touhou 12 UFO, Stage 4 Boss - Murasa Minamitsu's theme |
+| `th12-11` | Bishamonten with Tiger Pattern (虎柄の毘沙門天) | ZUN, Touhou 12 UFO, Stage 5 Boss - Shou Toramaru's theme |
+| `th12-15` | Alien in Heian (平安のエイリアン) | ZUN, Touhou 12 UFO, Extra Stage Boss - Nue Houjuu's theme; leads for `heisenbug` |
 | `th13-09` | Ancient Yuan-Sheng (古きユアンシェン) | ZUN, Touhou 13 TD, Stage 4 Boss - Seiga Kaku's theme |
 | `th13-11` | Story of Mythomiwa (大神神話伝) | ZUN, Touhou 13 TD, Stage 5 Boss - Mononobe no Futo's theme |
 

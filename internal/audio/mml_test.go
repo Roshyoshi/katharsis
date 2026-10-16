@@ -57,14 +57,14 @@ func TestMMLLoopsSeamlessly(t *testing.T) {
 
 func TestMMLInLibrary(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, "boss"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "boss1"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "boss", "theme.mml"), []byte(testSong), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "boss1", "theme.mml"), []byte(testSong), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	l := &Library{UserDir: dir, CacheDir: t.TempDir()}
-	ts := l.Resolve(PoolBoss, "")
+	ts := l.Resolve(PoolBoss1, "")
 	if len(ts) != 1 || ts[0].Title != "theme" {
 		t.Fatalf("a player's .mml file is a track: %+v", ts)
 	}
@@ -78,7 +78,7 @@ func TestMMLInLibrary(t *testing.T) {
 }
 
 func TestEngineLeadsAndOnce(t *testing.T) {
-	l := library(t, map[string][]string{"b1": {PoolBoss}, "b2": {PoolBoss}, "b3": {PoolBoss}, "cirno": {PoolBoss}}, nil)
+	l := library(t, map[string][]string{"b1": {PoolBoss1}, "b2": {PoolBoss1}, "b3": {PoolBoss1}, "cirno": {PoolBoss2}}, nil)
 	for i := range l.Tracks {
 		switch l.Tracks[i].ID {
 		case "cirno":
@@ -89,15 +89,16 @@ func TestEngineLeadsAndOnce(t *testing.T) {
 	}
 	e := newEngine(DefaultSettings(), l, DefaultEffects())
 	defer e.Close()
-	// Every boss of that key opens with its lead, whatever the shuffle.
+	// Every boss of that key opens with its lead, whatever the shuffle, and
+	// though the lead sits in another pool (Library.Resolve).
 	for scene := range 6 {
-		e.Cue(Cue{Pool: PoolBoss, Key: "off-by-one", Scene: scene})
+		e.Cue(Cue{Pool: PoolBoss1, Key: "off-by-one", Scene: scene})
 		eventually(t, "the lead", func() bool { tr, _ := e.NowPlaying(); return tr.ID == "cirno" })
 	}
 	// Another boss shuffles the pool as before.
 	seen := map[string]bool{}
 	for scene := 10; scene < 40 && len(seen) < 2; scene++ {
-		e.Cue(Cue{Pool: PoolBoss, Key: "heisenbug", Scene: scene})
+		e.Cue(Cue{Pool: PoolBoss1, Key: "heisenbug", Scene: scene})
 		eventually(t, "a new track", func() bool { _, s := e.NowPlaying(); return s > 0 })
 		time.Sleep(5 * time.Millisecond)
 		tr, _ := e.NowPlaying()
@@ -106,11 +107,14 @@ func TestEngineLeadsAndOnce(t *testing.T) {
 	if len(seen) < 2 {
 		t.Errorf("a key with no lead always played %v", seen)
 	}
+	if seen["cirno"] {
+		t.Error("another pool's lead played for a boss it does not lead")
+	}
 	// A song with an ending plays one pass; others Settings.Repeats.
 	b1 := l.Tracks[slices.IndexFunc(l.Tracks, func(t Track) bool { return t.ID == "b1" })]
 	b1.Path = l.Path(b1)
 	e.cmds <- func() {
-		e.tracks, e.cue = []Track{b1, b1}, Cue{Pool: PoolBoss, Key: "x"} // two, so it is not looped alone
+		e.tracks, e.cue = []Track{b1, b1}, Cue{Pool: PoolBoss1, Key: "x"} // two, so it is not looped alone
 		e.advance(0)
 	}
 	eventually(t, "b1", func() bool { tr, _ := e.NowPlaying(); return tr.ID == "b1" })
@@ -131,7 +135,7 @@ func TestVGSManifest(t *testing.T) {
 		}
 		for _, k := range tr.Keys {
 			leads[k] = append(leads[k], tr.ID)
-			if !slices.Contains(tr.Pools, PoolBoss) && !slices.Contains(tr.Pools, PoolFinal) {
+			if !slices.ContainsFunc(tr.Pools, func(p string) bool { return slices.Contains(BossPools, p) || p == PoolFinal }) {
 				t.Errorf("%s leads for %s but plays in no boss pool", tr.ID, k)
 			}
 		}
@@ -146,13 +150,14 @@ func TestVGSManifest(t *testing.T) {
 			t.Errorf("%s: toast %q", tr.ID, c)
 		}
 	}
-	for _, p := range []string{PoolGrub, PoolUserland, PoolMid, PoolBoss, PoolFinal, PoolMerge, PoolCleared, PoolRTFM} {
-		if per[p] < 5 {
+	for _, p := range Pools {
+		if p != PoolPanic && per[p] < 5 {
 			t.Errorf("pool %s has %d tracks", p, per[p])
 		}
 	}
-	// Every named bug and the final boss open with a theme of their own.
-	for _, k := range []string{"off-by-one", "heisenbug", "oom-killer", "race-condition", "undefined-behavior", "halting-problem"} {
+	// Every named bug, the Court (game.TrialBoss) and the final boss open
+	// with a theme of their own.
+	for _, k := range []string{"off-by-one", "heisenbug", "oom-killer", "race-condition", "undefined-behavior", "trial", "halting-problem"} {
 		if len(leads[k]) == 0 {
 			t.Errorf("no lead for %s", k)
 		}

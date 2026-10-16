@@ -22,11 +22,16 @@ const Rate = 44100
 
 // Music pools, by where the game is. A biome's cue names one of these and
 // may add a finer Key (its topic or boss) for the player's own folders.
+// Topic biomes and boss rooms climb by act as a Touhou run climbs by
+// stage, so act III never draws a stage 3 theme.
 const (
 	PoolGrub     = "grub"     // the GRUB menu, git log, top
-	PoolUserland = "userland" // the first biome
-	PoolMid      = "mid"      // topic biomes
-	PoolBoss     = "boss"     // named-bug boss rooms
+	PoolUserland = "userland" // the first biome: stage 1-2 themes
+	PoolAct1     = "act1"     // act I's topic biomes: stage 3-4 themes
+	PoolAct2     = "act2"     // act II's: stage 5-6 themes
+	PoolAct3     = "act3"     // act III's: extra stage themes
+	PoolBoss1    = "boss1"    // Boss I's rooms: stage 1-3 boss themes
+	PoolBoss2    = "boss2"    // Boss II's: stage 4-5 and extra bosses
 	PoolFinal    = "final"    // The Halting Problem
 	PoolMerge    = "merge"    // the merge window between biomes
 	PoolPanic    = "panic"    // the kernel panic (silent by default)
@@ -35,7 +40,15 @@ const (
 )
 
 // Pools lists every pool, in the order the credits show them.
-var Pools = []string{PoolGrub, PoolUserland, PoolMid, PoolBoss, PoolFinal, PoolMerge, PoolPanic, PoolCleared, PoolRTFM}
+var Pools = []string{PoolGrub, PoolUserland, PoolAct1, PoolAct2, PoolAct3, PoolBoss1, PoolBoss2,
+	PoolFinal, PoolMerge, PoolPanic, PoolCleared, PoolRTFM}
+
+// ActPools and BossPools are the topic and boss pools by act (the game's
+// State.ActOf); an act past the last plays the last.
+var (
+	ActPools  = []string{PoolAct1, PoolAct2, PoolAct3}
+	BossPools = []string{PoolBoss1, PoolBoss2}
+)
 
 // Cue is the music a game state calls for.
 type Cue struct {

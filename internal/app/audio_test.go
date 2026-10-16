@@ -13,6 +13,7 @@ import (
 
 	"katharsis/internal/audio"
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/reader"
 )
@@ -74,12 +75,12 @@ func TestAudioFollowsAFullClear(t *testing.T) {
 		if got := h.play(); got != game.PhaseCleared {
 			t.Fatalf("boot ended %q", got)
 		}
-		want := []string{audio.PoolGrub, audio.PoolUserland, audio.PoolMerge, audio.PoolMid, audio.PoolMerge, audio.PoolBoss, audio.PoolCleared}
+		want := []string{audio.PoolGrub, audio.PoolUserland, audio.PoolMerge, audio.PoolAct1, audio.PoolMerge, audio.PoolBoss1, audio.PoolCleared}
 		if got := r.pools(); !slices.Equal(got, want) {
 			t.Errorf("music went %v, want %v", got, want)
 		}
 		for _, c := range r.cues {
-			if c.Pool == audio.PoolBoss && c.Key == "" {
+			if slices.Contains(audio.BossPools, c.Pool) && c.Key == "" {
 				t.Errorf("the boss cue names no boss: %+v", c)
 			}
 		}
@@ -114,6 +115,30 @@ func count(xs []string, x string) int {
 		}
 	}
 	return n
+}
+
+// On the map each act's topic biomes and boss rooms draw their own pools,
+// as a Touhou run climbs by stage; the Court, a Boss II exit, opens Boss
+// II's.
+func TestAudioClimbsByAct(t *testing.T) {
+	st := &game.State{Phase: game.PhaseDoors}
+	for _, b := range rules.MapBiomes() {
+		bs := game.BiomeState{Kind: b.Kind, Topic: "dp"}
+		if b.Kind == rules.Boss {
+			bs.Boss = "off-by-one"
+		}
+		st.Biomes = append(st.Biomes, bs)
+	}
+	st.Biomes[rules.TierBossII].Boss = game.TrialBoss
+	st.Biomes[rules.TierFinal].Boss = game.FinalBoss
+	want := []string{audio.PoolUserland, audio.PoolAct1, audio.PoolBoss1, audio.PoolAct2, audio.PoolBoss2,
+		audio.PoolAct3, audio.PoolFinal}
+	for i := range st.Biomes {
+		st.Biome = i
+		if got := (&Model{state: st}).audioCue(); got.Pool != want[i] {
+			t.Errorf("tier %d plays %q, want %q", i, got.Pool, want[i])
+		}
+	}
 }
 
 func TestAudioCrash(t *testing.T) {

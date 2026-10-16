@@ -47,7 +47,7 @@ func TestFetch(t *testing.T) {
 	dir := t.TempDir()
 	l := &Library{CacheDir: filepath.Join(dir, "music"), Tracks: []Track{
 		track("good", "/good.wav"), track("flaky", "/flaky.wav"), track("changed", "/changed.wav"),
-		track("tampered", "/tampered.wav"), track("gone", "/gone.wav"), {ID: "other", Pools: []string{PoolBoss}},
+		track("tampered", "/tampered.wav"), track("gone", "/gone.wav"), {ID: "other", Pools: []string{PoolBoss1}},
 	}}
 	var log strings.Builder
 	r := Fetch(context.Background(), l, FetchOptions{Out: &log, Client: srv.Client(), Retries: 1, Only: []string{PoolGrub}})

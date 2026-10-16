@@ -20,8 +20,11 @@ const TouhouNotice = "東方Project二次創作 — the Touhou music in katharsi
 var poolNames = map[string]string{
 	PoolGrub:     "GRUB menu",
 	PoolUserland: "Userland (the first biome)",
-	PoolMid:      "Topic biomes",
-	PoolBoss:     "Boss rooms",
+	PoolAct1:     "Act I",
+	PoolAct2:     "Act II",
+	PoolAct3:     "Act III",
+	PoolBoss1:    "Boss I",
+	PoolBoss2:    "Boss II",
 	PoolFinal:    "The Halting Problem",
 	PoolMerge:    "Merge window",
 	PoolPanic:    "Kernel panic",

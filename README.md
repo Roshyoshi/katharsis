@@ -150,13 +150,15 @@ katharsis audio credits   # every track, its arranger and license
 The music is Touhou chiptune: SUZUKI PLAN's 東方BGM on VGS, 175 chiptune
 arrangements of ZUN's music, used with the arranger's written permission
 for Touhou Project fan works, plus SwapXFO's NES "Misty Lake" (CC BY 4.0).
-Each biome draws from the matching part of the games: title themes on
-GRUB, stage 1-2 themes in Userland, later stages in the topic biomes,
-boss themes for the named bugs, and final-boss themes for The Halting
-Problem. A toast credits each track as it starts; GRUB → Credits lists
-them all. The game never bundles the music: `audio fetch` downloads it
-from each source, checked against pinned SHA-256 hashes. Without it the
-game plays on with its effects only. `ctrl+t` turns the music on or off.
+Each biome draws from the matching part of the games and climbs by act
+as a run climbs by stage: title themes on GRUB, stage 1-2 themes in
+Userland, stage 3-4 in act I, 5-6 in act II, extra stages in act III;
+stage 1-3 bosses for Boss I, 4-5 and extra bosses for Boss II, and
+final-boss themes for The Halting Problem. A toast credits each track as
+it starts; GRUB → Credits lists them all. The game never bundles the
+music: `audio fetch` downloads it from each source, checked against
+pinned SHA-256 hashes. Without it the game plays on with its effects
+only. `ctrl+t` turns the music on or off.
 
 Sound effects are synthesized at start (`internal/audio/sfx.toml`).
 Licensing evidence, the stage-to-pool mapping and the engine's numbers:

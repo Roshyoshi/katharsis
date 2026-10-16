@@ -79,7 +79,7 @@ role = "Shingyoku's theme (stage 5 boss)"
 sha256 = "28c7684845d6e06904481c64e50429bf0ae9152cc0465319a637070c62beb0aa"
 size = 11070
 seconds = 56.4
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th01-16"
@@ -142,7 +142,7 @@ role = "Stage 1 Boss - Orange's theme"
 sha256 = "58ac893090a108deb579d138ace071849d89338e05aa708f9b58ac7eec774040"
 size = 13228
 seconds = 106.7
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th04-05"
@@ -167,7 +167,7 @@ role = "Stage 2 Boss - Kurumi's theme"
 sha256 = "3539debbb99df14d76adeecfcda13ab41d24fc7cc4cbd24bcf69afe97e6f3943"
 size = 16193
 seconds = 106.7
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th04-07"
@@ -179,7 +179,7 @@ role = "Stage 3 theme"
 sha256 = "76254a98550e53f185f822d1f7b7adb19bd39e853af35dc6fc39b4ea3165d677"
 size = 11718
 seconds = 93.0
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th04-08"
@@ -192,7 +192,7 @@ role = "Stage 3 Boss - Elly's theme"
 sha256 = "521e82fcbbb91247bb8a852f339f4d19c8747116155ade2213dba77a2ed7a217"
 size = 14716
 seconds = 97.2
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th04-09"
@@ -205,7 +205,7 @@ role = "Stage 4 theme"
 sha256 = "84b962ab67e3615295d09dc6c5ae212010c5e3f2fa904933a75bd338bbf7f42d"
 size = 18127
 seconds = 158.0
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th04-10"
@@ -218,7 +218,7 @@ role = "Stage 4 Boss A - Reimu Hakurei's theme"
 sha256 = "5178b9c639df7540ca6abe726d280cf10da954ad29d49d24efa5f8da6f30223c"
 size = 10430
 seconds = 77.6
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th04-11"
@@ -231,7 +231,7 @@ role = "Stage 4 Boss B - Marisa Kirisame's theme"
 sha256 = "56fadf61d41d46d0e38ba67f17f35b800c550d3a2e20d77c8248002ddf46f01d"
 size = 9297
 seconds = 73.5
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th04-12"
@@ -243,7 +243,7 @@ role = "Stage 5 theme"
 sha256 = "40d9275103537a319d5f81d3449edf3a54d7e79b281ce41208cb35d0b16a4d92"
 size = 18350
 seconds = 113.5
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th04-13"
@@ -256,7 +256,7 @@ role = "Stage 5 Boss - Yuuka Kazami's 1st theme"
 sha256 = "c15bf5ea80bc4ea985189b0fbeca53ba8a170c5865d90f4175eb7bc4784b7ff4"
 size = 20894
 seconds = 146.8
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th05-10"
@@ -269,7 +269,7 @@ role = "Extra Stage theme"
 sha256 = "aee91b2d5dd5b7df54d938215e44617ceb5c35d71936b8955c11c5d0f55f0115"
 size = 10974
 seconds = 110.5
-pools = ["mid"]
+pools = ["act3"]
 
 [[track]]
 id = "th05-11"
@@ -377,7 +377,7 @@ role = "Stage 1 Boss - Rumia's theme"
 sha256 = "5d0268ad7d59e8b53fbf7935fd0644a529dec871f67f352e6a8dab11b20dbc77"
 size = 9961
 seconds = 51.6
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th06-04"
@@ -403,7 +403,7 @@ role = "Stage 2 Boss - Cirno's theme"
 sha256 = "7df5769a3cd53c39405e76ef47e86f6319c3c9b74011fd2d9e17bbf7b051b77d"
 size = 8569
 seconds = 78.4
-pools = ["boss"]
+pools = ["boss1"]
 keys = ["off-by-one"]
 
 [[track]]
@@ -417,7 +417,7 @@ role = "Stage 3 theme"
 sha256 = "377cb5a36c5d2f7abcdc5a241046d677838f5230fa831f662736075c31128584"
 size = 9474
 seconds = 101.8
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th06-07"
@@ -430,7 +430,7 @@ role = "Stage 3 Boss - Hong Meiling's theme"
 sha256 = "5e868163344aa39745c400714f122f83467254718c404d01c114c4cda1f7f036"
 size = 10437
 seconds = 97.0
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th06-08"
@@ -443,7 +443,7 @@ role = "Stage 4 theme"
 sha256 = "996f2b13fa2e3e34346ba34f24212260bc2d1a17b6d8db286a30662e6fc43c77"
 size = 10697
 seconds = 114.8
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th06-09"
@@ -456,7 +456,7 @@ role = "Stage 4 Boss - Patchouli Knowledge's theme"
 sha256 = "ffc1a452dd8cc3cc773bacc2b87fba5890e04b3067b737ac7c24f4bbd4dd10cb"
 size = 11397
 seconds = 116.8
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th06-10"
@@ -469,7 +469,7 @@ role = "Stage 5 theme"
 sha256 = "789643b47d265f7108699013fcb41b37b83bd5ea801295b2f8de941315681cf6"
 size = 22418
 seconds = 157.3
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th06-11"
@@ -482,7 +482,7 @@ role = "Stage 5 Boss - Sakuya Izayoi's theme"
 sha256 = "7e64e98416c43844c382e2834c04d00c9792052e877362cb22715a83e04f978c"
 size = 10821
 seconds = 77.8
-pools = ["boss"]
+pools = ["boss2"]
 keys = ["race-condition"]
 
 [[track]]
@@ -496,7 +496,7 @@ role = "Final Stage theme"
 sha256 = "62b35b13407535c5ff229f554dee0407aedf8095d19f858feceb231d2ad3056b"
 size = 7675
 seconds = 54.9
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th06-13"
@@ -522,7 +522,7 @@ role = "Extra Stage theme"
 sha256 = "6c443ae391104978a92b59e7473532f361e17fbe9a0f87538cd9cb96e6154009"
 size = 14025
 seconds = 151.9
-pools = ["mid"]
+pools = ["act3"]
 
 [[track]]
 id = "th06-15"
@@ -535,7 +535,7 @@ role = "Extra Boss - Flandre Scarlet's theme"
 sha256 = "c177d251eb544d443beec7f87827e20ac1ba06527ce6e48de3fdce932cad5869"
 size = 12441
 seconds = 121.5
-pools = ["boss", "final"]
+pools = ["boss2", "final"]
 keys = ["undefined-behavior"]
 
 [[track]]
@@ -601,7 +601,7 @@ role = "Stage 1 Boss - Letty Whiterock's theme"
 sha256 = "7c80e872be65170063b4bc4f71ca2372df6928d710051a06298221ade40ad1c2"
 size = 8120
 seconds = 67.1
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th07-04"
@@ -627,7 +627,7 @@ role = "Stage 2 Boss - Chen's theme"
 sha256 = "9d39527b24a48328352caeb3db7e3d2fac99cc9a2f840337818f14f9ced2f094"
 size = 5986
 seconds = 53.0
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th07-06"
@@ -640,7 +640,7 @@ role = "Stage 3 theme"
 sha256 = "c1854ba92f6023d79cac3b7299a2088769ea17ea5511b659f2aed9563562f4b6"
 size = 13001
 seconds = 116.8
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th07-07"
@@ -653,7 +653,8 @@ role = "Stage 3 Boss - Alice Margatroid's theme"
 sha256 = "54eb82117e3fea08df2edf67b7df7a2abc31ac1dcc88985c3a975346be3e57ce"
 size = 21021
 seconds = 175.3
-pools = ["boss"]
+pools = ["boss1"]
+keys = ["trial"]
 
 [[track]]
 id = "th07-08"
@@ -666,7 +667,7 @@ role = "Stage 4 theme"
 sha256 = "8e84270aa137305ba3ebd7aae1ecde6681bddf28720911a15f17c7dd98eb9b67"
 size = 16230
 seconds = 236.7
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th07-09"
@@ -679,7 +680,7 @@ role = "Stage 4 Boss - Prismriver Sisters' (Lunasa, Merlin, and Lyrica) theme"
 sha256 = "569b19e21c2a91dae6f85aa97bf7b63a644da992817f381deb2e94371f01173b"
 size = 11648
 seconds = 137.3
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th07-10"
@@ -692,7 +693,7 @@ role = "Stage 5 theme"
 sha256 = "dd3cb16e6b62592727c103ecc98e7bd283d300c4ee1d955eeb0e617fe221c74d"
 size = 14469
 seconds = 139.0
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th07-11"
@@ -705,7 +706,7 @@ role = "Stage 5 Boss - Youmu Konpaku's theme"
 sha256 = "fa701ad695d2dd62fb2a63cfd9142e235c92eaa9bef63bb41182532433b8233f"
 size = 10097
 seconds = 105.3
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th07-12"
@@ -718,7 +719,7 @@ role = "Final Stage theme"
 sha256 = "9de1c28a9e0f4c29b3a00e42fdd7a12e71b4845f818453af40018c7ed18954aa"
 size = 8250
 seconds = 54.7
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th07-13"
@@ -731,7 +732,7 @@ role = "Final Boss - Yuyuko Saigyouji's theme"
 sha256 = "fab760e6a285abec3693544b5a0ad306c38a53547cde4955b63b548972bb36cd"
 size = 16656
 seconds = 141.4
-pools = ["boss", "final"]
+pools = ["boss2", "final"]
 keys = ["oom-killer"]
 
 [[track]]
@@ -758,7 +759,7 @@ role = "Extra Stage theme"
 sha256 = "17cf2283ba040bfe183a5ac1bcac7d85559a2875e05fe6b9773226967904b468"
 size = 18018
 seconds = 140.0
-pools = ["mid"]
+pools = ["act3"]
 
 [[track]]
 id = "th07-16"
@@ -784,7 +785,7 @@ role = "Phantasm Stage theme"
 sha256 = "aa11cb40016cd1ea38ad640e11cce54e675e698ac20e58675a00ff4eca2521f4"
 size = 18208
 seconds = 140.0
-pools = ["mid"]
+pools = ["act3"]
 
 [[track]]
 id = "th07-18"
@@ -876,7 +877,7 @@ role = "Stage 1 Boss - Wriggle Nightbug's theme"
 sha256 = "71b00801a185e18dd069ed7ac236c56c038ca38a0c95d19bf697af1840a458cd"
 size = 14480
 seconds = 75.9
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th08-04"
@@ -902,7 +903,7 @@ role = "Stage 2 Boss - Mystia Lorelei's theme"
 sha256 = "29e001475fbfeb706d938103faa083e49e4fcc4d72d60db36ff5f907ed166337"
 size = 10286
 seconds = 94.2
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th08-06"
@@ -915,7 +916,7 @@ role = "Stage 3 theme"
 sha256 = "a2357fd42f32b0894eecf619dd535c874640c9e039b638c3b46832b1b16cea32"
 size = 9892
 seconds = 90.4
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th08-07"
@@ -928,7 +929,7 @@ role = "Stage 3 Boss - Keine Kamishirasawa's theme"
 sha256 = "044878ed49d1614fada2b702ce0150c25bf7a6c0055c3feca79455a1c1ce7ea7"
 size = 12289
 seconds = 113.8
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th08-08"
@@ -941,7 +942,7 @@ role = "Stage 4 theme"
 sha256 = "7e92e49ac0584fd694154e836871eec887be76660b125551956e78bda69a9dfd"
 size = 13187
 seconds = 91.5
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th08-09"
@@ -954,7 +955,7 @@ role = "Stage 4 uncanny Boss - Reimu Hakurei's theme"
 sha256 = "304518d576991d9984d6057fdbb18aa4a09cf235f188139edc069ef2d09c29a8"
 size = 18808
 seconds = 150.8
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th08a-10"
@@ -967,7 +968,7 @@ role = "Stage 4 powerful Boss - Marisa Kirisame's theme"
 sha256 = "1882e4251a575a6f9b857e357a053ca46e463acf69c275fc8c2c3ffbadbac967"
 size = 15409
 seconds = 116.4
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th08-11"
@@ -980,7 +981,7 @@ role = "Stage 5 theme"
 sha256 = "157369ecf929aa7ea25954d53af6bbf85afbb423954634440a537fe1041375a4"
 size = 17277
 seconds = 167.5
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th08-12"
@@ -993,7 +994,7 @@ role = "Stage 5 Boss - Reisen Udongein Inaba's theme"
 sha256 = "f1c2e1dfa93eac866b99ee385339fcc919fb92545a3a62c750bfce4325e0474f"
 size = 11756
 seconds = 118.0
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th08-13"
@@ -1006,7 +1007,7 @@ role = "Final Stage theme"
 sha256 = "c30eef3c616a6dc0918763525da77a579bb0b1ddd433140906535f5122717f8c"
 size = 11253
 seconds = 77.0
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th08-14"
@@ -1058,7 +1059,7 @@ role = "Extra Stage theme"
 sha256 = "3fa46b0366d2066d72f7d8f276ff87b1c3a428153effda862e6e0ed25a9b721d"
 size = 18758
 seconds = 150.9
-pools = ["mid"]
+pools = ["act3"]
 
 [[track]]
 id = "th08-18"
@@ -1110,7 +1111,7 @@ role = "Last Word theme"
 sha256 = "0bc746e8c9b33cabebd9f91ec4bc27c72245836f924b4f3ba330050031981a09"
 size = 10869
 seconds = 72.6
-pools = ["mid"]
+pools = ["act3"]
 
 [[track]]
 id = "th09-01"
@@ -1136,7 +1137,7 @@ role = "Reimu Hakurei's theme"
 sha256 = "5aa03c6721b99006c641474e8f63461896c269cdba81cf3f7465d9ba8ef3984f"
 size = 17082
 seconds = 154.3
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th09-03"
@@ -1149,7 +1150,7 @@ role = "Marisa Kirisame's theme"
 sha256 = "52f76dcfc77c6e7b27f6f871911d36b56b3126bf9a43947a9c3d0471b256ace0"
 size = 15306
 seconds = 129.9
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th09-04"
@@ -1162,7 +1163,7 @@ role = "Sakuya Izayoi's theme"
 sha256 = "9304bde3297ca7d27756f14a0d4491a154725e53d7bc07af6c9eca10cee36de9"
 size = 13812
 seconds = 125.5
-pools = ["mid", "boss"]
+pools = ["act2", "boss2"]
 keys = ["race-condition"]
 
 [[track]]
@@ -1176,7 +1177,7 @@ role = "Youmu Konpaku's theme"
 sha256 = "0b75a221866a6ec8a0a802a3088e6c944bb32a366d31e802fe6f17da5a6effb2"
 size = 20419
 seconds = 158.3
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th09-06"
@@ -1189,7 +1190,7 @@ role = "Reisen Udongein Inaba's theme"
 sha256 = "7d8a61e4146ae7e3a3164c1fdc1ca099f4907c1c1329bb192f6acece5e80b654"
 size = 19007
 seconds = 117.9
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th09-07"
@@ -1202,7 +1203,7 @@ role = "Cirno's theme"
 sha256 = "459da665c2319b245906da25159cc912e4df6588c81e9f5dbcdfc5899b5e1058"
 size = 24583
 seconds = 144.0
-pools = ["mid", "boss"]
+pools = ["act1", "boss1"]
 keys = ["off-by-one"]
 
 [[track]]
@@ -1216,7 +1217,7 @@ role = "Prismriver Sisters' (Lyrica, Merlin, and Lunasa) theme"
 sha256 = "f38bf279583447673c3bc5871207eb772556925139cae05ec43e5f88608afa89"
 size = 19623
 seconds = 137.3
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th09-09"
@@ -1229,7 +1230,7 @@ role = "Mystia Lorelei's theme"
 sha256 = "7ed30f714e631eb29789d0f4529cb06f369662a8decc4eec538e57307e3d7b7f"
 size = 25423
 seconds = 156.1
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th09-10"
@@ -1242,7 +1243,7 @@ role = "Tewi Inaba's theme"
 sha256 = "b555950e84cd78f3deefa04e1c03779f71450fcb1bbdba0c16bb9e057f9c7e98"
 size = 17257
 seconds = 104.2
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th09-11"
@@ -1255,7 +1256,7 @@ role = "Aya Shameimaru's theme"
 sha256 = "5c026ecb2b7fff8219c68656c325824934de6dccd86a900fa723ce15e7440171"
 size = 30185
 seconds = 181.7
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th09-12"
@@ -1268,7 +1269,7 @@ role = "Medicine Melancholy's theme"
 sha256 = "01e8b9bb2c415dd9f62ac732134ce79c26adb3a46318c010437bf71e15e79458"
 size = 13410
 seconds = 111.5
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th09-13"
@@ -1281,7 +1282,7 @@ role = "Yuuka Kazami's theme"
 sha256 = "0270a502ac0a88715ed28750867e0d34f28e7e5ee744eff440f8866230936093"
 size = 25893
 seconds = 149.8
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th09-14"
@@ -1294,7 +1295,7 @@ role = "Komachi Onozuka's theme"
 sha256 = "93401d79e4be5f5a6fc768c39c1cb32d5318283c8208f77ab69ccec822f4704f"
 size = 22194
 seconds = 165.2
-pools = ["mid"]
+pools = ["act3"]
 
 [[track]]
 id = "th09-15"
@@ -1347,7 +1348,7 @@ role = "Stage 1 Boss - Minoriko Aki's theme"
 sha256 = "c5a0c89d61d11788d36773a35566d3d188a891bfadadcfbd59fc5eb5b67732a5"
 size = 8425
 seconds = 43.0
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th10-04"
@@ -1373,7 +1374,7 @@ role = "Stage 2 Boss - Hina Kagiyama's theme"
 sha256 = "d7e835eab0fb6a877bdee940e9599b22943369ab4aa1c0dcce353704813fc769"
 size = 16982
 seconds = 103.5
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th10-06"
@@ -1386,7 +1387,7 @@ role = "Stage 3 theme"
 sha256 = "1195f6da078794a1766e98cc99418446182b19d9d2dcf514fe01c568120512d0"
 size = 18281
 seconds = 179.6
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th10-07"
@@ -1399,7 +1400,7 @@ role = "Stage 3 Boss - Nitori Kawashiro's theme"
 sha256 = "229b2cad8cdcab6c3c87069fe4c3f79c7f0300ce5b68d731856515c5aaeb1fb3"
 size = 16037
 seconds = 153.5
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th10-08"
@@ -1412,7 +1413,7 @@ role = "Stage 4 theme"
 sha256 = "6fdbddf0b3e4c01eabc04227ac6449aa291f5cfd76307f0bfe38bdf1258c281c"
 size = 23773
 seconds = 195.1
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th10-09"
@@ -1425,7 +1426,7 @@ role = "Stage 4 boss - Aya Shameimaru's theme"
 sha256 = "c1232331e8440bbddf40350e6421dc1bb98b7609d9b40a378d4c137e7831fa97"
 size = 12815
 seconds = 82.4
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th10-10"
@@ -1438,7 +1439,7 @@ role = "Stage 5 theme"
 sha256 = "5d4a2c3bd55f121a3556fd57f4bcc7e9bc757c6554947e3142a4d75ef96c560b"
 size = 25694
 seconds = 179.9
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th10-11"
@@ -1451,7 +1452,7 @@ role = "Stage 5 boss - Sanae Kochiya's theme"
 sha256 = "a33600af7f92214194ce985ebc8ee7f66f4bedc43aafa33bf03c076ccb7f95b9"
 size = 26882
 seconds = 181.1
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th10-12"
@@ -1464,7 +1465,7 @@ role = "Stage 6 theme"
 sha256 = "b3f4f0ab78bdcb7ca24f636f3051b0db4e47fdd662ff24b560adfc8f9ab3906d"
 size = 8231
 seconds = 59.3
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th10-13"
@@ -1490,7 +1491,7 @@ role = "Extra stage theme"
 sha256 = "4f8ab4c7b48a9b52ae23a7531717e3f4958f4a2d6c610e4aa7439d3971b382d8"
 size = 20182
 seconds = 198.2
-pools = ["mid"]
+pools = ["act3"]
 
 [[track]]
 id = "th10-15"
@@ -1581,7 +1582,7 @@ role = "Stage 1 boss - Yamame Kurodani's theme"
 sha256 = "79efdb322cf4344a50cf19806258b65c2bbbd0ac2f7d0375db6be5987d96118d"
 size = 8690
 seconds = 53.8
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th11-04"
@@ -1607,7 +1608,7 @@ role = "Stage 2 boss - Parsee Mizuhashi's theme"
 sha256 = "5dce1020e4e377304f52f82ecf9a0b791b3135564e033d4962b637ca6105cbd7"
 size = 19414
 seconds = 108.8
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th11-06"
@@ -1620,7 +1621,7 @@ role = "Stage 3 theme"
 sha256 = "bca4b11f47e0fcdc6f300dc76ef5e5dc54501bafa506c8782aae92f75135ec30"
 size = 13469
 seconds = 112.9
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th11-07"
@@ -1633,7 +1634,7 @@ role = "Stage 3 boss - Yuugi Hoshiguma's theme"
 sha256 = "659e78dfe7a3cdd4239753ad898649c090cdd479ff5c9f67ca1025ce03694407"
 size = 14118
 seconds = 116.4
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th11-08"
@@ -1646,7 +1647,7 @@ role = "Stage 4 theme"
 sha256 = "67b79ba0e5c29b964e9e3d9bba3327b48ae0a2655493d299c563e4c216e994ce"
 size = 16876
 seconds = 150.0
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th11-09"
@@ -1659,7 +1660,7 @@ role = "Stage 4 boss - Satori Komeiji's theme"
 sha256 = "955f148fbea8ea47e4014a0fe70c64e8e0108dd772ade393dd2b2a8549cc5095"
 size = 18082
 seconds = 123.5
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th11-10"
@@ -1687,7 +1688,7 @@ role = "Stage 5 boss - Rin Kaenbyou's theme"
 sha256 = "a36592cdd4ee788511132d9d1cacb6256208e20ade224e1fee0c56bc55c486b2"
 size = 12411
 seconds = 98.6
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th11-12"
@@ -1700,7 +1701,7 @@ role = "Stage 6 theme"
 sha256 = "9ba8052706744707c17cfaa8dbe662086509a859c2b96acafcedd6a14df0fa84"
 size = 15013
 seconds = 113.4
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th11-13"
@@ -1726,7 +1727,7 @@ role = "Extra stage theme"
 sha256 = "60ebfb07daf86a09d5f4d05bc67177687b136f7727d51c5ee09ff77d8c5b9edc"
 size = 19425
 seconds = 184.7
-pools = ["mid"]
+pools = ["act3"]
 
 [[track]]
 id = "th11-15"
@@ -1739,7 +1740,7 @@ role = "Extra stage boss - Koishi Komeiji's theme"
 sha256 = "f1b0a26093c83f348ccfdd93ff26194a7d4328221bee74b4396a2085fd7c0331"
 size = 20590
 seconds = 151.2
-pools = ["boss", "final"]
+pools = ["boss2", "final"]
 keys = ["heisenbug"]
 
 [[track]]
@@ -1805,7 +1806,7 @@ role = "Stage 1 Boss - Nazrin's theme"
 sha256 = "7e8c31b85de8a9fc7e0cc73c6788e9f68d2d0885c2599469749f3ae99f073bd3"
 size = 19322
 seconds = 94.2
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th12-04"
@@ -1831,7 +1832,7 @@ role = "Stage 2 Boss - Kogasa Tatara's theme"
 sha256 = "331e15fe28c670cd51513564d80294f8780d669bb7caaecea3dda62239244a93"
 size = 15331
 seconds = 124.7
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th12-06"
@@ -1844,7 +1845,7 @@ role = "Stage 3 theme"
 sha256 = "df5b7f31f94f41c8ac99b05452e29e3bf708128edd8673b0ae3a707beebb0b3b"
 size = 17507
 seconds = 131.1
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th12-07"
@@ -1857,7 +1858,7 @@ role = "Stage 3 Boss - Ichirin Kumoi and Unzan's theme"
 sha256 = "7b151380d7159fa5acb13df8ea7c0c5c549d754910002365530846e9fb988f53"
 size = 14550
 seconds = 107.1
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th12-08"
@@ -1870,7 +1871,7 @@ role = "Stage 4 theme"
 sha256 = "33b6c683b6b8c769987929509565cf47a9c8f1b12b63fc44b49e14124466544c"
 size = 16604
 seconds = 140.5
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th12-09"
@@ -1883,7 +1884,7 @@ role = "Stage 4 Boss - Murasa Minamitsu's theme"
 sha256 = "7903ab17259365b9620e698fea349799c86fcd5ce01463776d17190fbd29deb6"
 size = 16279
 seconds = 126.0
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th12-10"
@@ -1896,7 +1897,7 @@ role = "Stage 5 theme"
 sha256 = "c2e0ba98c70c12b308c142e69e7cc82775585309b56be431e97a9e1358e50ef2"
 size = 21544
 seconds = 172.2
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th12-11"
@@ -1909,7 +1910,7 @@ role = "Stage 5 Boss - Shou Toramaru's theme"
 sha256 = "7d2cc8ecfd399fbab5ab20be39da0e5061396023625fff9ed84599f361102f67"
 size = 27824
 seconds = 207.5
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th12-12"
@@ -1922,7 +1923,7 @@ role = "Stage 6 theme"
 sha256 = "a234f649318ddd9926b824526f2fda8973fe33504e871785d696e3d3c199941d"
 size = 7512
 seconds = 99.3
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th12-13"
@@ -1948,7 +1949,7 @@ role = "Extra stage theme"
 sha256 = "a03a786dc698f09b393ac38232d741a05800d66fac8a82887f1ef5656033229e"
 size = 24231
 seconds = 179.2
-pools = ["mid"]
+pools = ["act3"]
 
 [[track]]
 id = "th12-15"
@@ -1961,7 +1962,7 @@ role = "Extra Stage Boss - Nue Houjuu's theme"
 sha256 = "407655a615f1b1a4ea31adb86aa1751ad2a134b26de613ec31fcd02df922d609"
 size = 25949
 seconds = 190.9
-pools = ["boss", "final"]
+pools = ["boss2", "final"]
 keys = ["heisenbug"]
 
 [[track]]
@@ -2027,7 +2028,7 @@ role = "Stage 1/2 boss theme"
 sha256 = "1b341de16df2082c86c4c39fc5029dd5b492be5fcdcf38fa12648393db3a427e"
 size = 12625
 seconds = 72.9
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th12_8-04"
@@ -2053,7 +2054,7 @@ role = "Stage 3 theme"
 sha256 = "85205ff53c45a3ba7f42a84eecea26bd832fb78617aca64ef3a25db1cb3c7de9"
 size = 19777
 seconds = 111.9
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th12_8-06"
@@ -2066,7 +2067,7 @@ role = "Stage 3 boss theme"
 sha256 = "ef862bebe91a8f79b750b99fbede88005509d243656a9782b25c1053ccd6109e"
 size = 15409
 seconds = 99.6
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th12_8-07"
@@ -2092,7 +2093,7 @@ role = "Extra stage theme"
 sha256 = "18a1b3a473593769aae72958d6c8041ac3865cd9ef012604e5007d5696977a06"
 size = 23896
 seconds = 152.4
-pools = ["mid"]
+pools = ["act3"]
 
 [[track]]
 id = "th12_8-09"
@@ -2157,7 +2158,7 @@ role = "Stage 1 Boss - Yuyuko Saigyouji's theme"
 sha256 = "548b41a950ba9c705ef297f8a5b3bc7fd9f12cc68777b9eb4a2dcb82b4e78310"
 size = 13988
 seconds = 80.5
-pools = ["boss"]
+pools = ["boss1"]
 keys = ["oom-killer"]
 
 [[track]]
@@ -2184,7 +2185,7 @@ role = "Stage 2 Boss - Kyouko Kasodani's theme"
 sha256 = "25dfdfea51abe2b2ac2bad3df7b782800fec2c61fc02ce6519ab44544fa6cdeb"
 size = 10299
 seconds = 70.1
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th13-06"
@@ -2197,7 +2198,7 @@ role = "Stage 3 theme"
 sha256 = "5c8697ef281a560d6feccf5983f6bad8e90f109f31bd3299d19cb13c742454d8"
 size = 19056
 seconds = 137.9
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th13-07"
@@ -2210,7 +2211,7 @@ role = "Stage 3 Boss - Yoshika Miyako's theme"
 sha256 = "f37ff8953dc44956ee00ebb465fd2deece5ae0add64acc98e7dbc2ca359b887c"
 size = 13583
 seconds = 73.4
-pools = ["boss"]
+pools = ["boss1"]
 
 [[track]]
 id = "th13-08"
@@ -2223,7 +2224,7 @@ role = "Stage 4 theme"
 sha256 = "b413baa0d2f4c412faa09a0934bea0377adcea816ac82e6369d2a864185fb87d"
 size = 22800
 seconds = 153.1
-pools = ["mid"]
+pools = ["act1"]
 
 [[track]]
 id = "th13-09"
@@ -2236,7 +2237,7 @@ role = "Stage 4 Boss - Seiga Kaku's theme"
 sha256 = "de53e69b2644093fb63c92b87eb2263689bc6f36a51d5e534321942ad6ba0c7c"
 size = 17864
 seconds = 100.7
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th13-10"
@@ -2249,7 +2250,7 @@ role = "Stage 5 theme"
 sha256 = "ba1a447769f0bb41578f044004700d7262a48763a55970361e21c1d6979d9536"
 size = 15908
 seconds = 115.3
-pools = ["mid"]
+pools = ["act2"]
 
 [[track]]
 id = "th13-11"
@@ -2262,7 +2263,7 @@ role = "Stage 5 Boss - Mononobe no Futo's theme"
 sha256 = "1683e7f5c8d5f7661ed9af5bc1c30d3004c512eb5cb94bff925702c68a33f65e"
 size = 24900
 seconds = 147.0
-pools = ["boss"]
+pools = ["boss2"]
 
 [[track]]
 id = "th13-13"
@@ -2288,7 +2289,7 @@ role = "Extra Stage theme"
 sha256 = "eb7651a13ce309300126d7157732e76ea7873caad7bfee8896255407b8088616"
 size = 21939
 seconds = 133.6
-pools = ["mid"]
+pools = ["act3"]
 
 [[track]]
 id = "th13-15"

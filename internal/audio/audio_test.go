@@ -563,25 +563,25 @@ func ids(ts []Track) []string {
 
 func TestLibraryResolve(t *testing.T) {
 	l := library(t,
-		map[string][]string{"g1": {PoolGrub}, "m1": {PoolMid, PoolUserland}, "m2": {PoolMid}},
-		map[string][]string{"mid": {"mine.wav", "notes.txt"}, "dp": {"cache.wav"}})
+		map[string][]string{"g1": {PoolGrub}, "m1": {PoolAct1, PoolUserland}, "m2": {PoolAct1}},
+		map[string][]string{"act1": {"mine.wav", "notes.txt"}, "dp": {"cache.wav"}})
 	if got := ids(l.Resolve(PoolGrub, "")); !slices.Equal(got, []string{"g1"}) {
 		t.Errorf("grub = %v", got)
 	}
-	if got := ids(l.Resolve(PoolMid, "")); !slices.Equal(got, []string{"user:mid/mine.wav"}) {
-		t.Errorf("mid with a user folder (override) = %v", got)
+	if got := ids(l.Resolve(PoolAct1, "")); !slices.Equal(got, []string{"user:act1/mine.wav"}) {
+		t.Errorf("act1 with a user folder (override) = %v", got)
 	}
-	if got := ids(l.Resolve(PoolMid, "dp")); !slices.Equal(got, []string{"user:dp/cache.wav"}) {
-		t.Errorf("mid/dp = %v; the key folder comes first", got)
+	if got := ids(l.Resolve(PoolAct1, "dp")); !slices.Equal(got, []string{"user:dp/cache.wav"}) {
+		t.Errorf("act1/dp = %v; the key folder comes first", got)
 	}
-	if got := ids(l.Resolve(PoolMid, "graphs")); !slices.Equal(got, []string{"user:mid/mine.wav"}) {
-		t.Errorf("mid/graphs = %v; an empty key folder falls back to the pool's", got)
+	if got := ids(l.Resolve(PoolAct1, "graphs")); !slices.Equal(got, []string{"user:act1/mine.wav"}) {
+		t.Errorf("act1/graphs = %v; an empty key folder falls back to the pool's", got)
 	}
 	l.Mode = "extend"
-	if got := ids(l.Resolve(PoolMid, "")); !slices.Equal(got, []string{"m1", "m2", "user:mid/mine.wav"}) {
-		t.Errorf("mid extended = %v", got)
+	if got := ids(l.Resolve(PoolAct1, "")); !slices.Equal(got, []string{"m1", "m2", "user:act1/mine.wav"}) {
+		t.Errorf("act1 extended = %v", got)
 	}
-	if got := ids(l.Resolve(PoolBoss, "")); len(got) != 0 {
+	if got := ids(l.Resolve(PoolBoss1, "")); len(got) != 0 {
 		t.Errorf("boss = %v, want nothing", got)
 	}
 	// A partial download (wrong size) is not there.
@@ -608,7 +608,7 @@ func eventually(t *testing.T, what string, cond func() bool) {
 }
 
 func TestEngineCues(t *testing.T) {
-	l := library(t, map[string][]string{"u1": {PoolUserland}, "u2": {PoolUserland}, "b1": {PoolBoss}}, nil)
+	l := library(t, map[string][]string{"u1": {PoolUserland}, "u2": {PoolUserland}, "b1": {PoolBoss1}}, nil)
 	set := DefaultSettings()
 	e := newEngine(set, l, DefaultEffects())
 	defer e.Close()
@@ -624,7 +624,7 @@ func TestEngineCues(t *testing.T) {
 		t.Errorf("a key change restarted the music: %s #%d", tr.ID, s)
 	}
 
-	e.Cue(Cue{Pool: PoolBoss, Key: "heisenbug", Scene: 2})
+	e.Cue(Cue{Pool: PoolBoss1, Key: "heisenbug", Scene: 2})
 	eventually(t, "the boss track", func() bool { tr, _ := e.NowPlaying(); return tr.ID == "b1" })
 
 	// The kernel panic is silent by default: the music fades out.
@@ -647,13 +647,13 @@ func TestEngineCues(t *testing.T) {
 }
 
 func TestEngineRotatesPool(t *testing.T) {
-	l := library(t, map[string][]string{"a": {PoolMid}, "b": {PoolMid}, "c": {PoolMid}}, nil)
+	l := library(t, map[string][]string{"a": {PoolAct1}, "b": {PoolAct1}, "c": {PoolAct1}}, nil)
 	set := DefaultSettings()
 	set.Repeats = 1
 	set.TrackFade = Duration{200 * time.Millisecond}
 	e := newEngine(set, l, DefaultEffects())
 	defer e.Close()
-	e.Cue(Cue{Pool: PoolMid, Scene: 1})
+	e.Cue(Cue{Pool: PoolAct1, Scene: 1})
 	var played []string
 	buf := make([]float32, 2*Rate/20)
 	for len(played) < 6 {
