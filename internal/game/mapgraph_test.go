@@ -164,10 +164,8 @@ func TestMapSkip(t *testing.T) {
 	nextTier(h)
 	h.do(game.ChooseRoute{Index: exitIndex(t, h.s, "scheduler")})
 	nextTier(h)
-	nextTier(h) // Off-by-One; The ALU is its one open exit, taken at once
-	if h.s.Biomes[3].Node != "alu" {
-		t.Fatalf("act II took %q", h.s.Biomes[3].Node)
-	}
+	nextTier(h) // Off-by-One
+	h.do(game.ChooseRoute{Index: exitIndex(t, h.s, "alu")})
 	nextTier(h)
 	if h.s.Phase != game.PhaseRoute || h.s.Biome != 4 {
 		t.Fatalf("after The ALU: phase %s biome %d", h.s.Phase, h.s.Biome)
@@ -188,6 +186,40 @@ func TestMapSkip(t *testing.T) {
 	h.clearDoor(0, time.Minute)
 	if h.s.Phase != game.PhaseCleared {
 		t.Errorf("the final cleared: phase %s", h.s.Phase)
+	}
+}
+
+// TestMapLockedExits: a tier with one open exit among locked ones is a
+// route, not taken at once, so its locks and the RTFM modules behind them
+// stay on screen (map.md §(c)); only a tier with a single exit is taken at
+// once (TestMapLayout's Emulator, TestMapSkip's skip).
+func TestMapLockedExits(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	for _, actI := range []string{"scheduler", "emulator"} { // to Off-by-One, to the OOM Killer
+		h := newHarness(t, mapPlain(), &game.Meta{}, ps, 0, 5)
+		nextTier(h)
+		h.do(game.ChooseRoute{Index: exitIndex(t, h.s, actI)})
+		nextTier(h)
+		nextTier(h) // Boss I cleared: The ALU is its one open exit
+		b := h.s.Biomes[3]
+		locked := 0
+		for _, x := range b.Exits {
+			if x.Locked != "" {
+				locked++
+			}
+		}
+		if h.s.Phase != game.PhaseRoute || h.s.Biome != 3 || b.Node != "" || len(b.Exits) != 3 || locked != 2 {
+			t.Fatalf("past %s's boss: phase %s biome %d node %q exits %+v", actI, h.s.Phase, h.s.Biome, b.Node, b.Exits)
+		}
+		if o := h.s.Offers[len(h.s.Offers)-1]; o.Kind != "route" || o.Chosen != -1 || len(o.Items) != 3 {
+			t.Errorf("act II route offer %+v", o)
+		}
+		alu := exitIndex(t, h.s, "alu")
+		h.do(game.ChooseRoute{Index: alu})
+		if h.s.Biomes[3].Node != "alu" || h.s.Phase != game.PhaseDoors {
+			t.Fatalf("took The ALU: %+v phase %s", h.s.Biomes[3], h.s.Phase)
+		}
 	}
 }
 

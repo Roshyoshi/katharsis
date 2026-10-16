@@ -817,8 +817,8 @@ func (e *engine) leaveMerge() error {
 
 // ---- biomes and the end ----------------------------------------------------
 
-// enterBiome moves the boot to biome i: on a map, to its exits (or the one
-// open exit, taken at once); else to its route or first room.
+// enterBiome moves the boot to biome i: on a map, to its exits (or its one
+// exit, taken at once); else to its route or first room.
 func (e *engine) enterBiome(i int) {
 	s := e.s
 	s.Biome, s.Room = i, 0

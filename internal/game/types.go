@@ -321,8 +321,9 @@ type BiomeState struct {
 	Node string `json:",omitempty"`
 	// Exits are the exits the tier was entered by on a map: the nodes the
 	// previous tier's node leads to, locked ones included, in the graph's
-	// order. ChooseRoute takes one by index; a single open exit is taken
-	// at once. They are kept after the choice, for the map's "not taken".
+	// order. ChooseRoute takes one by index; a tier with a single exit
+	// takes it at once. They are kept after the choice, for the map's "not
+	// taken".
 	Exits []Exit `json:",omitempty"`
 }
 

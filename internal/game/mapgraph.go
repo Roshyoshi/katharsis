@@ -61,9 +61,11 @@ func (e *engine) applyNode(i int, id string) {
 	}
 }
 
-// enterMapTier offers tier i's exits, or takes the only open one, and
-// reports whether it did either: false when tier i already has its node
-// or the boot has no map.
+// enterMapTier offers tier i's exits, or takes its only exit, and reports
+// whether it did either: false when tier i already has its node or the
+// boot has no map. One open exit among locked ones is still a route: a
+// locked exit stays on screen with the RTFM module that opens it (map.md
+// §(c)).
 func (e *engine) enterMapTier(i int) bool {
 	s := e.s
 	b := &s.Biomes[i]
@@ -76,10 +78,9 @@ func (e *engine) enterMapTier(i int) bool {
 	for j, x := range ex {
 		b.Offers[j] = x.Topic
 	}
-	if openExits(ex) == 1 {
-		open := slices.IndexFunc(ex, func(x Exit) bool { return x.Locked == "" })
-		e.logExits(i, ex, open)
-		e.takeNode(i, ex[open].Node)
+	if len(ex) == 1 { // open: exits opens a plain exit when none is
+		e.logExits(i, ex, 0)
+		e.takeNode(i, ex[0].Node)
 		return true
 	}
 	e.logExits(i, ex, -1)
@@ -93,16 +94,6 @@ func (e *engine) enterMapTier(i int) bool {
 	}
 	e.logf("route: biome_%d exits %s", i, strings.Join(names, ", "))
 	return true
-}
-
-func openExits(ex []Exit) int {
-	n := 0
-	for _, x := range ex {
-		if x.Locked == "" {
-			n++
-		}
-	}
-	return n
 }
 
 // takeNode plays node id at tier i: a skip owes its picks and enters the

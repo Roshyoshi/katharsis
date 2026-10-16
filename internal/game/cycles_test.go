@@ -397,7 +397,8 @@ func TestLadderBitesLate(t *testing.T) {
 	h.s.Prestige = 3
 	h.do(game.Retreat{})
 	h.s.Cycles = 50
-	nextTier(h) // Off-by-One cleared; The ALU taken at once
+	nextTier(h) // Off-by-One cleared
+	h.do(game.ChooseRoute{Index: exitIndex(t, h.s, "alu")})
 	h.open(0)
 	if c, _ := h.s.FailCost(game.GaveUp); c != 17 {
 		t.Errorf("P3 act II fail %d, want 12+5", c)

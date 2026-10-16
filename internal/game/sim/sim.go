@@ -1131,7 +1131,8 @@ func (r Report) String() string {
 
 // route is the model's pick of the route on offer: a topic at random, or on
 // a map an open exit by Player.Route. A hidden exit (the Trial) only a
-// model set out for it takes, at once.
+// model set out for it takes, at once. One open exit is no choice and
+// draws nothing, as when the engine took it at once.
 func (b *boot) route() int {
 	bs := b.s.Biomes[b.s.Biome]
 	if len(bs.Exits) == 0 {
@@ -1151,7 +1152,7 @@ func (b *boot) route() int {
 	}
 	switch {
 	case len(open) == 1:
-		return open[0] // beside an open Trial the model does not take
+		return open[0] // beside locked exits, or an open Trial the model does not take
 	case b.p.Route == "":
 		return open[b.rng.IntN(len(open))]
 	}

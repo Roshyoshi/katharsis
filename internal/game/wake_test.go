@@ -23,7 +23,8 @@ func toBossII(t *testing.T, m *game.Meta) *harness {
 	nextTier(h)
 	h.do(game.ChooseRoute{Index: exitIndex(t, h.s, "scheduler")})
 	nextTier(h)
-	nextTier(h) // Off-by-One; its one open exit, The ALU, is taken at once
+	nextTier(h) // Off-by-One
+	h.do(game.ChooseRoute{Index: exitIndex(t, h.s, "alu")})
 	if x := h.s.Biomes[3].Exits[exitIndex(t, h.s, "alu")]; !slices.Equal(x.Bosses, []string{"heisenbug", "race-condition"}) {
 		t.Errorf("The ALU's card names %v: the Trial is no boss it names", x.Bosses)
 	}
@@ -95,6 +96,31 @@ func TestTrialGate(t *testing.T) {
 	}
 	if h.s.RNG != rng {
 		t.Error("the exits drew a random number")
+	}
+}
+
+// TestTrialBesideOneExit: The Sliding Window leads to Race Condition alone,
+// taken at once; once a pool has hit the cap (Meta.Capped), the Trial's
+// locked exit beside it makes the tier a route, its lock on screen.
+func TestTrialBesideOneExit(t *testing.T) {
+	t.Parallel()
+	for _, capped := range []int{0, 1} {
+		m := &game.Meta{Capabilities: []string{"CAP_TWOPTR"}, Capped: capped}
+		h := newHarness(t, mapPlain(), m, dense(catalog.Topics, 800, 2600, 20), 0, 4)
+		nextTier(h)
+		h.do(game.ChooseRoute{Index: exitIndex(t, h.s, "scheduler")})
+		nextTier(h)
+		nextTier(h) // Off-by-One
+		h.do(game.ChooseRoute{Index: exitIndex(t, h.s, "window")})
+		nextTier(h) // The Sliding Window
+		x, _, shown := trialExit(h.s)
+		b := h.s.Biomes[rules.TierBossII]
+		if capped == 0 && (shown || b.Node != "race-condition" || h.s.Phase != game.PhaseDoors) {
+			t.Errorf("no hint: Trial shown %v, tier plays %q, phase %s", shown, b.Node, h.s.Phase)
+		}
+		if capped == 1 && (!shown || x.Locked != game.LockedFull || b.Node != "" || h.s.Phase != game.PhaseRoute) {
+			t.Errorf("hinted: Trial %+v (shown %v), tier plays %q, phase %s", x, shown, b.Node, h.s.Phase)
+		}
 	}
 }
 
