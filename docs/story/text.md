@@ -187,7 +187,7 @@ A56–A58 and G34–G37 were found verbatim in the Gutenberg plain text
 first line as the eBook types them, its closing ’ typed as `'`. G35 and G36
 drop italics ("_rather_", "_very_").
 
-A59–A67 are the setuid bits' and the Trial's (docs/design/achievements.md
+A59–A67 are the setuid bits' and the Court's (docs/design/achievements.md
 (f)), found verbatim in `pg11.txt` on 2026-10-15. A62 continues "upon
 her", which the game elides. A59 is the name of the `.stuff-and-nonsense`
 bit (`internal/setuid`), not a story line. A66 and A67 are the hints of
@@ -861,7 +861,7 @@ You didn't decide halting. You decided this one. The proof survives.
 ```
 
 ### boss.enter.trial
-where: the Trial's boss card and door (docs/design/achievements.md (f)): a hidden exit of act II into Boss II's tier, open to a full cycle pool, its one cursed door one shot. Its name and blurb are in `./internal/flavor/names.go`; the card's rule lines (cursed, one shot, no prestige unlock) are the mechanic · when: every · pick: pool · uses: A52; ch. XI's trumpet and slates (allusion). The White Rabbit is the herald. The Cat is absent: the door is cursed
+where: the Court's boss card and door (docs/design/achievements.md (f)): a hidden exit of act II into Boss II's tier, open to a full cycle pool, its one cursed door one shot. Its name and blurb are in `./internal/flavor/names.go`; the card's rule lines (cursed, one shot, no prestige unlock) are the mechanic · when: every · pick: pool · uses: A52; ch. XI's trumpet and slates (allusion). The White Rabbit is the herald. The Cat is absent: the door is cursed
 ```text
 The White Rabbit blows three blasts on the trumpet. The court sits.
 "Sentence first—verdict afterwards." One WA, one head.
@@ -1427,7 +1427,7 @@ The glass won't let you by yet. This exit opens from ring {ring} down.
 ```
 
 ### route.locked.full
-where: the route screen's locked Trial card, `⚔ ???`, under its gate text ("locked: a mile high", `game.LockedFull`): the hidden exit shows locked once a pool has reached its cap (`Meta.Capped`), hint step 4 of docs/design/achievements.md (f) · when: every · pick: fixed · uses: A50 (allusion). A50 is in two hooks already (`verdict.MLE`, the MLE crash epitaph), so the card names the rule without quoting it (tone rule 11)
+where: the route screen's locked Court card, `⚔ ???`, under its gate text ("locked: a mile high", `game.LockedFull`): the hidden exit shows locked once a pool has reached its cap (`Meta.Capped`), hint step 4 of docs/design/achievements.md (f) · when: every · pick: fixed · uses: A50 (allusion). A50 is in two hooks already (`verdict.MLE`, the MLE crash epitaph), so the card names the rule without quoting it (tone rule 11)
 ```text
 The King turns the pages of his book. There is a rule for this.
 ```
@@ -1444,7 +1444,7 @@ the bit sets, never inside a door or on a crash (GR3, GR6); a secret's hook
 drops its dot. A bit without a line shows the mechanic alone.
 
 ### setuid.\<id>
-where: the dmesg strip, under `chmod u+s <path>` (`setuid_notices` off hides both) · when: once, as the bit sets · pick: fixed per bit, in this order: `hello-world`, `two-twins`, `snicker-snack`, `speedrun-2`, `regular-course`, `two-miles-high`, `stuff-and-nonsense`, `dull-reality` · uses: K&R's `hello, world` (homage), G14 (fragment), A60. `setuid.two-miles-high` is also hint step 3 of the Trial: the strip's line the first time a pool reaches its cap, notices on or off
+where: the dmesg strip, under `chmod u+s <path>` (`setuid_notices` off hides both) · when: once, as the bit sets · pick: fixed per bit, in this order: `hello-world`, `two-twins`, `snicker-snack`, `speedrun-2`, `regular-course`, `two-miles-high`, `stuff-and-nonsense`, `dull-reality` · uses: K&R's `hello, world` (homage), G14 (fragment), A60. `setuid.two-miles-high` is also hint step 3 of the Court: the strip's line the first time a pool reaches its cap, notices on or off
 ```text
 Carved over the door, and now in your inode: hello, world
 Ditto, ditto: two bits where the gap was.
@@ -1473,8 +1473,8 @@ Two endings. One dreamer.
 
 ## Dull Reality
 
-The Trial's ending (docs/design/achievements.md (f)): *Wonderland*'s, where
-the final clear is *Looking-Glass*'s. Win the Trial's cursed door and the
+The Court's ending (docs/design/achievements.md (f)): *Wonderland*'s, where
+the final clear is *Looking-Glass*'s. Win the Court's cursed door and the
 boot ends awake, with no prestige unlock. The scene plays once in full;
 later wakes play beats 4 to 6. You never speak: your AC does. A53 and A54
 sit in two hooks each already (tone rule 11), and so does A52 with

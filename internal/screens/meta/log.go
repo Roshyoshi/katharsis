@@ -239,7 +239,7 @@ func shortHash(b BootRow) string {
 func outcomeText(b BootRow, room int) string {
 	switch {
 	case b.Cleared && b.Ending == game.EndingWake:
-		return "awake (the Trial)" // achievements.md (f): never "woke"
+		return "awake (the Court)" // achievements.md (f): never "woke"
 	case b.Cleared:
 		return "cleared"
 	case b.Cause == "":

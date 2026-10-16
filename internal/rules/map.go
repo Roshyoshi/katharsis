@@ -205,7 +205,7 @@ func MapNodes() []Biome {
 // models that take it wake, 43 to 53%, over the design's 35-45%; aims from
 // 0.40 to 0.55 move that by less than the noise, so the aim stays Boss I's.
 func trialNode() Biome {
-	b := bossNode(TierBossII, TrialNode, "The Trial")
+	b := bossNode(TierBossII, TrialNode, "The Court")
 	boss1 := MapBiomes()[TierBossI]
 	b.TargetClear, b.MinClear, b.EaseClear = boss1.TargetClear, boss1.MinClear, boss1.EaseClear
 	b.FailCycles = 0

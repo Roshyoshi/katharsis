@@ -59,7 +59,7 @@ var bosses = map[string]named{
 	game.FinalBoss:       {"The Halting Problem", "You cannot know whether this ends. Turing proved it; you get to live it."},
 	// The Trial (docs/design/achievements.md (f)) is no boss the bits count
 	// among the six: a hidden exit's, at the Court of Hearts.
-	game.TrialBoss: {"The Trial", "The King judges, the Queen sentences, the jury writes it on slates."},
+	game.TrialBoss: {"The Court", "The King judges, the Queen sentences, the jury writes it on slates."},
 }
 
 // prestiges are the USACO divisions, one per prestige level.

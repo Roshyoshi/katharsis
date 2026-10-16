@@ -14,13 +14,13 @@ import (
 	"katharsis/internal/game"
 )
 
-// trialPane is the boss pane the Trial's door was won on, as the game
+// trialPane is the boss pane the Court's door was won on, as the game
 // draws it: the header, the pool at its cap, a frame, the HP bar.
 var trialPane = []string{
-	"Boot #57 · Bronze · ⚔ The Trial                               ⏱ 08:12 left",
+	"Boot #57 · Bronze · ⚔ The Court                               ⏱ 08:12 left",
 	"♥ 50/50 cycles  🦆0  412 B uncommitted                       daemons strace",
 	"╔══════════════════════════════════════════════════════════════════════════════╗",
-	"║                           T H E   T R I A L                                  ║",
+	"║                           T H E   C O U R T                                  ║",
 	"║   The King judges, the Queen sentences, the jury writes it on slates.        ║",
 	"╚══════════════════════════════════════════════════════════════════════════════╝",
 	"HP ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ 12/12 · AC",
@@ -169,14 +169,14 @@ func TestWakeGoldens(t *testing.T) {
 	}
 }
 
-// The Trial's card says it is cursed, under its one-shot price, whole.
+// The Court's card says it is cursed, under its one-shot price, whole.
 func TestTrialBossCard(t *testing.T) {
 	br := BossRules{Price: "one shot: a fail or :q! ends the boot", OneShot: true, Cursed: true}
 	for _, size := range [][2]int{{80, 24}, {60, 18}} {
 		fs := frames(NewBossCard(game.TrialBoss, 1, false, br), size[0], size[1])
 		last := ansi.Strip(fs[len(fs)-1])
 		flat := strings.Join(strings.Fields(strings.ReplaceAll(last, "║", " ")), " ")
-		for _, w := range []string{"T H E T R I A L", CursedRule, br.Price} {
+		for _, w := range []string{"T H E C O U R T", CursedRule, br.Price} {
 			if !strings.Contains(flat, w) {
 				t.Errorf("at %v the card misses %q:\n%s", size, w, last)
 			}

@@ -184,14 +184,14 @@ func table() []Def {
 			current: true, holds: func(v *view) bool { return v.speed("hundred-twelve", Pure, b.SpeedCompletion112) }},
 
 		// ---- secret · /home/you ----------------------------------------------
-		{ID: ".dull-reality", Kind: KindSecret, Name: "Dull Reality", Hint: "Who Stole the Tarts?", Text: "Win the Trial and wake on the bank.",
+		{ID: ".dull-reality", Kind: KindSecret, Name: "Dull Reality", Hint: "Who Stole the Tarts?", Text: "Win the Court and wake on the bank.",
 			holds: func(v *view) bool {
 				return v.mapped() && v.s.Phase == game.PhaseCleared && v.s.Ending == game.EndingWake
 			}},
 		{ID: ".two-miles-high", Kind: KindSecret, Name: "Nearly Two Miles High", Hint: "EAT ME",
 			Text:  fmt.Sprintf("Reach the cycle cap (%s) in a boot.", units.Hearts(rules.Map().MaxCycles, rules.Map().MaxCycles)),
 			holds: (*view).capped},
-		{ID: ".stuff-and-nonsense", Kind: KindSecret, Name: "Stuff and Nonsense!", Hint: "The court sits in the garden.", Text: "Find the Trial.",
+		{ID: ".stuff-and-nonsense", Kind: KindSecret, Name: "Stuff and Nonsense!", Hint: "The court sits in the garden.", Text: "Find the Court.",
 			holds: func(v *view) bool {
 				return v.mapped() && slices.ContainsFunc(v.s.Biomes, func(b game.BiomeState) bool { return b.Node == rules.TrialNode })
 			}},

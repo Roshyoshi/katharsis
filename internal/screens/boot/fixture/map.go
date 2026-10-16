@@ -254,7 +254,7 @@ func TrialExit(r rules.Rules, open bool) game.Exit {
 func TrialDoor() *game.State {
 	st := MapRouteTrial(true)
 	st.Phase = game.PhaseDoors
-	st.Biomes[4] = game.BiomeState{Name: "The Trial", Topic: game.Mixed, Kind: rules.Boss, Rooms: 1, Boss: game.TrialBoss,
+	st.Biomes[4] = game.BiomeState{Name: "The Court", Topic: game.Mixed, Kind: rules.Boss, Rooms: 1, Boss: game.TrialBoss,
 		Node: rules.TrialNode, Exits: st.Biomes[4].Exits, Offers: st.Biomes[4].Offers}
 	st.Rules.Biomes = slices.Clone(st.Rules.Biomes)
 	st.Rules.Biomes[4].FailCycles = 0 // the node's, as the engine applies it: one shot

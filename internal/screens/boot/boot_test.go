@@ -54,6 +54,7 @@ var stubFlavor = flavorSource{
 			"heisenbug": "Heisenbug", "off-by-one": "Off-by-One", "oom-killer": "OOM Killer",
 			"race-condition": "Race Condition", "undefined-behavior": "Undefined Behavior",
 			game.FinalBoss: "The Halting Problem",
+			game.TrialBoss: "The Court",
 		}[k]
 	},
 	BossBlurb: func(string) string { return "It disappears the moment you add a print statement." },

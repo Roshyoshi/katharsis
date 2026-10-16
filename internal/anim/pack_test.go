@@ -14,10 +14,10 @@ import (
 // packScreen is a boss pane as a screen draws it: a frame, a bar, a wide
 // glyph and text.
 var packScreen = []string{
-	"Boot #57 · act II · the Trial",
+	"Boot #57 · act II · the Court",
 	"♥ 50/50 cycles  🦆0",
 	"╔════════════════════════════════════╗",
-	"║  T H E   T R I A L                 ║",
+	"║  T H E   C O U R T                 ║",
 	"╚════════════════════════════════════╝",
 	"HP ▓▓▓▓▓▓▓▓▓▓░░░░░░░░ 10/20",
 	"──────────────────────────────────────",
