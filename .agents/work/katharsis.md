@@ -296,6 +296,16 @@ D57 settled 10-15  A GitHub-style contribution graph (user: "a git commit graph 
                    days and the load average. No streak counter: "Graph, no streak
                    (Recommended)" (GR1 stands).
 
+D58 settled 10-16  Iteration workflow (user: "most of the core logic is done ... we gotta
+                   rethink the workflow"). Changes are done inline in the default
+                   workspace, one full gate on main before commit. Agents only for
+                   read-only research, sims, audits, or a big separate job (~1 h+), at
+                   effort medium ("subagents to med"); the brief names the files to
+                   touch, the agent tests only its packages. No engine/UI lane split
+                   of one feature. Ends D41's lanes; D30 holds for the agents left.
+                   Why: 112 agents spent 23% of each job reading before the first
+                   edit.
+
 10-15 fix-map merged (A single-exit auto-take, B OOM samples on Hardened at the halved
       memory, C ECC short-clock fallback, D the final's cards hide the clock, upgrade
       order + cursor, gated pick named, RTFM q returns, farewell to the outer
@@ -306,6 +316,10 @@ D57 settled 10-15  A GitHub-style contribution graph (user: "a git commit graph 
 10-15 Rename (user: "yeah sure the court is good rename there"): the secret boss "The
       Trial" is "The Court" everywhere visible, so "trial" means RTFM only. Keys
       rules.TrialNode "trial" and game.TrialBoss kept for saves and setuid holds.
+
+10-16 graph merged (D57): git log opens under a year of TIME+ per day (store.Days,
+      split at local midnight), shaded by quartile of the player's own active days;
+      c walks it, enter jumps to that day's boots. Open: relative vs fixed shades.
 
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
