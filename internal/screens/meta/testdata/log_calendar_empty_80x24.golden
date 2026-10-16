@@ -1,0 +1,24 @@
+git log --graph --oneline  0 boots · 0 cleared · 0 crashed           filter: all
+      May     Jun       Jul     Aug       Sep     Oct   TIME+ per day
+Mon · · · · · · · · · · · · · · · · · · · · · · · · ·   0 active days (last 365)
+Tue · · · · · · · · · · · · · · · · · · · · · · · · ·
+Wed · · · · · · · · · · · · · · · · · · · · · · · · ·
+Thu · · · · · · · · · · · · · · · · · · · · · · · ·
+Fri · · · · · · · · · · · · · · · · · · · · · · · ·
+Sat · · · · · · · · · · · · · · · · · · · · · · · ·
+Sun · · · · · · · · · · · · · · · · · · · · · · · ·     less ░▒▓█ more
+
+fatal: your current branch 'main' does not have any commits yet
+
+
+
+
+
+
+
+
+
+
+
+
+j/k move · enter expand · r replay seed · f filter · c days · g/G ends · q back

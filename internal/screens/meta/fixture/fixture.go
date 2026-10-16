@@ -196,6 +196,141 @@ func Boots() []meta.BootRow {
 	return boots
 }
 
+// Calendar is git log's calendar for the same player: the boots, and two
+// upsolves of what boots #40 and #42 crashed on.
+func Calendar() meta.Calendar {
+	return CalendarOf(Boots(),
+		meta.Day{Date: day(at(12, 0, 0)), Door: mins(14, 30), Upsolves: 1},
+		meta.Day{Date: day(at(14, 0, 0)), Door: mins(22, 5), Upsolves: 1})
+}
+
+// CalendarOf is the calendar a store would give for boots and the upsolve
+// days ups: each boot's uptime, start and end on the day it started, and a
+// load average of the days with 15 minutes or more (RT9).
+func CalendarOf(boots []meta.BootRow, ups ...meta.Day) meta.Calendar {
+	byDay := map[time.Time]*meta.Day{}
+	add := func(d meta.Day) {
+		p := byDay[d.Date]
+		if p == nil {
+			p = &meta.Day{Date: d.Date}
+			byDay[d.Date] = p
+		}
+		p.Door += d.Door
+		p.Boots += d.Boots
+		p.Clears += d.Clears
+		p.Crashes += d.Crashes
+		p.Upsolves += d.Upsolves
+	}
+	for _, b := range boots {
+		d := meta.Day{Date: day(b.Started), Door: b.Uptime, Boots: 1}
+		switch {
+		case b.Cleared:
+			d.Clears = 1
+		case b.Cause != "":
+			d.Crashes = 1
+		}
+		add(d)
+	}
+	for _, u := range ups {
+		add(u)
+	}
+	c := meta.Calendar{Today: Now}
+	for _, d := range byDay {
+		c.Days = append(c.Days, *d)
+	}
+	slices.SortFunc(c.Days, func(a, b meta.Day) int { return a.Date.Compare(b.Date) })
+
+	// GRUB's rule: the windows end today once today counts, yesterday
+	// until then.
+	practiced := func(t time.Time) bool { p := byDay[t]; return p != nil && p.Door >= 15*time.Minute }
+	end := day(Now)
+	if !practiced(end) {
+		end = end.AddDate(0, 0, -1)
+	}
+	var load [3]float64
+	for i, n := range []int{7, 30, 90} {
+		for k := range n {
+			if practiced(end.AddDate(0, 0, -k)) {
+				load[i] += 1 / float64(n)
+			}
+		}
+	}
+	if load[2] > 0 {
+		c.Load = &load
+	}
+	return c
+}
+
+func day(t time.Time) time.Time {
+	y, m, d := t.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
+}
+
+// SparseBoots is a year with little play: eight boots months apart, the
+// last two this month.
+func SparseBoots() []meta.BootRow {
+	var boots []meta.BootRow
+	for i, b := range []struct {
+		y       int
+		m       time.Month
+		d, mins int
+	}{
+		{2025, time.November, 2, 41}, {2026, time.January, 17, 112}, {2026, time.March, 8, 26},
+		{2026, time.March, 9, 67}, {2026, time.June, 21, 190}, {2026, time.September, 27, 12},
+		{2026, time.October, 3, 58}, {2026, time.October, 11, 83},
+	} {
+		row := meta.BootRow{
+			Boot: i + 1, Seed: uint64(i+1) * 0x2545f4914f6cdd1d, Preset: "standard",
+			Started: time.Date(b.y, b.m, b.d, 19, 30, 0, 0, time.UTC), Uptime: time.Duration(b.mins) * time.Minute,
+			Cause: game.TimedOut, Biome: "Userland", Problem: "Teleportation",
+		}
+		if i%3 == 1 {
+			row.Cleared, row.Cause, row.Biome, row.Problem, row.Banked = true, "", "", "", 640
+		}
+		boots = append(boots, row)
+	}
+	return boots
+}
+
+// DenseBoots is a year of steady play ending at Now: a boot or two on most
+// days, none over a winter break, and few in July.
+func DenseBoots() []meta.BootRow {
+	var boots []meta.BootRow
+	causes := []game.Outcome{"", game.TimedOut, game.OutOfLives, game.TimedOut, game.GaveUp}
+	breakFrom, breakTo := time.Date(2025, 12, 20, 0, 0, 0, 0, time.UTC), time.Date(2026, 1, 4, 0, 0, 0, 0, time.UTC)
+	start := meta.CalendarStart(Now)
+	for i := 0; ; i++ {
+		d := start.AddDate(0, 0, i)
+		if d.After(Now) {
+			break
+		}
+		// A fixed hash of the day (splitmix64's mixer): the same year on
+		// every run, with no pattern to the eye.
+		z := uint64(i+1) * 0x9e3779b97f4a7c15
+		z = (z ^ z>>30) * 0xbf58476d1ce4e5b9
+		h := uint32((z ^ z>>27) >> 32)
+		if h%100 >= 75 || d.Month() == time.July && h%100 >= 25 || d.After(breakFrom) && d.Before(breakTo) {
+			continue
+		}
+		for k := range 1 + int(h>>9)%2 {
+			b := meta.BootRow{
+				Seed: uint64(h)<<4 | uint64(k), Preset: "standard", Prestige: min(i/120, 2),
+				Started: d.Add(time.Duration(17+2*k)*time.Hour + time.Duration((h>>20)%60)*time.Minute),
+				Uptime:  mins(12+int(h>>(11+3*k))%150, int(h>>3)%60),
+				Cause:   causes[(i+k)%len(causes)], Biome: "The Heap", Problem: "Angry Cows",
+			}
+			if b.Cause == "" {
+				b.Cleared, b.Biome, b.Problem, b.Banked = true, "", "", 700+int64(h%300)
+			}
+			boots = append(boots, b)
+		}
+	}
+	for i := range boots {
+		boots[i].Boot = i + 1
+	}
+	return boots
+}
+
 // Stats is top for the same player.
 func Stats() meta.Stats {
 	var hist []meta.RatingPoint

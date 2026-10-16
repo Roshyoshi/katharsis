@@ -1,0 +1,24 @@
+git log --graph --oneline  42 boots · 10 cleared · 31 crashed        filter: all
+TIME+ per day · 42 active days (last 365) · load average: 0.86, 0.97, 0.46
+       Nov Dec  Jan Feb Mar  Apr May Jun  Jul Aug  Sep Oct
+Mon ···············································▓░█▒░▒
+Tue ···············································▒█▒░▓█
+Wed ···············································█▓░█▒▓
+Thu ··············································█▓░█▒░
+Fri ··············································▓▒█▒░░
+Sat ··············································▒█▒░▓▓
+Sun ··············································█▓░█▒▓   less ░▒▓█ more
+Tue 2026-10-13 · 2:18:40 in doors · 1 boot · 1 cleared
+
+* 54bf774 #42 Oct 14 P2 1:04:12 crashed in The Heap (timer)                +96 B
+* 11b9dc7 #41 Oct 13 P2 2:18:40 cleared                                 +1.2 KiB
+* 3961090 #40 Oct 12 P2   41:05 crashed in Page Tables (:q!)                 0 B
+* 7677f58 #39 Oct 11 P1 1:17:30 crashed in The Schedul… (out of cycles)   +410 B
+* 2290cd9 #38 Oct 10 P1 1:41:02 cleared                                   +902 B
+* bb1a2d3 #37 Oct 09 P1   12:09 abandoned                                    0 B
+* 2e2f1f1 #36 Oct 08 P2   25:00 cleared                                   +700 B
+* a84eb59 #35 Oct 07 P2 1:02:13 crashed in The Stack (timer)               +53 B
+* 3df73d2 #34 Oct 06 P2 1:39:26 crashed in Page Tables (out of cycles)    +106 B
+* 456a842 #33 Oct 05 P2   26:39 crashed in The Cache (timer)              +159 B
+* 890b7c9 #32 Oct 04 P2 1:03:52 crashed in The Heap (:q!)                 +212 B
+h/l week · j/k day · g/G ends · enter its boots · c list · q back

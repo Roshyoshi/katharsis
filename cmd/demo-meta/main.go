@@ -34,7 +34,7 @@ var stops = []struct {
 	make func() screens.Screen
 }{
 	{"grub", func() screens.Screen { return grub() }},
-	{"log", func() screens.Screen { return meta.NewLog(fixture.Boots(), nil) }},
+	{"log", func() screens.Screen { return meta.NewLog(fixture.Boots(), nil).WithCalendar(fixture.Calendar()) }},
 	{"top", func() screens.Screen { return meta.NewTop(fixture.Stats()) }},
 	{"shop", func() screens.Screen { return meta.NewShop(fixture.ShopConfig()) }},
 	{"setuid", func() screens.Screen { return meta.NewSetuid(fixture.SetuidConfig()) }},
@@ -96,7 +96,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case screens.OpenLog:
 		m.note(msg)
-		m.push(meta.NewLog(fixture.Boots(), nil))
+		m.push(meta.NewLog(fixture.Boots(), nil).WithCalendar(fixture.Calendar()))
 		return m, nil
 	case screens.OpenTop:
 		m.note(msg)

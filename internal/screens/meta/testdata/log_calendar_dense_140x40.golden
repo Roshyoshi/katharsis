@@ -1,0 +1,40 @@
+git log --graph --oneline  350 boots · 77 cleared · 273 crashed                                                                  filter: all
+TIME+ per day · 239 active days (last 365) · load average: 0.57, 0.53, 0.63
+    Oct   Nov     Dec       Jan     Feb     Mar       Apr     May     Jun       Jul     Aug       Sep     Oct
+Mon ▓ ░ ▒ · ░ █ ░ ▓ ▓ ▓ · · ▓ · ▒ █ · · · █ ▓ ▓ ▓ · █ ░ ░ █ ▒ · ▒ ▒ ▓ ▒ ░ · █ · · · ▓ · ▓ · ░ ▒ ▓ █ ░ ▓ ▓ █ ·
+Tue · ░ · █ · ▒ ▓ ░ ▒ · · · ░ █ ▒ · ▓ ▓ █ ▓ ▒ █ ▓ · ▓ · ░ █ ▓ · ▓ ▒ ▒ · ▓ ░ ▒ ░ · · · · · ░ ▒ ░ · █ · · · · ▒
+Wed · █ · ░ ▒ █ ▒ ▒ ▒ ▓ · · ▓ ░ █ ░ ░ · · ▓ █ █ ▓ ░ · █ · ░ · █ ▓ · ▓ · ▒ ░ · · ▓ · · · ▒ · ░ · ▓ ▒ █ ▒ ░ █ ·
+Thu ░ ▓ · ▒ ░ · █ · · ▒ · · ▒ █ █ ░ ▓ █ · █ █ ░ ▒ · ▒ █ █ · ▓ ▒ █ ░ ▒ · ▒ ▒ █ · · · · · · ▒ ░ ▓ ▒ █ █ ▒ · ░
+Fri ░ · █ █ · ▓ · ░ ▓ ▓ · · · █ · ▒ ░ ▓ ░ ▓ · ░ ░ ▓ ░ ▒ ▒ ░ ▒ · · ░ ▓ █ · ▓ · · · · · · █ ▒ ░ ▓ ░ ░ · · ▓ ░
+Sat █ · ▓ · ░ █ ▓ ░ ▓ █ · · █ ░ · ▒ ░ · █ · · ▓ · ▒ █ · ▓ █ █ · ▒ ░ ▓ ▓ █ ▒ ▒ · · · █ ░ ▓ ▓ █ ▒ ▒ ▒ ▒ · · ·
+Sun ▒ · ░ ▒ ░ ░ ▒ · · · · ░ ░ · · █ █ · ▓ ▓ ▒ ▒ · ░ ▓ · · ▒ ▒ █ █ · █ · ░ ▓ ░ · · █ · ░ ▒ ▓ █ ▒ ▓ ▒ · █ · █    less ░▒▓█ more
+
+* af65042 #350 2026-10-13 17:21 P2 1:49:50 cleared                                                                                    +925 B
+* 2f1ec84 #349 2026-10-11 19:55 P2 2:14:47 crashed in The Heap (:q!)                                                                     0 B
+* c27603d #348 2026-10-11 17:55 P2 1:30:47 crashed in The Heap (timer)                                                                   0 B
+* e8a648f #347 2026-10-09 17:19 P2   47:13 crashed in The Heap (timer)                                                                   0 B
+* 3749150 #346 2026-10-08 17:17 P2   12:59 cleared                                                                                    +872 B
+* de844e6 #345 2026-10-07 19:04 P2 2:28:27 cleared                                                                                    +918 B
+* ef0b7ea #344 2026-10-07 17:04 P2   55:27 crashed in The Heap (:q!)                                                                     0 B
+* 07d2d8e #343 2026-10-05 19:10 P2 2:31:28 crashed in The Heap (timer)                                                                   0 B
+* a95a19c #342 2026-10-05 17:10 P2 1:19:28 crashed in The Heap (out of cycles)                                                           0 B
+* 83e6602 #341 2026-10-02 17:13 P2 2:21:46 crashed in The Heap (:q!)                                                                     0 B
+* 9081be2 #340 2026-09-30 19:34 P2   32:23 crashed in The Heap (timer)                                                                   0 B
+* d02870e #339 2026-09-30 17:34 P2   25:23 crashed in The Heap (out of cycles)                                                           0 B
+* 5242b0d #338 2026-09-28 17:19 P2 2:06:47 cleared                                                                                    +959 B
+* 0b9916a #337 2026-09-27 19:29 P2 2:14:14 cleared                                                                                    +758 B
+* 635cc3d #336 2026-09-27 17:29 P2 1:31:14 crashed in The Heap (:q!)                                                                     0 B
+* 23b32c0 #335 2026-09-24 19:43 P2   34:08 crashed in The Heap (out of cycles)                                                           0 B
+* 7e78460 #334 2026-09-24 17:43 P2   44:08 crashed in The Heap (timer)                                                                   0 B
+* bac2db3 #333 2026-09-23 17:08 P2 1:37:58 cleared                                                                                    +929 B
+* a041578 #332 2026-09-21 17:11 P2 2:28:21 crashed in The Heap (timer)                                                                   0 B
+* 9c4387c #331 2026-09-19 17:57 P2 1:33:29 crashed in The Heap (timer)                                                                   0 B
+* 2882126 #330 2026-09-17 19:14 P2 2:38:08 cleared                                                                                    +769 B
+* 40336d2 #329 2026-09-17 17:14 P2 2:10:08 crashed in The Heap (:q!)                                                                     0 B
+* fe493f7 #328 2026-09-16 19:27 P2 2:11:31 crashed in The Heap (:q!)                                                                     0 B
+* 3147b2c #327 2026-09-16 17:27 P2 1:08:31 crashed in The Heap (timer)                                                                   0 B
+* 1d9ec82 #326 2026-09-14 17:40 P2   18:23 crashed in The Heap (timer)                                                                   0 B
+* 27fd1f5 #325 2026-09-13 17:04 P2 1:35:42 cleared                                                                                    +858 B
+* e50cf71 #324 2026-09-12 19:42 P2   22:11 cleared                                                                                    +970 B
+* 7dcda6b #323 2026-09-12 17:42 P2 1:35:11 crashed in The Heap (:q!)                                                                     0 B
+j/k move · enter expand · r replay seed · f filter · c days · g/G ends · q back

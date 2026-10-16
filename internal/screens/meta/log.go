@@ -18,7 +18,8 @@ import (
 
 // Log is git log: one line per boot, newest first, in the shape of
 // `git log --graph --oneline`. Enter expands the highlighted boot into its
-// attempts; f cycles an outcome filter.
+// attempts; f cycles an outcome filter. Its calendar, when it has one,
+// heads the list (calendar.go); c moves the keys into it.
 type Log struct {
 	all    []BootRow // newest first
 	filter int       // index into logFilters
@@ -26,6 +27,7 @@ type Log struct {
 	sel    int       // index into shown
 	open   int       // Boot number expanded, 0 for none
 	top    int       // first visible line
+	cal    *calendar // nil without one
 	nameOf func(int) string
 	h      int // list rows at the last View, for paging
 }
@@ -58,6 +60,12 @@ func NewLog(boots []BootRow, prestigeName func(int) string) *Log {
 	return l
 }
 
+// WithCalendar heads git log with c.
+func (l *Log) WithCalendar(c Calendar) *Log {
+	l.cal = newCalendar(c)
+	return l
+}
+
 func (l *Log) apply() {
 	l.shown = l.shown[:0]
 	for i, b := range l.all {
@@ -79,6 +87,17 @@ func (l *Log) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	k, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		return l, nil
+	}
+	if l.cal != nil && l.cal.focus {
+		switch s := k.String(); s {
+		case "q", "r", "f", "F": // the list's, as ever
+		case "enter":
+			l.showDay()
+			return l, nil
+		default:
+			l.cal.key(s)
+			return l, nil
+		}
 	}
 	last := max(len(l.shown)-1, 0)
 	page := max(l.h-1, 1)
@@ -117,6 +136,10 @@ func (l *Log) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	case "F":
 		l.filter = (l.filter + len(logFilters) - 1) % len(logFilters)
 		l.apply()
+	case "c":
+		if l.cal != nil {
+			l.cal.enter(l.selected())
+		}
 	}
 	return l, nil
 }
@@ -138,8 +161,16 @@ func (l *Log) View(width, height int) string {
 		"filter: "+ui.Focus.Render(logFilters[l.filter].name),
 		w)
 	keys := ui.Footer(w, "j/k", "move", "enter", "expand", "r", "replay seed", "f", "filter", "g/G", "ends", "q", "back")
+	var cal []string
+	if l.cal != nil {
+		cal = l.cal.lines(w, h-2)
+		keys = ui.Footer(w, "j/k", "move", "enter", "expand", "r", "replay seed", "f", "filter", "c", "days", "g/G", "ends", "q", "back")
+		if l.cal.focus {
+			keys = ui.Footer(w, "h/l", "week", "j/k", "day", "g/G", "ends", "enter", "its boots", "c", "list", "q", "back")
+		}
+	}
 
-	rows := max(h-2, 0)
+	rows := max(h-2-len(cal), 0)
 	l.h = rows
 	var body []string
 	switch {
@@ -161,8 +192,19 @@ func (l *Log) View(width, height int) string {
 		body = lines[l.top:min(l.top+rows, len(lines))]
 	}
 
-	out := append([]string{head}, body...)
+	out := append(append([]string{head}, cal...), body...)
 	return ui.Layout(w, h, out, keys)
+}
+
+// showDay gives the keys back to the list on the newest boot shown that
+// started on the calendar cursor's day; with none, the cursor stays.
+func (l *Log) showDay() {
+	for i, idx := range l.shown {
+		if dateKey(l.all[idx].Started.In(l.cal.Today.Location())) == dateKey(l.cal.at) {
+			l.sel, l.cal.focus = i, false
+			return
+		}
+	}
 }
 
 // lines renders every shown boot, with the expansion under the open one.

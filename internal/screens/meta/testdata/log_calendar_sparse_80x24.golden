@@ -1,0 +1,24 @@
+git log --graph --oneline  8 boots · 3 cleared · 5 crashed           filter: all
+    May Jun       Jul     Aug       Sep     Oct   TIME+ per day
+Mon · · · · · · · · · · · · · · · · · · · · · ·   8 active days (last 365)
+Tue · · · · · · · · · · · · · · · · · · · · · ·   load average: 0.14, 0.07, 0.02
+Wed · · · · · · · · · · · · · · · · · · · · · ·
+Thu · · · · · · · · · · · · · · · · · · · · ·
+Fri · · · · · · · · · · · · · · · · · · · · ·
+Sat · · · · · · · · · · · · · · · · · · · ▒ ·
+Sun · · · · █ · · · · · · · · · · · · · ░ · ▓     less ░▒▓█ more
+
+* aeba430 #8 Oct 11 P0 1:23:00 cleared                                    +640 B
+* 672fb00 #7 Oct 03 P0   58:00 crashed in Userland (timer)                   0 B
+* 7945a0b #6 Sep 27 P0   12:00 crashed in Userland (timer)                   0 B
+* e75e603 #5 Jun 21 P0 3:10:00 cleared                                    +640 B
+* 76a1cae #4 Mar 09 P0 1:07:00 crashed in Userland (timer)                   0 B
+* f515115 #3 Mar 08 P0   26:00 crashed in Userland (timer)                   0 B
+* 621deca #2 Jan 17 P0 1:52:00 cleared                                    +640 B
+* a9302b8 #1 Nov 02 P0   41:00 crashed in Userland (timer)                   0 B
+
+
+
+
+
+j/k move · enter expand · r replay seed · f filter · c days · g/G ends · q back

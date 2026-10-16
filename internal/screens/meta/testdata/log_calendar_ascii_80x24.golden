@@ -1,0 +1,24 @@
+git log --graph --oneline  350 boots | 77 cleared | 273 crashed      filter: all
+    May Jun       Jul     Aug       Sep     Oct   TIME+ per day
+Mon : * : .   #       *   *   . : * # . * * #     239 active days (last 365)
+Tue : :   * . : .           . : .   #         :   load average: 0.57, 0.53, 0.63
+Wed   *   : .     *       :   .   * : # : . #
+Thu . :   : : #             : . * : # # :   .
+Fri . * #   *             # : . * . .     * .
+Sat . * * # : :       # . * * # : : : :
+Sun   #   . * .     #   . : * # : * :   #   #     less .:*# more
+
+* af65042 #350 Oct 13 P2 1:49:50 cleared                                  +925 B
+* 2f1ec84 #349 Oct 11 P2 2:14:47 crashed in The Heap (:q!)                   0 B
+* c27603d #348 Oct 11 P2 1:30:47 crashed in The Heap (timer)                 0 B
+* e8a648f #347 Oct 09 P2   47:13 crashed in The Heap (timer)                 0 B
+* 3749150 #346 Oct 08 P2   12:59 cleared                                  +872 B
+* de844e6 #345 Oct 07 P2 2:28:27 cleared                                  +918 B
+* ef0b7ea #344 Oct 07 P2   55:27 crashed in The Heap (:q!)                   0 B
+* 07d2d8e #343 Oct 05 P2 2:31:28 crashed in The Heap (timer)                 0 B
+* a95a19c #342 Oct 05 P2 1:19:28 crashed in The Heap (out of cycles)         0 B
+* 83e6602 #341 Oct 02 P2 2:21:46 crashed in The Heap (:q!)                   0 B
+* 9081be2 #340 Sep 30 P2   32:23 crashed in The Heap (timer)                 0 B
+* d02870e #339 Sep 30 P2   25:23 crashed in The Heap (out of cycles)         0 B
+* 5242b0d #338 Sep 28 P2 2:06:47 cleared                                  +959 B
+j/k move | enter expand | r replay seed | f filter | c days | g/G ends | q back
