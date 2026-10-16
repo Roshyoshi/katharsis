@@ -321,6 +321,11 @@ D58 settled 10-16  Iteration workflow (user: "most of the core logic is done ...
       split at local midnight), shaded by quartile of the player's own active days;
       c walks it, enter jumps to that day's boots. Open: relative vs fixed shades.
 
+10-16 music by act (user: "just do all three now"): topic biomes play act1/act2/act3
+      (stage 3-4, 5-6, extra), bosses boss1/boss2 (stage 1-3, 4-5 + extra); leads
+      join from any pool; the Court opens with Doll Judgement. PoFV themes by the
+      character's first boss stage (taste).
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
