@@ -218,6 +218,7 @@ func catalogue() string {
 	row("rule 12", Rule(12))
 	row("crumb", strings.Join([]string{Strong.Render("RTFM"), "Silver", "Prefix Sums"}, Muted.Render(G.Crumb)))
 	row("caps", OK.Render(G.Cap+" CAP_DP")+"  "+Muted.Render(G.CapLocked+" CAP_PREFIX"))
+	row("heat 0-4", Heat(0)+Heat(1)+Heat(2)+Heat(3)+Heat(4))
 	return b.String()
 }
 
@@ -245,6 +246,12 @@ func TestGlyphWidths(t *testing.T) {
 				}
 				if val == "" {
 					t.Errorf("%s.%s is empty", set, f.Name)
+				}
+			case [5]string:
+				for j, s := range val {
+					if w := want(f.Name, s); ansi.StringWidth(s) != w || w != 1 {
+						t.Errorf("%s.%s[%d] = %q is %d cells, want 1", set, f.Name, j, s, ansi.StringWidth(s))
+					}
 				}
 			case lipgloss.Border:
 				for _, s := range []string{val.Top, val.Bottom, val.Left, val.Right, val.TopLeft, val.TopRight, val.BottomLeft, val.BottomRight} {
@@ -274,22 +281,29 @@ func TestGlyphWidths(t *testing.T) {
 }
 
 // TestOneMeaning checks no two meanings share a Unicode glyph, except the
-// two the design gives one: ☠ is lethal, so it marks both a crash and a
-// cursed door, whose one WA is a crash.
+// ones the design gives one: ☠ is lethal, so it marks both a crash and a
+// cursed door, whose one WA is a crash; a bar's cells are shades of the
+// heat map's ramp, the lighter one less.
 func TestOneMeaning(t *testing.T) {
-	shared := map[string]bool{"Crash/Cursed": true}
+	shared := map[string]bool{"Crash/Cursed": true, "Empty/Heat[1]": true, "Fill/Heat[3]": true}
 	seen := map[string]string{}
-	v := reflect.ValueOf(Unicode)
-	for i := range v.NumField() {
-		s, ok := v.Field(i).Interface().(string)
-		if !ok {
-			continue
-		}
-		name := v.Type().Field(i).Name
+	see := func(name, s string) {
 		if prev, dup := seen[s]; dup && !shared[prev+"/"+name] {
 			t.Errorf("%s and %s are both %q", prev, name, s)
 		}
 		seen[s] = name
+	}
+	v := reflect.ValueOf(Unicode)
+	for i := range v.NumField() {
+		name := v.Type().Field(i).Name
+		switch val := v.Field(i).Interface().(type) {
+		case string:
+			see(name, val)
+		case [5]string:
+			for j, s := range val {
+				see(fmt.Sprintf("%s[%d]", name, j), s)
+			}
+		}
 	}
 }
 

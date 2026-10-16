@@ -50,6 +50,9 @@ type Glyphs struct {
 	Arrow      string // leads to
 	Rule       string // a horizontal rule's cell
 
+	// Heat is a heat map's cell by level: none, then least to most.
+	Heat [5]string
+
 	// Frames: Thin for idle cards and regions, Thick for the selected
 	// card, Double for the boss. Selection changes the glyphs as well as
 	// the color, so it reads on a monochrome terminal.
@@ -65,6 +68,7 @@ var Unicode = Glyphs{
 	Cursor: "▸", FoldOpen: "▾", FoldShut: "▹", Crumb: " › ", Sep: " · ",
 	Fill: "▓", Empty: "░", Star: "★", StarOff: "☆", Ellipsis: "…",
 	Times: "×", Approx: "≈", Range: "–", Arrow: "→", Rule: "─",
+	Heat: [5]string{"·", "░", "▒", "▓", "█"},
 	Thin: lipgloss.RoundedBorder(), Thick: lipgloss.ThickBorder(), Double: lipgloss.DoubleBorder(),
 }
 
@@ -79,6 +83,7 @@ var ASCII = Glyphs{
 	Cursor: ">", FoldOpen: "-", FoldShut: "+", Crumb: " / ", Sep: " | ",
 	Fill: "#", Empty: ".", Star: "*", StarOff: ".", Ellipsis: "...",
 	Times: "x", Approx: "~", Range: "-", Arrow: "->", Rule: "-",
+	Heat:   [5]string{" ", ".", ":", "*", "#"},
 	Thin:   lipgloss.ASCIIBorder(),
 	Thick:  asciiBorder("#", "=", "#"),
 	Double: asciiBorder("+", "=", "|"),

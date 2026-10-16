@@ -138,3 +138,14 @@ func ModifierLines(m Mod, text string, w, n int) []string {
 	}
 	return ls
 }
+
+// Heat is a heat map's cell at level 0 (none) to 4 (most), G.Heat's
+// glyph: Muted for none, OK for the rest. The shade carries the level
+// without hue (R1); ░ and ▓ are a bar's cells too, and there as here the
+// darker one is more.
+func Heat(level int) string {
+	if level <= 0 {
+		return Muted.Render(G.Heat[0])
+	}
+	return OK.Render(G.Heat[min(level, len(G.Heat)-1)])
+}

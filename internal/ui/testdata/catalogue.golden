@@ -169,3 +169,4 @@ wrap 12x2              constructive / algorithms …
 rule 12                «d»────────────«/»
 crumb                  «b»RTFM«/»«d» › «/»Silver«d» › «/»Prefix Sums
 caps                   «G»■ CAP_DP«/»  «d»□ CAP_PREFIX«/»
+heat 0-4               «d»·«/»«G»░«/»«G»▒«/»«G»▓«/»«G»█«/»
