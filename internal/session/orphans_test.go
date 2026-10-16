@@ -1,6 +1,7 @@
 package session
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // deadPid is the pid of a process that has exited and been reaped.
@@ -138,5 +140,58 @@ func TestMarkGame(t *testing.T) {
 	t.Setenv(ownSessionEnv, "1")
 	if err := MarkGame(); err != nil || show() != strconv.Itoa(os.Getpid()) {
 		t.Fatalf("MarkGame = %v, set %q, want %d", err, show(), os.Getpid())
+	}
+}
+
+// Farewell prints on w, the game's pane, and in a session of the game's own
+// also where its terminal goes once the session ends: each attached client
+// detaches and prints the text in its place.
+func TestFarewell(t *testing.T) {
+	privateTmux(t)
+	if _, err := exec.LookPath("script"); err != nil {
+		t.Skip("script not on PATH")
+	}
+	// A client of the private server on a terminal of its own, as the
+	// player's would be.
+	var out bytes.Buffer
+	client := exec.Command("script", "-q", "/dev/null", "tmux", "-L", tmuxArgs[len(tmuxArgs)-1], "attach-session", "-t", "t")
+	client.Stdout, client.Stderr = &out, &out
+	if err := client.Start(); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- client.Wait() }()
+	t.Cleanup(func() {
+		_ = client.Process.Kill()
+		<-done
+	})
+	waitFor(t, "the client to attach", func() bool {
+		s, _ := tmux("list-clients", "-t", "t", "-F", "#{client_tty}")
+		return s != ""
+	})
+	t.Setenv("TMUX", "/tmp/private,1,0") // InTmux; calls still go by tmuxArgs
+
+	var w strings.Builder
+	t.Setenv(ownSessionEnv, "")
+	if err := Farewell(&w, "in the player's tmux"); err != nil || w.String() != "in the player's tmux\n" {
+		t.Fatalf("Farewell outside its own session = %v, wrote %q", err, w.String())
+	}
+	if s, _ := tmux("list-clients", "-t", "t", "-F", "#{client_tty}"); s == "" {
+		t.Fatal("Farewell outside its own session detached the client")
+	}
+
+	t.Setenv(ownSessionEnv, "1")
+	text := "katharsis: boot #12 suspended · it's where you left it"
+	if err := Farewell(&w, text); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-done:
+		done <- nil // for the cleanup
+	case <-time.After(patience):
+		t.Fatal("the client stayed attached")
+	}
+	if !strings.Contains(out.String(), text) || !strings.HasSuffix(w.String(), text+"\n") {
+		t.Errorf("the farewell reached the pane as %q and the terminal as %q", w.String(), out.String())
 	}
 }

@@ -196,7 +196,9 @@ func runGame(args []string) error {
 
 	_, err = p.Run()
 	if s := m.Farewell(); s != "" && err == nil {
-		fmt.Println(s) // a boot suspended on the way out (map.suspend)
+		// A boot suspended on the way out (map.suspend). Best effort: the
+		// pane has it when the terminal cannot be reached.
+		_ = session.Farewell(os.Stdout, s)
 	}
 	return err
 }

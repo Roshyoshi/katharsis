@@ -5,6 +5,7 @@ package session
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"slices"
@@ -169,6 +170,23 @@ const ownSessionEnv = "KATHARSIS_OWN_SESSION"
 // OwnSession reports whether this process is the game ExecInTmux started:
 // its session ends with it, taking with it whatever it printed last.
 func OwnSession() bool { return os.Getenv(ownSessionEnv) == "1" && InTmux() }
+
+// Farewell says text where the player will look once the game has gone: on
+// w, the game's own pane, which stays on screen in the player's own tmux;
+// and in a session of the game's own (OwnSession), which takes the pane
+// with it when it ends, in the terminal it was started from: each client
+// attached to the session detaches and prints text in its place (tmux's
+// detach-client -E), with the terminal given back first.
+func Farewell(w io.Writer, text string) error {
+	if _, err := fmt.Fprintln(w, text); err != nil {
+		return err
+	}
+	if !OwnSession() {
+		return nil
+	}
+	_, err := tmux("detach-client", "-s", os.Getenv("TMUX_PANE"), "-E", `printf '%s\n' `+shellQuote(text))
+	return err
+}
 
 // pidOption, a session option, holds the pid of the game playing in a
 // session ExecInTmux made (MarkGame).
