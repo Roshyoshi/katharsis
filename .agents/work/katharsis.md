@@ -279,6 +279,11 @@ D56 settled 10-15  Achievements: "w spoiler ones as well"; like Star of Providen
       memory; C ECC falls back to -2 cycles when the clock is shorter than its
       penalty; D the final's door card hides its clock; polish F/G/J/E (fix-map).
 
+10-15 setuid engine merged: 61 conditions, fold, backfill (all or nothing, provable
+      bits only), the Trial (hidden exit at Boss II at a full pool, cursed, one shot,
+      ends awake). Sim: a seeker wakes 49-53% at P0 (design band 35-45%), opens at 83-89%
+      of P0 arrivals, keeps 15-45% fewer bytes per door-hour (not a farm).
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
