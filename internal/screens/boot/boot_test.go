@@ -754,6 +754,28 @@ func TestUpgradePicksOwed(t *testing.T) {
 			}
 		})
 	}
+
+	// A gated biome's exit pays a pick of its own (rules.Biome.Picks): the
+	// note names it, beside -O3's.
+	for _, c := range []struct {
+		picks int
+		o3    bool
+		want  string
+	}{
+		{2, false, "2 to pick (The Accumulator earned an extra); pick before you leave"},
+		{3, true, "3 to pick (-O3 and The Accumulator each earned an extra); pick before you leave"},
+		{1, false, "1 left (The Accumulator earned an extra); pick before you leave"},
+	} {
+		ms := fixture.Merge()
+		ms.Rules.Biomes = append([]rules.Biome(nil), ms.Rules.Biomes...)
+		ms.Rules.Biomes[ms.Biome].Picks = 1
+		ms.Biomes[ms.Biome].Name = "The Accumulator"
+		ms.UpgradePicks = c.picks
+		ms.History[len(ms.History)-1].O3 = c.o3
+		if v := ansi.Strip(NewMerge(env(ms)).View(140, 40)); !strings.Contains(v, c.want) {
+			t.Errorf("merge window after a gated biome: want %q in:\n%s", c.want, v)
+		}
+	}
 }
 
 // A daemon's description is cut only when the terminal is too narrow for

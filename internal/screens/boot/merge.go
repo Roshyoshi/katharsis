@@ -344,8 +344,8 @@ func (m *Merge) sections(width, cw int, cur mergeRow, intro bool, defeat string)
 
 	if st.PendingUpgrade && len(st.UpgradeOffers) > 0 {
 		note := ui.Muted.Render("a clear earned one; pick it before you leave")
-		if n, o3 := owedPicks(st); n >= 2 || n == 1 && o3 {
-			note = picksNote(n, o3) + ui.Muted.Render("; pick before you leave")
+		if n, x := owedPicks(st); n >= 2 || n == 1 && x.any() {
+			note = picksNote(n, x) + ui.Muted.Render("; pick before you leave")
 		}
 		secs = append(secs, "")
 		if defeat != "" {

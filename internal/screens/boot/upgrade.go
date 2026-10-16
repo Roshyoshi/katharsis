@@ -1,6 +1,7 @@
 package boot
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 
@@ -208,11 +209,11 @@ func (u *UpgradeScreen) View(width, height int) string {
 			ui.Center(ui.OK.Render("+"+units.Bytes(st.Paid(a)))+ui.Muted.Render(" uncommitted"), width), "")
 	}
 	ask := ui.Strong.Render("Pick an upgrade.")
-	switch n, o3 := owedPicks(st); {
+	switch n, x := owedPicks(st); {
 	case n >= 2:
-		ask = ui.Strong.Render("Pick an upgrade") + ui.Muted.Render(ui.G.Sep) + picksNote(n, o3)
-	case n == 1 && o3:
-		ask = ui.Strong.Render("Pick another upgrade") + ui.Muted.Render(ui.G.Sep) + picksNote(n, o3)
+		ask = ui.Strong.Render("Pick an upgrade") + ui.Muted.Render(ui.G.Sep) + picksNote(n, x)
+	case n == 1 && x.any():
+		ask = ui.Strong.Render("Pick another upgrade") + ui.Muted.Render(ui.G.Sep) + picksNote(n, x)
 	}
 	block = append(block, ui.Center(ask, width), "")
 	if len(u.picker.offers) == 0 {
@@ -223,27 +224,61 @@ func (u *UpgradeScreen) View(width, height int) string {
 	return ui.Layout(width, height, centered(head, block, height), ui.Footer(width, "←/→", "choose", "enter", "take upgrade"))
 }
 
-// owedPicks is how many upgrade picks the boot owes, and whether the last
-// clear was an -O3 one, which owes two. The two picks of an -O3 clear
-// offer the same kind of cards, so without a count the second reads as
-// the first one again, as if the keypress was missed.
-func owedPicks(st *game.State) (n int, o3 bool) {
+// owedPicks is how many upgrade picks the boot owes, and what earned the
+// last clear's picks past its own (extras). The picks of one clear offer
+// the same kind of cards, so without a count the second reads as the first
+// one again, as if the keypress was missed.
+func owedPicks(st *game.State) (n int, x extras) {
 	n = st.UpgradePicks
 	if n == 0 && st.PendingUpgrade {
 		n = 1 // a state saved before UpgradePicks existed
 	}
 	a, ok := clearHere(st)
-	return n, ok && a.O3
+	if !ok {
+		return n, x
+	}
+	x.o3 = a.O3
+	// A gated biome pays at its exit (rules.Biome.Picks), so its picks are
+	// owed once its last room is cleared: in the merge window after it.
+	if b := st.Biome; st.Phase == game.PhaseMerge && b < len(st.Rules.Biomes) && b < len(st.Biomes) {
+		if rb := st.Rules.Biomes[b]; rb.Picks > 0 && !rb.Skip {
+			x.gated, x.picks = cmp.Or(st.Biomes[b].Name, "the biome"), rb.Picks
+		}
+	}
+	return n, x
 }
 
-// picksNote counts the picks owed after an -O3 clear: "2 to pick" on the
-// first, "1 left" on the second.
-func picksNote(n int, o3 bool) string {
+// extras is what earned a clear's picks past its own: -O3, and a gated
+// biome's exit, by the biome's name (gated, "" for none) with its picks.
+type extras struct {
+	o3    bool
+	gated string
+	picks int
+}
+
+func (x extras) any() bool { return x.o3 || x.gated != "" }
+
+// picksNote counts the picks owed after a clear that earned extras: "2 to
+// pick" on the first, "1 left" on the last, and what earned them: "(-O3
+// earned an extra)", "(The Accumulator earned an extra)", "(-O3 and The
+// Accumulator each earned an extra)".
+func picksNote(n int, x extras) string {
 	s := fmt.Sprintf("%d to pick", n)
 	if n < 2 {
 		s = fmt.Sprintf("%d left", n)
 	}
-	if o3 {
+	gated := "an extra"
+	if x.picks != 1 {
+		gated = fmt.Sprintf("%d extra", x.picks)
+	}
+	switch {
+	case x.o3 && x.gated != "" && x.picks == 1:
+		s += " (-O3 and " + x.gated + " each earned an extra)"
+	case x.o3 && x.gated != "":
+		s += " (-O3 earned an extra, " + x.gated + " " + gated + ")"
+	case x.gated != "":
+		s += " (" + x.gated + " earned " + gated + ")"
+	case x.o3:
 		s += " (-O3 earned an extra)"
 	}
 	return ui.Muted.Render(s)
