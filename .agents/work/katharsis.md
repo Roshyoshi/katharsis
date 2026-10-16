@@ -296,6 +296,13 @@ D57 settled 10-15  A GitHub-style contribution graph (user: "a git commit graph 
                    days and the load average. No streak counter: "Graph, no streak
                    (Recommended)" (GR1 stands).
 
+10-15 fix-map merged (A single-exit auto-take, B OOM samples on Hardened at the halved
+      memory, C ECC short-clock fallback, D the final's cards hide the clock, upgrade
+      order + cursor, gated pick named, RTFM q returns, farewell to the outer
+      terminal). Coordinator: ecc_margin 1:00 (ECC converts only above penalty +
+      1:00). Open: OOM samples lose ASan (accepted); trials keep legacy lives prices
+      under "cycles"; a quick double enter takes the same upgrade twice.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
