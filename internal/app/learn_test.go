@@ -275,6 +275,24 @@ func TestRTFMOpensTheNearestModule(t *testing.T) {
 	})
 }
 
+// RTFM opened at a link (a locked exit's t) goes straight back on q, not to
+// RTFM's index first.
+func TestRTFMLinkGoesBack(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.m.cur = graphGuide(t)
+		from := h.m.top()
+		h.send(screens.OpenLearn{Topic: "graphs"})
+		if _, ok := h.m.top().(*rtfm.Browser); !ok {
+			t.Fatalf("OpenLearn shows %T", h.m.top())
+		}
+		h.send(key("q"))
+		if h.m.top() != from {
+			t.Errorf("q on the linked page shows %T, want %T", h.m.top(), from)
+		}
+	})
+}
+
 // A passed trial's next step is the next module in guide order whose
 // trial earns a capability the player lacks, or back to RTFM when none is
 // left; m (or enter) takes it, and r still retries the trial. It offered

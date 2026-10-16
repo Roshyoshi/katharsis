@@ -19,7 +19,8 @@ import (
 // indented under them) with less's prompt line at the bottom. Chapters and
 // divisions fold; / filters modules by title or id. Enter on a module opens
 // its page in place, and q or h there returns to the index, so the app
-// keeps one screen on its stack for all of learn mode.
+// keeps one screen on its stack for all of learn mode; a page another
+// screen linked to (Open) goes back there on q.
 type Browser struct {
 	divs   []division
 	all    []entry // every module, for column widths and the totals
@@ -41,6 +42,9 @@ type Browser struct {
 	mark   row    // the selection before filtering began
 
 	page *Module // the open module page; nil shows the index
+	// linked is set while page is the one Open showed, a link from another
+	// screen, which q and esc go back to.
+	linked bool
 }
 
 type division struct {
@@ -121,9 +125,11 @@ func (b *Browser) Refresh(m game.Meta) {
 // through while it is.
 func (b *Browser) Typing() bool { return b.typing }
 
-// Open shows the page of the module with id, as enter on its row would,
-// unfolding and selecting the row so q returns to it. It reports whether
-// the curriculum has the module.
+// Open shows the page of the module with id as a link from another screen
+// (a locked exit's t, the next step after a boot or a trial): q and esc go
+// straight back there (screens.Back), while h returns to the index, its
+// row unfolded and selected. It reports whether the curriculum has the
+// module.
 func (b *Browser) Open(id string) bool {
 	for di, d := range b.divs {
 		for ci, c := range d.chaps {
@@ -132,6 +138,7 @@ func (b *Browser) Open(id string) bool {
 					b.typing, b.query = false, ""
 					b.applyFilter("", row{modRow, di, ci, mi})
 					b.open(row{modRow, di, ci, mi})
+					b.linked = true
 					return true
 				}
 			}
@@ -247,7 +254,7 @@ func (b *Browser) refold(r row) {
 }
 
 func (b *Browser) open(r row) {
-	b.page = newModule(b.cur, b.entry(r), b.caps, b.lookup)
+	b.page, b.linked = newModule(b.cur, b.entry(r), b.caps, b.lookup), false
 }
 
 func (b *Browser) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
@@ -255,7 +262,13 @@ func (b *Browser) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	if b.page != nil {
 		if isKey {
 			switch k.String() {
-			case "q", "esc", "h", "left", "backspace":
+			case "q", "esc":
+				if b.linked {
+					return b, screens.Emit(screens.Back{})
+				}
+				b.page = nil
+				return b, nil
+			case "h", "left", "backspace":
 				b.page = nil
 				return b, nil
 			}

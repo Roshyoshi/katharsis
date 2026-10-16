@@ -422,6 +422,9 @@ func TestBrowserFolds(t *testing.T) {
 	}
 }
 
+// Open is a link into a module's page (a locked exit's t, the next step
+// after a boot or a trial): q and esc go back where it came from, h to the
+// index, at the module's row; a page opened from the index goes back to it.
 func TestBrowserOpenByID(t *testing.T) {
 	b := browser(t)
 	press(t, b, "-")
@@ -431,11 +434,17 @@ func TestBrowserOpenByID(t *testing.T) {
 	if v := plain(b.View(80, 24)); !strings.Contains(v, "matrix-expo - Matrix Exponentiation") {
 		t.Errorf("Open should show the module page:\n%s", v)
 	}
-	press(t, b, "q")
-	if v := plain(b.View(80, 24)); !strings.Contains(v, "Matrix Exponentiation") {
-		t.Errorf("q should land on the module's row, unfolded:\n%s", v)
+	for _, k := range []string{"q", "esc"} {
+		wantMsg(t, press(t, b, k), screens.Back{})
+	}
+	press(t, b, "h")
+	if v := plain(b.View(80, 24)); !strings.Contains(v, "Matrix Exponentiation") || strings.Contains(v, "matrix-expo - Matrix Exponentiation") {
+		t.Errorf("h should land on the module's row, unfolded:\n%s", v)
 	}
 	wantMsg(t, press(t, b, "enter", "r"), screens.OpenModule{Module: "matrix-expo"})
+	if got := press(t, b, "q"); got != nil {
+		t.Errorf("q on a page opened from the index emitted %#v, want the index", got)
+	}
 	if b.Open("no-such-module") {
 		t.Error("Open(no-such-module) = true")
 	}
