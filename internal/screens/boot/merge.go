@@ -58,12 +58,16 @@ func NewMerge(env Env) *Merge {
 	return m
 }
 
-// Refresh swaps in new state and clock. When the row under the cursor is
+// Refresh swaps in new state and clock. An upgrade pick's redraw keeps the
+// cursor on its upgrade (picker.set). When the row under the cursor is
 // gone (its pick was taken), the cursor moves to the next section.
 func (m *Merge) Refresh(env Env) {
 	old := m.at
 	m.env = env
 	m.up.set(env.State)
+	if old.kind == rowUpgrade {
+		old.i = m.up.cursor
+	}
 	rs := m.rows()
 	m.cur = len(rs) - 1
 	for i, r := range rs {
@@ -139,7 +143,7 @@ func (m *Merge) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	case "enter":
 		switch r := m.row(); r.kind {
 		case rowUpgrade:
-			return m, screens.Emit(game.PickUpgrade{Upgrade: st.UpgradeOffers[r.i]})
+			return m, screens.Emit(game.PickUpgrade{Upgrade: m.up.offers[r.i]})
 		case rowSpend:
 			return m, screens.Emit(game.Spend{Item: onSale(st)[r.i]})
 		case rowDaemon:

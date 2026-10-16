@@ -2,6 +2,7 @@ package boot
 
 import (
 	"fmt"
+	"slices"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -102,15 +103,35 @@ func optionList(opts []option, cursor, width int) []string {
 // its cursor with ←/→ or 1-9; the merge window draws it as a list under a
 // cursor of its own.
 type picker struct {
-	offers []game.Upgrade
+	offers []game.Upgrade // st's, in game.AllUpgrades' order
 	cursor int
 	st     *game.State // the boot, whose numbers the descriptions quote
 }
 
-// set takes the offers from st, keeping the cursor in range.
+// set takes the offers from st in game.AllUpgrades' order, however the
+// engine drew them, so a redraw after a pick leaves each card where it
+// stood (UX J18). The cursor stays on the upgrade it was on while that is
+// offered still, so a second enter takes the card the first did, and else
+// stays in range.
 func (p *picker) set(st *game.State) {
-	p.offers, p.st = st.UpgradeOffers, st
+	was := p.selected()
+	p.offers, p.st = slices.Clone(st.UpgradeOffers), st
+	slices.SortStableFunc(p.offers, func(a, b game.Upgrade) int {
+		return slices.Index(game.AllUpgrades, a) - slices.Index(game.AllUpgrades, b)
+	})
+	if i := slices.Index(p.offers, was); was != "" && i >= 0 {
+		p.cursor = i
+		return
+	}
 	p.cursor = move("", p.cursor, len(p.offers))
+}
+
+// selected is the upgrade under the cursor, "" with none on offer.
+func (p *picker) selected() game.Upgrade {
+	if p.cursor < 0 || p.cursor >= len(p.offers) {
+		return ""
+	}
+	return p.offers[p.cursor]
 }
 
 func (p *picker) update(msg tea.Msg) tea.Cmd {

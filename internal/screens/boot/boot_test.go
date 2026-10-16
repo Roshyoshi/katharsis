@@ -683,6 +683,44 @@ func TestUpgradePicker(t *testing.T) {
 	}
 }
 
+// The offers stand in one order, game.AllUpgrades', however the engine drew
+// them, and a redraw after a pick keeps the cursor on the upgrade it was on
+// (UX J18): a second enter takes the card the first did, while it is on
+// offer, in the upgrade screen and the merge window alike.
+func TestUpgradeRedraw(t *testing.T) {
+	enter := func(s screens.Screen) tea.Msg { _, cmd := s.Update(press("enter")); return emitted(cmd) }
+	st := fixture.Upgrade()
+	st.UpgradeOffers = []game.Upgrade{game.Duck, game.ECC, game.Overclock}
+	u := NewUpgradeScreen(env(st))
+	if v := ansi.Strip(u.View(140, 40)); strings.Index(v, "Overclock") > strings.Index(v, "ECC") ||
+		strings.Index(v, "ECC") > strings.Index(v, "Duck") {
+		t.Errorf("offers out of order:\n%s", v)
+	}
+	u.Update(press("3"))
+	if got := enter(u); got != (game.PickUpgrade{Upgrade: game.Duck}) {
+		t.Fatalf("3 enter took %#v, want the Duck", got)
+	}
+	st.UpgradeOffers = []game.Upgrade{game.ShufPick, game.Duck, game.ECC} // the redraw: the Duck second
+	u.Refresh(env(st))
+	if got := enter(u); got != (game.PickUpgrade{Upgrade: game.Duck}) {
+		t.Errorf("after the redraw enter took %#v, want the Duck again", got)
+	}
+
+	ms := fixture.Merge()
+	ms.UpgradeOffers = []game.Upgrade{game.Duck, game.ECC, game.Overclock}
+	m := NewMerge(env(ms))
+	m.Update(press("down"))
+	m.Update(press("down"))
+	if got := enter(m); got != (game.PickUpgrade{Upgrade: game.Duck}) {
+		t.Fatalf("merge: down down enter took %#v, want the Duck", got)
+	}
+	ms.UpgradeOffers = []game.Upgrade{game.ECC, game.Duck}
+	m.Refresh(env(ms))
+	if got := enter(m); got != (game.PickUpgrade{Upgrade: game.Duck}) {
+		t.Errorf("merge: after the redraw enter took %#v, want the Duck again", got)
+	}
+}
+
 // An -O3 clear owes two picks of the same kind of cards; the count is what
 // tells the second pick from the first.
 func TestUpgradePicksOwed(t *testing.T) {
