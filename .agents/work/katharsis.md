@@ -291,6 +291,11 @@ D56 settled 10-15  Achievements: "w spoiler ones as well"; like Star of Providen
       session (settings.toml read, never written); Carroll quotes stay at two hooks;
       backfill counted in GRUB; only 8 bit lines written; long hints cut at 80 cols.
 
+D57 settled 10-15  A GitHub-style contribution graph (user: "a git commit graph sorta thing
+                   that shows runs per day"), shaded by door time per day, with active
+                   days and the load average. No streak counter: "Graph, no streak
+                   (Recommended)" (GR1 stands).
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
