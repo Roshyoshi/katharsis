@@ -13,8 +13,9 @@ import (
 )
 
 // Retention (docs/research/retention.md RT9, RT13): the load average on
-// GRUB, the panel in top, and the line under a boot's end screen. They
-// watch how play fits the player's days and never steer a door (GR7).
+// GRUB, the calendar on git log, the panel in top, and the line under a
+// boot's end screen. They watch how play fits the player's days and never
+// steer a door (GR7).
 
 // loadAverage is GRUB's RT9 figure, nil when there is none to show. A
 // query that fails only hides it.
@@ -27,6 +28,23 @@ func (m *Model) loadAverage() *[3]float64 {
 		return nil
 	}
 	return &l
+}
+
+// calendar is git log's header: TIME+ per day over the last year, with
+// the load average. ok is false when the days cannot be read, which leaves
+// git log without it.
+func (m *Model) calendar() (c meta.Calendar, ok bool) {
+	now := m.d.Now()
+	days, err := m.d.Store.Days(meta.CalendarStart(now), now)
+	if err != nil {
+		m.logf("calendar: %v", err)
+		return c, false
+	}
+	c = meta.Calendar{Today: now, Load: m.loadAverage()}
+	for _, d := range days {
+		c.Days = append(c.Days, meta.Day(d))
+	}
+	return c, true
 }
 
 // withRetention adds the retention panel to top's stats, and notes the

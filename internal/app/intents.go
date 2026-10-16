@@ -150,7 +150,11 @@ func (m *Model) openLog() tea.Cmd {
 	for _, b := range boots {
 		rows = append(rows, m.bootRow(b, byBoot[b.Boot]))
 	}
-	return m.push(meta.NewLog(rows, nil))
+	l := meta.NewLog(rows, nil)
+	if c, ok := m.calendar(); ok {
+		l.WithCalendar(c)
+	}
+	return m.push(l)
 }
 
 func (m *Model) openTop() tea.Cmd {

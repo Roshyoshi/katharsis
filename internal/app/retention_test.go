@@ -12,6 +12,7 @@ import (
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/store"
+	"katharsis/internal/units"
 )
 
 func (h *harness) lastLine() string {
@@ -124,6 +125,32 @@ func TestTopAlarmsOnce(t *testing.T) {
 		}
 		if got := h.answers(store.EventAlarmShown, "alarm"); len(got) != 1 {
 			t.Errorf("alarm_shown %v after the second look", got)
+		}
+	})
+}
+
+// git log opens under its calendar, read from the store: a cleared boot
+// is one active day, and c on it shows the boot's door time, the boot and
+// its clear.
+func TestLogCalendar(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		if got := h.play(); got != game.PhaseCleared {
+			t.Fatalf("boot ended %q, want cleared", got)
+		}
+		boots, err := h.st.Boots(1)
+		if err != nil || len(boots) != 1 {
+			t.Fatalf("stored boots %+v, %v", boots, err)
+		}
+		h.send(screens.OpenLog{})
+		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "TIME+ per day") || !strings.Contains(v, "1 active day (last 365)") {
+			t.Fatalf("git log has no calendar:\n%s", v)
+		}
+		h.send(key("c"))
+		want := units.Clock(boots[0].Uptime) + " in doors · 1 boot · 1 cleared"
+		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, want) {
+			t.Errorf("c on the boot's day lacks %q:\n%s", want, v)
 		}
 	})
 }
