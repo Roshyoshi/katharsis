@@ -27,6 +27,7 @@ func cyclesCases() []screenCase {
 		{"cycles_merge_drink", func() screens.Screen { return NewMerge(env(fixture.CyclesMerge("drink"))) }},
 		{"cycles_merge_full", func() screens.Screen { return NewMerge(env(fixture.CyclesMerge("full"))) }},
 		{"cycles_merge_dry", func() screens.Screen { return NewMerge(env(fixture.CyclesMerge("dry"))) }},
+		{"cycles_merge_vaults", func() screens.Screen { return NewMerge(env(fixture.CyclesMergeVaults())) }},
 		{"cycles_upgrade", func() screens.Screen { return NewUpgradeScreen(env(fixture.CyclesUpgrade())) }},
 		{"cycles_crash_timeout", func() screens.Screen { return NewCrash(env(fixture.CyclesCrash("timeout"))) }},
 		{"cycles_crash_submits", func() screens.Screen { return NewCrash(env(fixture.CyclesCrash("submits"))) }},
@@ -104,6 +105,7 @@ func TestCyclesScreensSay(t *testing.T) {
 		{"retry", NewDoors(env(fixture.CyclesBossRetry())), []string{"Stub line for boss.retry.", "(2 left)"}},
 		{"fountain", NewMerge(env(fixture.CyclesMerge("drink"))), []string{"fountain +5 cycles, free, up to 30 ✓", "fsck +10 cycles now · 64 B", "f fsck"}},
 		{"fountain full", NewMerge(env(fixture.CyclesMerge("full"))), []string{"fountain +5 cycles up to 30: yours are at the line, none taken"}},
+		{"vaults", NewMerge(env(fixture.CyclesMergeVaults())), []string{"vaults ✓ timed 38:12 in doors, within 45:00 · +1 pick", "✗ untouched 2 hits", "2 to pick (the timed door earned an extra)"}},
 		{"fountain dry", NewMerge(env(fixture.CyclesMerge("dry"))), []string{"fountain dry at Advanced: no heal between acts", "fsck +5 cycles now"}},
 		{"crash timeout", NewCrash(env(fixture.CyclesCrash("timeout"))), []string{
 			"Out of cycles: the timeout burns 12, 8 were left", "its 12 cycles were the last", "♥ 30 cycles"}},

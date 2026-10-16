@@ -63,6 +63,10 @@ and a boss, twice, then a third biome (or a skip) and The Halting
 Problem. The exit you take picks the next biome and the boss behind it.
 The pool is `♥ 30/50 cycles`. Between any two doors the boot can be left
 (`q`) and picked up again on the map; inside a door there is no quitting.
+At Boss I and Boss II the act is judged for two vaults, each an extra
+upgrade pick: the timed door, for an act within 60% of its doors' clocks,
+and the untouched door, for an act with no failed submit, timeout, `:q!` or
+paid retreat. The doors screen shows the split as you go.
 
 **In vim** (the game adds these commands; your vimrc loads as usual):
 

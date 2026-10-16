@@ -8,6 +8,7 @@ Boot #57 · Silver · ⚔ Race Condition                                        
 
 
 
+                                                 act II vaults · timed −11:00 · untouched ✓
 
                                             ╔═ ▸ 1 ⚔ BOSS ═════════════════════════════════════╗
                                             ║                                                  ║
@@ -29,7 +30,6 @@ Boot #57 · Silver · ⚔ Race Condition                                        
                                             ╚══════════════════════════════════════════════════╝
 
             Userland ✓✓ › The Scheduler ✓ › Off-by-One ✓ › The ALU ✓ › Race Condition ● › Kernel Space ○ › The Halting Problem ⚔
-
 
 
 

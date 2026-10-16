@@ -3,6 +3,7 @@ Boot #57 · Silver · ⚔ Heisenbug                                     uptime 4
 [ 2890.0] ⏱ timer ran out: burned 12 cycles · room lost · the boot goes on
           Stub line for door.timeout.
 ────────────────────────────────────────────────────────────────────────────────
+                   act II vaults · timed −24:00 · untouched ✓
 
 ╔═ ▸ 1 ⚔ BOSS ═════════════════════════════════════════════════════════════════╗
 ║                                                                              ║
@@ -20,5 +21,4 @@ Boot #57 · Silver · ⚔ Heisenbug                                     uptime 4
 ║                            ◆1700  ⏱ 36:00  +576 B                            ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
-
 enter open door · m map

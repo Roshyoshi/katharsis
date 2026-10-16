@@ -95,14 +95,20 @@ func (s *State) count(u Upgrade) int {
 }
 
 // o3Timer is the timer -O3 measures attempt a against: under
-// rules.O3OnBase the door's timer before the time the player bought (at,
-// Overclock, nice), so bought time never makes the free upgrade easier;
-// else the timer it opened with.
+// rules.O3OnBase its baseTimer, so bought time never makes the free
+// upgrade easier; else the timer it opened with.
 func (s *State) o3Timer(a Attempt) time.Duration {
-	r := &s.Rules
-	if !r.O3OnBase {
+	if !s.Rules.O3OnBase {
 		return a.Door.Timer
 	}
+	return s.baseTimer(a)
+}
+
+// baseTimer is attempt a's timer before the time the player bought for it
+// (at, Overclock, nice), as the boot holds them now: when a is the open
+// door, what it was given on its own.
+func (s *State) baseTimer(a Attempt) time.Duration {
+	r := &s.Rules
 	bought := s.overclock(s.count(Overclock))
 	if slices.Contains(s.Daemons, Nice) {
 		bought *= 1 + r.NiceTimerFrac

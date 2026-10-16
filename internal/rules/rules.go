@@ -453,6 +453,16 @@ type Rules struct {
 	// RetreatLock, above 0, refuses a retreat (kexec's free swap too) this
 	// long into a door: a swap is for a statement read, not a door fought.
 	RetreatLock Duration `toml:"retreat_lock"`
+	// The vaults at each boss but the last (Dead Cells' timed and no-hit
+	// doors; game.Split): judged as the boss falls, each open one owes
+	// VaultPicks upgrade picks. The timed vault opens when the act's time in
+	// its doors stays within TimedVault of its cleared doors' timers, the
+	// time the player bought taken out (0 turns it off); the untouched vault
+	// when no door of the act was hit (UntouchedVault). 0 picks, as in a
+	// boot saved before them, is no vaults.
+	TimedVault     float64 `toml:"timed_vault"`
+	UntouchedVault bool    `toml:"untouched_vault"`
+	VaultPicks     int     `toml:"vault_picks"`
 
 	// ---- the map (docs/design/map.md) -----------------------------------------
 
@@ -1196,6 +1206,9 @@ func (r Rules) validateCycles() error {
 	}
 	if r.ECCPenalty.Duration < 0 || r.ECCMargin.Duration < 0 || r.RetreatLock.Duration < 0 {
 		return fmt.Errorf("rules %q: need ecc_penalty, ecc_margin, retreat_lock >= 0", r.Name)
+	}
+	if !(r.TimedVault >= 0 && r.TimedVault <= 2) || r.VaultPicks < 0 {
+		return fmt.Errorf("rules %q: need 0 <= timed_vault <= 2, vault_picks >= 0", r.Name)
 	}
 	// The negated test also catches NaN.
 	if !(r.TimerMult >= 0 && r.TimerMult <= MaxTimerMult) {

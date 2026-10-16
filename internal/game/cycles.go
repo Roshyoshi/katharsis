@@ -275,6 +275,7 @@ func (e *engine) saveFail(o Outcome) bool {
 	name := e.door()
 	a := e.close(o)
 	s.Cycles -= cost
+	e.hit()
 	what := map[Outcome]string{TimedOut: "timer expired", GaveUp: ":q!"}[o]
 	then := ""
 	switch {

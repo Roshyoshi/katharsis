@@ -2,6 +2,8 @@ Boot #57 · Silver · ⚔ OOM Killer                                    uptime 3
 ♥ 24/50 cycles  🦆1  128 B uncommitted · 256 B committed          daemons strace
 ────────────────────────────────────────────────────────────────────────────────
 
+                   act I vaults · timed −33:00 · untouched ✓
+
 ╔═ ▸ 1 ⚔ BOSS ═════════════════════════════════════════════════════════════════╗
 ║                                                                              ║
 ║                             O O M   K I L L E R                              ║
@@ -18,7 +20,5 @@ Boot #57 · Silver · ⚔ OOM Killer                                    uptime 3
 ║                            ◆1700  ⏱ 32:00  +576 B                            ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
-
-                     ✓✓ › ✓ › OOM Killer ● › ○ › ⚔ › ○ › ⚔
 
 enter open door · m map

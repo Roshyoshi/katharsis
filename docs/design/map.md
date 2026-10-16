@@ -297,6 +297,24 @@ seed 7, boots 51–250, players 1000 / 1600.
   meets the poem in chapter I of *Through the Looking-Glass*, mirrored and
   "rather hard to understand", before anyone explains it.
 
+### The vaults: a timed door and an untouched door at Boss I and Boss II
+
+Dead Cells puts a timed door and a no-hit reward behind some fights. Here
+they are the two things an ICPC penalty counts, speed and first-submit
+accuracy, judged on the act as its boss falls (`game.Split`,
+`internal/game/vault.go`). Each open one owes `vault_picks` (1) upgrade
+picks, on top of the clear's; the final has none, nor does the Court:
+they end the boot.
+
+| Vault | Opens when | Not counted |
+|---|---|---|
+| timed | the act's time in its doors (every door, left ones too) stays within `timed_vault` (0.6) of its cleared doors' clocks | time bought for a door (`at`, Overclock, nice): each door is measured on its own clock (`Attempt.Base`), as -O3 is |
+| untouched | no door of the act was hit: a failed submit charged in cycles or, under ECC, in clock; a timeout; a `:q!`; a paid retreat | a sample's fail, a CE, kexec's free swap, prices paid at a pick; a heal does not undo a hit |
+
+The doors screen shows the act's split as a speedrun does, `act I vaults ·
+timed +6:40 · untouched ✓`, and the merge window after the boss each
+vault open or sealed and why.
+
 ## (g) The hub screens
 
 The map is the hub (D47). A boot can be suspended between doors only.

@@ -341,6 +341,11 @@ func (m *Merge) sections(width, cw int, cur mergeRow, intro bool, defeat string)
 			units.Bytes(st.Committed)+ui.Muted.Render(" committed this boot"+ui.G.Sep+"bank ")+units.Bytes(m.env.Meta.Bank))
 	}
 	secs = append(secs, mergeGoal(m.env)...) // apt's goal bar (debrief.go, RT3)
+	// After a boss, what its vaults made of the act: they explain the picks
+	// owed below.
+	if vr := vaultRows(st, label); len(vr) > 0 {
+		secs = append(append(secs, ""), vr...)
+	}
 
 	if st.PendingUpgrade && len(st.UpgradeOffers) > 0 {
 		note := ui.Muted.Render("a clear earned one; pick it before you leave")

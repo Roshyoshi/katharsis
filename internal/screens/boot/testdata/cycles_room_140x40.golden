@@ -12,6 +12,7 @@ Boot #57 · Silver · The ALU · room 1/1                                       
 
 
 
+                                                 act II vaults · timed +00:00 · untouched ✓
 
                  ┏━ ▸ 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  ╭─ 2 ──────────────────────────────────────────────╮
                  ┃ USACO · 2019 December, Silver P1                 ┃  │ CF Beta Round 4 (Div. 2)                         │
@@ -25,7 +26,6 @@ Boot #57 · Silver · The ALU · room 1/1                                       
  ╭─ Userland ─╮   ╭─ The Scheduler ─╮   ╭─ Off-by-One ─╮   ╭─ The ALU ─╮   ╭─ Heisenbug ─╮   ╭─ Kernel Space ─╮   ╭─ The Halting Problem ─╮
  │    ✓ ✓     │───│        ✓        │───│      ✓       │───│     ●     │───│      ⚔      │───│       ○        │───│           ⚔           │
  ╰────────────╯   ╰─────────────────╯   ╰──────────────╯   ╰───────────╯   ╰─────────────╯   ╰────────────────╯   ╰───────────────────────╯
-
 
 
 

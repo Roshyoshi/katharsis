@@ -7,6 +7,7 @@ Boot #57 · Silver · ⚔ OOM Killer                                            
 
 
 
+                                                 act I vaults · timed −33:00 · untouched ✓
 
                                             ╔═ ▸ 1 ⚔ BOSS ═════════════════════════════════════╗
                                             ║                                                  ║
@@ -30,7 +31,6 @@ Boot #57 · Silver · ⚔ OOM Killer                                            
  ╭─ Userland ─╮   ╭─ The Scheduler ─╮   ╭─ OOM Killer ─╮   ╭─ The ALU ─╮   ╭─ Heisenbug ─╮   ╭─ Kernel Space ─╮   ╭─ The Halting Problem ─╮
  │    ✓ ✓     │───│        ✓        │───│      ●       │───│     ○     │───│      ⚔      │───│       ○        │───│           ⚔           │
  ╰────────────╯   ╰─────────────────╯   ╰──────────────╯   ╰───────────╯   ╰─────────────╯   ╰────────────────╯   ╰───────────────────────╯
-
 
 
 

@@ -341,6 +341,7 @@ func (e *engine) submit(v SubmitResult) error {
 		e.logf("%s: %s, no charge", e.door(), v.Verdict)
 		return nil
 	}
+	e.hit() // charged, in cycles or, under ECC, in clock
 	if a.Door.Cursed {
 		// The curse takes the boot, not cycles: what is left stays on the
 		// record for the crash screen.
@@ -477,6 +478,7 @@ func (e *engine) retreat() error {
 	} else {
 		s.Cycles -= cost
 		e.logf("%s: retreat, -%s, %d left", name, units.Plural(cost, "cycle"), s.Cycles)
+		e.hit()
 	}
 	e.emit(CloseProblem{Door: a.Door})
 	s.Phase = PhaseDoors
@@ -539,6 +541,9 @@ func (e *engine) clear() {
 		Gap:     d.Difficulty(r) - PlayerRating(r, m, d.Topic),
 		Trial:   s.Trial != nil,
 	})
+	if s.vaulted() {
+		a.Base = s.baseTimer(*a) // the timed vault's budget
+	}
 	paid := s.Paid(*a)
 	e.close(Cleared)
 	advanceRegression(m, d.Problem, e.now)
@@ -566,6 +571,9 @@ func (e *engine) clear() {
 	if a.O3 {
 		picks++
 		e.logf("%s: -O3, under %s, free upgrade", name, units.Clock(scale(s.o3Timer(*a), r.O3Frac)))
+	}
+	if !more && s.Biomes[s.Biome].Kind == rules.Boss {
+		picks += e.judgeVaults() // the act's timed and untouched doors
 	}
 	e.emit(Sound{Name: "ac"})
 	e.owe(picks)

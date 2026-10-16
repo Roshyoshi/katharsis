@@ -233,3 +233,16 @@ func CyclesCleared() *game.State {
 	rebase(st, at(t+62, 0))
 	return st
 }
+
+// CyclesMergeVaults is CyclesMerge("drink") with Off-by-One's vaults
+// judged: act I in 38:12 within its 45:00 opened the timed door, a pick
+// owed on top of the clear's; two hits sealed the untouched door.
+func CyclesMergeVaults() *game.State {
+	st := CyclesMerge("drink")
+	st.Vaults = []game.Vault{
+		{Kind: game.VaultTimed, Act: 0, Open: true, Picks: 1, Took: 38*time.Minute + 12*time.Second, Limit: 45 * time.Minute, Hits: 2},
+		{Kind: game.VaultUntouched, Act: 0, Took: 38*time.Minute + 12*time.Second, Limit: 45 * time.Minute, Hits: 2},
+	}
+	st.UpgradePicks = 2
+	return st
+}

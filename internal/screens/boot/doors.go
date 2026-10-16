@@ -134,6 +134,11 @@ func (d *Doors) View(width, height int) string {
 	for _, l := range ease {
 		notes = append(notes, ui.Center(ui.Muted.Render(l), width))
 	}
+	// The act's split against its boss's vaults, as a speedrun shows its
+	// splits: the timed door's lead or lag and whether a door was hit.
+	if v := vaultSplit(st); v != "" {
+		notes = append(notes, ui.Center(v, width))
+	}
 	if len(notes) > 0 {
 		notes = append(notes, "")
 	}

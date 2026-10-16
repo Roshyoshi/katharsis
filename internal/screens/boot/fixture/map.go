@@ -249,7 +249,7 @@ func TrialExit(r rules.Rules, open bool) game.Exit {
 	return e
 }
 
-// TrialDoor is the Trial's one door, cursed and one shot, at its room's
+// TrialDoor is the Court's one door, cursed and one shot, at its room's
 // doors (game.TrialBoss).
 func TrialDoor() *game.State {
 	st := MapRouteTrial(true)
@@ -257,7 +257,8 @@ func TrialDoor() *game.State {
 	st.Biomes[4] = game.BiomeState{Name: "The Court", Topic: game.Mixed, Kind: rules.Boss, Rooms: 1, Boss: game.TrialBoss,
 		Node: rules.TrialNode, Exits: st.Biomes[4].Exits, Offers: st.Biomes[4].Offers}
 	st.Rules.Biomes = slices.Clone(st.Rules.Biomes)
-	st.Rules.Biomes[4].FailCycles = 0 // the node's, as the engine applies it: one shot
+	st.Rules.Biomes[4].FailCycles = 0           // the node's, as the engine applies it: one shot
+	st.Rules.Biomes[4].Ending = game.EndingWake // and its ending: no vaults on it
 	d := boss(cowPoetry, 36*time.Minute, 576, 0.55, game.TrialBoss)
 	d.Cursed = true
 	st.Doors = []game.Door{d}

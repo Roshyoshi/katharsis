@@ -7,6 +7,7 @@ Boot #57 · Silver · ⚔ Off-by-One                                            
 
 
 
+                                                 act I vaults · timed −33:00 · untouched ✓
 
                                             ╔═ ▸ 1 ⚔ BOSS ═════════════════════════════════════╗
                                             ║                                                  ║
@@ -30,7 +31,6 @@ Boot #57 · Silver · ⚔ Off-by-One                                            
  ╭─ Userland ─╮   ╭─ The Scheduler ─╮   ╭─ Off-by-One ─╮   ╭─ The ALU ─╮   ╭─ Heisenbug ─╮   ╭─ Kernel Space ─╮   ╭─ The Halting Problem ─╮
  │    ✓ ✓     │───│        ✓        │───│      ●       │───│     ○     │───│      ⚔      │───│       ○        │───│           ⚔           │
  ╰────────────╯   ╰─────────────────╯   ╰──────────────╯   ╰───────────╯   ╰─────────────╯   ╰────────────────╯   ╰───────────────────────╯
-
 
 
 

@@ -34,6 +34,9 @@ func Map() Rules {
 	r.ECCPenalty = minutes(5)
 	r.ECCMargin = minutes(1) // the user's margin: a converted fail leaves a minute or more
 	r.RetreatLock = Duration{150 * time.Second}
+	// The vaults: an act in 60% of its doors' own clocks, or with no door
+	// hit, each earns a pick, as Dead Cells' timed and no-hit doors pay.
+	r.TimedVault, r.UntouchedVault, r.VaultPicks = 0.6, true, 1
 	r.FountainCycles, r.FountainWhere = 5, FountainAct
 	r.KexecPerAct = true
 	r.TimerMult = 1

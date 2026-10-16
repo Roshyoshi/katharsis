@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -238,6 +239,7 @@ func owedPicks(st *game.State) (n int, x extras) {
 		return n, x
 	}
 	x.o3 = a.O3
+	x.vaults = openVaults(st)
 	// A gated biome pays at its exit (rules.Biome.Picks), so its picks are
 	// owed once its last room is cleared: in the merge window after it.
 	if b := st.Biome; st.Phase == game.PhaseMerge && b < len(st.Rules.Biomes) && b < len(st.Biomes) {
@@ -248,38 +250,66 @@ func owedPicks(st *game.State) (n int, x extras) {
 	return n, x
 }
 
-// extras is what earned a clear's picks past its own: -O3, and a gated
-// biome's exit, by the biome's name (gated, "" for none) with its picks.
+// extras is what earned a clear's picks past its own: -O3, a gated
+// biome's exit, by the biome's name (gated, "" for none) with its picks,
+// and the vaults a boss's clear opened, by name ("the timed door"), a
+// pick each.
 type extras struct {
-	o3    bool
-	gated string
-	picks int
+	o3     bool
+	gated  string
+	picks  int
+	vaults []string
 }
 
-func (x extras) any() bool { return x.o3 || x.gated != "" }
+func (x extras) any() bool { return x.o3 || x.gated != "" || len(x.vaults) > 0 }
 
 // picksNote counts the picks owed after a clear that earned extras: "2 to
 // pick" on the first, "1 left" on the last, and what earned them: "(-O3
 // earned an extra)", "(The Accumulator earned an extra)", "(-O3 and The
-// Accumulator each earned an extra)".
+// Accumulator each earned an extra)", "(-O3 earned an extra, The
+// Accumulator 2 extra)".
 func picksNote(n int, x extras) string {
 	s := fmt.Sprintf("%d to pick", n)
 	if n < 2 {
 		s = fmt.Sprintf("%d left", n)
 	}
-	gated := "an extra"
-	if x.picks != 1 {
-		gated = fmt.Sprintf("%d extra", x.picks)
+	type earner struct {
+		who string
+		n   int
+	}
+	var es []earner
+	if x.o3 {
+		es = append(es, earner{"-O3", 1})
+	}
+	if x.gated != "" {
+		es = append(es, earner{x.gated, x.picks})
+	}
+	for _, v := range x.vaults {
+		es = append(es, earner{v, 1})
+	}
+	extra := func(n int) string {
+		if n == 1 {
+			return "an extra"
+		}
+		return fmt.Sprintf("%d extra", n)
+	}
+	ones := true
+	names := make([]string, len(es))
+	for i, e := range es {
+		ones = ones && e.n == 1
+		names[i] = e.who
 	}
 	switch {
-	case x.o3 && x.gated != "" && x.picks == 1:
-		s += " (-O3 and " + x.gated + " each earned an extra)"
-	case x.o3 && x.gated != "":
-		s += " (-O3 earned an extra, " + x.gated + " " + gated + ")"
-	case x.gated != "":
-		s += " (" + x.gated + " earned " + gated + ")"
-	case x.o3:
-		s += " (-O3 earned an extra)"
+	case len(es) == 1:
+		s += " (" + es[0].who + " earned " + extra(es[0].n) + ")"
+	case len(es) > 1 && ones:
+		s += " (" + strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1] + " each earned an extra)"
+	case len(es) > 1:
+		s += " (" + es[0].who + " earned " + extra(es[0].n)
+		for _, e := range es[1:] {
+			s += ", " + e.who + " " + extra(e.n)
+		}
+		s += ")"
 	}
 	return ui.Muted.Render(s)
 }

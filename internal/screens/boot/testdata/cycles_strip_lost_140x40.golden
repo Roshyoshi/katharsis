@@ -8,6 +8,7 @@ Boot #57 · Silver · ⚔ Heisenbug                                             
 
 
 
+                                                 act II vaults · timed −24:00 · untouched ✓
 
                                             ╔═ ▸ 1 ⚔ BOSS ═════════════════════════════════════╗
                                             ║                                                  ║
@@ -31,7 +32,6 @@ Boot #57 · Silver · ⚔ Heisenbug                                             
  ╭─ Userland ─╮   ╭─ The Scheduler ─╮   ╭─ Off-by-One ─╮   ╭─ The ALU ─╮   ╭─ Heisenbug ─╮   ╭─ Kernel Space ─╮   ╭─ The Halting Problem ─╮
  │    ✓ ✓     │───│        ✓        │───│      ✓       │───│     ✗     │───│      ●      │───│       ○        │───│           ⚔           │
  ╰────────────╯   ╰─────────────────╯   ╰──────────────╯   ╰───────────╯   ╰─────────────╯   ╰────────────────╯   ╰───────────────────────╯
-
 
 
 

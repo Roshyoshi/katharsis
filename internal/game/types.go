@@ -325,6 +325,10 @@ type BiomeState struct {
 	// takes it at once. They are kept after the choice, for the map's "not
 	// taken".
 	Exits []Exit `json:",omitempty"`
+	// Hits are the charged failures on the tier's doors (game.Split): a
+	// failed submit that cost cycles or clock, a timeout, a :q!, a paid
+	// retreat. A free one (a sample's fail, a CE, kexec's swap) is none.
+	Hits int `json:",omitempty"`
 }
 
 // Exit is one way out of a map node into the next tier (map.md §(g)): the
@@ -449,6 +453,9 @@ type Attempt struct {
 	// Samples counts the sample runs (:w) made on this door (SamplesRun),
 	// where State.CountsSamples says they were counted.
 	Samples int `json:",omitempty"`
+	// Base is the door's timer without the time the player bought
+	// (baseTimer), kept when it is cleared: the timed vault's budget.
+	Base time.Duration `json:",omitempty"`
 }
 
 // Upgrade is picked after each cleared door.
@@ -550,6 +557,9 @@ type State struct {
 	UpgradePicks int
 	// RegressionOffered: a boot offers at most one regression door.
 	RegressionOffered bool
+
+	// Vaults are the vaults judged this boot, in order (vault.go).
+	Vaults []Vault `json:",omitempty"`
 
 	// Spent is the uncommitted bytes merge windows sold items for; every
 	// byte earned is committed, uncommitted, spent or lost to the crash.
