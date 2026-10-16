@@ -44,6 +44,9 @@ type (
 	Upsolve       struct{ Problem catalog.ID } // a core dump or regression
 	OpenStatement struct{ Problem catalog.ID }
 	OpenEditorial struct{ Problem catalog.ID }
+	// OpenSamples shows the open door's samples in full: each one's input,
+	// expected output and the program's, its stderr, the build's warnings.
+	OpenSamples struct{}
 	// StartTrial begins a learn-mode trial for a USACO Guide module id.
 	StartTrial struct{ Module string }
 	// OpenModule shows a learn-mode module page in the reader.

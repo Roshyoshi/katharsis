@@ -10,6 +10,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	"katharsis/internal/judge"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/store"
@@ -32,6 +33,11 @@ type settings struct {
 	// SetuidSpoilers is what that screen shows of a secret not set yet:
 	// "none" (the default, -?????????), "hints" or "all".
 	SetuidSpoilers string `toml:"setuid_spoilers"`
+	// SampleWarnings are the warning flags the samples build with (:w),
+	// never :Submit, which matches the online judge. The default is
+	// judge.SampleWarnings: an uninitialized read fails the build, the rest
+	// are reported beside the samples. [] turns them off.
+	SampleWarnings []string `toml:"sample_warnings"`
 }
 
 func defaultSettings() settings {
@@ -39,6 +45,7 @@ func defaultSettings() settings {
 		SessionBudget:  rules.Duration{Duration: store.DefaultRetention().SessionBudget},
 		SetuidNotices:  true,
 		SetuidSpoilers: meta.SpoilersNone,
+		SampleWarnings: judge.SampleWarnings,
 	}
 }
 

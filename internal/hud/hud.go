@@ -150,6 +150,9 @@ type Model struct {
 	passErr error
 	rows    []row
 	sel     int
+	// heads are the samples' files as Pass carries them, by path, read once
+	// per problem load.
+	heads map[string]string
 	// waiting is set while an Unjudged source has not been saved: the
 	// tests are loaded, and none has run.
 	waiting bool
@@ -248,6 +251,7 @@ func (m *Model) rejudge() tea.Cmd {
 // rows, none judged; it reports whether the problem loaded.
 func (m *Model) load() bool {
 	m.prob, m.loadErr = problem.Load(m.opt.Dir)
+	m.heads = nil
 	if m.loadErr != nil {
 		m.running, m.rows = false, nil
 		return false
@@ -579,6 +583,9 @@ func (m *Model) View() tea.View {
 		line(l)
 	}
 	line(m.statusLine())
+	if ws := m.warnings(); len(ws) > 0 {
+		line(m.warningCount() + ui.Muted.Render(ui.G.Sep) + ShortWarning(ws[0]))
+	}
 	if m.closing {
 		line(ui.Warn.Render("closing vim: answer it there · q again leaves it open"))
 	}

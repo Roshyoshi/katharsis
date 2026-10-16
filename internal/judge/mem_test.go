@@ -111,7 +111,7 @@ func TestWatch(t *testing.T) {
 }
 
 func TestHeadTail(t *testing.T) {
-	h := &headTail{n: 4}
+	h := &headTail{n: 4, name: "stderr"}
 	for _, s := range []string{"ab", "cdef", "ghijklmnop", "qr", "stu"} {
 		_, _ = h.Write([]byte(s))
 	}
@@ -119,7 +119,7 @@ func TestHeadTail(t *testing.T) {
 	if got, want := h.String(), "abcd\n… 13B of stderr cut …\nrstu"; got != want {
 		t.Errorf("String = %q, want %q", got, want)
 	}
-	short := &headTail{n: 4}
+	short := &headTail{n: 4, name: "stderr"}
 	_, _ = short.Write([]byte("abcdefg"))
 	if got := short.String(); got != "abcdefg" {
 		t.Errorf("String = %q, want everything when nothing was cut", got)

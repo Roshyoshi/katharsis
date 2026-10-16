@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"katharsis/internal/game"
+	"katharsis/internal/judge"
 	"katharsis/internal/rules"
 	"katharsis/internal/store"
 )
@@ -116,7 +119,7 @@ func TestRunMotdUsage(t *testing.T) {
 
 func TestSettings(t *testing.T) {
 	dir := t.TempDir()
-	if s, err := loadSettings(filepath.Join(dir, "none.toml")); err != nil || s != defaultSettings() || s.SessionBudget.Duration != 3*time.Hour {
+	if s, err := loadSettings(filepath.Join(dir, "none.toml")); err != nil || !reflect.DeepEqual(s, defaultSettings()) || s.SessionBudget.Duration != 3*time.Hour {
 		t.Errorf("missing file: %+v, %v", s, err)
 	}
 	for _, tc := range []struct {
@@ -152,5 +155,21 @@ func TestSettings(t *testing.T) {
 	}
 	if s, err := loadSettings(path); err != nil || s.SetuidNotices || s.SetuidSpoilers != "all" {
 		t.Errorf("setuid settings: %+v, %v", s, err)
+	}
+	// The sample warnings: judge's by default, [] for none, or the player's.
+	if d := defaultSettings(); !slices.Equal(d.SampleWarnings, judge.SampleWarnings) {
+		t.Errorf("default sample warnings %q", d.SampleWarnings)
+	}
+	for body, want := range map[string][]string{
+		"sample_warnings = []":          {},
+		"sample_warnings = [\"-Wall\"]": {"-Wall"},
+	} {
+		path := filepath.Join(dir, "warnings.toml")
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if s, err := loadSettings(path); err != nil || !slices.Equal(s.SampleWarnings, want) {
+			t.Errorf("%s: %q, %v", body, s.SampleWarnings, err)
+		}
 	}
 }

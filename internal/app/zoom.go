@@ -21,11 +21,13 @@ type zoomer interface {
 // Zoom zooms the game's own pane over its window, or unzooms it.
 func (r *TmuxRunner) Zoom(on bool) error { return session.Zoom(os.Getenv("TMUX_PANE"), on) }
 
-// zoomFor zooms the game's pane for reader s when the pane is too narrow
-// to read in, and remembers s, so that the pane unzooms once s is gone.
-func (m *Model) zoomFor(s screens.Screen) {
+// zoomFor zooms the game's pane for s when the pane is narrower than
+// below, the width s is read in (zoomMin for a reader, samples.Wide for
+// the samples side by side), and remembers s, so that the pane unzooms
+// once s is gone.
+func (m *Model) zoomFor(s screens.Screen, below int) {
 	z, ok := m.d.Runner.(zoomer)
-	if !ok || m.zoomed != nil || m.width <= 0 || m.width >= zoomMin {
+	if !ok || m.zoomed != nil || m.width <= 0 || m.width >= below {
 		return
 	}
 	if z.Zoom(true) == nil {

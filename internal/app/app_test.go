@@ -27,6 +27,7 @@ import (
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/reader"
+	"katharsis/internal/screens/samples"
 	"katharsis/internal/session"
 	"katharsis/internal/store"
 	"katharsis/internal/ui"
@@ -1683,6 +1684,48 @@ func TestResumeNoteLeavesWithTheDoor(t *testing.T) {
 		}
 		if h.m.flash == note || strings.Contains(ansi.Strip(h.m.View().Content), ansi.Strip(note)) {
 			t.Errorf("the resume note %q lingers on the crash screen", note)
+		}
+	})
+}
+
+// hudZoomRunner is a door with a HUD in a pane that zooms.
+type hudZoomRunner struct {
+	*hudFakeRunner
+	zooms []bool
+}
+
+func (r *hudZoomRunner) Zoom(on bool) error { r.zooms = append(r.zooms, on); return nil }
+
+// w on a door shows its samples in full (screens/samples), zoomed over
+// the editor in a pane too narrow to set them side by side; w again goes
+// back to the door and unzooms.
+func TestSamplesView(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var zr *hudZoomRunner
+		h := newHarnessWith(t, func(f *fakeRunner) Runner {
+			zr = &hudZoomRunner{hudFakeRunner: &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: t.TempDir(), Embedded: true}}}
+			return zr
+		})
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.enterDoor()
+		h.send(tea.WindowSizeMsg{Width: 80, Height: 30})
+		h.send(key("w"))
+		if _, ok := h.m.top().(*samples.Model); !ok {
+			t.Fatalf("w opened a %T", h.m.top())
+		}
+		if !slices.Equal(zr.zooms, []bool{true}) {
+			t.Errorf("an 80-column pane: zooms %v, want one zoom", zr.zooms)
+		}
+		h.send(tea.WindowSizeMsg{Width: 160, Height: 30}) // zoomed: the pane is the window
+		if v := view(h); !strings.Contains(v, "samples") || !strings.Contains(v, "w close") {
+			t.Errorf("the samples view:\n%s", v)
+		}
+		h.send(key("w"))
+		if _, ok := h.m.top().(*problemScreen); !ok {
+			t.Errorf("w again left a %T on top", h.m.top())
+		}
+		if !slices.Equal(zr.zooms, []bool{true, false}) {
+			t.Errorf("after w: zooms %v, want zoom then unzoom", zr.zooms)
 		}
 	})
 }

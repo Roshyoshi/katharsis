@@ -12,11 +12,13 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
+	"katharsis/internal/hud"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/reader"
+	"katharsis/internal/screens/samples"
 	"katharsis/internal/screens/story"
 	"katharsis/internal/store"
 	"katharsis/internal/ui"
@@ -70,6 +72,15 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 		return m.openDoc(msg.Problem, false), true
 	case screens.OpenEditorial:
 		return m.openDoc(msg.Problem, true), true
+	case screens.OpenSamples:
+		s := samples.New(func() (hud.Pass, bool) {
+			if h := m.hud(); h != nil {
+				return h.Pass(), true
+			}
+			return hud.Pass{}, false
+		})
+		m.zoomFor(s, samples.Wide)
+		return m.push(s), true
 	case reader.OpenURL:
 		return openURL(msg.URL), true
 	case docMsg:
@@ -77,7 +88,7 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 			m.readEditorial(msg.editorial)
 		}
 		s := m.docShown(msg)
-		m.zoomFor(s)
+		m.zoomFor(s, zoomMin)
 		return m.push(s), true
 	case submitMsg:
 		return m.submit(), true

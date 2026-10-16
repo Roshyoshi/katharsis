@@ -1,0 +1,24 @@
+cf1675A_food_for_animals · samples 0/1 · asan+ubsan (libstdc++) · built 0.6s
+────────────────────────────────────────────────────────────────────────────────
+▸ #1 WA
+────────────────────────────────────────────────────────────────────────────────
+#1 WA · line 1 · cpu 3ms · wall 41ms · peak 2M
+want YES (line 1) · got end of output (line 1)
+
+expected                               │ output
+✗ YES                                  │ ✗ nothing printed
+YES                                    │
+NO                                     │
+YES                                    │
+YES                                    │
+NO                                     │
+NO                                     │
+
+input
+  7
+  1 1 4 2 3
+  0 0 0 0 0
+  5 5 0 4 6
+  1 1 1 1 1
+  50000000 50000000 100000000 100000000 100000000
+ #1 of 1 · lines 1–19 of 21                   h/l sample · j/k scroll · w close

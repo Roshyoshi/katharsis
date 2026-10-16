@@ -205,7 +205,7 @@ func runPractice(args []string) error {
 	// After the editor is up: on a cold cache the probe can take seconds
 	// (a hanging ASan runtime times out at 3 s), and the player can start
 	// typing meanwhile.
-	opt.Profile = judge.SampleProfile(ctx)
+	opt.Profile = judge.SampleProfile(ctx).WithWarnings(openSettings(-1).SampleWarnings)
 
 	m := hud.New(opt)
 	p := tea.NewProgram(m)

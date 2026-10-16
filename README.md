@@ -83,12 +83,13 @@ The pool is `♥ 30/50 cycles`. Between any two doors the boot can be left
 | Map (the hub) | `enter` resume · `n` new boot (ends the one in flight as a crash) · `u` upsolve · `t` RTFM · `q` quit |
 | Exits | `←/→` or `1-4` select · `enter` take · `t` RTFM on a locked one · `m` map |
 | Doors | `←/→` or `1-3` select · `enter` open · `m` map · `q` quit (the boot waits on the map) |
-| Problem pane | `s` submit · `t` statement · `?` duck · `R` retreat · `Q Q` give up · `e` reopen a closed editor |
+| Problem pane | `s` submit · `t` statement · `w` the samples in full · `?` duck · `R` retreat · `Q Q` give up · `e` reopen a closed editor |
+| Samples (`w`) | input, expected output and your output side by side, stderr under them, the build's warnings above · `h/l` or `1-9` sample · `j/k` · `space` page · `g/G` · `w` or `q` back |
 | Merge window | `c` commit bytes · `f` fsck · `↑/↓` + `enter` pick an upgrade or daemon, then leave |
 | Kernel panic | `u` upsolve the problem · `e` editorial · `r` reboot (twice over a live core dump) · `s` short · `p` patch · `b` read the story beat · `l` git log · `g` GRUB |
 | Cleared | `r` reboot · `s` short · `p` patch · `b` story beat · `l` git log · `g` GRUB |
 | Reader | `j/k` · `space/b` · `g/G` · `/` search, `n/N` · `o` open in the browser · `q` back |
-| git log | `j/k` · `enter` expand a boot · `r` play its seed again (a past nightly too) · `f` filter · `q` back |
+| git log | `j/k` · `enter` expand a boot · `r` play its seed again (a past nightly too) · `f` filter · `c` walk the calendar of days · `q` back |
 | top | `s` sort topics · `q` back |
 
 **Libs.** Mark a snippet in any solution and it becomes reusable:
@@ -102,6 +103,10 @@ struct DSU { ... };
 **Judge.** `:Submit` judges with GCC 14 (`g++ -O2`, libstdc++, as on
 Codeforces), and `:Debug` builds with the same g++ at `-O0 -g`. Saves run
 the samples under clang's ASan and UBSan, built against that libstdc++.
+Sample builds also warn (`-Wall -Wextra -Wshadow`): reading a variable
+never set fails the build, since neither sanitizer sees it and `-O2` may
+read a lucky 0; the other warnings show beside the samples. `:Submit`
+builds without them, as the judge does.
 `<bits/stdc++.h>`, `__gnu_pbds` and `std::__gcd` work as on the judge;
 `#pragma GCC target(...)` lines are dropped, since arm64 g++ rejects x86
 targets. Where the bundled g++ does not run, all three use clang and libc++.
@@ -116,7 +121,7 @@ In a tmux session the game starts, `g++` and `clang++` on PATH are these.
 | `~/Library/Caches/katharsis/` | problems, tests, editorials, builds |
 | `~/.config/katharsis/presets/*.toml` | custom rules: each lists only what it changes from the standard rules ([rules.go](internal/rules/rules.go)), a `[[biome]]` list replaces them all, and an unknown key is an error; `standard`, `short` and `patch` are built-in names |
 | `~/.config/katharsis/audio.toml` | volumes, fades, ducking, the timer warning ([settings](internal/audio/settings.go)) |
-| `~/.config/katharsis/settings.toml` | `session_budget = "3h"` (see `--session-budget`) |
+| `~/.config/katharsis/settings.toml` | `session_budget = "3h"` (see `--session-budget`); `sample_warnings = [...]`, the sample builds' warning flags (`[]` for none) |
 | `~/.config/katharsis/music/<pool or topic>/` | your own mp3, ogg, wav or VGS mml files for that pool or biome |
 | `~/Library/Caches/katharsis/music/` | downloaded music |
 

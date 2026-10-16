@@ -261,8 +261,11 @@ func TestRun(t *testing.T) {
 		{name: "AC a+b", src: "ab.cpp", in: "1 2\n", out: "3\n", profs: both, want: judge.AC},
 		{name: "WA on line 2", src: "wa.cpp", in: "2 3\n", out: "5\n6\n", profs: both, want: judge.WA,
 			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
-				if r.Diff == nil || *r.Diff != (judge.Diff{Line: 2, Want: "6", Got: "7"}) {
+				if r.Diff == nil || *r.Diff != (judge.Diff{Line: 2, Want: "6", Got: "7", GotLine: 2}) {
 					t.Errorf("Diff = %+v, want line 2: 6 vs 7", r.Diff)
+				}
+				if r.Stdout != "5\n7\n" {
+					t.Errorf("Stdout = %q, want the program's answer", r.Stdout)
 				}
 				if r.Reason != "line 2" {
 					t.Errorf("Reason = %q, want %q", r.Reason, "line 2")
@@ -514,7 +517,7 @@ func TestRun(t *testing.T) {
 		{name: "WA float word mismatch", src: "float.cpp", in: "4\n", out: "0.25 OK\n",
 			lim: judge.Limits{FloatTolerance: 1e-6}, profs: full, want: judge.WA,
 			check: func(t *testing.T, _ judge.Profile, r judge.Result) {
-				if r.Diff == nil || *r.Diff != (judge.Diff{Line: 1, Want: "OK", Got: "ok"}) {
+				if r.Diff == nil || *r.Diff != (judge.Diff{Line: 1, Want: "OK", Got: "ok", GotLine: 1}) {
 					t.Errorf("Diff = %+v, want OK vs ok on line 1", r.Diff)
 				}
 			}},

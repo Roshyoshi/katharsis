@@ -79,6 +79,10 @@ type Result struct {
 	Reason  string // one line: signal, sanitizer summary, limit hit
 	Diff    *Diff  // set for WA
 	Stderr  string // head and tail of stderr, bounded
+	// Stdout is what the program answered (its stdout, or the <stem>.out it
+	// wrote), head and tail, bounded like Stderr: the samples view shows it
+	// beside the expected output.
+	Stdout string
 
 	// Rerun is set when JudgeFull judged this test again alone after a
 	// TLE in the parallel pass; this is the rerun's result.
@@ -97,6 +101,14 @@ type Case struct {
 // much of its tail, so a sanitizer report after megabytes of debug prints
 // is still there.
 const stderrCap = 16 << 10
+
+// kept is a program's answer as a Result keeps it (Result.Stdout): its
+// head and tail, stderrCap of each.
+func kept(b []byte) string {
+	h := &headTail{n: stderrCap, name: "output"}
+	_, _ = h.Write(b)
+	return h.String()
+}
 
 // DefaultOutputLimit applies when Limits.Output is zero.
 const DefaultOutputLimit = 64 << 20
@@ -173,7 +185,7 @@ func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result
 	defer cancel()
 
 	stdout := &capWriter{max: lim.Output, onOverflow: cancel}
-	stderr := &headTail{n: stderrCap}
+	stderr := &headTail{n: stderrCap, name: "stderr"}
 	outPipe, err := newPipe(stdout)
 	if err != nil {
 		return Result{}, err
@@ -216,6 +228,7 @@ func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result
 	outPipe.finish(time.Second)
 	errPipe.finish(time.Second)
 	res.Stderr = stderr.String()
+	res.Stdout = kept(stdout.buf.Bytes())
 	if ps := cmd.ProcessState; ps != nil {
 		if ru, ok := ps.SysUsage().(*syscall.Rusage); ok {
 			res.CPU = tv(ru.Utime) + tv(ru.Stime)
@@ -282,6 +295,7 @@ func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result
 		wrote = true
 		if len(bytes.TrimSpace(b)) > 0 {
 			got = b
+			res.Stdout = kept(b)
 			break
 		}
 	}
@@ -380,9 +394,11 @@ func (w *capWriter) Write(p []byte) (int, error) {
 }
 
 // headTail keeps the first n bytes written to it and the last n, so a
-// crash report survives any amount of debug output before it.
+// crash report survives any amount of debug output before it. name says
+// what was cut, in the line that marks the cut.
 type headTail struct {
 	n     int
+	name  string
 	head  []byte
 	tail  []byte // the bytes after head; trimmed to the last n now and then
 	total int64
@@ -416,7 +432,7 @@ func (h *headTail) String() string {
 	if cut == 0 {
 		return string(h.head) + string(tail)
 	}
-	return fmt.Sprintf("%s\n… %s of stderr cut …\n%s", h.head, units.Mem(cut), tail)
+	return fmt.Sprintf("%s\n… %s of %s cut …\n%s", h.head, units.Mem(cut), h.name, tail)
 }
 
 func readCapped(path string, max int64) ([]byte, error) {

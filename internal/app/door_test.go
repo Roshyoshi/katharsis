@@ -1,6 +1,7 @@
 package app
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -49,32 +50,38 @@ func (h *harness) pane() *problemScreen {
 
 // TestTwistJudging: each boss's twist bends the HUD's judging the way its
 // door says (D54): the OOM Killer's memory limit, on samples without ASan
-// too, Undefined Behavior's samples without sanitizers, Heisenbug's
-// pass-or-fail samples. A plain door and an upsolve judge as ever.
+// too, Undefined Behavior's samples without sanitizers or warnings,
+// Heisenbug's pass-or-fail samples. A plain door and an upsolve judge as
+// ever, warnings on.
 func TestTwistJudging(t *testing.T) {
 	tc := judge.Toolchain{Samples: judge.Samples, Full: judge.Full, Debug: judge.Debug, Hardened: judge.HardenedSamples}
 	door := func(d game.Door, mem int64) Door {
 		return Door{Door: d, Problem: catalog.Problem{TimeLimit: time.Second, MemLimit: mem}}
 	}
-	prof, lim, quiet := judging(tc, door(game.Door{}, 256<<20), 0.8)
+	w := judge.SampleWarnings
+	warns := func(p judge.Profile) bool { return slices.Contains(p.Flags, "-Werror=uninitialized") }
+	prof, lim, quiet := judging(tc, door(game.Door{}, 256<<20), 0.8, w)
 	if prof.Name != judge.Samples.Name || lim.Mem != 256<<20 || lim.Time != time.Second || lim.Scale != 0.8 || quiet {
 		t.Errorf("plain door: %s, %+v, quiet %v", prof.Name, lim, quiet)
 	}
-	if prof, lim, _ := judging(tc, door(game.Door{Twist: "oom-killer", MemMult: 0.5}, 256<<20), 1); lim.Mem != 128<<20 || prof.Name != tc.Hardened.Name {
+	if !warns(prof) {
+		t.Error("plain door: samples without the warnings")
+	}
+	if prof, lim, _ := judging(tc, door(game.Door{Twist: "oom-killer", MemMult: 0.5}, 256<<20), 1, w); lim.Mem != 128<<20 || prof.Name != tc.Hardened.Name || !warns(prof) {
 		t.Errorf("OOM Killer: memory %d on %q, want half of 256 MiB on %q", lim.Mem, prof.Name, tc.Hardened.Name)
 	}
-	if _, lim, _ := judging(tc, door(game.Door{Twist: "oom-killer", MemMult: 0.5}, 0), 1); lim.Mem != 128<<20 {
+	if _, lim, _ := judging(tc, door(game.Door{Twist: "oom-killer", MemMult: 0.5}, 0), 1, w); lim.Mem != 128<<20 {
 		t.Errorf("OOM Killer on a problem with no limit: %d, want half of the default", lim.Mem)
 	}
-	if prof, _, _ := judging(tc, door(game.Door{Twist: "undefined-behavior", NoSanitizers: true}, 0), 1); prof.Name != judge.Full.Name || prof.Sanitized {
-		t.Errorf("Undefined Behavior: samples on %q", prof.Name)
+	if prof, _, _ := judging(tc, door(game.Door{Twist: "undefined-behavior", NoSanitizers: true}, 0), 1, w); prof.Name != judge.Full.Name || prof.Sanitized || warns(prof) {
+		t.Errorf("Undefined Behavior: samples on %q, flags %q; want no net at all", prof.Name, prof.Flags)
 	}
-	if _, _, quiet := judging(tc, door(game.Door{Twist: "heisenbug", QuietSamples: true}, 0), 1); !quiet {
+	if _, _, quiet := judging(tc, door(game.Door{Twist: "heisenbug", QuietSamples: true}, 0), 1, w); !quiet {
 		t.Error("Heisenbug: samples not quiet")
 	}
 	up := door(game.Door{MemMult: 0.5, NoSanitizers: true, QuietSamples: true}, 256<<20)
 	up.Upsolve = true
-	if prof, lim, quiet := judging(tc, up, 1); prof.Name != judge.Samples.Name || lim.Mem != 256<<20 || quiet {
+	if prof, lim, quiet := judging(tc, up, 1, w); prof.Name != judge.Samples.Name || lim.Mem != 256<<20 || quiet {
 		t.Errorf("an upsolve kept a twist: %s, %d, %v", prof.Name, lim.Mem, quiet)
 	}
 }

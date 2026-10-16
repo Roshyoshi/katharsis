@@ -34,6 +34,9 @@ type TmuxRunner struct {
 	Split     int    // editor width in percent; 0 sizes the HUD (session.HUDWidth)
 	Templates Templates
 	Scale     float64 // CPU limit multiplier (judge.Limits.Scale)
+	// Warnings are the sample builds' warning flags (judge.SampleWarnings,
+	// settings.toml's sample_warnings); none on Undefined Behavior's doors.
+	Warnings []string
 
 	// Set by the app before the first Open.
 	Send    func(tea.Msg)
@@ -127,7 +130,7 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 	_ = session.TagPane(pane, session.RoleEditor)
 
 	tc := judge.Profiles(ctx)
-	samples, lim, quiet := judging(tc, d, r.Scale)
+	samples, lim, quiet := judging(tc, d, r.Scale, r.Warnings)
 	opt := hud.Options{
 		Dir:           dir,
 		Profile:       samples,
@@ -194,8 +197,10 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 // Undefined Behavior builds the samples with the toolchain's full-test
 // profile, which has no sanitizers (NoSanitizers). Heisenbug reports the
 // samples as pass or fail only (QuietSamples, hud.Options.Quiet). An
-// upsolve has no twist.
-func judging(tc judge.Toolchain, d Door, scale float64) (samples judge.Profile, lim judge.Limits, quiet bool) {
+// upsolve has no twist. The samples build with warn, the warning flags,
+// but for Undefined Behavior's: no sanitizers there means no net at all,
+// and an uninitialized read is the UB a warning catches.
+func judging(tc judge.Toolchain, d Door, scale float64, warn []string) (samples judge.Profile, lim judge.Limits, quiet bool) {
 	lim = judge.Limits{
 		Time:           d.Problem.TimeLimit,
 		Mem:            d.Problem.MemLimit,
@@ -205,14 +210,14 @@ func judging(tc judge.Toolchain, d Door, scale float64) (samples judge.Profile, 
 		FileIO:         d.Problem.FileIO, // a stem the source hides from detection
 		AnyCase:        d.Problem.AnyCase,
 	}
-	samples = tc.Samples
+	samples = tc.Samples.WithWarnings(warn)
 	if d.Upsolve {
 		return samples, lim, false
 	}
 	t := d.Door
 	if t.MemMult > 0 && t.MemMult != 1 {
 		lim.Mem = int64(float64(cmp.Or(lim.Mem, defaultMem)) * t.MemMult)
-		samples = tc.Hardened
+		samples = tc.Hardened.WithWarnings(warn)
 	}
 	if t.NoSanitizers {
 		samples = tc.Full

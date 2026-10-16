@@ -1,0 +1,40 @@
+cf1675A_food_for_animals · samples · asan+ubsan (libstdc++) · built 0.0s
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+CE  compile error
+
+food.cpp:47:17: error: variable 'i' is uninitialized when used here [-Werror,-Wuninitialized]
+   47 |     for (int i; i < t; i++) {
+      |                 ^
+food.cpp:47:15: note: initialize the variable 'i' to silence this warning
+1 error generated.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ #1 of 1                                                                                                  h/l sample · j/k scroll · w close

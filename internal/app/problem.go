@@ -129,6 +129,10 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		return s, screens.Emit(submitMsg{})
 	case "t":
 		return s, screens.Emit(screens.OpenStatement{Problem: s.door.Problem})
+	case "w":
+		if s.m.hud() != nil {
+			return s, screens.Emit(screens.OpenSamples{})
+		}
 	case "o":
 		return s, s.openPage()
 	case "?":
@@ -371,7 +375,8 @@ func (s *problemScreen) retreatKey() string {
 // 52 columns the editor's are bare names, and the pane's drop Q, whose
 // :q! the editor row already has. enter names what it swaps to. o, the
 // page on the web, comes after the keys J17 keeps (s, ?, h) and ahead of
-// the rest, so at 48 columns it still shows.
+// the rest, so at 48 columns it still shows. w, the samples in full,
+// comes last, shown when the pane has the room; h lists it.
 func (s *problemScreen) footers(w int) (vim, keys string) {
 	narrow := w < 52
 	var swap []string
@@ -399,14 +404,14 @@ func (s *problemScreen) footers(w int) (vim, keys string) {
 			ui.Footer(w, append(append([]string{"s", "submit", "e", "editorial"}, web...), "Q", "leave", "h", "help")...)
 	case s.upsolve:
 		return ui.Footer(w, ":w", "samples", ":Submit", "judge", ":Debug n", "debug"),
-			row([]string{"e", "editorial"}, web, []string{"Q", "leave"})
+			row([]string{"e", "editorial"}, web, []string{"Q", "leave", "w", "output"})
 	case narrow:
 		return ui.Muted.Render(":w :Submit :Debug n :Quack :Retreat :q!"),
-			row([]string{"?", "duck"}, web, []string{"R", s.retreatKey()})
+			row([]string{"?", "duck"}, web, []string{"R", s.retreatKey(), "w", "output"})
 	}
 	return ui.Footer(w, ":w", "samples", ":Submit", "judge", ":Debug n", "debug", ":Quack", "duck",
 			":Retreat", "retreat", ":q!", "give up"),
-		row([]string{"?", "duck"}, web, []string{"R", s.retreatKey(), "Q", "give up"})
+		row([]string{"?", "duck"}, web, []string{"R", s.retreatKey(), "Q", "give up", "w", "output"})
 }
 
 // headless is the body without a HUD: the pane's one HP bar (C6), the

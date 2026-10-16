@@ -15,9 +15,14 @@ type Diff struct {
 	Line int    // 1-based
 	Want string // "<EOF>" when the expected output ended first
 	Got  string // "<EOF>" when the program's output ended first
+	// GotLine is the line the program's token is on (1-based), or the line
+	// its output ended on. The program may break lines unlike the expected
+	// output, so it can differ from Line; the samples view marks both.
+	GotLine int
 }
 
-const eof = "<EOF>"
+// EOF is a Diff side that ended first.
+const EOF = "<EOF>"
 
 // Checker compares a program's output with the expected output the way
 // testlib's standard checkers do: as two sequences of tokens separated by
@@ -64,11 +69,11 @@ func (c Checker) Check(want, got []byte) (bool, *Diff) {
 		case !wok && !gok:
 			return true, nil
 		case !gok:
-			return false, &Diff{Line: wl, Want: show(wt), Got: eof}
+			return false, &Diff{Line: wl, Want: show(wt), Got: EOF, GotLine: gl}
 		case !wok:
-			return false, &Diff{Line: gl, Want: eof, Got: show(gt)}
+			return false, &Diff{Line: gl, Want: EOF, Got: show(gt), GotLine: gl}
 		case !c.match(wt, gt):
-			return false, &Diff{Line: wl, Want: show(wt), Got: show(gt)}
+			return false, &Diff{Line: wl, Want: show(wt), Got: show(gt), GotLine: gl}
 		}
 	}
 }

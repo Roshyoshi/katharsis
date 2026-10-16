@@ -30,7 +30,11 @@ func runCheck(t *testing.T, tests []checkCase, check func(want, got []byte) (boo
 			if ok || d == nil {
 				t.Fatalf("check(%q, %q) = %v, %+v; want %+v", tc.want, tc.got, ok, d, *tc.diff)
 			}
-			if *d != *tc.diff {
+			got := *d
+			if tc.diff.GotLine == 0 {
+				got.GotLine = 0 // a case that pins only the expected side
+			}
+			if got != *tc.diff {
 				t.Errorf("diff = %+v, want %+v", *d, *tc.diff)
 			}
 		})
@@ -155,4 +159,17 @@ func TestCheckAllocs(t *testing.T) {
 	if n := testing.AllocsPerRun(5, func() { judge.Check(out, out) }); n > 0 {
 		t.Errorf("Check allocated %v times on matching output, want 0", n)
 	}
+}
+
+// GotLine is the program's side of the mismatch, which the samples view
+// marks: its own line when it breaks lines unlike the expected output,
+// the line it ended on when it ended first.
+func TestCheckGotLine(t *testing.T) {
+	t.Parallel()
+	runCheck(t, []checkCase{
+		{"same lines", "1\n2\n3\n", "1\n2\n4\n", &judge.Diff{Line: 3, Want: "3", Got: "4", GotLine: 3}},
+		{"one line for three", "1\n2\n3\n", "1 2 4\n", &judge.Diff{Line: 3, Want: "3", Got: "4", GotLine: 1}},
+		{"nothing printed", "YES\nNO\n", "", &judge.Diff{Line: 1, Want: "YES", Got: judge.EOF, GotLine: 1}},
+		{"ended early", "1\n2\n", "1\n", &judge.Diff{Line: 2, Want: "2", Got: judge.EOF, GotLine: 2}},
+	}, judge.Checker{}.Check)
 }

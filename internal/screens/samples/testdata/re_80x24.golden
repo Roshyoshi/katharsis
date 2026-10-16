@@ -1,0 +1,24 @@
+cf1675A_food_for_animals · samples 0/1 · asan+ubsan (libstdc++) · built 0.6s
+────────────────────────────────────────────────────────────────────────────────
+▸ #1 RE
+────────────────────────────────────────────────────────────────────────────────
+#1 RE · heap-buffer-overflow · cpu 3ms · wall 41ms · peak 2M
+
+expected                               │ output
+6                                      │ partial
+
+input
+  3
+  1 2 3
+
+stderr
+==1==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x6020
+READ of size 4
+    #0 0x1 in main food.cpp:9
+SUMMARY: AddressSanitizer: heap-buffer-overflow food.cpp:9 in main
+
+
+
+
+
+ #1 of 1                                      h/l sample · j/k scroll · w close

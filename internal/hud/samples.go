@@ -1,13 +1,18 @@
 package hud
 
 import (
+	"cmp"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"katharsis/internal/judge"
 	"katharsis/internal/ui"
+	"katharsis/internal/units"
 )
 
 // SamplesMsg is emitted when a sample pass (a save's rejudge) finishes,
@@ -62,6 +67,100 @@ func (m *Model) Samples() Samples {
 	return s
 }
 
+// Pass is the sample pass in full, for the samples view (the game's w,
+// screens/samples): the build with its log, then each sample's input,
+// expected output and result, the program's own output among it.
+type Pass struct {
+	Name    string // the problem's
+	Profile string // the sample build's, "asan+ubsan (libstdc++)"
+	// Build is nil before the first build; its Log has the source's
+	// directory cut from every path, as the HUD shows it.
+	Build   *judge.Build
+	Running bool
+	Waiting bool  // the source is still its template, not yet saved
+	Quiet   bool  // Options.Quiet: pass or fail is all it may show
+	Err     error // the pass could not run: the problem, the watcher, the judge
+	Tests   []PassTest
+}
+
+// PassTest is one sample: the head of its files and, once judged, its
+// result.
+type PassTest struct {
+	Name     string
+	In, Want string
+	Done     bool
+	Result   judge.Result
+}
+
+// passFileCap is the head of a sample's file a Pass carries: a sample is
+// small, a test the player added need not be.
+const passFileCap = 16 << 10
+
+// Pass reports the sample pass in full. A sample's files are read once per
+// problem load.
+func (m *Model) Pass() Pass {
+	p := Pass{Profile: m.opt.Profile.Name, Running: m.running, Waiting: m.waiting, Quiet: m.opt.Quiet,
+		Err: cmp.Or(m.loadErr, m.watchErr, m.passErr)}
+	if m.build != nil {
+		b := *m.build
+		b.Log = m.compilerLog(b.Log)
+		p.Build = &b
+	}
+	if m.prob == nil {
+		return p
+	}
+	p.Name = m.prob.Name
+	for i, t := range m.prob.Tests {
+		pt := PassTest{Name: t.Name, In: m.head(t.In), Want: m.head(t.Out)}
+		if i < len(m.rows) {
+			pt.Done, pt.Result = m.rows[i].done, m.rows[i].res
+		}
+		p.Tests = append(p.Tests, pt)
+	}
+	return p
+}
+
+// head is the first passFileCap of the file at path, as the HUD last read
+// it, with a line saying how much more there is.
+func (m *Model) head(path string) string {
+	if s, ok := m.heads[path]; ok {
+		return s
+	}
+	var s string
+	if f, err := os.Open(path); err != nil {
+		s = "(" + err.Error() + ")"
+	} else {
+		b, _ := io.ReadAll(io.LimitReader(f, passFileCap+1))
+		if fi, err := f.Stat(); err == nil && len(b) > passFileCap {
+			b = append(b[:passFileCap], fmt.Sprintf("\n… %s more\n", units.Mem(fi.Size()-passFileCap))...)
+		}
+		_ = f.Close()
+		s = string(b)
+	}
+	if m.heads == nil {
+		m.heads = map[string]string{}
+	}
+	m.heads[path] = s
+	return s
+}
+
+// warnings is the build's compiler warnings (judge.Warnings), paths cut.
+func (m *Model) warnings() []string {
+	if m.build == nil || !m.build.OK {
+		return nil
+	}
+	return judge.Warnings(m.compilerLog(m.build.Log))
+}
+
+// warningCount is "1 warning", "3 warnings", or "" for none, Warn-toned.
+func (m *Model) warningCount() string {
+	n := len(m.warnings())
+	if n == 0 {
+		return ""
+	}
+	return ui.Warn.Render(units.Plural(n, "warning"))
+}
+
 // Pinned is the judgement in two lines w cells wide, for a host that pins
 // it over the statement (the game's problem pane, UX J8): the HP bar, then
 // the samples in one line, the first failure's detail folded into it.
@@ -99,6 +198,11 @@ func (m *Model) samplesLine() string {
 		return label + tone.Render(word) // no count, no failing test (Options.Quiet)
 	}
 	s := fmt.Sprintf("%s%d/%d", label, m.passed(), len(m.rows))
+	// The warnings come first: a narrow pane cuts the failure's detail,
+	// which the samples view has in full, before them.
+	if w := m.warningCount(); w != "" {
+		s += ui.Muted.Render(ui.G.Sep) + w
+	}
 	i := m.firstFailure()
 	switch {
 	case i >= 0:
@@ -116,4 +220,18 @@ func (m *Model) samplesLine() string {
 		s += " " + ui.OK.Render(ui.G.Pass) + " " + ui.Strong.Render("ALL PASS")
 	}
 	return s
+}
+
+// ShortWarning is a warning as one line: its place and its text,
+// "47:17 variable 'i' is uninitialized when used here [-Wuninitialized]",
+// without the file every warning of a one-file build names.
+func ShortWarning(w string) string {
+	if _, rest, ok := strings.Cut(w, ": warning: "); ok {
+		place := w[:len(w)-len(rest)-len(": warning: ")]
+		if i := strings.Index(place, ":"); i >= 0 {
+			place = place[i+1:]
+		}
+		return place + " " + rest
+	}
+	return w
 }

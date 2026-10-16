@@ -1,0 +1,24 @@
+cf1675A_food_for_animals · samples 1/2 · asan+ubsan (libstdc++) · built 0.6s
+────────────────────────────────────────────────────────────────────────────────
+1 warning
+  12:9 unused variable 'k' [-Wunused-variable]
+────────────────────────────────────────────────────────────────────────────────
+▸ #1 WA   #2 AC
+────────────────────────────────────────────────────────────────────────────────
+#1 WA · line 3 · cpu 3ms · wall 41ms · peak 2M
+want NO (line 3) · got YES (line 3)
+
+expected                               │ output
+YES                                    │ YES
+YES                                    │ YES
+✗ NO                                   │ ✗ YES
+YES                                    │ YES
+YES                                    │ YES
+NO                                     │ NO
+NO                                     │ NO
+
+input
+  7
+  1 1 4 2 3
+  0 0 0 0 0
+ #1 of 2 · lines 1–16 of 25                   h/l sample · j/k scroll · w close

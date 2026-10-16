@@ -150,6 +150,7 @@ func runGame(args []string) error {
 		Split:     *split,
 		Templates: app.Templates{Stdio: *stdioT, FileIO: *fileT},
 		Scale:     *scale,
+		Warnings:  prefs.SampleWarnings,
 	}
 	m, err := app.New(app.Deps{
 		Store:   st,

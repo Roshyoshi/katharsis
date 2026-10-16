@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -96,6 +97,42 @@ var (
 		Slack: 1,
 	}
 )
+
+// SampleWarnings are the warnings a sample build turns on by default
+// (settings.toml's sample_warnings). Reading a variable never set is
+// undefined and neither sanitizer sees it (only MSan does, and macOS has
+// none), so it fails the build: `for (int i; i < t; i++)` printed nothing
+// under ASan and passed :Submit, where -O2 read a lucky 0. The rest are
+// reported beside the samples. -Wsign-compare stays off: i < v.size() is
+// idiomatic and safe below 2^31, and would fire on nearly every source.
+// g++ and clang take them all.
+var SampleWarnings = []string{"-Wall", "-Wextra", "-Wshadow", "-Wno-sign-compare", "-Wno-unused-parameter",
+	"-Werror=uninitialized"}
+
+// WithWarnings is p building with the warning flags w as well.
+func (p Profile) WithWarnings(w []string) Profile {
+	if len(w) > 0 {
+		p.Flags = slices.Concat(p.Flags, w)
+	}
+	return p
+}
+
+// sourceWarning is a compiler warning on a line of a file, as clang and
+// g++ print it: "a.cpp:47:17: warning: ...". The driver's and the
+// linker's ("clang++: warning:", "ld: warning:") name no line.
+var sourceWarning = regexp.MustCompile(`^[^:\s][^:]*:\d+:(\d+:)? warning: `)
+
+// Warnings is the warnings on source lines in a build log, one line each,
+// without the notes and the quoted source the compiler prints under them.
+func Warnings(log string) []string {
+	var out []string
+	for l := range strings.Lines(log) {
+		if l = strings.TrimRight(l, "\r\n"); sourceWarning.MatchString(l) {
+			out = append(out, l)
+		}
+	}
+	return out
+}
 
 // traps reports whether p's builds trap on the sanitizer check what
 // ("undefined", "integer-divide-by-zero") rather than report it through
