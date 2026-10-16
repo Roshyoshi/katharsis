@@ -326,6 +326,13 @@ D58 settled 10-16  Iteration workflow (user: "most of the core logic is done ...
       join from any pool; the Court opens with Doll Judgement. PoFV themes by the
       character's first boss stage (taste).
 
+10-16 samples view + warnings + split (user: "no good way to see the sample case terminal
+      output", "maybe we can turn on warnings", "vim as half of screen"). Root cause
+      of the alpha report: cf:1675A's for (int i; ...) printed nothing under ASan,
+      AC under -O2. w opens screens/samples (zooms below 96 cols); sample builds
+      take judge.SampleWarnings, -Werror=uninitialized; --split defaults to 50.
+      UB doors build samples without warnings (no net). Standalone HUD has no w.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
