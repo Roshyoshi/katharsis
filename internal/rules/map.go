@@ -32,6 +32,7 @@ func Map() Rules {
 	r.FailMoveOn = true
 	r.OneShot = 1
 	r.ECCPenalty = minutes(5)
+	r.ECCMargin = minutes(1) // the user's margin: a converted fail leaves a minute or more
 	r.RetreatLock = Duration{150 * time.Second}
 	r.FountainCycles, r.FountainWhere = 5, FountainAct
 	r.KexecPerAct = true

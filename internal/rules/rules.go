@@ -445,6 +445,11 @@ type Rules struct {
 	// user's 5:00), while the door has more than that left; with less it
 	// burns the cycles (game.State.ECCShort).
 	ECCPenalty Duration `toml:"ecc_penalty"`
+	// ECCMargin is clock ECC leaves standing: it converts only while the
+	// door holds more than ECCPenalty plus this, so a converted fail never
+	// strands a door at a few seconds (5:10 left would leave 0:10). 0, as in
+	// a boot saved before it, converts down to the penalty itself.
+	ECCMargin Duration `toml:"ecc_margin"`
 	// RetreatLock, above 0, refuses a retreat (kexec's free swap too) this
 	// long into a door: a swap is for a statement read, not a door fought.
 	RetreatLock Duration `toml:"retreat_lock"`
@@ -1189,8 +1194,8 @@ func (r Rules) validateCycles() error {
 		return fmt.Errorf("rules %q: need life_cycles, submit_cycles, retreat_cycles, fsck_cycles, "+
 			"ecc_cycles, one_shot, fountain_cycles, overclock_max, overclock_cycles >= 0", r.Name)
 	}
-	if r.ECCPenalty.Duration < 0 || r.RetreatLock.Duration < 0 {
-		return fmt.Errorf("rules %q: need ecc_penalty, retreat_lock >= 0", r.Name)
+	if r.ECCPenalty.Duration < 0 || r.ECCMargin.Duration < 0 || r.RetreatLock.Duration < 0 {
+		return fmt.Errorf("rules %q: need ecc_penalty, ecc_margin, retreat_lock >= 0", r.Name)
 	}
 	// The negated test also catches NaN.
 	if !(r.TimerMult >= 0 && r.TimerMult <= MaxTimerMult) {

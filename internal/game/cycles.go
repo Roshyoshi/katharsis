@@ -99,15 +99,15 @@ func (s *State) ECCConverts() bool {
 }
 
 // ECCShort reports whether, under ECC's conversion, the open door's clock
-// at now holds no more than a failed submit's penalty (failing as for
-// SubmitCost, Off-by-One's double included), so the submit burns cycles
-// instead.
+// at now holds no more than a failed submit's penalty plus ECCMargin
+// (failing as for SubmitCost, Off-by-One's double included), so the
+// submit burns cycles instead.
 func (s *State) ECCShort(failing int, now time.Time) bool {
 	if !s.ECCConverts() || s.Current == nil {
 		return false
 	}
 	pen := time.Duration(s.submitMult(failing)) * s.Rules.ECCPenalty.Duration
-	return s.Current.Deadline.Sub(now) <= pen
+	return s.Current.Deadline.Sub(now) <= pen+s.Rules.ECCMargin.Duration
 }
 
 // RetreatCost is what a retreat of the open door burns, 0 with free set

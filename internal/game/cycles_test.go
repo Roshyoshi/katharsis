@@ -258,6 +258,35 @@ func TestECCConversion(t *testing.T) {
 	}
 }
 
+// TestECCMargin: ECC converts only while the door holds more than its
+// penalty plus ECCMargin (1:00), so a converted fail never strands a door at
+// seconds; a boot saved before the margin (0) converts down to the penalty.
+func TestECCMargin(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	h := newHarness(t, cyclesPlain(), nil, ps, 0, 1)
+	h.clearDoor(0, time.Minute)
+	h.s.UpgradeOffers = []game.Upgrade{game.ECC}
+	h.do(game.PickUpgrade{Upgrade: game.ECC})
+	h.open(0)
+	left := func(d time.Duration) time.Time { return h.s.Current.Deadline.Add(-d) }
+	for _, tc := range []struct {
+		margin time.Duration
+		left   time.Duration
+		clock  bool
+	}{
+		{time.Minute, 6*time.Minute + 30*time.Second, true},
+		{time.Minute, 5*time.Minute + 30*time.Second, false},
+		{0, 5*time.Minute + 30*time.Second, true},
+	} {
+		h.s.Rules.ECCMargin.Duration = tc.margin
+		c, k := h.s.SubmitCost(2, left(tc.left))
+		if got := k > 0 && c == 0; got != tc.clock {
+			t.Errorf("margin %s, %s left: cycles %d clock %s, want clock %v", tc.margin, tc.left, c, k, tc.clock)
+		}
+	}
+}
+
 // TestFsckCycles: fsck restores 10 (5 from P2), up to MaxCycles.
 func TestFsckCycles(t *testing.T) {
 	t.Parallel()
