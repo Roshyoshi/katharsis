@@ -284,6 +284,13 @@ D56 settled 10-15  Achievements: "w spoiler ones as well"; like Star of Providen
       ends awake). Sim: a seeker wakes 49-53% at P0 (design band 35-45%), opens at 83-89%
       of P0 arrivals, keeps 15-45% fewer bytes per door-hour (not a farm).
 
+10-15 setuid UI merged: GRUB `find / -perm -4000` (ls -l rows, ??? secrets, ? hint, s
+      spoilers, n notices), chmod u+s strip lines at safe points, cleared kept line,
+      GRUB `setuid +n`, the Trial cards and the six-beat ending.wake scene (anim.Pack),
+      git log "awake". Defaults: P8 GRUB drops the banner at 80x24; s/n last the
+      session (settings.toml read, never written); Carroll quotes stay at two hooks;
+      backfill counted in GRUB; only 8 bit lines written; long hints cut at 80 cols.
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
