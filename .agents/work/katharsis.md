@@ -333,6 +333,13 @@ D58 settled 10-16  Iteration workflow (user: "most of the core logic is done ...
       take judge.SampleWarnings, -Werror=uninitialized; --split defaults to 50.
       UB doors build samples without warnings (no net). Standalone HUD has no w.
 
+10-16 vaults (user: "dead cells has speedrun door and no hit door ... after each boss"):
+      at Boss I/II the act is judged; timed (in-door time within 0.6 of cleared
+      doors' base clocks) and untouched (no charged failure: WA incl. ECC, timeout,
+      :q!, paid retreat) each owe 1 pick. Split shown on the doors screen. Sim: no
+      shift (46.8 vs 48.0% P0) since extra picks land on Duck; pays once the
+      10-upgrade pool lands. Perk research: tmp perks-research.md (job dir).
+
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
 S1 W1 contracts                done: catalog, rules, game types, flavor/screen APIs
