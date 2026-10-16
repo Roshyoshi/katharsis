@@ -95,7 +95,7 @@ func TestCyclesScreensSay(t *testing.T) {
 		{"boss I", NewDoors(env(fixture.CyclesBoss("off-by-one"))), []string{
 			"Stub line for boss.rule.off-by-one.", "⚔ one test short burns ×2",
 			"a fail or :q! burns 20 cycles and deals a new boss door (4 left)"}},
-		{"OOM Killer", NewDoors(env(fixture.CyclesBoss("oom-killer"))), []string{"⚔ memory limit ×0.5"}},
+		{"OOM Killer", NewDoors(env(fixture.CyclesBoss("oom-killer"))), []string{"⚔ memory ×0.5, samples without ASan"}},
 		{"Heisenbug", NewDoors(env(fixture.CyclesBoss("heisenbug"))), []string{"⚔ samples say only pass or fail"}},
 		{"Race Condition", NewDoors(env(fixture.CyclesBoss("race-condition"))), []string{"⚔ clock ×1.25 fast, pays ×4"}},
 		{"Undefined Behavior", NewDoors(env(fixture.CyclesBoss("undefined-behavior"))), []string{"⚔ samples run without sanitizers"}},

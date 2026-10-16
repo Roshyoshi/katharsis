@@ -142,7 +142,9 @@ func BossTwist(st *game.State) (key string, ok bool) {
 // twistNote is the rule a boss door bends (D54), in the boot's numbers,
 // for the HUD bar and under the boss's own line on its card (the story's
 // boss.rule.<key> says it in the boss's voice; this is the mechanic):
-// "memory limit ×0.5". "" for a door that bends none.
+// "memory ×0.5, samples without ASan" (they are held to it, and
+// ASan's redzones would read as memory: judge.Toolchain.Hardened). "" for
+// a door that bends none.
 func twistNote(st *game.State, d game.Door) string {
 	t := st.Rules.Twists
 	switch d.Twist {
@@ -150,7 +152,7 @@ func twistNote(st *game.State, d game.Door) string {
 		return "one test short burns " + fmtMult(float64(max(t.OffByOne, 1)))
 	case "oom-killer":
 		if d.MemMult > 0 {
-			return "memory limit " + fmtMult(d.MemMult)
+			return "memory " + fmtMult(d.MemMult) + ", samples without ASan"
 		}
 	case "heisenbug":
 		return "samples say only pass or fail"

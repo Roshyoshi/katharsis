@@ -52,17 +52,32 @@ var (
 // Toolchain is the profiles one compiler family judges with.
 type Toolchain struct {
 	Samples, Full, Debug Profile
+	// Hardened is Samples without ASan, for samples held to a memory
+	// limit (the OOM Killer's): ASan's shadow, redzones and chunk
+	// headers read as memory, most on small allocations (testdata/nodes.cpp,
+	// a std::map of 1M ints, peaks at 92M under ASan and 52M as judged),
+	// so a limit on them fails what :Submit passes. Hardened reads memory
+	// as the judged build does, and keeps UBSan and the library's bounds
+	// checks.
+	Hardened Profile
 }
 
 // Profiles is this machine's toolchain: g++ and libstdc++ when the sample
 // probe settled on libstdc++, which it tries only once g++ has built and
-// run a program here; clang and libc++ otherwise.
+// run a program here; clang and libc++ otherwise. Hardened is the probe's
+// no-ASan fallback for that family, which runs wherever its compiler does
+// (UBSan's runtime works everywhere, g++'s traps need none), or the
+// sample profile itself when the probe already fell back to one.
 func Profiles(ctx context.Context) Toolchain {
 	s := SampleProfile(ctx)
+	tc := Toolchain{Samples: s, Full: Full, Debug: Debug, Hardened: HardenedSamples}
 	if s.Libstdcxx {
-		return Toolchain{Samples: s, Full: GCCFull, Debug: GCCDebug}
+		tc = Toolchain{Samples: s, Full: GCCFull, Debug: GCCDebug, Hardened: GCCSamples}
 	}
-	return Toolchain{Samples: s, Full: Full, Debug: Debug}
+	if !s.Sanitized {
+		tc.Hardened = s
+	}
+	return tc
 }
 
 // SampleProfile returns the first sample profile whose binaries actually

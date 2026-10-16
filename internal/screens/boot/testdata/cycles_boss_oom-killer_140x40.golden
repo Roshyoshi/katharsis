@@ -17,7 +17,7 @@ Boot #57 · Silver · ⚔ OOM Killer                                            
                                             ║                    statement.                    ║
                                             ║                                                  ║
                                             ║       Stub line for boss.rule.oom-killer.        ║
-                                            ║               ⚔ memory limit ×0.5                ║
+                                            ║       ⚔ memory ×0.5, samples without ASan        ║
                                             ║    a fail or :q! burns 20 cycles and deals a     ║
                                             ║              new boss door (4 left)              ║
                                             ║                                                  ║

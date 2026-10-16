@@ -23,7 +23,9 @@ var (
 	haveCompiler bool
 	// sample is judge.SampleProfile: the sanitizer profile whose binaries
 	// actually run on this machine.
-	sample        judge.Profile
+	sample judge.Profile
+	// hardened is judge.Toolchain.Hardened: the sample profile without ASan.
+	hardened      judge.Profile
 	both, samples []judge.Profile
 	full          []judge.Profile
 )
@@ -50,6 +52,7 @@ func TestMain(m *testing.M) {
 		tc := judge.Profiles(ctx)
 		cancel()
 		sample = noPCH(tc.Samples)
+		hardened = noPCH(tc.Hardened)
 		// Where g++ judges, clang's Full is the fallback elsewhere: keep
 		// judging with it too.
 		full = []judge.Profile{noPCH(tc.Full)}
@@ -564,6 +567,47 @@ func TestRun(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestHardenedMemory: the toolchain's Hardened profile, which samples held
+// to a memory limit run under (the OOM Killer's halved one), is judged on
+// memory as the judged build is: a std::map of 1M ints passes 64M and one
+// of 2M does not, under both. ASan reads the 1M map past 64M, which is why
+// such samples do not run under it.
+func TestHardenedMemory(t *testing.T) {
+	needCompiler(t)
+	t.Parallel()
+	if hardened.Name == "" || hardened.Sanitized || sanitizes(hardened, "address") || hardened.Libstdcxx != full[0].Libstdcxx {
+		t.Fatalf("Hardened %q (libstdc++ %v) runs ASan or another library than %s", hardened.Name, hardened.Libstdcxx, full[0].Name)
+	}
+	lim := judge.Limits{Time: 5 * time.Second, Mem: 64 << 20, Output: 1 << 20}
+	for _, p := range []judge.Profile{hardened, full[0]} {
+		b := build(t, "nodes.cpp", p)
+		for n, want := range map[string]judge.Verdict{"1000000": judge.AC, "2000000": judge.MLE} {
+			r, err := judge.Run(context.Background(), b.Binary, writeCase(t, n+"\n", n+"\n"), lim, p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if r.Verdict == judge.TLE {
+				skipStarved(t, r)
+			}
+			if r.Verdict != want {
+				t.Errorf("%s, n=%s: %s %q peak %s, want %s", p.Name, n, r.Verdict, r.Reason, units.Mem(r.MaxRSS), want)
+			}
+		}
+	}
+	if !sanitizes(sample, "address") {
+		return
+	}
+	b := build(t, "nodes.cpp", sample)
+	r, err := judge.Run(context.Background(), b.Binary, writeCase(t, "1000000\n", "1000000\n"), lim, sample)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Verdict != judge.AC || r.MaxRSS <= lim.Mem {
+		t.Errorf("%s, n=1000000: %s %q peak %s, want AC unchecked past %s", sample.Name, r.Verdict, r.Reason,
+			units.Mem(r.MaxRSS), units.Mem(lim.Mem))
 	}
 }
 

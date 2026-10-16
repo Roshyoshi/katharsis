@@ -32,13 +32,14 @@ tags Knapsack DP · Modular
 tags Knapsack DP · Modular Exponentiation
 --- oom-killer @36 ---
 ⏱ 27:50  ♥ 24/50 cycles  🦆1  128 B
-⚔ OOM Killer: memory limit ×0.5
+⚔ OOM Killer: memory ×0.5, samples
+without ASan
 ⏱ fail or :q! -20, new door, 4 left
 tags Knapsack DP · Modular
      Exponentiation
 --- oom-killer @48 ---
 ⏱ 27:50  ♥ 24/50 cycles  🦆1  128 B +576 B
-⚔ OOM Killer: memory limit ×0.5
+⚔ OOM Killer: memory ×0.5, samples without ASan
 ⏱ fail or :q! -20, new door, 4 left
 tags Knapsack DP · Modular Exponentiation
 --- race-condition @36 ---

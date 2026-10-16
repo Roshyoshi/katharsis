@@ -187,9 +187,10 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 // tc: the sample profile and the problem's limits, as a boss's twist bends
 // them (D54; game.Door's flags, set by the engine on the doors it bends).
 // The OOM Killer multiplies the memory limit (MemMult), from defaultMem
-// when the problem names none: the full tests are held to it, and so are
-// samples built without sanitizers (judge.Profile.Sanitized builds carry
-// shadow memory and are not).
+// when the problem names none, and holds the samples to it as well as the
+// full tests, so :w reports the MLE before a :Submit pays for it. Its
+// samples run without ASan (tc.Hardened): ASan's redzones read as memory,
+// and held to the limit it would fail what :Submit passes.
 // Undefined Behavior builds the samples with the toolchain's full-test
 // profile, which has no sanitizers (NoSanitizers). Heisenbug reports the
 // samples as pass or fail only (QuietSamples, hud.Options.Quiet). An
@@ -211,6 +212,7 @@ func judging(tc judge.Toolchain, d Door, scale float64) (samples judge.Profile, 
 	t := d.Door
 	if t.MemMult > 0 && t.MemMult != 1 {
 		lim.Mem = int64(float64(cmp.Or(lim.Mem, defaultMem)) * t.MemMult)
+		samples = tc.Hardened
 	}
 	if t.NoSanitizers {
 		samples = tc.Full

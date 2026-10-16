@@ -47,11 +47,11 @@ func (h *harness) pane() *problemScreen {
 }
 
 // TestTwistJudging: each boss's twist bends the HUD's judging the way its
-// door says (D54): the OOM Killer's memory limit, Undefined Behavior's
-// samples without sanitizers, Heisenbug's pass-or-fail samples. A plain
-// door and an upsolve judge as ever.
+// door says (D54): the OOM Killer's memory limit, on samples without ASan
+// too, Undefined Behavior's samples without sanitizers, Heisenbug's
+// pass-or-fail samples. A plain door and an upsolve judge as ever.
 func TestTwistJudging(t *testing.T) {
-	tc := judge.Toolchain{Samples: judge.Samples, Full: judge.Full, Debug: judge.Debug}
+	tc := judge.Toolchain{Samples: judge.Samples, Full: judge.Full, Debug: judge.Debug, Hardened: judge.HardenedSamples}
 	door := func(d game.Door, mem int64) Door {
 		return Door{Door: d, Problem: catalog.Problem{TimeLimit: time.Second, MemLimit: mem}}
 	}
@@ -59,8 +59,8 @@ func TestTwistJudging(t *testing.T) {
 	if prof.Name != judge.Samples.Name || lim.Mem != 256<<20 || lim.Time != time.Second || lim.Scale != 0.8 || quiet {
 		t.Errorf("plain door: %s, %+v, quiet %v", prof.Name, lim, quiet)
 	}
-	if _, lim, _ := judging(tc, door(game.Door{Twist: "oom-killer", MemMult: 0.5}, 256<<20), 1); lim.Mem != 128<<20 {
-		t.Errorf("OOM Killer: memory %d, want half of 256 MiB", lim.Mem)
+	if prof, lim, _ := judging(tc, door(game.Door{Twist: "oom-killer", MemMult: 0.5}, 256<<20), 1); lim.Mem != 128<<20 || prof.Name != tc.Hardened.Name {
+		t.Errorf("OOM Killer: memory %d on %q, want half of 256 MiB on %q", lim.Mem, prof.Name, tc.Hardened.Name)
 	}
 	if _, lim, _ := judging(tc, door(game.Door{Twist: "oom-killer", MemMult: 0.5}, 0), 1); lim.Mem != 128<<20 {
 		t.Errorf("OOM Killer on a problem with no limit: %d, want half of the default", lim.Mem)
