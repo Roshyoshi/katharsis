@@ -100,7 +100,7 @@ func TestCyclesScreensSay(t *testing.T) {
 		{"Race Condition", NewDoors(env(fixture.CyclesBoss("race-condition"))), []string{"⚔ clock ×1.25 fast, pays ×4"}},
 		{"Undefined Behavior", NewDoors(env(fixture.CyclesBoss("undefined-behavior"))), []string{"⚔ samples run without sanitizers"}},
 		{"final", NewDoors(env(fixture.CyclesBoss(game.FinalBoss))), []string{
-			"⚔ clock hidden, warned at 05:00 and 01:00", "one shot: a fail or :q! ends the boot", "Stub line for boss.oneshot."}},
+			"⚔ clock hidden, warned at 05:00 and 01:00", "one shot: a fail or :q! ends the boot", "Stub line for boss.oneshot.", "⏱ ??:??"}},
 		{"retry", NewDoors(env(fixture.CyclesBossRetry())), []string{"Stub line for boss.retry.", "(2 left)"}},
 		{"fountain", NewMerge(env(fixture.CyclesMerge("drink"))), []string{"fountain +5 cycles, free, up to 30 ✓", "fsck +10 cycles now · 64 B", "f fsck"}},
 		{"fountain full", NewMerge(env(fixture.CyclesMerge("full"))), []string{"fountain +5 cycles up to 30: yours are at the line, none taken"}},

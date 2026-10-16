@@ -171,6 +171,14 @@ func TestExitCardTimers(t *testing.T) {
 			t.Errorf("%dx%d: want the exit's own ~25:36 and the fallback %s:\n%s", sz[0], sz[1], tier, v)
 		}
 	}
+	// The Halting Problem hides its clock (D54), on its exit's card too.
+	ex[0].Boss = game.FinalBoss
+	for _, sz := range [][2]int{{140, 40}, {80, 24}} {
+		v := ansi.Strip(NewRoute(e).View(sz[0], sz[1]))
+		if strings.Contains(v, "25:36") || !strings.Contains(v, "⏱ ??:??") {
+			t.Errorf("%dx%d: the final's exit shows its clock:\n%s", sz[0], sz[1], v)
+		}
+	}
 }
 
 // At 80x24 the exits are stacked cards or one row each, short of room for

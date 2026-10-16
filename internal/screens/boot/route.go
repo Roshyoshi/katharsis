@@ -248,9 +248,13 @@ func (r *Route) exitCard(e game.Exit) card {
 	}
 	if !e.Skip {
 		// The engine's clock for this exit, its boss's twist in it; an exit
-		// saved before it had one shows the tier's.
+		// saved before it had one shows the tier's. The Halting Problem's is
+		// hidden here too, as on its door.
 		c.rooms = units.Plural(e.Rooms, "room") + r.timer(e.Topic)
-		if e.Timer > 0 {
+		switch {
+		case bossHidesClock(st, e.Boss):
+			c.rooms = units.Plural(e.Rooms, "room") + ui.Muted.Render(ui.G.Sep) + ui.G.Timer + ClockHidden
+		case e.Timer > 0:
 			c.rooms = units.Plural(e.Rooms, "room") + clockText(e.Timer)
 		}
 		c.band, c.mine = r.band(e.Topic)

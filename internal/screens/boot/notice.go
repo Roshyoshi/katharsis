@@ -200,6 +200,14 @@ func HiddenClock(st *game.State) bool {
 	return st.Current != nil && st.Current.Door.HiddenClock && st.Phase == game.PhaseProblem
 }
 
+// bossHidesClock reports whether boss's doors will hide their clock, for an
+// exit's card before the engine has dealt a door (whose own flag is
+// Door.HiddenClock): The Halting Problem, where the rules bend it so
+// (rules.Twists.HaltingClock, as the engine's twist reads them).
+func bossHidesClock(st *game.State, boss string) bool {
+	return boss == game.FinalBoss && st.Rules.Twists.HaltingClock
+}
+
 // ClockHidden stands in for a hidden countdown: "??:??".
 const ClockHidden = "??:??"
 

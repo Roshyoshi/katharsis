@@ -338,14 +338,18 @@ func tagLines(t doorText, cw, n int) []string {
 // chance (Door.SolveP) stays off the card (D36): shown before the pick, the
 // pick stops measuring the player's own read of the door; the end of the
 // boot shows it afterwards, as calibration. A rating on its source's floor
-// is a ceiling, "◆≤800" (Door.Floor).
+// is a ceiling, "◆≤800" (Door.Floor). The Halting Problem's clock is
+// hidden before its door opens as well as in it: "⏱ ??:??".
 func (d *Doors) doorStats(door game.Door) string {
 	rating := ui.Rating(door.Rating)
 	if door.Floor {
 		rating = ui.RatingAtMost(door.Rating)
 	}
-	return rating + "  " + ui.G.Timer + units.Clock(d.env.State.OpenTimer(door)) +
-		"  " + ui.OK.Render("+"+units.Bytes(door.Bytes))
+	clock := units.Clock(d.env.State.OpenTimer(door))
+	if door.HiddenClock {
+		clock = ClockHidden
+	}
+	return rating + "  " + ui.G.Timer + clock + "  " + ui.OK.Render("+"+units.Bytes(door.Bytes))
 }
 
 func withMult(s string, m float64) string {
