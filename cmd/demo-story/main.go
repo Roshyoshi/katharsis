@@ -6,6 +6,7 @@
 //	go run ./cmd/demo-story                  # every scene, from the title
 //	go run ./cmd/demo-story title            # the title screen
 //	go run ./cmd/demo-story boss             # every scene whose name has "boss"
+//	go run ./cmd/demo-story wake             # the Trial's ending, first and later
 //	go run ./cmd/demo-story -list            # the scene names
 //	go run ./cmd/demo-story -reduced crash   # reduced motion: last frames at once
 //	LC_ALL=C go run ./cmd/demo-story title   # ASCII glyphs; NO_COLOR=1: Mono
@@ -27,6 +28,8 @@ import (
 	"katharsis/internal/anim"
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
+	bootui "katharsis/internal/screens/boot"
+	"katharsis/internal/screens/boot/fixture"
 	"katharsis/internal/screens/story"
 	"katharsis/internal/ui"
 )
@@ -55,6 +58,14 @@ func scenes() []scene {
 	out = append(out,
 		scene{"boss halting-problem, first", func() *story.Scene { return story.NewBossIntro(game.FinalBoss, 0, true) }},
 		scene{"boss halting-problem", func() *story.Scene { return story.NewBossIntro(game.FinalBoss, 2, false) }},
+		// The Trial (docs/design/achievements.md (f)): its cursed one-shot card,
+		// and its ending, Dull Reality, the first time and after.
+		scene{"boss trial", func() *story.Scene {
+			return story.NewBossCard(game.TrialBoss, 1, false,
+				story.BossRules{Price: "one shot: a fail or :q! ends the boot", OneShot: true, Cursed: true})
+		}},
+		scene{"wake, first", func() *story.Scene { return story.NewWake(wake(true)) }},
+		scene{"wake, later", func() *story.Scene { return story.NewWake(wake(false)) }},
 	)
 	from := []string{"Brute Force Bunker · room 3", "", "[  OK  ] door cleared"}
 	for _, t := range catalog.Topics {
@@ -208,4 +219,18 @@ func (m *model) View() tea.View {
 	v := tea.NewView(m.cur.View(w, h-1) + "\n" + bar.Render(status))
 	v.AltScreen = true
 	return v
+}
+
+// wake is the Trial's ending over the boot fixture's Trial door, as the
+// doors screen draws it at 80x24: the boxes the cards lift off from.
+func wake(first bool) story.Wake {
+	st := fixture.TrialDoor()
+	from := bootui.NewDoors(bootui.Env{State: st, Meta: fixture.Meta(), Lookup: fixture.Lookup, Now: fixture.Now}).View(80, 24)
+	return story.Wake{
+		From:     strings.Split(from, "\n"),
+		AC:       "AC · 12/12 tests · 27:48 / 36:00",
+		Examples: []string{"Cow Tipping", "Milk Measurement", "Moocast", "MooBuzz", "Cow Poetry"},
+		First:    first,
+		Seed:     st.Seed,
+	}
 }

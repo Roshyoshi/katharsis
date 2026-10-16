@@ -1,11 +1,13 @@
 // demo-meta shows every out-of-boot screen with fixture data so a human can
-// eyeball them: the GRUB menu, git log, top, apt and the reader. It routes the
+// eyeball them: the GRUB menu, git log, top, apt, the setuid bits' find /
+// -perm -4000 and the reader. It routes the
 // screens' intents the way the app will (git log and top push, q/esc pop)
 // and prints anything it cannot act on, a StartBoot or an OpenURL, in the
 // status line instead.
 //
 //	go run ./cmd/demo-meta                 # start at GRUB
 //	go run ./cmd/demo-meta -screen top     # start somewhere else
+//	go run ./cmd/demo-meta -screen setuid  # find / -perm -4000 (setuid-percent: past a clear)
 //	go run ./cmd/demo-meta -status=false   # give screens the full height
 //
 // Keys: tab cycles the top-level screen, ctrl+c quits; everything else goes
@@ -35,6 +37,8 @@ var stops = []struct {
 	{"log", func() screens.Screen { return meta.NewLog(fixture.Boots(), nil) }},
 	{"top", func() screens.Screen { return meta.NewTop(fixture.Stats()) }},
 	{"shop", func() screens.Screen { return meta.NewShop(fixture.ShopConfig()) }},
+	{"setuid", func() screens.Screen { return meta.NewSetuid(fixture.SetuidConfig()) }},
+	{"setuid-percent", func() screens.Screen { return meta.NewSetuid(fixture.ShowsPercent(fixture.SetuidConfig())) }},
 	{"statement", func() screens.Screen { return page(fixture.Statement) }},
 	{"editorial", func() screens.Screen { return page(fixture.Editorial) }},
 	{"learn", func() screens.Screen { return page(fixture.Learn) }},
@@ -106,12 +110,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.note(msg)
 		m.push(meta.NewShop(fixture.ShopConfig()))
 		return m, nil
+	case screens.OpenSetuid:
+		m.note(msg)
+		m.push(meta.NewSetuid(fixture.SetuidConfig()))
+		return m, nil
 	case screens.Upsolve:
 		m.note(msg)
 		m.push(page(fixture.Statement))
 		return m, nil
 	case screens.OpenStatement, screens.OpenEditorial, screens.StartBoot, reader.OpenURL,
-		screens.Install, screens.UseTheme:
+		screens.Install, screens.UseTheme, meta.SetuidHint, meta.SetuidNotices:
 		m.note(msg)
 		return m, nil
 	}
@@ -147,7 +155,7 @@ func (m *model) View() tea.View {
 }
 
 func main() {
-	start := flag.String("screen", "grub", "first screen: grub, log, top, statement, editorial, learn")
+	start := flag.String("screen", "grub", "first screen: grub, log, top, shop, setuid, setuid-percent, statement, editorial, learn")
 	status := flag.Bool("status", true, "show the demo's status line (screens get one row less)")
 	flag.Parse()
 
