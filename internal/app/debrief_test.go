@@ -272,7 +272,7 @@ func TestRTFMAfterTwoCrashesOnATopic(t *testing.T) {
 		}
 		loadGuide(h)
 		h.send(key("m"))
-		if b, ok := h.m.top().(*rtfm.Browser); !ok || !strings.Contains(ansi.Strip(b.View(100, 30)), "Prefix Sums") {
+		if p, ok := h.m.top().(*rtfm.Map); !ok || p.Selected() != "prefix-sums" {
 			t.Fatalf("m opened %T, want RTFM at Prefix Sums", h.m.top())
 		}
 		if got := h.answers(eventBootEndAction, "action"); !slices.Contains(got, "rtfm") {

@@ -131,14 +131,25 @@ func (b *Browser) Typing() bool { return b.typing }
 // row unfolded and selected. It reports whether the curriculum has the
 // module.
 func (b *Browser) Open(id string) bool {
+	if !b.Select(id) {
+		return false
+	}
+	r, _ := b.selected()
+	b.open(r)
+	b.linked = true
+	return true
+}
+
+// Select puts the index at the module with id, its row unfolded and
+// selected, the page not opened: the map's i. It reports whether the
+// curriculum has the module.
+func (b *Browser) Select(id string) bool {
 	for di, d := range b.divs {
 		for ci, c := range d.chaps {
 			for mi, e := range c.mods {
 				if e.mod.ID == id {
 					b.typing, b.query = false, ""
 					b.applyFilter("", row{modRow, di, ci, mi})
-					b.open(row{modRow, di, ci, mi})
-					b.linked = true
 					return true
 				}
 			}

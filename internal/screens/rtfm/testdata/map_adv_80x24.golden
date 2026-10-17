@@ -1,0 +1,24 @@
+RTFM › Advanced                                trials 0/32 · ■ 2/7 · solved 0/55
+────────────────────────────────────────────────────────────────────────────────
+     Data Structures                           Convexity            Graphs
+     ○ ┄┄┄  ○ ┄┄┄  ○ ───  ○ ───  ○ ───  ○ ───  ○ ───  ○ ───  ○ ┄┄┄  ○ ┄┄┄ ▸○ ──╮
+     ■      ■      ■      ■      ■      ■      ■             □      □      ■   │
+     Flows         Dynamic Programming  Graphs                                 │
+ ╭┄  ○ ───  ○ ───  ○ ───  ○ ───  ○ ───  ○ ───  ○ ───  ○ ───  ○ ┄┄┄  ○ ───  ○ ──╯
+ ┆   ■      ■      □      □      □      □      ■      ■      □      ■      ■
+ ┆   Flows         Polynomials   Strings              Misc. Topics
+ ╰┄  ○ ───  ○ ┄┄┄  ▪ ┄┄┄  ○ ───  ○ ───  ○ ┄┄┄  ○ ───  ▪ ───  ○ ───  ▪ ───  ○ ┄┄╮
+     ■      ■                    □      □      □                               ┆
+                          Misc. Topics                                         ┆
+                          ▪ ┄┄┄  ▪ ───  ▪ ┄┄┄  ▪ ┄┄┄  ▪ ┄┄┄  ▪ ┄┄┄  ○ ┄┄┄  ○ ┄┄╯
+
+
+
+
+╭─ Eulerian Tours ───────────────────────────────────────── Advanced › Graphs ─╮
+│ ■ CAP_GRAPH → Routing Table · ☆☆☆☆ has not appeared                          │
+│ needs Graph Traversal (Silver)                                               │
+│ practice 0/3 solved · trial 4 doors + 2 blind                                │
+│ ↑ from Graph Traversal (Silver)                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+ Advanced  ←/→ path · ↑/↓ row · enter level · r read · t trial · w warp · q map

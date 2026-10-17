@@ -1,0 +1,40 @@
+RTFM › Advanced                                                                                            trials 0/32 · ■ 2/7 · solved 0/55
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+     Data Structures 0/6                                                                      ╭─ Eulerian Tours ─────── Advanced › Graphs ─╮
+     ○ ┄┄┄┄┄┄┄┄┄  ○ ┄┄┄┄┄┄┄┄┄  ○ ─────────  ○ ─────────  ○ ─────────  ○ ───────────╮          │ ■ CAP_GRAPH → Routing Table · ☆☆☆☆ has not │
+     ■            ■            ■            ■            ■            ■            │          │ appeared                                   │
+     Max Suffix … Wavelet Tree Counting Mi… Segment Tre… Persistent … Treaps       │          │ needs Graph Traversal (Silver)             │
+                                                                                   │          │ practice 0/3 solved · trial 4 doors + 2    │
+     Graphs 0/8                             Convexity 0/3                          │          │ blind                                      │
+ ╭─  ○ ───────── ▸○ ┄┄┄┄┄┄┄┄┄  ○ ┄┄┄┄┄┄┄┄┄  ○ ─────────  ○ ─────────  ○ ───────────╯          │ ↑ from Graph Traversal (Silver)            │
+ │   ■            ■            □            □                         ■                       ╰────────────────────────────────────────────╯
+ │   BCCs and 2C… Eulerian To… Shortest Pa… Slope Trick  Lagrangian … LineContain…
+ │
+ │   Graphs 0/8                                                       Dynamic Programming …
+ ╰─  ○ ┄┄┄┄┄┄┄┄┄  ○ ─────────  ○ ─────────  ○ ─────────  ○ ─────────  ○ ───────────╮
+     ■            □            ■            ■            □            □            │
+     Strongly Co… Offline Del… Euler's For… Critical     Link Cut Tr… DP on Trees… │
+                                                                                   │
+     Flows 0/4                                           Dynamic Programming 0/3   │
+ ╭┄  ○ ─────────  ○ ┄┄┄┄┄┄┄┄┄  ○ ─────────  ○ ─────────  ○ ─────────  ○ ───────────╯
+ ┆   ■            ■            ■            ■            □            □
+ ┆   Minimum Cos… Flow with L… Minimum Cut  Maximum Flow Additional … DP on Broke…
+ ┆
+ ┆   Polynomials 0/1           Strings 0/3                            Misc. Topics 0/4
+ ╰┄  ▪ ┄┄┄┄┄┄┄┄┄  ○ ─────────  ○ ─────────  ○ ┄┄┄┄┄┄┄┄┄  ○ ─────────  ▪ ───────────╮
+                               □            □            □                         │
+     Introductio… More Comple… String Sear… Suffix Array String Suff… Extended Eu… │
+                                                                                   │
+     Misc. Topics 0/4                                                              │
+ ╭┄  ▪ ┄┄┄┄┄┄┄┄┄  ○ ┄┄┄┄┄┄┄┄┄  ○ ┄┄┄┄┄┄┄┄┄  ○ ─────────  ▪ ─────────  ○ ───────────╯
+ ┆
+ ┆   Prefix Sums… Prefix Sums… Game Theory  Fracturing … XOR Basis    Catalan Num…
+ ┆
+ ┆   Misc. Topics 0/4
+ ╰┄  ▪ ┄┄┄┄┄┄┄┄┄  ▪ ┄┄┄┄┄┄┄┄┄  ▪ ─────────  ▪ ┄┄┄┄┄┄┄┄┄  ▪
+
+     Matroids     Matroid Int… Randomness   Interactive… Vectorizati…
+
+
+
+ Advanced                                        ←/→ path · ↑/↓ row · enter level · r read · t trial · w warp · tab world · i index · q map

@@ -1,0 +1,40 @@
+RTFM / Silver                                                                                           trials 3/14 | [x] 4/6 | solved 3/119
+--------------------------------------------------------------------------------------------------------------------------------------------
+     Prefix Sums 2/2           Sorting & Searching 1/6                                        +- Graph Traversal -------- Silver / Graphs -+
+     + ---------  + ---------  + ---------  . ---------  . ---------  . -----------+          | [x] CAP_GRAPH -> Routing Table | **** very |
+     [x]          [x]          [x]          [ ]          [ ]                       |          | frequent                                   |
+     Introduct... More on P... Two Pointers Binary Se... Binary Se... Custom Co... |          | needs Introduction to Graphs (Bronze) + |  |
+                                                                                   |          | Complete Search with Recursion (Bronze) +  |
+     Graphs 0/4                                          Sorting & Searching 1/6   |          | practice 0/14 solved | trial 4 doors + 2   |
+ +-  . ---------  . ---------  . --------- >. ---------  . ---------  . -----------+          | blind                                      |
+ |   [x]          [ ] ^        [x]          [x] ^        [x]                                  | ^ opens Eulerian Tours (Advanced), String  |
+ |   Introduct... Introduct... Flood Fill   Graph Tra... Priority ... Greedy Al...            | Searching (Advanced)                       |
+ |                                                                                            +--------------------------------------------+
+ |   Additiona... Conclusion 0/1
+ +-  . ---------  X
+
+     Intro to ... Additiona...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ Silver                                          ←/→ path | ↑/↓ row | enter level | r read | t trial | w warp | tab world | i index | q map

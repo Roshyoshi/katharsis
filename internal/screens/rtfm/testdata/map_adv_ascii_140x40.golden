@@ -1,0 +1,40 @@
+RTFM / Advanced                                                                                          trials 0/32 | [x] 2/7 | solved 0/55
+--------------------------------------------------------------------------------------------------------------------------------------------
+     Data Structures 0/6                                                                      +- Eulerian Tours ------- Advanced / Graphs -+
+     . :::::::::  . :::::::::  . ---------  . ---------  . ---------  . -----------+          | [x] CAP_GRAPH -> Routing Table | .... has  |
+     [x]          [x]          [x]          [x]          [x]          [x]          |          | not appeared                               |
+     Max Suffi... Wavelet Tree Counting ... Segment T... Persisten... Treaps       |          | needs Graph Traversal (Silver)             |
+                                                                                   |          | practice 0/3 solved | trial 4 doors + 2    |
+     Graphs 0/8                             Convexity 0/3                          |          | blind                                      |
+ +-  . --------- >. :::::::::  . :::::::::  . ---------  . ---------  . -----------+          | ^ from Graph Traversal (Silver)            |
+ |   [x]          [x]          [ ]          [ ]                       [x]                     +--------------------------------------------+
+ |   BCCs and ... Eulerian ... Shortest ... Slope Trick  Lagrangia... LineConta...
+ |
+ |   Graphs 0/8                                                       Dynamic Programmin...
+ +-  . :::::::::  . ---------  . ---------  . ---------  . ---------  . -----------+
+     [x]          [ ]          [x]          [x]          [ ]          [ ]          |
+     Strongly ... Offline D... Euler's F... Critical     Link Cut ... DP on Tre... |
+                                                                                   |
+     Flows 0/4                                           Dynamic Programming 0/3   |
+ +:  . ---------  . :::::::::  . ---------  . ---------  . ---------  . -----------+
+ :   [x]          [x]          [x]          [x]          [ ]          [ ]
+ :   Minimum C... Flow with... Minimum Cut  Maximum Flow Additiona... DP on Bro...
+ :
+ :   Polynomials 0/1           Strings 0/3                            Misc. Topics 0/4
+ +:  = :::::::::  . ---------  . ---------  . :::::::::  . ---------  = -----------+
+                               [ ]          [ ]          [ ]                       |
+     Introduct... More Comp... String Se... Suffix Array String Su... Extended ... |
+                                                                                   |
+     Misc. Topics 0/4                                                              |
+ +:  = :::::::::  . :::::::::  . :::::::::  . ---------  = ---------  . -----------+
+ :
+ :   Prefix Su... Prefix Su... Game Theory  Fracturin... XOR Basis    Catalan N...
+ :
+ :   Misc. Topics 0/4
+ +:  = :::::::::  = :::::::::  = ---------  = :::::::::  =
+
+     Matroids     Matroid I... Randomness   Interacti... Vectoriza...
+
+
+
+ Advanced                                        ←/→ path | ↑/↓ row | enter level | r read | t trial | w warp | tab world | i index | q map

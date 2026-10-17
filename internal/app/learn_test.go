@@ -183,7 +183,7 @@ func TestFirstRTFMPlaysItsBeat(t *testing.T) {
 		h := newHarness(t)
 		loadGuide(h)
 		h.send(screens.OpenLearn{})
-		if _, ok := h.m.top().(*rtfm.Browser); !ok {
+		if _, ok := h.m.top().(*rtfm.Map); !ok {
 			t.Fatalf("the headless game shows %T over RTFM", h.m.top())
 		}
 
@@ -193,7 +193,7 @@ func TestFirstRTFMPlaysItsBeat(t *testing.T) {
 		if got, _ := h.watch(); !slices.Equal(got, []string{"story.first-rtfm"}) {
 			t.Fatalf("first RTFM shows %v, want the Mock Turtle", got)
 		}
-		if _, ok := h.m.top().(*rtfm.Browser); !ok || !slices.Equal(seenIDs(h.m.meta), []string{"story.first-rtfm"}) {
+		if _, ok := h.m.top().(*rtfm.Map); !ok || !slices.Equal(seenIDs(h.m.meta), []string{"story.first-rtfm"}) {
 			t.Fatalf("after the scene: %T on top, seen %v", h.m.top(), seenIDs(h.m.meta))
 		}
 		h.send(screens.Back{})
@@ -265,12 +265,12 @@ func TestRTFMOpensTheNearestModule(t *testing.T) {
 		}{{1365, "graph-traversal"}, {1850, "toposort"}, {900, "intro-graphs"}} {
 			h.m.meta.Rating = tc.rating
 			h.send(screens.OpenLearn{Topic: "graphs"})
-			b, ok := h.m.top().(*rtfm.Browser)
+			p, ok := h.m.top().(*rtfm.Map)
 			if !ok {
 				t.Fatalf("OpenLearn shows %T", h.m.top())
 			}
-			if v := ansi.Strip(b.View(100, 30)); !strings.Contains(v, tc.want+" - ") {
-				t.Errorf("rating %v: RTFM opened elsewhere, want %s:\n%s", tc.rating, tc.want, v)
+			if got := p.Selected(); got != tc.want {
+				t.Errorf("rating %v: RTFM opened at %s, want %s", tc.rating, got, tc.want)
 			}
 			h.send(screens.Back{})
 		}
@@ -278,14 +278,14 @@ func TestRTFMOpensTheNearestModule(t *testing.T) {
 }
 
 // RTFM opened at a link (a locked exit's t) goes straight back on q, not to
-// RTFM's index first.
+// the overworld first.
 func TestRTFMLinkGoesBack(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
 		h.m.cur = graphGuide(t)
 		from := h.m.top()
 		h.send(screens.OpenLearn{Topic: "graphs"})
-		if _, ok := h.m.top().(*rtfm.Browser); !ok {
+		if _, ok := h.m.top().(*rtfm.Map); !ok {
 			t.Fatalf("OpenLearn shows %T", h.m.top())
 		}
 		h.send(key("q"))
@@ -326,8 +326,8 @@ func TestPassedTrialOffersTheNextModule(t *testing.T) {
 				}
 				for _, k := range []string{"m", "enter"} {
 					h.send(key(k))
-					b, ok := h.m.top().(*rtfm.Browser)
-					if !ok || !strings.Contains(ansi.Strip(b.View(100, 30)), tc.page+" - ") {
+					p, ok := h.m.top().(*rtfm.Map)
+					if !ok || p.Selected() != tc.page {
 						t.Fatalf("%s opened %T, want RTFM at %s", k, h.m.top(), tc.page)
 					}
 					h.send(screens.Back{})
@@ -400,6 +400,35 @@ func TestOpenModuleRecordsOpened(t *testing.T) {
 		want = append(want, "casework")
 		if m, err := h.st.LoadMeta(); err != nil || !slices.Equal(m.Opened, want) {
 			t.Errorf("saved over a boot: Opened %v (%v), want %v", m.Opened, err, want)
+		}
+	})
+}
+
+// The map's i opens the man index over it at the module, and q there comes
+// back to the same map.
+func TestRTFMIndexOverTheMap(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		loadGuide(h)
+		h.send(screens.OpenLearn{Module: "prefix-sums"})
+		p, ok := h.m.top().(*rtfm.Map)
+		if !ok {
+			t.Fatalf("OpenLearn shows %T", h.m.top())
+		}
+		h.send(screens.OpenIndex{Module: "prefix-sums"})
+		b, ok := h.m.top().(*rtfm.Browser)
+		if !ok {
+			t.Fatalf("OpenIndex shows %T", h.m.top())
+		}
+		// Its selection is the module: enter opens that page, q closes it.
+		h.send(key("enter"))
+		if v := ansi.Strip(b.View(100, 30)); !strings.Contains(v, "prefix-sums - ") {
+			t.Errorf("enter on the index opens:\n%s", v)
+		}
+		h.send(key("q"))
+		h.send(key("q"))
+		if h.m.top() != p {
+			t.Errorf("q on the index shows %T, want the map", h.m.top())
 		}
 	})
 }

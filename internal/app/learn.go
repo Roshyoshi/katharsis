@@ -32,17 +32,17 @@ type learnLoadedMsg struct {
 	open screens.OpenLearn // openLearn's
 }
 
-// openLearn shows the RTFM browser: at o's module, or with a topic at its
-// module nearest the player (learnModule). The curriculum loads from the
+// openLearn shows RTFM's map: at o's module, or with a topic at its
+// module nearest the player (learnModule), else on the overworld. The curriculum loads from the
 // USACO Guide snapshot the USACO source already downloaded, once per
 // session.
 func (m *Model) openLearn(o screens.OpenLearn) tea.Cmd {
 	if m.cur != nil {
-		b := rtfm.NewBrowser(m.cur, m.meta, m.judgeable, m.d.Catalog.Get)
+		p := rtfm.NewMap(m.cur, m.meta, m.judgeable, m.d.Catalog.Get)
 		if id := cmp.Or(o.Module, m.learnModule(o.Topic)); id != "" {
-			b.Open(id)
+			p.Open(id)
 		}
-		cmd := m.push(b)
+		cmd := m.push(p)
 		// The Mock Turtle's school, over the first visit (story bible).
 		if m.d.Story && m.unseen("story.first-rtfm") {
 			cmd = tea.Batch(cmd, m.readBeat("story.first-rtfm"))
@@ -59,6 +59,16 @@ func (m *Model) openLearn(o screens.OpenLearn) tea.Cmd {
 		cur, err := curriculum.Load(dir)
 		return learnLoadedMsg{cur: cur, err: err, open: o}
 	})
+}
+
+// openIndex shows RTFM's man index over the map, which searches, at
+// module's row when it is set; q there comes back to the map.
+func (m *Model) openIndex(module string) tea.Cmd {
+	b := rtfm.NewBrowser(m.cur, m.meta, m.judgeable, m.d.Catalog.Get)
+	if module != "" {
+		b.Select(module)
+	}
+	return m.push(b)
 }
 
 // learnModule is the module RTFM opens at for topic, "" for none: of the

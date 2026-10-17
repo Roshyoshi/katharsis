@@ -28,6 +28,7 @@ import (
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/reader"
+	"katharsis/internal/screens/rtfm"
 	"katharsis/internal/screens/samples"
 	"katharsis/internal/session"
 	"katharsis/internal/store"
@@ -991,6 +992,10 @@ func TestPracticeUpsolveBanksNothing(t *testing.T) {
 		}
 		if h.m.open != nil {
 			t.Error("upsolve door still open")
+		}
+		// Practice comes back to the map it was started from, not GRUB.
+		if _, ok := h.m.top().(*rtfm.Map); !ok {
+			t.Errorf("after the AC %T is on top, want RTFM's map", h.m.top())
 		}
 	})
 }

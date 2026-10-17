@@ -51,6 +51,9 @@ type (
 	StartTrial struct{ Module string }
 	// OpenModule shows a learn-mode module page in the reader.
 	OpenModule struct{ Module string }
+	// OpenIndex shows RTFM's man index, which searches, at Module's row
+	// when it is set.
+	OpenIndex struct{ Module string }
 	// OpenShop shows apt, the packages the bank buys (D25); Install buys
 	// one by name, and UseTheme puts an installed banner theme in use, ""
 	// for the default.

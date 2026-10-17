@@ -18,6 +18,7 @@ import (
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/reader"
+	"katharsis/internal/screens/rtfm"
 	"katharsis/internal/screens/samples"
 	"katharsis/internal/screens/story"
 	"katharsis/internal/store"
@@ -60,6 +61,8 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 		return m.answerPrior(msg), true
 	case screens.OpenModule:
 		return m.openModule(msg.Module), true
+	case screens.OpenIndex:
+		return m.openIndex(msg.Module), true
 	case screens.StartTrial:
 		return m.startTrial(msg.Module), true
 	case learnLoadedMsg:
@@ -380,7 +383,7 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 	// save, and a door left open would let it count twice.
 	m.closeDoor()
 	bits := m.setuidOutside() // a dump recovered, a regression retired (setuid.go)
-	m.reset()
+	m.afterUpsolve()
 	if !m.saved(m.d.Store.SaveMeta(m.meta)) {
 		return nil // the banner says so
 	}
@@ -388,6 +391,21 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 		return note("%s", strings.TrimPrefix(s, ui.G.Sep))
 	}
 	return nil
+}
+
+// afterUpsolve takes an upsolve that was solved off the screen: back to
+// RTFM's map when it was practice from there, its level showing the new
+// ✓, else the stack from scratch (GRUB's list of dumps has changed).
+func (m *Model) afterUpsolve() {
+	for i := len(m.stack) - 1; i >= 0; i-- {
+		if _, ok := m.stack[i].(*rtfm.Map); ok {
+			for len(m.stack) > i+1 {
+				m.pop()
+			}
+			return
+		}
+	}
+	m.reset()
 }
 
 func openURL(url string) tea.Cmd {

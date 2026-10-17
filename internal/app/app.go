@@ -301,6 +301,11 @@ func (m *Model) pop() {
 	if len(m.stack) > 1 {
 		m.dropped(m.top())
 		m.stack = m.stack[:len(m.stack)-1]
+		// The screen shown again may show Meta that changed over it: a
+		// page opened, a practice problem solved.
+		if r, ok := m.top().(interface{ Refresh(game.Meta) }); ok {
+			r.Refresh(m.meta)
+		}
 	}
 }
 

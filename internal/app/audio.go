@@ -146,7 +146,13 @@ func (m *Model) warnTimer() {
 func (m *Model) audioCue() audio.Cue {
 	s := m.state
 	if s == nil {
-		if slices.ContainsFunc(m.stack, func(sc screens.Screen) bool { _, ok := sc.(*rtfm.Browser); return ok }) {
+		if slices.ContainsFunc(m.stack, func(sc screens.Screen) bool {
+			switch sc.(type) {
+			case *rtfm.Map, *rtfm.Browser:
+				return true
+			}
+			return false
+		}) {
 			return audio.Cue{Pool: audio.PoolRTFM}
 		}
 		return audio.Cue{Pool: audio.PoolGrub}

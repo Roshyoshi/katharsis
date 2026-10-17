@@ -43,6 +43,10 @@ type Level struct {
 	Optional bool
 	// Capability is what the module's trial grants, "" for none.
 	Capability string
+	// Topic is the catalog topic the module teaches, "" for none; Frequency
+	// the guide's 0-4 "how often in contests", -1 if unset.
+	Topic     string
+	Frequency int
 	// Prereqs are the module's prerequisites that are modules of the
 	// guide; Warps the later-world modules this one opens a shortcut to:
 	// those that skip a whole world and whose prerequisites all sit in
@@ -136,6 +140,7 @@ func (c *Curriculum) Atlas(judgeable func(catalog.ID) bool) Atlas {
 func (c *Curriculum) level(m Module, division string, judgeable func(catalog.ID) bool) Level {
 	l := Level{
 		Module: m.ID, Title: m.Title, Capability: CapabilityFor(m.Topic),
+		Topic: m.Topic, Frequency: m.Frequency,
 		Optional: strings.Contains(m.Title, "(Optional)") || m.Frequency == 0,
 	}
 	for _, p := range m.Prerequisites {
@@ -244,12 +249,13 @@ func (a Atlas) Progress(m *game.Meta) Progress {
 
 // WorldSum is a world's counts, each with its real denominator: trials
 // passed of the levels that have one, capabilities held of those it
-// teaches, problems solved of those it lists playable.
+// teaches, problems solved of those it lists playable, pages opened of
+// all its levels.
 type WorldSum struct {
 	Passed, Trials   int
 	CapsHeld, Caps   int
 	Solved, Playable int
-	Levels           int
+	Opened, Levels   int
 }
 
 // Sum counts w under p.
@@ -259,6 +265,9 @@ func (p Progress) Sum(w World) WorldSum {
 	for _, l := range w.Levels() {
 		s.Levels++
 		lp := p[l.Module]
+		if lp.Opened {
+			s.Opened++
+		}
 		if l.Kind.HasTrial() {
 			s.Trials++
 			if lp.Passed {
