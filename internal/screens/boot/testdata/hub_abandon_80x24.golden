@@ -5,6 +5,7 @@ MAP · boot #42 · suspended · after ⚔ Off-by-One              ♥ 23/50 cycl
 
 
 
+
  act I   Userland ✓✗ ─ The Scheduler ✓ ─ ⚔ Off-by-One ✓
            not taken: Brute Force Bunker · The Emulator · The Accumulator
             · ⚔ OOM Killer
@@ -18,7 +19,6 @@ MAP · boot #42 · suspended · after ⚔ Off-by-One              ♥ 23/50 cycl
 
 
 ────────────────────────────────────────────────────────────────────────────────
- core dump: 312 B on "The Bovine Shuffle" (boot #41), lost if #42 is abandoned
  Stub line for map.abandon.
  ends boot #42 as a crash, the core dump on "The Bovine Shuffle" destroyed
 y abandon boot #42 · any other key keep it

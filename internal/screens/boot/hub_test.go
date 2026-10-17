@@ -218,19 +218,19 @@ func TestNarrowExits(t *testing.T) {
 }
 
 // The hub draws the path taken, where the boot stands and the bosses
-// ahead, and its keys: enter resumes, n asks before y abandons, u
-// upsolves the core dump, t opens RTFM, q quits.
+// ahead, and its keys: enter resumes, n asks before y abandons, t opens
+// RTFM, q quits. Upsolves are GRUB's, not the map's.
 func TestHubKeys(t *testing.T) {
 	h := NewHub(hubEnv(fixture.MapRoute()), true)
 	v := ansi.Strip(h.View(80, 24))
-	for _, want := range []string{"MAP", "suspended", "Userland", "The Scheduler", "Off-by-One", "act II", "The Halting Problem", "312 B"} {
+	for _, want := range []string{"MAP", "suspended", "Userland", "The Scheduler", "Off-by-One", "act II", "The Halting Problem"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("hub lacks %q:\n%s", want, v)
 		}
 	}
 	key := func(k string) tea.Msg { _, cmd := h.Update(press(k)); return emitted(cmd) }
 	for k, want := range map[string]tea.Msg{
-		"enter": Resume{Launch: true}, "u": screens.Upsolve{Problem: "usaco:764"},
+		"enter": Resume{Launch: true}, "u": nil,
 		"t": screens.OpenLearn{}, "q": screens.Quit{},
 	} {
 		if got := key(k); got != want {
@@ -255,13 +255,17 @@ func TestHubKeys(t *testing.T) {
 	if got := key("y"); got != (Abandon{Then: screens.StartTrial{Module: "two-pointers"}}) {
 		t.Errorf("y after Ask: %#v", got)
 	}
-	// A dump on offer as a door is not upsolved from the hub.
+	// Upsolves are GRUB's: u does nothing on the map, a dump and a due
+	// regression at hand.
 	st := fixture.MapDoors()
 	e := hubEnv(st)
-	e.Meta.CoreDump.Problem = st.Doors[0].Problem
-	e.Meta.Regressions = nil
-	if id, _ := upsolveTarget(e); id != "" {
-		t.Errorf("upsolves %s, a door on offer", id)
+	e.Meta.Regressions = []game.Regression{{Problem: "usaco:1205", Due: e.Now.Add(-time.Hour)}}
+	u := NewHub(e, true)
+	if _, cmd := u.Update(tea.KeyPressMsg{Code: 'u', Text: "u"}); cmd != nil {
+		t.Errorf("u on the map: %#v", cmd())
+	}
+	if v := ansi.Strip(u.View(140, 40)); strings.Contains(v, "upsolve") || strings.Contains(v, "regression due") {
+		t.Errorf("the map offers an upsolve:\n%s", v)
 	}
 }
 

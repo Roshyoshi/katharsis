@@ -7,6 +7,7 @@ MAP · boot #42 · Silver · suspended · after ⚔ Heisenbug                   
 
 
 
+
 ─ act I ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
    Userland ✓✗     Brute Force Bunker     ⚔ Off-by-One ✓
                    The Emulator           ⚔ OOM Killer  
@@ -36,5 +37,4 @@ MAP · boot #42 · Silver · suspended · after ⚔ Heisenbug                   
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- core dump: 312 B on "The Bovine Shuffle" (boot #41), lost if #42 is abandoned
-enter resume · n new boot · u upsolve · t RTFM · q quit
+enter resume · n new boot · t RTFM · q quit

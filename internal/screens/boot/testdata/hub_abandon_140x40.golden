@@ -6,6 +6,7 @@ MAP · boot #42 · Silver · suspended · after ⚔ Off-by-One                  
 
 
 
+
 ─ act I ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
    Userland ✓✗     Brute Force Bunker     ⚔ Off-by-One ✓
                    The Emulator           ⚔ OOM Killer  
@@ -34,7 +35,6 @@ MAP · boot #42 · Silver · suspended · after ⚔ Off-by-One                  
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- core dump: 312 B on "The Bovine Shuffle" (boot #41), lost if #42 is abandoned
  Stub line for map.abandon.
  ends boot #42 as a crash, the core dump on "The Bovine Shuffle" destroyed
 y abandon boot #42 · any other key keep it

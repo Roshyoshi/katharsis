@@ -183,11 +183,17 @@ func NewGrub(c GrubConfig) *Menu {
 		return flavor.Fill(c.Story("grub.subtitle."+hook, 0), pairs...)
 	}
 
-	// The default boot, then the core dump right under it (RT4): the
-	// cliffhanger is the second thing GRUB offers. Once a level past the
+	// The default boot, then the upsolves right under it, named by the core
+	// dump when there is one (RT4): the cliffhanger is the second thing
+	// GRUB offers. Once a level past the
 	// divisions is unlocked, the divisions fold into a submenu, as GRUB
 	// keeps older kernels under one entry: nine levels and the rest would
 	// not fit beside the art at 80x24.
+	ups, due := upsolvePage(c.Meta, now, title, sub, c.Story)
+	if due {
+		// The White Queen's beat, the first time the player opens it.
+		m.firstRegression = !game.HasSeen(&c.Meta, firstRegression)
+	}
 	var es []entry
 	var divisions *page
 	for p := m.maxP; p >= 0; p-- {
@@ -202,12 +208,8 @@ func NewGrub(c GrubConfig) *Menu {
 			continue
 		}
 		es = append(es, e)
-		if d := c.Meta.CoreDump; d != nil && p == m.maxP {
-			es = append(es, entry{
-				label: fmt.Sprintf("upsolve core dump: %s (%s)", title(d.Problem), units.Bytes(d.Bytes)),
-				msg:   screens.Upsolve{Problem: d.Problem},
-				note:  sub("coredump", "bytes", units.Bytes(d.Bytes), "title", ui.Clip(title(d.Problem), 24)),
-			})
+		if p == m.maxP && ups != nil {
+			es = append(es, upsolveEntry(c.Meta.CoreDump, ups, title, sub))
 		}
 	}
 	es = append(es, entry{
@@ -222,26 +224,6 @@ func NewGrub(c GrubConfig) *Menu {
 			sub.entries = append(sub.entries, m.bootEntry(m.maxP, name))
 		}
 		es = append(es, entry{label: "katharsis (other presets…)", sub: sub, note: c.Story("grub.subtitle.custom", 0)})
-	}
-	if regs := dueRegressions(c.Meta.Regressions, now); len(regs) > 0 {
-		// At most three on screen, and no count past them (retention
-		// GR10): the rest wait, and none of it is a debt.
-		regs = regs[:min(len(regs), maxDue)]
-		page := &page{pick: true}
-		for _, r := range regs {
-			page.entries = append(page.entries, entry{
-				label: fmt.Sprintf("regression: %s (due %s, stage %d)", title(r.Problem), ago(r.Due, now), r.Stage+1),
-				msg:   screens.Upsolve{Problem: r.Problem},
-				note:  regressionNote(r, c.Story),
-			})
-		}
-		label := fmt.Sprintf("regressions due: %d", len(regs))
-		if len(regs) == maxDue && len(dueRegressions(c.Meta.Regressions, now)) > maxDue {
-			label = fmt.Sprintf("regressions due: %d+", maxDue)
-		}
-		es = append(es, entry{label: label, sub: page, note: sub("regressions")})
-		// The White Queen's beat, the first time the player opens it.
-		m.firstRegression = !game.HasSeen(&c.Meta, firstRegression)
 	}
 	if len(c.Packages) > 0 {
 		es = append(es, entry{label: aptLabel(c.Packages, c.Meta.Bank), msg: screens.OpenShop{}})

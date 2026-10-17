@@ -11,6 +11,7 @@ MAP · boot #42 · Silver · after The Heap                                     
 
 
 
+
                                         ╭─ Userland ─╮   ╭─ The Heap ─╮   ╭─ ? ─╮   ╭─ Heisenbug ─╮
                                         │    ✓ ✓     │───│    ✓ ☠     │───│ ○ ○ │───│      ⚔      │
                                         ╰────────────╯   ╰────────────╯   ╰─────╯   ╰─────────────╯
@@ -36,5 +37,4 @@ MAP · boot #42 · Silver · after The Heap                                     
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- regression due: "Cereal" (stage 1)
-enter resume · n new boot · u upsolve · t RTFM · q quit
+enter resume · n new boot · t RTFM · q quit

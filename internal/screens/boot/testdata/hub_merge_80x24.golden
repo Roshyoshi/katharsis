@@ -1,24 +1,24 @@
 MAP · boot #42 · Silver · merge window         ♥ 23/50 cycles  464 B uncommitted
 ────────────────────────────────────────────────────────────────────────────────
-
-
-
-
-
-
- act I   Userland ✓✗ ─ The Scheduler ✓ ─ ⚔ Off-by-One ✓
-           not taken: Brute Force Bunker · The Emulator · The Accumulator
-            · ⚔ OOM Killer
- act II  ● merge window ─ ▸ Bisect Bridge □ CAP_BSEARCH +1
-          · The Sliding Window □ CAP_TWOPTR +1 · The ALU ─ ⚔ Heisenbug
-          | ⚔ Race Condition
- act III 1 of 5 biomes, or skip +2 ─ ⚔ The Halting Problem one shot
-
-
-
-
-
-
+─ act I ────────────────────────────────────────────────────────────────────────
+   Userland ✓✗     Brute Force Bunker     ⚔ Off-by-One ✓
+                   The Emulator           ⚔ OOM Killer  
+                   The Scheduler ✓                      
+                   The Accumulator                      
+─ act II ───────────────────────────────────────────────────────────────────────
+ ▸ Bisect Bridge □ CAP_BSEARCH +1         ⚔ Heisenbug         
+ ▸ The Sliding Window □ CAP_TWOPTR +1     ⚔ Race Condition    
+ ▸ The ALU                                ⚔ Undefined Behavior
+   The Heap                                                   
+   The Lexer                                                  
+─ act III ──────────────────────────────────────────────────────────────────────
+   Routing Table □ CAP_GRAPH +1       ⚔ The Halting Problem one shot
+   The Cache □ CAP_DP +1                                            
+   Union Hall □ CAP_DSU +1                                          
+   Dijkstra's Reach □ CAP_SSSP +1                                   
+   The Filesystem                                                   
+   The Framebuffer                                                  
+   Kernel Space                                                     
+   skip +2                                                          
 ────────────────────────────────────────────────────────────────────────────────
- core dump: 312 B on "The Bovine Shuffle" (boot #41), lost if #42 is abandoned
-enter resume · n new boot · u upsolve · t RTFM · q quit
+enter resume · n new boot · t RTFM · q quit

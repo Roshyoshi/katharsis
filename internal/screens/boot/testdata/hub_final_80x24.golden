@@ -1,24 +1,24 @@
 MAP · boot #42 · suspended · after ⚔ Heisenbug                ♥ 8/50 cycles  0 B
 ────────────────────────────────────────────────────────────────────────────────
-
-
-
-
-
- act I   Userland ✓✗ ─ The Scheduler ✓ ─ ⚔ Off-by-One ✓
-           not taken: Brute Force Bunker · The Emulator · The Accumulator
-            · ⚔ OOM Killer
- act II  The ALU ✓ ─ ⚔ Heisenbug ✓
-           not taken: Bisect Bridge · The Sliding Window · The Heap · The Lexer
-            · ⚔ Race Condition · ⚔ Undefined Behavior
- act III ▸ Routing Table □ CAP_GRAPH +1 · The Cache +1 · Kernel Space · skip +2
-          ─ ⚔ The Halting Problem one shot
-
-
-
-
-
-
+─ act I ────────────────────────────────────────────────────────────────────────
+   Userland ✓✗     Brute Force Bunker     ⚔ Off-by-One ✓
+                   The Emulator           ⚔ OOM Killer  
+                   The Scheduler ✓                      
+                   The Accumulator                      
+─ act II ───────────────────────────────────────────────────────────────────────
+   Bisect Bridge          ⚔ Heisenbug ✓       
+   The Sliding Window     ⚔ Race Condition    
+   The ALU ✓              ⚔ Undefined Behavior
+   The Heap                                   
+   The Lexer                                  
+─ act III ──────────────────────────────────────────────────────────────────────
+ ▸ Routing Table □ CAP_GRAPH +1     ⚔ The Halting Problem one shot
+ ▸ The Cache +1                                                   
+   Union Hall                                                     
+   Dijkstra's Reach                                               
+   The Filesystem                                                 
+   The Framebuffer                                                
+ ▸ Kernel Space                                                   
+ ▸ skip +2                                                        
 ────────────────────────────────────────────────────────────────────────────────
- core dump: 312 B on "The Bovine Shuffle" (boot #41), lost if #42 is abandoned
-enter resume · n new boot · u upsolve · t RTFM · q quit
+enter resume · n new boot · t RTFM · q quit

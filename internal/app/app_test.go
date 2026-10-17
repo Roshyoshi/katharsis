@@ -1729,3 +1729,28 @@ func TestSamplesView(t *testing.T) {
 		}
 	})
 }
+
+// A door a boot lost, upsolved from GRUB before its regression is due,
+// picks up from the code written in that boot, found by its last attempt;
+// the regression stays due on its date.
+func TestUpsolveLostDoor(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		cur := h.enterDoor()
+		id := cur.Door.Problem
+		boot := h.m.state.Boot
+		h.send(game.GiveUp{})
+		if len(h.m.meta.Regressions) == 0 || !h.m.meta.Regressions[0].Due.After(h.m.d.Now()) {
+			t.Fatalf("the give-up scheduled no regression ahead: %+v", h.m.meta.Regressions)
+		}
+		// Between boots, the dump gone: only the lost door is left.
+		h.m.state, h.m.meta.CoreDump = nil, nil
+		if sub, seed := h.m.upsolveFiles(id); sub != "" || seed != boot {
+			t.Errorf("lost door upsolves in %q from boot %d, want the shared directory from boot %d", sub, seed, boot)
+		}
+		if due := h.m.meta.Regressions[0].Due; !due.After(h.m.d.Now()) {
+			t.Errorf("the regression moved to %s", due)
+		}
+	})
+}

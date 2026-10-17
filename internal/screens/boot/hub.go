@@ -8,7 +8,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"katharsis/internal/catalog"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
@@ -24,11 +23,12 @@ import (
 //	enter, esc, m   Resume: back where the boot stopped
 //	n               asks first (map.abandon), then Abandon: the boot ends
 //	                as a crash, and GRUB starts the next one
-//	u               screens.Upsolve: the core dump, else a due regression
 //	t               screens.OpenLearn: RTFM
 //	q               screens.Quit: the boot stays suspended, saved
 //
 // While it asks, y goes ahead and any other key keeps the boot.
+// Upsolves are GRUB's, between boots: the map of a boot in flight is no
+// place for them.
 type Hub struct {
 	env    Env
 	launch bool // a launch landed here: enter resumes a suspended boot
@@ -74,10 +74,6 @@ func (h *Hub) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		return h, screens.Emit(Resume{Launch: h.launch})
 	case "n":
 		h.Ask(nil)
-	case "u":
-		if id, _ := upsolveTarget(h.env); id != "" {
-			return h, screens.Emit(screens.Upsolve{Problem: id})
-		}
 	case "t":
 		return h, screens.Emit(screens.OpenLearn{})
 	case "q":
@@ -90,18 +86,11 @@ func (h *Hub) View(width, height int) string {
 	st := h.env.State
 	head := []string{h.headLine(width), ui.Rule(width)}
 	var foot []string
-	id, stake := upsolveTarget(h.env)
-	if stake != "" {
-		foot = append(foot, ui.Clip(" "+stake, width))
-	}
 	if h.asking {
 		foot = append(foot, h.askLines(width)...)
 	}
 	foot = append([]string{ui.Rule(width)}, foot...)
 	keys := []string{"enter", "resume", "n", "new boot"}
-	if id != "" {
-		keys = append(keys, "u", "upsolve")
-	}
 	keys = append(keys, "t", "RTFM", "q", "quit")
 	footer := ui.Footer(width, keys...)
 	if h.asking {
@@ -198,35 +187,6 @@ func cyclesText(st *game.State) string {
 		h += ui.Muted.Render(" cycles")
 	}
 	return h
-}
-
-// upsolveTarget is what u upsolves from the hub and the line that says so:
-// the core dump, at risk if the boot is abandoned, else the oldest due
-// regression. Neither while it is a door on offer in this boot: an upsolve
-// would solve that door before it opens (meta.md §(c)). id is "" for none.
-func upsolveTarget(env Env) (id catalog.ID, line string) {
-	st := env.State
-	offered := func(id catalog.ID) bool {
-		for _, d := range st.Doors {
-			if d.Problem == id {
-				return true
-			}
-		}
-		return false
-	}
-	if d := env.Meta.CoreDump; d != nil && !offered(d.Problem) {
-		line = fmt.Sprintf("core dump: %s on %q (boot #%d)", units.Bytes(d.Bytes), env.problem(d.Problem).Title, d.Boot)
-		if st.Trial == nil {
-			line += fmt.Sprintf(", lost if #%d is abandoned", st.Boot)
-		}
-		return d.Problem, ui.Muted.Render(line)
-	}
-	for _, g := range game.DueRegressions(&env.Meta, env.Now) {
-		if !offered(g.Problem) {
-			return g.Problem, ui.Muted.Render(fmt.Sprintf("regression due: %q (stage %d)", env.problem(g.Problem).Title, g.Stage+1))
-		}
-	}
-	return "", ""
 }
 
 // NewMap is the hub opened between doors, not at launch.

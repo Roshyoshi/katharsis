@@ -184,7 +184,10 @@ goes on. The resume note (`app/debrief.go` `resumeNote`) stays.
   boot starts (`State.AtStart.Dump`), and the map shows it.
 - **Upsolves while suspended.** Allowed for the dump and for due
   regressions. Refused for a problem on offer in the suspended boot: a
-  door drawn but not opened would otherwise be pre-solved.
+  door drawn but not opened would otherwise be pre-solved. (10-16, user:
+  "this shouldnt be in a active run map": the map has no upsolve; GRUB's
+  `upsolve…` lists the dump, the regressions due and the doors boots lost,
+  between boots.)
 - **Nightly.** A seed choice at GRUB, in the one slot. Its doors are fixed
   by the seed, so a suspended nightly resumes the same doors.
 - **Prestige and rules.** Already snapshotted per boot (`State.Rules`). A

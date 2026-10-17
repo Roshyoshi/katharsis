@@ -135,7 +135,7 @@ func TestGoldens(t *testing.T) {
 		// A load average leaves TIME+ no room at 80 columns (grub_end_test.go).
 		{"grub_load", func() screens.Screen { return loadGrub() }, nil},
 		{"grub_presets", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "enter"}},
-		{"grub_regressions", func() screens.Screen { return grub() }, []string{"down", "down", "down", "down", "down", "down", "down", "enter"}},
+		{"grub_regressions", func() screens.Screen { return grub() }, []string{"down", "enter", "down"}}, // the upsolves, on a regression
 		{"grub_edit", func() screens.Screen { return grub() }, []string{"e", "down", "tab", "down", "8", "f", "3", "a"}},
 		// Every level unlocked: P8 to P5, then the divisions folded.
 		{"grub_p8", func() screens.Screen { return topGrub() }, nil},
@@ -218,9 +218,9 @@ func TestFits(t *testing.T) {
 // ---- GRUB keys ---------------------------------------------------------------
 
 func TestGrubEntries(t *testing.T) {
-	// Entries top to bottom: prestige 2, the core dump under it (RT4),
-	// prestige 1, 0, nightly build, RTFM, other presets…, regressions due,
-	// apt, git log, top, find / -perm -4000, poweroff.
+	// Entries top to bottom: prestige 2, the upsolves under it, named by
+	// the core dump (RT4), prestige 1, 0, nightly build, RTFM, other
+	// presets…, apt, git log, top, find / -perm -4000, poweroff.
 	down := func(n int) []string {
 		ks := make([]string, n)
 		for i := range ks {
@@ -238,16 +238,17 @@ func TestGrubEntries(t *testing.T) {
 		{"nightly", append(down(4), "enter"), screens.StartBoot{Prestige: 2, Preset: "standard", Seed: 0x20261014}},
 		{"rtfm", append(down(5), "enter"), screens.OpenLearn{}},
 		{"preset submenu", append(down(6), "enter", "down", "enter"), screens.StartBoot{Prestige: 2, Preset: "speedrun"}},
-		{"core dump", append(down(1), "enter"), screens.Upsolve{Problem: "usaco:1014"}},
-		// The core dump has its own entry; the submenu is regressions only,
-		// oldest due first, without usaco:740, which is not due.
-		{"regressions submenu lists only regressions", append(down(7), "enter", "enter"), screens.Upsolve{Problem: "usaco:891"}},
-		{"regression due last", append(down(7), "enter", "G", "enter"), screens.Upsolve{Problem: "usaco:1205"}},
-		{"apt", append(down(8), "enter"), screens.OpenShop{}},
-		{"git log", append(down(9), "enter"), screens.OpenLog{}},
-		{"top", append(down(10), "enter"), screens.OpenTop{}},
-		{"setuid", append(down(11), "enter"), screens.OpenSetuid{}},
-		{"poweroff", append(down(12), "enter"), screens.Quit{}},
+		// The upsolves: the core dump first, then the regressions due, oldest
+		// due first, then the doors lost and not due yet (usaco:740).
+		{"core dump", append(down(1), "enter", "enter"), screens.Upsolve{Problem: "usaco:1014"}},
+		{"regression due first", append(down(1), "enter", "down", "enter"), screens.Upsolve{Problem: "usaco:891"}},
+		{"regression due next", append(down(1), "enter", "down", "down", "enter"), screens.Upsolve{Problem: "usaco:1205"}},
+		{"lost door last", append(down(1), "enter", "G", "enter"), screens.Upsolve{Problem: "usaco:740"}},
+		{"apt", append(down(7), "enter"), screens.OpenShop{}},
+		{"git log", append(down(8), "enter"), screens.OpenLog{}},
+		{"top", append(down(9), "enter"), screens.OpenTop{}},
+		{"setuid", append(down(10), "enter"), screens.OpenSetuid{}},
+		{"poweroff", append(down(11), "enter"), screens.Quit{}},
 		// The credits are a key, as real GRUB's command line is, in any menu.
 		{"c opens the credits", []string{"c"}, screens.OpenCredits{}},
 		{"c in a submenu too", append(down(6), "enter", "c"), screens.OpenCredits{}},
@@ -256,7 +257,7 @@ func TestGrubEntries(t *testing.T) {
 		{"ctrl+x boots like enter", []string{"ctrl+x"}, screens.StartBoot{Prestige: 2, Preset: "standard"}},
 		{"esc leaves submenu, keeping its entry highlighted", append(down(6), "enter", "esc", "up", "enter"), screens.OpenLearn{}},
 		{"esc at root does nothing", []string{"esc"}, nil},
-		{"e on a non-boot entry does nothing", append(down(9), "e", "enter"), screens.OpenLog{}},
+		{"e on a non-boot entry does nothing", append(down(8), "e", "enter"), screens.OpenLog{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -265,7 +266,7 @@ func TestGrubEntries(t *testing.T) {
 	}
 }
 
-// With every level unlocked GRUB lists P8 to P5, the core dump under P8,
+// With every level unlocked GRUB lists P8 to P5, the upsolves under P8,
 // and the divisions (P4 to P0) in a submenu; the editor still reaches any
 // level.
 func TestGrubNineLevels(t *testing.T) {
@@ -275,7 +276,7 @@ func TestGrubNineLevels(t *testing.T) {
 		want tea.Msg
 	}{
 		{"default boots P8", []string{"enter"}, screens.StartBoot{Prestige: 8, Preset: "standard"}},
-		{"core dump under it", []string{"down", "enter"}, screens.Upsolve{Problem: "usaco:1014"}},
+		{"the upsolves under it", []string{"down", "enter", "enter"}, screens.Upsolve{Problem: "usaco:1014"}},
 		{"P5", []string{"down", "down", "down", "down", "enter"}, screens.StartBoot{Prestige: 5, Preset: "standard"}},
 		{"P4 heads the divisions", []string{"down", "down", "down", "down", "down", "enter", "enter"}, screens.StartBoot{Prestige: 4, Preset: "standard"}},
 		{"P0 ends them", []string{"down", "down", "down", "down", "down", "enter", "G", "enter"}, screens.StartBoot{Prestige: 0, Preset: "standard"}},
@@ -381,7 +382,7 @@ func TestGrubBannerWhenItFits(t *testing.T) {
 func TestGrubFollowKeepsTheCursor(t *testing.T) {
 	down := func(n int) []string { return slices.Repeat([]string{"down"}, n) }
 	old := grub()
-	press(t, old, down(8)...) // apt
+	press(t, old, down(7)...) // apt
 	c := fixture.GrubConfig()
 	c.Packages[2].Installed = true // rng-tools: apt's line names strace now
 	c.Meta.Bank -= c.Packages[2].Price
@@ -391,9 +392,9 @@ func TestGrubFollowKeepsTheCursor(t *testing.T) {
 
 	// An entry that is gone leaves the cursor at its row.
 	old = grub()
-	press(t, old, down(1)...) // the core dump, since upsolved
+	press(t, old, down(1)...) // the upsolves, since all done
 	c = fixture.GrubConfig()
-	c.Meta.CoreDump = nil
+	c.Meta.CoreDump, c.Meta.Regressions = nil, nil
 	g = meta.NewGrub(c)
 	g.Follow(old)
 	// Row 1 is prestige 1 now.
@@ -520,11 +521,13 @@ func TestGrubConfigDefaults(t *testing.T) {
 	c.Now, c.Lookup = time.Time{}, nil
 	c.Meta.Regressions = []game.Regression{{Problem: "usaco:1205", Due: time.Now().Add(-time.Minute)}}
 	v := plain(meta.NewGrub(c).View(80, 24))
-	if !strings.Contains(v, "regressions due: 1") {
-		t.Errorf("zero Now should mean time.Now():\n%s", v)
-	}
-	if !strings.Contains(v, "upsolve core dump: usaco:1014") {
+	if !strings.Contains(v, "upsolve… (core dump: usaco:1014") {
 		t.Errorf("nil Lookup should show catalog IDs:\n%s", v)
+	}
+	g := meta.NewGrub(c)
+	press(t, g, "down", "enter")
+	if v := plain(g.View(80, 24)); !strings.Contains(v, "regression: usaco:1205") {
+		t.Errorf("zero Now should mean time.Now():\n%s", v)
 	}
 }
 

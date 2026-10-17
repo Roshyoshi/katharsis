@@ -55,8 +55,8 @@ func TestGrubBudget(t *testing.T) {
 	}
 }
 
-// GRUB lists at most three due regressions and no count past them
-// (GR10).
+// GRUB's upsolves list at most three due regressions and no count past
+// them (GR10).
 func TestGrubRegressionsCapped(t *testing.T) {
 	c := fixture.GrubConfig()
 	c.Meta.Regressions = nil
@@ -64,13 +64,13 @@ func TestGrubRegressionsCapped(t *testing.T) {
 		c.Meta.Regressions = append(c.Meta.Regressions, game.Regression{Problem: "usaco:891", Due: fixture.Now.Add(-time.Duration(i+1) * time.Hour)})
 	}
 	g := meta.NewGrub(c)
-	v := plain(g.View(140, 40))
-	if !strings.Contains(v, "regressions due: 3+") || strings.Contains(v, "due: 10") {
-		t.Errorf("regressions not capped:\n%s", v)
+	if v := plain(g.View(140, 40)); strings.Contains(v, "10 ") || strings.Contains(v, "due: ") {
+		t.Errorf("GRUB counts the regressions:\n%s", v)
 	}
-	press(t, g, "down", "down", "down", "down", "down", "down", "down", "enter")
-	if n := strings.Count(plain(g.View(140, 40)), "regression: "); n != 3 {
-		t.Errorf("submenu lists %d regressions, want 3", n)
+	press(t, g, "down", "enter")
+	v := plain(g.View(140, 40))
+	if n := strings.Count(v, "regression: "); n != 3 || strings.Contains(v, "10 ") {
+		t.Errorf("the upsolves list %d regressions, want 3 and no count:\n%s", n, v)
 	}
 }
 
@@ -95,10 +95,10 @@ func TestLogNightlies(t *testing.T) {
 	wantMsg(t, press(t, l, "r"), screens.StartBoot{Prestige: 1, Preset: "standard", Seed: seed})
 }
 
-// The regressions submenu's first opening plays the White Queen's beat,
-// once; a player who has seen it goes straight in.
+// The upsolves' first opening with a regression due plays the White
+// Queen's beat, once; a player who has seen it goes straight in.
 func TestGrubFirstRegression(t *testing.T) {
-	regs := []string{"down", "down", "down", "down", "down", "down", "down", "enter"}
+	regs := []string{"down", "enter"}
 	g := grub()
 	wantMsg(t, press(t, g, regs...), story.Read{ID: "story.first-regression"})
 	wantMsg(t, press(t, g, "esc", "enter"), nil)
@@ -137,7 +137,7 @@ func TestGrubRegressionDays(t *testing.T) {
 		flavor.Fill(flavor.Story("regression.stage.2", 0), "days", fmt.Sprint(std[1])),
 	}
 	g := meta.NewGrub(c)
-	press(t, g, "down", "down", "down", "down", "down", "down", "down", "enter")
+	press(t, g, "down", "enter", "down") // the upsolves, past the core dump
 	for i, w := range want {
 		v := plain(g.View(140, 40))
 		if !strings.Contains(v, w) || strings.Contains(v, "{days}") {

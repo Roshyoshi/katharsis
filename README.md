@@ -83,8 +83,8 @@ paid retreat. The doors screen shows the split as you go.
 
 | Screen | Keys |
 |---|---|
-| GRUB | `↑/↓` select · `enter` boot · `e` edit prestige, preset, seed |
-| Map (the hub) | `enter` resume · `n` new boot (ends the one in flight as a crash) · `u` upsolve · `t` RTFM · `q` quit |
+| GRUB | `↑/↓` select · `enter` boot · `e` edit prestige, preset, seed · `upsolve…`: the core dump, regressions due, and the doors your boots lost, untimed |
+| Map (the hub) | `enter` resume · `n` new boot (ends the one in flight as a crash) · `t` RTFM · `q` quit |
 | Exits | `←/→` or `1-4` select · `enter` take · `t` RTFM on a locked one · `m` map |
 | Doors | `←/→` or `1-3` select · `enter` open · `m` map · `q` quit (the boot waits on the map) |
 | Problem pane | `s` submit · `t` statement · `w` the samples in full · `?` duck · `R` retreat · `Q Q` give up · `e` reopen a closed editor |

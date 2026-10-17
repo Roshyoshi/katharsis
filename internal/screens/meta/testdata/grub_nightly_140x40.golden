@@ -2,18 +2,18 @@
 
  ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
  │*katharsis, prestige 2 (Gold)                                                                                                           │
- │ upsolve core dump: Bovine Shuffle (312 B)                                                                                              │
+ │ upsolve… (core dump: Bovine Shuffle, 312 B)                                                                                            │
  │ katharsis, prestige 1 (Silver)                                                                                                         │
  │ katharsis, prestige 0 (Bronze)                                                                                                         │
  │ katharsis (nightly build 2026-10-14) · best: cleared in 1:32:10                                                                        │
  │ katharsis (RTFM — learn mode)                                                                                                          │
  │ katharsis (other presets…)                                                                                                             │
- │ regressions due: 2                                                                                                                     │
  │ apt install rng-tools (256 B, affordable)                                                                                              │
  │ git log                                                                                                                                │
  │ top                                                                                                                                    │
  │ find / -perm -4000                                                                                                                     │
  │ poweroff                                                                                                                               │
+ │                                                                                                                                        │
  │                                                                                                                                        │
  │                                                                                                                                        │
  │                                                                                                                                        │

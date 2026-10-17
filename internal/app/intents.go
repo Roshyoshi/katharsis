@@ -333,7 +333,9 @@ func (m *Model) lastMet(id catalog.ID) time.Time {
 // due date and a blank file, because the shared upsolve directory may hold
 // last time's accepted solution. Any other upsolve shares that directory,
 // and a new one starts from the attempt that crashed the boot, so a core
-// dump picks up where the boot left off.
+// dump picks up where the boot left off. A door a boot lost (a
+// regression not yet due, GRUB's "lost") starts from its last attempt's
+// boot the same way.
 func (m *Model) upsolveFiles(id catalog.ID) (sub string, seedBoot int) {
 	for _, g := range game.DueRegressions(&m.meta, m.d.Now()) {
 		if g.Problem == id {
@@ -345,6 +347,13 @@ func (m *Model) upsolveFiles(id catalog.ID) (sub string, seedBoot int) {
 		return "", m.state.Boot
 	case m.meta.CoreDump != nil && m.meta.CoreDump.Problem == id:
 		return "", m.meta.CoreDump.Boot
+	}
+	if slices.ContainsFunc(m.meta.Regressions, func(g game.Regression) bool { return g.Problem == id }) {
+		if atts, err := m.d.Store.Attempts(store.AttemptFilter{Problem: id, Limit: 1}); err != nil {
+			m.logErr("lost door's attempt", err)
+		} else if len(atts) > 0 {
+			return "", atts[0].Boot
+		}
 	}
 	return "", 0
 }

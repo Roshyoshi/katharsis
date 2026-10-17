@@ -333,7 +333,7 @@ The map is the hub (D47). A boot can be suspended between doors only.
  act III  ○ one room, or skip for 2 picks, then ⚔ The Halting Problem (one shot)
  ───────────────────────────────────────────────────────────────────────────
  core dump: 312 B on "Bovine Shuffle" (boot #41), at risk if #42 is abandoned
- enter resume · n new boot (ends #42 as a crash) · u upsolve · t RTFM · q quit
+ enter resume · n new boot (ends #42 as a crash) · t RTFM · q quit
 ```
 
 ### The exit choice (today's route screen, one card per exit)
