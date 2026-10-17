@@ -964,6 +964,37 @@ func TestUpsolveWithoutAnEditorialIsIndependent(t *testing.T) {
 	})
 }
 
+// A practice upsolve from RTFM's level screen is of any problem, not a core
+// dump or a regression: accepted, it records the solve as an upsolve and
+// banks nothing (plan GR4, Q7), and the player is left with no dump.
+func TestPracticeUpsolveBanksNothing(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		loadGuide(h)
+		h.send(screens.OpenLearn{})
+		id := h.m.d.Catalog.All()[0].ID
+		bank, lifetime := h.m.meta.Bank, h.m.meta.LifetimeBytes
+		h.send(screens.Upsolve{Problem: id})
+		if h.m.open == nil || !h.m.open.Upsolve || h.m.open.Door.Problem != id {
+			t.Fatalf("open door %+v, want an upsolve of %s", h.m.open, id)
+		}
+		h.send(submitMsg{})
+		if n := len(h.m.meta.Solves); n != 1 {
+			t.Fatalf("%d solves, want 1", n)
+		}
+		if s := h.m.meta.Solves[0]; s.Problem != id || !s.Upsolve || s.Kind != game.Independent {
+			t.Errorf("solve %+v, want an independent upsolve of %s", s, id)
+		}
+		if h.m.meta.Bank != bank || h.m.meta.LifetimeBytes != lifetime || h.m.meta.CoreDump != nil {
+			t.Errorf("bank %d lifetime %d dump %+v, want %d and %d unchanged, no dump",
+				h.m.meta.Bank, h.m.meta.LifetimeBytes, h.m.meta.CoreDump, bank, lifetime)
+		}
+		if h.m.open != nil {
+			t.Error("upsolve door still open")
+		}
+	})
+}
+
 // A mystery door's statement must not name it: not in the reader's title,
 // not in the statement's heading, not through the browser key.
 func TestMysteryStatementHidesTitle(t *testing.T) {

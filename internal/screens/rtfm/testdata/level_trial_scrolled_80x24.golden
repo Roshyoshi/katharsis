@@ -1,0 +1,24 @@
+RTFM › Silver › Sorting & Searching › Two Pointers                  ■ CAP_TWOPTR
+────────────────────────────────────────────────────────────────────────────────
+ Two Pointers  ★★☆☆ not frequent · ◆1350–1650 · The Sliding Window
+   READ      the module, in the reader                                    opened
+   PRACTICE  1/4 solved
+               Cow Checkups                 Silver   Hard              +3 above
+               Sum of Two Values            CSES     Very Easy   link
+               Books                        CF       Very Easy   link
+               Subarray Sums I              CSES     Very Easy   link
+               Sum of Three Values          CSES     Easy        link
+ ▸             Cellular Network             CF       Easy        link  +5 more
+   TRIAL     1  Paired Up           Easy       ◆1350  2017 US Open, Silver P1
+             2  Diamond Collector   Medium     ◆1500  2016 US Open, Silver P2
+             3  Sleepy Cow Herding  Medium
+             4  Cow Checkups        Hard
+             +  2 blind integration doors · The Sliding Window · ◆1350–1650
+             ■  CAP_TWOPTR held: The Sliding Window is already on your routes
+ ↑ also opens: Matrix Exponentiation (Platinum) · Counting Minimums with Segmen…
+ SEE ALSO    needs Introduction to Prefix Sums (Silver) ✓ · Casework (Bronze)
+“Two Pointers” by Darren Yao, Qi Wang, Ryan Chou, David Zhou, USACO Guide
+(https://usaco.guide/silver/two-pointers), CC BY-NC-SA 4.0
+(https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
+Markdown.
+ two-pointers(7)    j/k move · enter go · r read · p practice · t trial · q map

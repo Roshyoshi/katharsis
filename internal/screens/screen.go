@@ -41,7 +41,7 @@ type (
 	OpenTop       struct{}                     // stats
 	OpenSetuid    struct{}                     // find / -perm -4000, the setuid bits
 	OpenCredits   struct{}                     // music, licenses, sources
-	Upsolve       struct{ Problem catalog.ID } // a core dump or regression
+	Upsolve       struct{ Problem catalog.ID } // a core dump, a regression or RTFM practice
 	OpenStatement struct{ Problem catalog.ID }
 	OpenEditorial struct{ Problem catalog.ID }
 	// OpenSamples shows the open door's samples in full: each one's input,

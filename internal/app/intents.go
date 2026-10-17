@@ -263,8 +263,8 @@ func redact(md string, p catalog.Problem) string {
 	return md
 }
 
-// startUpsolve opens a core dump or regression problem outside a boot:
-// untimed, no lives, editorial allowed.
+// startUpsolve opens a problem outside a boot, a core dump, a regression or
+// RTFM practice: untimed, no lives, editorial allowed.
 func (m *Model) startUpsolve(id catalog.ID) tea.Cmd {
 	p, ok := m.d.Catalog.Get(id)
 	if !ok {
