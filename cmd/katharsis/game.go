@@ -50,6 +50,8 @@ func runGame(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	given := map[string]bool{} // the flags the player gave, for passwd's notes
+	fs.Visit(func(f *flag.Flag) { given[f.Name] = true })
 	// A misspelt subcommand must fail here, not start the game.
 	if fs.NArg() > 0 {
 		usage(fs)
@@ -152,6 +154,7 @@ func runGame(args []string) error {
 		Scale:     *scale,
 		Warnings:  prefs.SampleWarnings,
 	}
+	rows := settingRows(prefs, audioSet, launch{set: given, motion: mo, editor: *editor, split: *split, scale: *scale})
 	m, err := app.New(app.Deps{
 		Store:   st,
 		Catalog: cats,
@@ -170,6 +173,7 @@ func runGame(args []string) error {
 		Budget:        prefs.SessionBudget.Duration,
 		SetuidNotices: prefs.SetuidNotices,
 		Spoilers:      prefs.SetuidSpoilers,
+		Settings:      func() []app.Setting { return rows },
 	})
 	if err != nil {
 		return err
