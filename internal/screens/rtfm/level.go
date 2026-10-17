@@ -161,6 +161,11 @@ func practiceItems(mod curriculum.Module, playable []catalog.ID, m game.Meta, lo
 // castles do, a page does not.
 func (v *Level) hasTrial() bool { return v.l.Kind != curriculum.PageLevel }
 
+// library reports whether the level is General's, the guide's pages about
+// contests in general: their problems are the pages' examples (Fast I/O
+// cites a Platinum problem where reading input decides it), not practice.
+func (v *Level) library() bool { return v.e.mod.Division == "general" }
+
 // last is the cursor's last position.
 func (v *Level) last() int {
 	if v.hasTrial() {
@@ -334,8 +339,16 @@ func (v *Level) practiceLines(w, n int) []string {
 			playable++
 		}
 	}
+	// A page's problems are the guide's examples, not practice: no k/n,
+	// each with its division and rating to say how far off it is.
+	label := "PRACTICE"
 	var head string
 	switch {
+	case len(v.items) > 0 && v.library():
+		label, head = "EXAMPLES", ui.Muted.Render("from the guide, not practice: o opens one")
+		if playable > 0 {
+			head = ui.Muted.Render("from the guide, not practice: enter opens one untimed")
+		}
 	case playable > 0:
 		head = fmt.Sprintf("%d/%d solved", v.solved, playable)
 	case len(v.items) > 0:
@@ -343,7 +356,7 @@ func (v *Level) practiceLines(w, n int) []string {
 	default:
 		head = ui.Muted.Render("no problems listed")
 	}
-	out := []string{v.row(-1, "PRACTICE", head)}
+	out := []string{v.row(-1, label, head)}
 	if len(v.items) == 0 {
 		return out
 	}
@@ -453,6 +466,9 @@ func (v *Level) footLines(w int) []string {
 // left, its keys on the right.
 func (v *Level) statusBar(w int) string {
 	keys := []string{"j/k", "move", "enter", "go", "r", "read", "p", "practice"}
+	if v.library() {
+		keys[len(keys)-1] = "examples"
+	}
 	if v.hasTrial() {
 		keys = append(keys, "t", "trial")
 	}

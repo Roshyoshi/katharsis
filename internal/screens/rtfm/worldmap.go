@@ -620,8 +620,11 @@ func (p *Map) card() []string {
 	if lp.Opened {
 		did = append(did, "opened")
 	}
-	if n := len(l.Playable); n > 0 {
+	switch n := len(l.Playable); {
+	case n > 0 && l.Kind.HasTrial():
 		did = append(did, fmt.Sprintf("practice %d/%d solved", lp.Solved, n))
+	case n > 0:
+		did = append(did, units.Plural(n, "example")+" from the guide")
 	}
 	earned, _, earn := p.atlas.EarnedIn(l.Module)
 	switch {

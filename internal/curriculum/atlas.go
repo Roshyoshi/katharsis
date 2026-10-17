@@ -278,8 +278,8 @@ func (a Atlas) Progress(m *game.Meta) Progress {
 
 // WorldSum is a world's counts, each with its real denominator: trials
 // passed of the levels that have one, capabilities held of those it
-// teaches, problems solved of those it lists playable, pages opened of
-// all its levels.
+// teaches, practice problems solved of those its trial levels list
+// playable, pages opened of all its levels.
 type WorldSum struct {
 	Passed, Trials   int
 	CapsHeld, Caps   int
@@ -310,8 +310,13 @@ func (p Progress) Sum(w World) WorldSum {
 				s.CapsHeld++
 			}
 		}
-		s.Solved += lp.Solved
-		s.Playable += len(l.Playable)
+		// A page's problems count nowhere: General's are the pages' examples
+		// (Fast I/O cites a Platinum problem), not practice, and any other
+		// page has none the game judges.
+		if l.Kind.HasTrial() {
+			s.Solved += lp.Solved
+			s.Playable += len(l.Playable)
+		}
 	}
 	return s
 }

@@ -180,3 +180,22 @@ func TestEarnedIn(t *testing.T) {
 		}
 	}
 }
+
+// General's problems are its pages' examples, not practice: a solve of one
+// counts in no world's tally. The fixture's Fast I/O has one the USACO
+// catalog judges.
+func TestLibraryCountsNoPractice(t *testing.T) {
+	c, err := Load("testdata/guide")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := c.Atlas(func(id catalog.ID) bool { return id.Source() == catalog.USACO })
+	io, wi, ok := a.Level("fast-io")
+	if !ok || len(io.Playable) == 0 || io.Kind != PageLevel {
+		t.Fatalf("fast-io: %+v; want a page with a judgeable example", io)
+	}
+	p := a.Progress(&game.Meta{Solves: []game.Solve{{Problem: io.Playable[0]}}})
+	if s := p.Sum(a.Worlds[wi]); s.Playable != 0 || s.Solved != 0 {
+		t.Errorf("General counts %d/%d practice, want none", s.Solved, s.Playable)
+	}
+}

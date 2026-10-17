@@ -4,7 +4,7 @@ RTFM › General › Language-Specific › Fast Input & Output
  Demonstrates how I/O speed can be the difference between TLE and AC.
 
    READ      the module, in the reader
-   PRACTICE  0/1 solved
+   EXAMPLES  from the guide, not practice: enter opens one untimed
  ▸             Robotic Cow Herd         Platin…  Insane
                Soldier and Number Game  CF       Medium      link
 
@@ -21,4 +21,4 @@ RTFM › General › Language-Specific › Fast Input & Output
 (https://usaco.guide/general/fast-io), CC BY-NC-SA 4.0
 (https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
 Markdown.
- fast-io(7)   j/k move · enter go · r read · p practice · o usaco.guide · q map
+ fast-io(7)   j/k move · enter go · r read · p examples · o usaco.guide · q map
