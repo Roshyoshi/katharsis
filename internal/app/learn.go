@@ -94,24 +94,28 @@ func (m *Model) openIndex(module string) tea.Cmd {
 }
 
 // learnModule is the module RTFM opens at for topic, "" for none: of the
-// modules on the topic, whose trials all earn its capability, the one
-// whose doors' band (the trial's, by division) is nearest the player's
-// rating on it, the first in guide order on a tie. Guide order alone sent
-// every player on graphs to Bronze's module, a 1850 one too.
+// modules on the topic, those with a trial of their own first (a page
+// whose capability is earned elsewhere sent a player who came for a locked
+// exit to Bronze's Introduction to Data Structures, a trial of catalog
+// filler), the one whose doors' band (the trial's, by division) is nearest
+// the player's rating on it, the first in guide order on a tie. Guide order
+// alone sent every player on graphs to Bronze's module, a 1850 one too.
 func (m *Model) learnModule(topic string) string {
 	if topic == "" {
 		return ""
 	}
 	r := m.aptRules()
 	rating := game.PlayerRating(&r, &m.meta, topic)
-	best, far := "", math.Inf(1)
+	best, far, trial := "", math.Inf(1), false
 	for _, mod := range m.cur.Modules() {
 		if mod.Topic != topic || mod.Meta {
 			continue
 		}
+		has := curriculum.TrialFor(mod, m.judgeable).Kind.HasTrial()
 		band := curriculum.DivisionBand(mod.Division)
-		if d := max(float64(band[0])-rating, rating-float64(band[1]), 0); d < far {
-			best, far = mod.ID, d
+		d := max(float64(band[0])-rating, rating-float64(band[1]), 0)
+		if has && !trial || has == trial && d < far {
+			best, far, trial = mod.ID, d, has
 		}
 	}
 	return best
@@ -199,6 +203,12 @@ func (m *Model) startTrial(id string) tea.Cmd {
 	if !t.Kind.HasTrial() {
 		if mod.Division == "general" {
 			return fail("%s has no trial: %s is reading only", mod.Title, mod.DivisionTitle)
+		}
+		if t.Capability != "" {
+			if l, _, ok := m.cur.Atlas(m.judgeable).EarnedIn(id); ok {
+				return fail("%s has no trial of its own: %s is earned in %s", mod.Title, t.Capability, l.Title)
+			}
+			return fail("%s has no trial of its own: it lists no problem the game can judge", mod.Title)
 		}
 		return fail("%s has no trial: it grants no capability and lists no problem the game can judge", mod.Title)
 	}

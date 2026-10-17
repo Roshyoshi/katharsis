@@ -232,7 +232,11 @@ func (p *Map) worldKey(k string) tea.Cmd {
 	case "r":
 		return screens.Emit(screens.OpenModule{Module: p.spot().Module})
 	case "t":
-		if s := p.spot(); s.Kind != curriculum.PageLevel {
+		// A page whose capability is earned elsewhere goes to that trial.
+		s := p.spot()
+		if l, _, ok := p.atlas.EarnedIn(s.Module); ok {
+			p.show(l.Module)
+		} else if s.Kind != curriculum.PageLevel {
 			return screens.Emit(screens.StartTrial{Module: s.Module})
 		}
 	case "i", "/":
@@ -619,7 +623,10 @@ func (p *Map) card() []string {
 	if n := len(l.Playable); n > 0 {
 		did = append(did, fmt.Sprintf("practice %d/%d solved", lp.Solved, n))
 	}
+	earned, _, earn := p.atlas.EarnedIn(l.Module)
 	switch {
+	case earn:
+		did = append(did, "trial in "+p.titles([]string{earned.Module})+ui.Muted.Render(": t goes there"))
 	case l.Kind == curriculum.PageLevel:
 	case lp.Passed:
 		did = append(did, ui.OK.Render(ui.G.Pass+" trial passed"))

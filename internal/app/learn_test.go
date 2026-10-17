@@ -96,6 +96,16 @@ func loadGuide(h *harness) *curriculum.Curriculum {
 	if err != nil {
 		h.t.Fatal(err)
 	}
+	// The fake catalog judges the guide's own Silver problems, as the real
+	// one does, so its modules have trials of their own: a trial needs one.
+	if c, ok := h.m.d.Catalog.(*fakeCatalog); ok {
+		for _, id := range []catalog.ID{"usaco:572", "usaco:595", "usaco:691", "usaco:1471", "usaco:738", "usaco:643"} {
+			if _, have := c.byID[id]; !have {
+				p := catalog.Problem{ID: id, Title: string(id), Topic: "prefix-sums", Division: "silver", Rating: 1400, Judgeable: true}
+				c.all, c.byID[id] = append(c.all, p), p
+			}
+		}
+	}
 	h.m.cur = cur
 	return cur
 }
@@ -134,6 +144,16 @@ func TestPageHasNoTrial(t *testing.T) {
 		h.send(screens.StartTrial{Module: "fast-io"})
 		if h.m.state != nil && h.m.state.Trial != nil {
 			t.Fatal("a page started a trial")
+		}
+		// A gated page refuses honestly: it does grant a capability, just
+		// not through a trial of its own (Counting Minimums lists no problem
+		// the game judges).
+		h.send(screens.StartTrial{Module: "count-min"})
+		if h.m.state != nil && h.m.state.Trial != nil {
+			t.Fatal("a gated page started a trial")
+		}
+		if !strings.Contains(h.m.flash, "no trial of its own") || strings.Contains(h.m.flash, "grants no capability") {
+			t.Errorf("count-min refuses with %q", h.m.flash)
 		}
 	})
 }
@@ -458,6 +478,51 @@ func TestRTFMFlipsEachGrantOnce(t *testing.T) {
 		}
 		if got := h.m.freshCaps(); got != nil {
 			t.Errorf("the next map flips %v again", got)
+		}
+	})
+}
+
+// A locked exit's t opens RTFM at a module with a trial of its own: Bronze's
+// Introduction to Data Structures lists no problem, so for The Heap it
+// sends the player on to Introduction to Sets & Maps, though the first
+// comes first in guide order at the same band.
+func TestRTFMOpensAModuleWithATrial(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		dir := t.TempDir()
+		mod := func(id, title string) string {
+			return "---\nid: " + id + "\ntitle: " + title + "\nauthor: A\ndescription: d\n---\n\nHi.\n"
+		}
+		for name, body := range map[string]string{
+			"content/ordering.ts": `const MODULE_ORDERING = {
+  bronze: [{ name: 'Data Structures', items: ['intro-ds', 'intro-sets'] }],
+};
+`,
+			"content/2_Bronze/Intro_DS.mdx":   mod("intro-ds", "Introduction to Data Structures"),
+			"content/2_Bronze/Intro_Sets.mdx": mod("intro-sets", "Introduction to Sets & Maps"),
+			"content/2_Bronze/Intro_Sets.problems.json": `{"MODULE_ID": "intro-sets", "general": [
+  {"uniqueId": "usaco-915", "name": "Sleepy Cow Herding", "url": "u", "source": "Bronze",
+   "difficulty": "Easy", "isStarred": false, "tags": [], "solutionMetadata": {"kind": "internal"}}]}`,
+		} {
+			p := filepath.Join(dir, name)
+			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		cur, err := curriculum.Load(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.m.cur = cur
+		c := h.m.d.Catalog.(*fakeCatalog)
+		p := catalog.Problem{ID: "usaco:915", Title: "Sleepy Cow Herding", Topic: "data-structures", Rating: 1100, Judgeable: true}
+		c.all, c.byID[p.ID] = append(c.all, p), p
+		h.m.meta.Rating = 1000
+		if got := h.m.learnModule("data-structures"); got != "intro-sets" {
+			t.Errorf("The Heap's link opens %q, want intro-sets", got)
 		}
 	})
 }

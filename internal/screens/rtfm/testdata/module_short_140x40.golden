@@ -5,10 +5,8 @@ NAME
        Querying for the minimum and number of occurrences of minimum in a range
        Counting Minimums with …: a branch of Arithmetic, the Gryphon insists.
 
-TRIAL                         unit: Easy → Hard, tags shown · integration: blind
-       +  4 topped up from the catalog · The Heap · ◆2400–2800
-       +  2 blind integration doors · The Heap · ◆2400–2800
-       □  pass → ■ CAP_DS: The Heap joins your route choices
+TRIAL
+       ·  no trial of its own: no problem here the game can judge; CAP_DS is earned in another module on The Heap
 
 SEE ALSO
        requires  RURQ
@@ -37,4 +35,6 @@ Markdown.
 
 
 
- count-min(7) line 1/18 (END)                                                               r read · t start trial · o usaco.guide · q back
+
+
+ count-min(7) line 1/16 (END)                                                                               r read · o usaco.guide · q back

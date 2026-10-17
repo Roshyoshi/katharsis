@@ -255,6 +255,8 @@ func (p *Module) passLine() string {
 	switch {
 	case !t.Kind.HasTrial() && p.e.mod.Division == "general":
 		return ui.Muted.Render("·  no trial: " + p.e.mod.DivisionTitle + " is reading only")
+	case !t.Kind.HasTrial() && c != "":
+		return ui.Muted.Render("·  no trial of its own: no problem here the game can judge; " + c + " is earned in another module on " + p.e.biome)
 	case !t.Kind.HasTrial():
 		return ui.Muted.Render("·  no trial: no capability to grant, no problem the game can judge")
 	case c == "" && p.passed:

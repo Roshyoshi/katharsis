@@ -1,22 +1,22 @@
-RTFM / Advanced                                                                                          trials 0/32 | [x] 2/7 | solved 0/55
+RTFM / Advanced                                                                                          trials 0/25 | [x] 2/7 | solved 0/55
 --------------------------------------------------------------------------------------------------------------------------------------------
-     Data Structures 0/6                                                                      +- Eulerian Tours ------- Advanced / Graphs -+
-     . :::::::::  . :::::::::  . ---------  . ---------  . ---------  . -----------+          | [x] CAP_GRAPH -> Routing Table | .... has  |
+     Data Structures 0/4                                                                      +- Eulerian Tours ------- Advanced / Graphs -+
+     . :::::::::  = :::::::::  . ---------  = ---------  . ---------  . -----------+          | [x] CAP_GRAPH -> Routing Table | .... has  |
      [x]          [x]          [x]          [x]          [x]          [x]          |          | not appeared                               |
      Max Suffi... Wavelet Tree Counting ... Segment T... Persisten... Treaps       |          | needs Graph Traversal (Silver)             |
                                                                                    |          | practice 0/3 solved | trial 4 doors + 2    |
-     Graphs 0/8                             Convexity 0/3                          |          | blind                                      |
+     Graphs 0/5                             Convexity 0/3                          |          | blind                                      |
  +-  . --------- >. :::::::::  . :::::::::  . ---------  . ---------  . -----------+          | ^ from Graph Traversal (Silver)            |
  |   [x]          [x]          [ ]          [ ]                       [x]                     +--------------------------------------------+
  |   BCCs and ... Eulerian ... Shortest ... Slope Trick  Lagrangia... LineConta...
  |
- |   Graphs 0/8                                                       Dynamic Programmin...
- +-  . :::::::::  . ---------  . ---------  . ---------  . ---------  . -----------+
+ |   Graphs 0/5                                                       Dynamic Programmin...
+ +-  . :::::::::  = ---------  . ---------  = ---------  = ---------  = -----------+
      [x]          [ ]          [x]          [x]          [ ]          [ ]          |
      Strongly ... Offline D... Euler's F... Critical     Link Cut ... DP on Tre... |
                                                                                    |
-     Flows 0/4                                           Dynamic Programming 0/3   |
- +:  . ---------  . :::::::::  . ---------  . ---------  . ---------  . -----------+
+     Flows 0/3                                           Dynamic Programming 0/2   |
+ +:  . ---------  = :::::::::  . ---------  . ---------  . ---------  . -----------+
  :   [x]          [x]          [x]          [x]          [ ]          [ ]
  :   Minimum C... Flow with... Minimum Cut  Maximum Flow Additiona... DP on Bro...
  :

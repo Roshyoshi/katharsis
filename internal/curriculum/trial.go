@@ -133,7 +133,7 @@ func TrialForN(m Module, judgeable func(catalog.ID) bool, n int) Trial {
 		}
 		byLabel[r] = append(byLabel[r], c)
 	}
-	t.Kind = levelKind(m.ID, m.Division, len(cands) > 0 || t.Capability != "")
+	t.Kind = levelKind(m.ID, m.Division, len(cands) > 0)
 	sort.Ints(labels)
 	for _, r := range labels {
 		g := byLabel[r]

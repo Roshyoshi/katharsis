@@ -265,14 +265,14 @@ func TestBrowserOpensModules(t *testing.T) {
 	}{
 		{"enter opens the first module; r reads it", []string{"enter", "r"}, screens.OpenModule{Module: "fast-io"}},
 		{"j moves to the next module", []string{"j", "j", "j", "enter", "r"}, screens.OpenModule{Module: "casework"}},
-		{"G is the last module", []string{"G", "enter", "t"}, screens.StartTrial{Module: "count-min"}},
+		{"G is the last module", []string{"G", "enter", "r"}, screens.OpenModule{Module: "count-min"}},
 		{"g then down", []string{"g", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "l", "t"}, screens.StartTrial{Module: "prefix-sums"}},
 		{"o opens the module online", []string{"j", "j", "j", "enter", "o"},
 			reader.OpenURL{URL: "https://usaco.guide/bronze/casework"}},
 		{"filter then open", cat([]string{"/"}, typed("matrix"), []string{"enter", "enter", "r"}),
 			screens.OpenModule{Module: "matrix-expo"}},
-		{"filter matches ids", cat([]string{"/"}, typed("count-min"), []string{"enter", "enter", "t"}),
-			screens.StartTrial{Module: "count-min"}},
+		{"filter matches ids", cat([]string{"/"}, typed("count-min"), []string{"enter", "enter", "r"}),
+			screens.OpenModule{Module: "count-min"}},
 		{"filter is case-insensitive", cat([]string{"/"}, typed("HASH"), []string{"enter", "enter", "t"}),
 			screens.StartTrial{Module: "hashmaps"}},
 		{"enter on a heading folds, it does not open", []string{"k", "enter", "r"}, nil},
@@ -652,7 +652,7 @@ func TestBrowserScrollsTail(t *testing.T) {
 	if got := line(b); got != at+1 {
 		t.Errorf("j on the last module: line %d, want %d", got, at+1)
 	}
-	wantMsg(t, tap(b, "enter", "t"), screens.StartTrial{Module: "count-min"})
+	wantMsg(t, tap(b, "enter", "r"), screens.OpenModule{Module: "count-min"})
 
 	b = browser(t)
 	tap(b, "G", "b", "k", "enter") // the chapter over it, folded

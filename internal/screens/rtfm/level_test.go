@@ -57,7 +57,8 @@ func pageLevel(t testing.TB) *rtfm.Level {
 }
 
 // toppedLevel is Counting Minimums: a gated topic with nothing the fixture
-// catalog judges, so its unit is all topped up and its problems are links.
+// catalog judges, so a page whose capability is earned in another module
+// and whose problems are links.
 func toppedLevel(t testing.TB) *rtfm.Level {
 	c := loadCurriculum(t)
 	l, region := atlasLevel(t, c, "count-min")
@@ -159,7 +160,7 @@ func TestLevelIntents(t *testing.T) {
 		{"castle t", castleLevel, []string{"t"}, screens.StartTrial{Module: "bronze-conclusion"}},
 		{"o on READ", trialLevel, []string{"o"}, reader.OpenURL{URL: "https://usaco.guide/silver/two-pointers"}},
 		{"o on an external problem", toppedLevel, []string{"p", "o"}, reader.OpenURL{URL: cm.Problems[0].Problems[0].URL}},
-		{"topped t", toppedLevel, []string{"t"}, screens.StartTrial{Module: "count-min"}},
+		{"topped t", toppedLevel, []string{"t"}, nil}, // a page: no trial of its own
 		{"page t", pageLevel, []string{"t"}, nil},
 		{"page t on its last row", pageLevel, []string{"G", "j", "t"}, nil},
 	}

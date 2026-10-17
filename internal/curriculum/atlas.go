@@ -99,6 +99,32 @@ func (a Atlas) Level(id string) (Level, int, bool) {
 // CastleLevel.
 func Conclusion(id string) bool { return strings.HasSuffix(id, "-conclusion") }
 
+// EarnedIn is where the capability of module id's level is earned when
+// that level is a page: the next trial level in guide order granting it,
+// else the last before. ok is false for a level with a trial of its own,
+// none to earn, or no other module granting it.
+func (a Atlas) EarnedIn(id string) (l Level, world int, ok bool) {
+	at, _, found := a.Level(id)
+	if !found || at.Capability == "" || at.Kind.HasTrial() {
+		return Level{}, -1, false
+	}
+	after := false
+	for i, w := range a.Worlds {
+		for _, x := range w.Levels() {
+			switch {
+			case x.Module == id:
+				after = true
+			case x.Capability != at.Capability || !x.Kind.HasTrial():
+			case after:
+				return x, i, true
+			default:
+				l, world, ok = x, i, true
+			}
+		}
+	}
+	return l, world, ok
+}
+
 // generalID is the division of pages about contests in general: a library
 // island, reading only.
 const generalID = "general"
@@ -155,14 +181,17 @@ func (c *Curriculum) level(m Module, division string, judgeable func(catalog.ID)
 			}
 		}
 	}
-	l.Kind = levelKind(m.ID, division, len(l.Playable) > 0 || l.Capability != "")
+	l.Kind = levelKind(m.ID, division, len(l.Playable) > 0)
 	return l
 }
 
 // levelKind is the kind of module id's level in division, given whether
-// it can hold a trial outside General: it lists a problem the game can
-// judge, or passing grants a capability. A conclusion is a castle even
-// with neither: its trial's unit is then all topped up.
+// it lists a problem of its own the game can judge: a trial needs one,
+// or it would test the catalog's filler, not the module (Bronze's
+// Introduction to Data Structures lists none). A gated module without one
+// is a page, its capability earned in another module on the topic
+// (Atlas.EarnedIn). A conclusion is a castle even with none: its unit is
+// then all topped up, the division's gauntlet.
 func levelKind(id, division string, trial bool) LevelKind {
 	switch {
 	case Conclusion(id):

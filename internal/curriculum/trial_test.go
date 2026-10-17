@@ -158,10 +158,12 @@ func TestTrialKinds(t *testing.T) {
 			t.Errorf("%s: trial kind %v, atlas kind %v", tc.id, got.Kind, l.Kind)
 		}
 	}
-	// No judgeable problem: a page, but a conclusion stays a castle and a
-	// module that grants a capability keeps its trial, all topped up.
+	// No judgeable problem: a page, even for a module that grants a
+	// capability (it is earned in another module on the topic: a trial of
+	// catalog filler tests nothing the module taught); a conclusion stays a
+	// castle.
 	none := func(catalog.ID) bool { return false }
-	for id, want := range map[string]LevelKind{"casework": PageLevel, "bronze-conclusion": CastleLevel, "prefix-sums": TrialLevel} {
+	for id, want := range map[string]LevelKind{"casework": PageLevel, "bronze-conclusion": CastleLevel, "prefix-sums": PageLevel} {
 		m, _ := c.Module(id)
 		if got := TrialFor(m, none).Kind; got != want {
 			t.Errorf("%s with nothing judgeable: kind %v, want %v", id, got, want)

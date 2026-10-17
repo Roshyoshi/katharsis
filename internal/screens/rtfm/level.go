@@ -397,10 +397,14 @@ func (v *Level) practiceLines(w, n int) []string {
 
 // trialLines is TRIAL as the module page sets it (module.go): the unit
 // doors, any the catalog tops up, the blind integration doors and what
-// passing grants. A page has none.
+// passing grants. A page has none, but one on a gated topic says, on a
+// row the cursor never reaches, that the capability is earned elsewhere.
 func (v *Level) trialLines(w int) []string {
 	if !v.hasTrial() {
-		return nil
+		if v.e.trial.Capability == "" {
+			return nil
+		}
+		return []string{v.row(v.last()+1, "TRIAL", v.page.passLine())}
 	}
 	ind := strings.Repeat(" ", modIndent)
 	var lines []string

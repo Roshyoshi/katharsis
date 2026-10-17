@@ -101,6 +101,11 @@ func TestFullAtlas(t *testing.T) {
 	if want := []string{"graph-traversal>eulerian-tours", "graph-traversal>string-search", "intro-tree>centroid"}; !slices.Equal(warps, want) {
 		t.Errorf("warps %s, want %s", strings.Join(warps, " "), strings.Join(want, " "))
 	}
+	// Bronze's Introduction to Data Structures lists no problem: its
+	// capability is earned four levels on, in Introduction to Sets & Maps.
+	if l, _, ok := a.EarnedIn("intro-ds"); !ok || l.Module != "intro-sets" {
+		t.Errorf("intro-ds's capability is earned in %q (%v), want intro-sets", l.Module, ok)
+	}
 	for _, w := range a.Worlds {
 		for _, l := range w.Levels() {
 			for _, p := range l.Prereqs {
@@ -151,4 +156,27 @@ func TestFullAtlasTrials(t *testing.T) {
 	}
 	t.Logf("%d trial levels (%d granting nothing, castles included; %d all topped up), %d castles, %d pages",
 		kinds[TrialLevel], free, topped, kinds[CastleLevel], kinds[PageLevel])
+}
+
+// A gated module with nothing to judge is a page whose capability is earned
+// in the next trial on it, else the last before: the fixture's Counting
+// Minimums (Advanced, CAP_DS, CSES and others only) points back to Gold's
+// Hashmaps. A level with its own trial, or none to earn, points nowhere.
+func TestEarnedIn(t *testing.T) {
+	c, err := Load("testdata/guide")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := c.Atlas(func(id catalog.ID) bool { return id.Source() == catalog.USACO })
+	if l, _, _ := a.Level("count-min"); l.Kind != PageLevel || l.Capability == "" {
+		t.Fatalf("count-min is %v granting %q, want a gated page", l.Kind, l.Capability)
+	}
+	if l, wi, ok := a.EarnedIn("count-min"); !ok || l.Module != "hashmaps" || a.Worlds[wi].ID != "gold" {
+		t.Errorf("count-min's capability is earned in %q (world %d, %v), want gold's hashmaps", l.Module, wi, ok)
+	}
+	for _, id := range []string{"hashmaps", "casework", "fast-io", "no-such-module"} {
+		if l, _, ok := a.EarnedIn(id); ok {
+			t.Errorf("%s points to %s", id, l.Module)
+		}
+	}
 }

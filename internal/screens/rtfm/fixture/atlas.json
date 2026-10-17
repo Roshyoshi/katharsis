@@ -373,7 +373,7 @@
 						{
 							"Module": "intro-ds",
 							"Title": "Introduction to Data Structures",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": false,
 							"Capability": "CAP_DS",
 							"Topic": "data-structures",
@@ -1421,7 +1421,7 @@
 						{
 							"Module": "custom-cpp-stl",
 							"Title": "(Optional) Sorted Sets with Custom Comparators",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": true,
 							"Capability": "CAP_DS",
 							"Topic": "data-structures",
@@ -1776,7 +1776,7 @@
 						{
 							"Module": "sparse-segtree",
 							"Title": "Sparse Segment Trees",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": false,
 							"Capability": "CAP_DS",
 							"Topic": "data-structures",
@@ -1936,7 +1936,7 @@
 						{
 							"Module": "VT",
 							"Title": "Virtual Tree",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": true,
 							"Capability": "CAP_TREE",
 							"Topic": "trees",
@@ -1950,7 +1950,7 @@
 						{
 							"Module": "kruskal-tree",
 							"Title": "Kruskal Reconstruction Tree",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": false,
 							"Capability": "CAP_TREE",
 							"Topic": "trees",
@@ -1970,7 +1970,7 @@
 						{
 							"Module": "geo-pri",
 							"Title": "Geometry Primitives",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": false,
 							"Capability": "CAP_GEOM",
 							"Topic": "geometry",
@@ -2183,7 +2183,7 @@
 						{
 							"Module": "wavelet",
 							"Title": "Wavelet Tree",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": true,
 							"Capability": "CAP_DS",
 							"Topic": "data-structures",
@@ -2214,7 +2214,7 @@
 						{
 							"Module": "segtree-beats",
 							"Title": "Segment Tree Beats",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": false,
 							"Capability": "CAP_DS",
 							"Topic": "data-structures",
@@ -2401,7 +2401,7 @@
 						{
 							"Module": "offline-del",
 							"Title": "Offline Deletion",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": true,
 							"Capability": "CAP_DSU",
 							"Topic": "dsu",
@@ -2434,7 +2434,7 @@
 						{
 							"Module": "critical",
 							"Title": "Critical",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": false,
 							"Capability": "CAP_GRAPH",
 							"Topic": "graphs",
@@ -2446,7 +2446,7 @@
 						{
 							"Module": "link-cut-tree",
 							"Title": "Link Cut Tree",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": false,
 							"Capability": "CAP_TREE",
 							"Topic": "trees",
@@ -2466,7 +2466,7 @@
 						{
 							"Module": "comb-sub",
 							"Title": "DP on Trees - Combining Subtrees",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": false,
 							"Capability": "CAP_DP",
 							"Topic": "dp",
@@ -2556,7 +2556,7 @@
 						{
 							"Module": "flow-lb",
 							"Title": "Flow with Lower Bounds",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": true,
 							"Capability": "CAP_GRAPH",
 							"Topic": "graphs",
