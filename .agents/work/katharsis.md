@@ -296,6 +296,13 @@ D57 settled 10-15  A GitHub-style contribution graph (user: "a git commit graph 
                    days and the load average. No streak counter: "Graph, no streak
                    (Recommended)" (GR1 stands).
 
+D59 settled 10-16  Ten perks a pool (user: "go w perks roster"; "bytes are a byproduct ... like
+                   cells in dead cells"; "make all doors cursed but restore all hp / 1.5x
+                   time"). rules.PerkRules + game/perks.go, docs/research/perks.md
+                   defaults: weights 6/3/1, shelf of 5, swaps 64 B, daemon clock cap
+                   x1.75, every new time source bought (Attempt.At). Not built: perf,
+                   killall. Balance P0 39.5/42.2% (was 46.8/44.2), Boss I 21.6%.
+
 D58 settled 10-16  Iteration workflow (user: "most of the core logic is done ... we gotta
                    rethink the workflow"). Changes are done inline in the default
                    workspace, one full gate on main before commit. Agents only for
@@ -339,6 +346,12 @@ D58 settled 10-16  Iteration workflow (user: "most of the core logic is done ...
       :q!, paid retreat) each owe 1 pick. Split shown on the doors screen. Sim: no
       shift (46.8 vs 48.0% P0) since extra picks land on Duck; pays once the
       10-upgrade pool lands. Perk research: tmp perks-research.md (job dir).
+
+10-16 RTFM world map planned (user: "a map sorta for RTFM ... like the new super mario
+      maps"): .agents/work/rtfm-map-plan.md. Divisions are worlds, chapters regions,
+      modules levels; trials are switch palaces (a capability flips a topic
+      everywhere), conclusion modules castles; secret exits from real cross-division
+      prereqs. 8 taste questions (Q1-Q8) await the user, defaults in the plan.
 
 ## Slices
 S0 M0 training room            done: judge, problem, session, hud, practice cmd
