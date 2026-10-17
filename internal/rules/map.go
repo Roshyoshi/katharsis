@@ -37,6 +37,7 @@ func Map() Rules {
 	// The vaults: an act in 60% of its doors' own clocks, or with no door
 	// hit, each earns a pick, as Dead Cells' timed and no-hit doors pay.
 	r.TimedVault, r.UntouchedVault, r.VaultPicks = 0.6, true, 1
+	r.Perk = MapPerks() // ten a pool (perk.go)
 	r.FountainCycles, r.FountainWhere = 5, FountainAct
 	r.KexecPerAct = true
 	r.TimerMult = 1

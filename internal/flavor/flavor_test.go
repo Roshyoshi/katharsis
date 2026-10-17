@@ -240,13 +240,19 @@ func TestPrestige(t *testing.T) {
 
 func TestUpgradesAndDaemons(t *testing.T) {
 	r := rules.Standard()
-	for _, u := range game.AllUpgrades {
+	st := &game.State{Rules: r}
+	for _, u := range append(st.UpgradePool(), game.Skip) { // the roster's too
 		name, desc := UpgradeTextFor(u, r)
 		if name == "" || desc == "" {
 			t.Errorf("UpgradeTextFor(%q) = %q, %q", u, name, desc)
 		}
 	}
-	for _, d := range game.AllDaemons {
+	for _, it := range st.ItemPool() {
+		if name, desc := ItemTextFor(it, r); name == "" || desc == "" {
+			t.Errorf("ItemTextFor(%q) = %q, %q", it, name, desc)
+		}
+	}
+	for _, d := range st.DaemonPool() {
 		name, desc := DaemonTextFor(d, r)
 		if name == "" || desc == "" {
 			t.Errorf("DaemonTextFor(%q) = %q, %q", d, name, desc)
@@ -258,10 +264,12 @@ func TestUpgradesAndDaemons(t *testing.T) {
 		{second(UpgradeTextFor(game.Overclock, r)), "+15% timer"},
 		{second(DaemonTextFor(game.Nice, r)), "+20% timer; every door pays 0.8x bytes."},
 		{second(DaemonTextFor(game.Fork, r)), "4 doors per room after an AC (normally 3)"},
-		{second(DaemonTextFor(game.DevRandom, r)), "pay 2x bytes"},
+		// The roster's /dev/random pays a pick, not bytes.
+		{second(DaemonTextFor(game.DevRandom, r)), "owes 1 more pick"},
 	}
 	r.OverclockFrac, r.NiceTimerFrac, r.NiceBytesFrac, r.NiceLifeCost = 0.1, 0.35, 0, 2
 	r.ForkDoors, r.DoorsPerRoom, r.DevRandomMult = 5, 2, 1.5
+	r.Perk.Pool = 0 // the first pools: /dev/random pays bytes
 	checks = append(checks, []struct{ got, want string }{
 		{second(UpgradeTextFor(game.Overclock, r)), "+10% timer"},
 		{second(DaemonTextFor(game.Nice, r)), "+35% timer; a failed submit burns 2x."},
@@ -412,7 +420,7 @@ func TestPackages(t *testing.T) {
 		p    rules.Package
 		want string
 	}{
-		{rules.Package{Daemon: string(game.Cron)}, "daemon cron joins the merge windows: A regression door pays 2x bytes."},
+		{rules.Package{Daemon: string(game.Cron)}, "daemon cron joins the merge windows: A regression's clear frees 5 cycles."},
 		{rules.Package{Item: string(game.At)}, "merge windows sell at: +05:00 on the next door's timer."},
 		{rules.Package{Upgrade: string(game.ShufPick)}, "upgrade shuf joins the picks"},
 		{rules.Package{LinkSlots: 1, Doors: 2}, "+1 lib link slot · +2 doors per room"},

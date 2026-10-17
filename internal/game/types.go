@@ -456,6 +456,9 @@ type Attempt struct {
 	// Base is the door's timer without the time the player bought
 	// (baseTimer), kept when it is cleared: the timed vault's budget.
 	Base time.Duration `json:",omitempty"`
+	// Ofast is set on a door -Ofast cursed when it opened: its clear owes
+	// rules.PerkRules.OfastPicks.
+	Ofast bool `json:",omitempty"`
 }
 
 // Upgrade is picked after each cleared door.
@@ -560,6 +563,36 @@ type State struct {
 
 	// Vaults are the vaults judged this boot, in order (vault.go).
 	Vaults []Vault `json:",omitempty"`
+
+	// The roster's state (perks.go), all zero under the first pools. Stock is
+	// the merge window's shelf; QuietClock what quiet adds to the clock;
+	// the counts are what the boot holds of each: free failed submits
+	// (snapshot), prefetches waiting on the next door, turbo on the next
+	// boss door, more doors for the next room (smt), free timeouts (nohup),
+	// free retreats (popd), strace shows (diff), rooms shown (whatis),
+	// cursed fails survived (sudo). Ofast curses the next door opened;
+	// WatchdogActs are the acts (State.Acts index + 1) watchdog fired in;
+	// Kdumped is set once kdump has rebooted the boot.
+	Stock        []Item  `json:",omitempty"`
+	QuietClock   float64 `json:",omitempty"`
+	Snapshots    int     `json:",omitempty"`
+	Prefetches   int     `json:",omitempty"`
+	Turbo        int     `json:",omitempty"`
+	Smt          int     `json:",omitempty"`
+	Nohup        int     `json:",omitempty"`
+	FreeRetreats int     `json:",omitempty"`
+	Diffs        int     `json:",omitempty"`
+	Whatis       int     `json:",omitempty"`
+	Sudo         int     `json:",omitempty"`
+	Ofast        bool    `json:",omitempty"`
+	WatchdogActs []int   `json:",omitempty"`
+	Kdumped      bool    `json:",omitempty"`
+	// KdumpBytes are the uncommitted bytes kdump's capture moved into the
+	// core dump: earned, and lost to the boot as a crash's are.
+	KdumpBytes int64 `json:",omitempty"`
+	// Fsanitizes is the boss doors -fsanitize will open with their samples'
+	// twist off (Door.NoSanitizers, QuietSamples).
+	Fsanitizes int `json:",omitempty"`
 
 	// Spent is the uncommitted bytes merge windows sold items for; every
 	// byte earned is committed, uncommitted, spent or lost to the crash.
@@ -749,7 +782,10 @@ type SamplesRun struct{}
 // Merge window choices.
 type Commit struct{} // bank Uncommitted
 type PickUpgrade struct{ Upgrade Upgrade }
-type PickDaemon struct{ Daemon Daemon }
+
+// PickDaemon starts Daemon. With every seat full (the roster's later
+// windows), it takes Replace's seat for rules.PerkRules.SwapPrice.
+type PickDaemon struct{ Daemon, Replace Daemon }
 type LeaveMerge struct{}
 
 // Spend buys an item with uncommitted bytes (PhaseMerge).

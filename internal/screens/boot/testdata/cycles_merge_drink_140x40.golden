@@ -11,27 +11,27 @@ Boot #57 · Silver · merge window                                              
 
                                                          Stub line for merge.line.
 
-                                  fountain +5 cycles, free, up to 30  ✓
-                                  commit   640 B uncommitted: a crash loses it, the bank keeps it
+                                fountain +5 cycles, free, up to 30  ✓
+                                commit   640 B uncommitted: a crash loses it, the bank keeps it
 
-                                  Stub line for boss.defeat.off-by-one.
-                                  upgrade  a clear earned one; pick it before you leave
-                                    ▸ Overclock  +15% timer; 5 cycles a pick, 2 at most; 1 of 2 taken
-                                      ECC        a failed submit costs 05:00, not cycles
-                                      Duck       +1 rubber duck
+                                Stub line for boss.defeat.off-by-one.
+                                upgrade  a clear earned one; pick it before you leave
+                                  ▸ Overclock  +15% timer; 5 cycles a pick, 2 at most; 1 of 2 taken · uncommon
+                                    ECC        a failed submit costs 05:00, not cycles · uncommon
+                                    Duck       +1 rubber duck
 
-                                  spend    uncommitted bytes, for this boot only
-                                      fsck  +10 cycles now · 64 B
-                                      dup   +1 rubber duck · 48 B
-                                      shuf  re-roll one room's doors · 32 B
+                                spend    uncommitted bytes, for this boot only
+                                    fsck  +10 cycles now · 64 B
+                                    dup   +1 rubber duck · 48 B
+                                    shuf  re-roll one room's doors · 32 B
 
-                                  Stub block for daemon.intro, line one.
-                                  Stub block, line two.
-                                  daemon   pick one, it runs for the rest of the boot · held 1/3: strace
-                                      kexec     a free swap per act, else 5 cycles
-                                      nice -20  +20% timer, but every door pays 0.8x
+                                Stub block for daemon.intro, line one.
+                                Stub block, line two.
+                                daemon   pick one, it runs for the rest of the boot · held 1/3: strace
+                                    kexec     a free swap per act, else 5 cycles
+                                    nice -20  +20% timer, but every door pays 0.8x
 
-                                  leave → biome 4: The ALU
+                                leave → biome 4: The ALU
 
 
 

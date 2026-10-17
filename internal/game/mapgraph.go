@@ -183,8 +183,15 @@ func (e *engine) locked(n rules.Biome, g Gate, i int) string {
 	if s.Prestige < g.Prestige {
 		return "prestige " + strconv.Itoa(g.Prestige)
 	}
-	if g.Full && s.Cycles < s.MaxCycles {
-		return LockedFull
+	if full := s.MaxCycles; g.Full {
+		if s.perks() {
+			// The rules' cap: cpupower lowers the boot's, selinux fills it,
+			// and either would open the Court for nothing.
+			full = s.courtGate()
+		}
+		if s.Cycles < full {
+			return LockedFull
+		}
 	}
 	if c := g.Capability; c != "" && !slices.Contains(s.Caps, c) && (g.Package == "" || !slices.Contains(s.Packages, g.Package)) {
 		if g.Package != "" {

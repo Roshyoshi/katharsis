@@ -22,8 +22,8 @@ Boot #57 · Silver · upgrade                                                   
                        ┃ Overclock                  ┃  │ ECC                        │  │ Duck                       │
                        ┃                            ┃  │                            │  │                            │
                        ┃ +15% timer; 5 cycles a     ┃  │ a failed submit costs      │  │ +1 rubber duck             │
-                       ┃ pick, 2 at most; 1 of 2    ┃  │ 05:00, not cycles          │  │                            │
-                       ┃ taken                      ┃  │                            │  │                            │
+                       ┃ pick, 2 at most; 1 of 2    ┃  │ 05:00, not cycles ·        │  │                            │
+                       ┃ taken · uncommon           ┃  │ uncommon                   │  │                            │
                        ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ╰────────────────────────────╯  ╰────────────────────────────╯
 
 

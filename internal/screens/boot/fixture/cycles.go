@@ -133,6 +133,7 @@ func CyclesProblem(st *game.State) *game.State {
 func CyclesMerge(fountain string) *game.State {
 	st := cyclesBoot(rules.TierActII)
 	st.Phase = game.PhaseMerge
+	st.Stock = []game.Item{game.Fsck, game.Dup, game.Shuf} // the shelf, as the engine deals it
 	st.Biome, st.Room = rules.TierBossI, 1
 	st.Uncommitted = 640
 	st.PendingUpgrade, st.UpgradePicks = true, 1

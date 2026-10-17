@@ -166,7 +166,7 @@ func Step(s *State, meta *Meta, pool []catalog.Problem, a Action, now time.Time)
 	case PickUpgrade:
 		err = e.pickUpgrade(a.Upgrade)
 	case PickDaemon:
-		err = e.pickDaemon(a.Daemon)
+		err = e.pickDaemon(a.Daemon, a.Replace)
 	case LeaveMerge:
 		err = e.leaveMerge()
 	case Link:
@@ -247,15 +247,33 @@ func (e *engine) chooseDoor(i int) error {
 		return invalid("door %d of %d", i, len(s.Doors))
 	}
 	d := s.Doors[i]
-	bought := s.AtTime
-	if s.AtTime > 0 { // bought with at: the next door, whichever it is
+	bought := s.nextBought(d)
+	if bought > 0 { // at, prefetch, burst, mesg: the next door, whichever it is; turbo: a boss's
 		d.Timer = s.OpenTimer(d)
-		e.logf("at: +%s on the next door", units.Clock(s.AtTime))
-		s.AtTime = 0
+		e.logf("at: +%s on the next door", units.Clock(bought))
+		s.AtTime, s.Prefetches = 0, 0
+		if d.Boss != "" {
+			s.Turbo = 0
+		}
+	}
+	if s.Fsanitizes > 0 && d.Boss != "" && (d.NoSanitizers || d.QuietSamples) {
+		// -fsanitize: this boss's samples keep their sanitizers and say
+		// everything, whatever its twist.
+		d.NoSanitizers, d.QuietSamples = false, false
+		s.Fsanitizes--
+		e.logf("-fsanitize: the samples keep their sanitizers and their output")
+	}
+	ofast := s.Ofast // owed even on a door cursed already
+	if s.Ofast {
+		// -Ofast: the door the player opens is cursed, the picks its clear
+		// owes the price (rosterClear).
+		d.Cursed, s.Ofast = true, false
+		e.logf("-Ofast: this door is cursed")
 	}
 	s.Current = &Attempt{
 		Door: d, Opened: e.now, Deadline: e.now.Add(d.Timer), Biome: s.Biome,
 		Offer: e.choose("doors", i), CyclesAtOpen: s.Cycles, DucksAtOpen: s.Ducks, At: bought,
+		Ofast: ofast,
 	}
 	s.Doors = nil
 	s.Phase = PhaseProblem
@@ -277,16 +295,25 @@ func (e *engine) tick() error {
 	return nil
 }
 
-// expired ends the open door if its deadline has passed, and reports
-// whether it did. Every in-problem action checks it first, so a late Tick
+// expired ends the open door if its deadline has passed, or starts
+// watchdog's overtime on it, and reports whether either happened. Every in-problem action checks it first, so a late Tick
 // can't be outrun by a retreat or a quack. A soft timer never ends a door;
 // the deadline only marks the attempt overtime, which Tick and the judge
 // result do (they cannot fail, so the mark never sticks to a refused
 // action). Where a timeout has a price (State.FailCost) it burns cycles and
 // the boot goes on (saveFail); otherwise it crashes the boot.
-func (e *engine) expired() bool {
+func (e *engine) expired() bool { return e.expire(true) }
+
+// expire is expired, with watchdog's overtime when watch is set: an
+// overtime it starts also spends the action that found it (a retreat, a
+// quack), which leaves its state changed and so may not fail. abandon
+// ends the boot on purpose and passes false.
+func (e *engine) expire(watch bool) bool {
 	if e.now.Before(e.s.Current.Deadline) || e.s.Rules.OnExpire == rules.ExpireOvertime {
 		return false
+	}
+	if watch && e.watchdog() {
+		return true // overtime: the door stays open
 	}
 	e.fail(TimedOut)
 	return true
@@ -295,7 +322,7 @@ func (e *engine) expired() bool {
 // fail closes the open door with o (TimedOut or GaveUp): for its price
 // where it has one, else by crashing the boot.
 func (e *engine) fail(o Outcome) {
-	if !e.saveFail(o) {
+	if !e.saveFail(o) && !e.kdump(o) {
 		e.crash(o, false)
 	}
 }
@@ -321,8 +348,10 @@ func (e *engine) submit(v SubmitResult) error {
 	a.SubmitAt = time.Time{}
 	late := a.Deadline.Add(s.Rules.SubmitGrace.Duration)
 	if !e.now.Before(late) && s.Rules.OnExpire != rules.ExpireOvertime {
-		e.fail(TimedOut)
-		return nil
+		if !e.watchdog() {
+			e.fail(TimedOut)
+			return nil
+		}
 	}
 	e.overtime(late)
 	a.Submits++
@@ -342,11 +371,24 @@ func (e *engine) submit(v SubmitResult) error {
 		return nil
 	}
 	e.hit() // charged, in cycles or, under ECC, in clock
+	if s.Diffs > 0 && s.perks() {
+		s.Diffs-- // its failing test was shown, as strace shows it
+	}
+	if a.Door.Cursed && e.sudo() {
+		return nil
+	}
 	if a.Door.Cursed {
 		// The curse takes the boot, not cycles: what is left stays on the
 		// record for the crash screen.
 		e.logf("%s: %s %d/%d on a cursed door, %s left", e.door(), v.Verdict, v.Passed, v.Total, units.Plural(s.Cycles, "cycle"))
-		e.crash(OutOfLives, true)
+		if !e.kdump(OutOfLives) {
+			e.crash(OutOfLives, true)
+		}
+		return nil
+	}
+	if s.Snapshots > 0 && s.perks() {
+		s.Snapshots--
+		e.logf("%s: %s, snapshot restored: free, %d held", e.door(), v.Verdict, s.Snapshots)
 		return nil
 	}
 	failing := 0
@@ -369,7 +411,9 @@ func (e *engine) submit(v SubmitResult) error {
 	}
 	e.logf("%s: %s %d/%d, -%s, %d left%s", e.door(), v.Verdict, v.Passed, v.Total, units.Plural(cost, "cycle"), s.Cycles, short)
 	if s.Cycles == 0 {
-		e.crash(OutOfLives, false)
+		if !e.kdump(OutOfLives) {
+			e.crash(OutOfLives, false)
+		}
 		return nil
 	}
 	e.emit(Sound{Name: "wa"})
@@ -472,10 +516,14 @@ func (e *engine) retreat() error {
 	}
 	name := e.door()
 	a := e.close(Retreated)
-	if free {
+	switch {
+	case free && s.has(Kexec) && !s.KexecUsed:
 		s.KexecUsed = true
 		e.logf("%s: kexec, free swap", name)
-	} else {
+	case free:
+		s.FreeRetreats-- // popd
+		e.logf("%s: popd, free swap", name)
+	default:
 		s.Cycles -= cost
 		e.logf("%s: retreat, -%s, %d left", name, units.Plural(cost, "cycle"), s.Cycles)
 		e.hit()
@@ -525,7 +573,9 @@ func (e *engine) clear() {
 	// machine) puts now before Opened. That is no evidence of speed: the
 	// solve records 0, and -O3 wants a time that really passed.
 	elapsed := max(e.now.Sub(a.Opened), 0)
-	a.O3 = r.O3Frac > 0 && elapsed > 0 && elapsed <= scale(s.o3Timer(*a), r.O3Frac)
+	o3 := s.o3Frac()
+	a.O3 = o3 > 0 && elapsed > 0 && elapsed <= scale(s.o3Timer(*a), o3)
+	carry := s.burstCarry(a, e.now) // before the door closes: its unused clock
 
 	kind := Independent
 	if a.Quacks > 0 {
@@ -546,6 +596,10 @@ func (e *engine) clear() {
 	}
 	paid := s.Paid(*a)
 	e.close(Cleared)
+	if carry > 0 {
+		s.AtTime += carry
+		e.logf("burst: +%s carried to the next door", units.Clock(carry))
+	}
 	advanceRegression(m, d.Problem, e.now)
 	s.Uncommitted += paid
 	m.LifetimeBytes += paid
@@ -570,8 +624,9 @@ func (e *engine) clear() {
 	}
 	if a.O3 {
 		picks++
-		e.logf("%s: -O3, under %s, free upgrade", name, units.Clock(scale(s.o3Timer(*a), r.O3Frac)))
+		e.logf("%s: -O3, under %s, free upgrade", name, units.Clock(scale(s.o3Timer(*a), o3)))
 	}
+	picks += e.rosterClear(*a)
 	if !more && s.Biomes[s.Biome].Kind == rules.Boss {
 		picks += e.judgeVaults() // the act's timed and untouched doors
 	}
@@ -680,12 +735,21 @@ func (e *engine) owe(n int) {
 func (e *engine) offerUpgrades() {
 	s := e.s
 	var pool []Upgrade
-	for _, u := range AllUpgrades {
+	for _, u := range s.UpgradePool() {
 		if s.offerable(u) && !s.UpgradeLocked(u) {
 			pool = append(pool, u)
 		}
 	}
-	s.UpgradeOffers = sample(e.rng, pool, s.Rules.UpgradeOffers+s.Rules.Grants(s.Packages).UpgradeOffers)
+	n := s.Rules.UpgradeOffers + s.Rules.Grants(s.Packages).UpgradeOffers
+	if s.perks() {
+		n += s.count(Microcode) * s.Rules.Perk.MicrocodeOffer
+	}
+	s.UpgradeOffers = draw(s, e.rng, pool, n)
+	if s.perks() {
+		// A pick is never dead: it can be taken as a few cycles (Slay the
+		// Spire's skip, which Singing Bowl pays).
+		s.UpgradeOffers = append(s.UpgradeOffers, Skip)
+	}
 }
 
 // pickUpgrade takes one owed pick. Picks are owed only outside a problem:
@@ -698,7 +762,10 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 	if !slices.Contains(s.UpgradeOffers, u) {
 		return invalid("upgrade %q not on offer", u)
 	}
-	s.Upgrades = append(s.Upgrades, u)
+	if u != Skip {
+		s.Upgrades = append(s.Upgrades, u)
+	}
+	e.rosterPick(u)
 	switch u {
 	case Overclock:
 		// Time is bought (D50): the pick burns its price. "Later doors"
@@ -737,26 +804,13 @@ func (e *engine) pickUpgrade(u Upgrade) error {
 // trial offers none: fork and kexec need rooms that re-roll, which a
 // trial's do not, and the rest are boot perks.
 func (e *engine) enterMerge() {
-	s, r := e.s, &e.s.Rules
+	s := e.s
 	s.Phase = PhaseMerge
 	e.fountain()
 	e.reachMerge()
-	refill := e.baseDucks()
-	for _, u := range s.Upgrades {
-		if u == Duck {
-			refill++
-		}
-	}
-	s.Ducks = max(s.Ducks, refill)
-	if len(s.Daemons) < r.MaxDaemons && s.Trial == nil {
-		var pool []Daemon
-		for _, d := range AllDaemons {
-			if !slices.Contains(s.Daemons, d) && !s.DaemonLocked(d) && !s.idle(d) {
-				pool = append(pool, d)
-			}
-		}
-		s.DaemonOffers = sample(e.rng, pool, r.DaemonOffers+r.Grants(s.Packages).DaemonOffers)
-	}
+	s.Ducks = max(s.Ducks, e.refillDucks())
+	e.offerDaemons()
+	e.stock()
 	e.logf("merge window: %s uncommitted, ducks %d, daemons on offer %v",
 		units.Bytes(s.Uncommitted), s.Ducks, s.DaemonOffers)
 }
@@ -770,7 +824,13 @@ func (e *engine) enterMerge() {
 // door moved them by -1 to +3, within noise.
 func (s *State) idle(d Daemon) bool {
 	r := &s.Rules
-	return d == Fork && r.DoorsPerRoom+r.Grants(s.Packages).Doors >= r.ForkDoors
+	switch d {
+	case Fork:
+		return r.DoorsPerRoom+r.Grants(s.Packages).Doors >= r.ForkDoors
+	case Cpupower:
+		return s.everyBossOneShot() // its catch would cost nothing
+	}
+	return false
 }
 
 func (e *engine) commit() error {
@@ -793,7 +853,7 @@ func (e *engine) bank() {
 	e.logf("commit: %s banked, bank %s", units.Bytes(n), units.Bytes(e.meta.Bank))
 }
 
-func (e *engine) pickDaemon(d Daemon) error {
+func (e *engine) pickDaemon(d, replace Daemon) error {
 	s := e.s
 	if err := e.need(PhaseMerge, "pick daemon"); err != nil {
 		return err
@@ -802,8 +862,14 @@ func (e *engine) pickDaemon(d Daemon) error {
 	if !slices.Contains(s.DaemonOffers, d) {
 		return invalid("daemon %q not on offer", d)
 	}
+	if len(s.Daemons) >= s.Rules.MaxDaemons {
+		if err := e.swapOut(replace); err != nil {
+			return err
+		}
+	}
 	s.Daemons = append(s.Daemons, d)
 	s.DaemonOffers = nil
+	e.startDaemon(d)
 	e.logf("daemon: %s started", d)
 	return nil
 }
@@ -1009,5 +1075,5 @@ func (s *State) ShowsFailingInput() bool {
 	if s == nil || s.Phase == PhaseCrashed || s.Phase == PhaseCleared {
 		return true
 	}
-	return s.Rules.ShowFailingInput || slices.Contains(s.Daemons, Strace)
+	return s.Rules.ShowFailingInput || slices.Contains(s.Daemons, Strace) || s.Diffs > 0 && s.perks()
 }

@@ -2,6 +2,7 @@ package game
 
 import (
 	"slices"
+	"time"
 
 	"katharsis/internal/rules"
 	"katharsis/internal/units"
@@ -20,8 +21,33 @@ var AllItems = []Item{Fsck, Dup, Shuf, At}
 // installed, or the boot is a trial, which sells nothing, as it offers no
 // daemons: a trial is practice, not a run to equip.
 func (s *State) Price(it Item) int64 {
-	if s.Trial != nil || s.ItemLocked(it) {
+	if s.Trial != nil || s.ItemLocked(it) || !s.Stocked(it) {
 		return 0
+	}
+	return s.basePrice(it)
+}
+
+// basePrice is what the rules price it at, wherever it stands; the
+// roster's items only under its rules.
+func (s *State) basePrice(it Item) int64 {
+	p := &s.Rules.Perk
+	if s.perks() {
+		switch it {
+		case Nohup:
+			return p.NohupPrice
+		case Popd:
+			return p.PopdPrice
+		case Diff:
+			return p.DiffPrice
+		case Whatis:
+			return p.WhatisPrice
+		case Sudo:
+			return p.SudoPrice
+		case Make:
+			return p.MakePrice
+		case Mesg:
+			return p.MesgPrice
+		}
 	}
 	switch it {
 	case Fsck:
@@ -50,6 +76,10 @@ func (s *State) CanSpend(it Item) error {
 		return invalid("%s costs %s, %s uncommitted", it, units.Bytes(price), units.Bytes(s.Uncommitted))
 	case it == Fsck && s.Cycles >= s.MaxCycles:
 		return invalid("cycles are full")
+	case it == Mesg && s.Ducks == 0:
+		return invalid("no ducks to turn into clock")
+	case it == Make && s.PendingUpgrade:
+		return invalid("pick the upgrade owed first")
 	}
 	return nil
 }
@@ -71,6 +101,21 @@ func (e *engine) spend(it Item) error {
 		s.Rerolls++
 	case At:
 		s.AtTime += s.Rules.AtTime.Duration
+	case Nohup:
+		s.Nohup++
+	case Popd:
+		s.FreeRetreats++
+	case Diff:
+		s.Diffs++
+	case Whatis:
+		s.Whatis++
+	case Sudo:
+		s.Sudo++
+	case Make:
+		e.owe(1)
+	case Mesg:
+		s.AtTime += time.Duration(s.Ducks) * s.Rules.Perk.MesgPerDuck.Duration
+		s.Ducks = 0
 	}
 	e.logf("%s: -%s, %s uncommitted (cycles %d/%d, ducks %d, shufs %d, at +%s)",
 		it, units.Bytes(price), units.Bytes(s.Uncommitted), s.Cycles, s.MaxCycles, s.Ducks, s.Rerolls,

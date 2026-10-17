@@ -209,6 +209,7 @@ func MapDoors() *game.State {
 func MapMerge() *game.State {
 	st := mapBoot()
 	st.Phase = game.PhaseMerge
+	st.Stock = []game.Item{game.Fsck, game.Dup, game.Shuf} // the shelf, as the engine deals it
 	st.Biome, st.Room = 2, 1
 	st.Uncommitted, st.Committed = 464, 48
 	st.Fountain = 5

@@ -24,7 +24,11 @@ type Merge struct {
 	up  picker
 	buy int // cursor within the items on sale
 	dmn int // cursor within the daemon offers
-	cur int // index into rows()
+	// swap is the offer being taken over a running daemon once every seat
+	// is full (the roster's later windows), -1 for none: its rows are
+	// then the running daemons, rep the cursor among them.
+	swap, rep int
+	cur       int // index into rows()
 	// at is the row under the cursor when it last moved. The engine changes
 	// the State this screen shares in place, so by Refresh the rows have
 	// changed under cur already, and only at still names the row it was.
@@ -42,6 +46,7 @@ const (
 	rowUpgrade rowKind = iota
 	rowSpend
 	rowDaemon
+	rowReplace
 	rowLeave
 )
 
@@ -51,7 +56,7 @@ type mergeRow struct {
 }
 
 func NewMerge(env Env) *Merge {
-	m := &Merge{env: env}
+	m := &Merge{env: env, swap: -1}
 	m.intro = len(env.State.DaemonOffers) > 0 && !game.HasSeen(&env.Meta, introHook)
 	m.up.set(env.State)
 	m.at = m.row()
@@ -64,6 +69,9 @@ func NewMerge(env Env) *Merge {
 func (m *Merge) Refresh(env Env) {
 	old := m.at
 	m.env = env
+	if m.swap >= len(env.State.DaemonOffers) {
+		m.swap = -1 // the swap was made, or the offers went
+	}
 	m.up.set(env.State)
 	if old.kind == rowUpgrade {
 		old.i = m.up.cursor
@@ -94,8 +102,14 @@ func (m *Merge) rows() []mergeRow {
 	for i := range onSale(st) {
 		rs = append(rs, mergeRow{rowSpend, i})
 	}
-	for i := range st.DaemonOffers {
-		rs = append(rs, mergeRow{rowDaemon, i})
+	if m.swap >= 0 {
+		for i := range st.Daemons {
+			rs = append(rs, mergeRow{rowReplace, i})
+		}
+	} else {
+		for i := range st.DaemonOffers {
+			rs = append(rs, mergeRow{rowDaemon, i})
+		}
 	}
 	return append(rs, mergeRow{kind: rowLeave})
 }
@@ -117,6 +131,8 @@ func (m *Merge) sync() {
 		m.buy = r.i
 	case rowDaemon:
 		m.dmn = r.i
+	case rowReplace:
+		m.rep = r.i
 	}
 }
 
@@ -137,6 +153,12 @@ func (m *Merge) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		if slices.Contains(onSale(st), game.Fsck) {
 			return m, screens.Emit(game.Spend{Item: game.Fsck})
 		}
+	case "esc":
+		if m.swap >= 0 { // back to the offers, nothing swapped
+			m.swap = -1
+			m.cur = max(slices.Index(m.rows(), mergeRow{rowDaemon, 0}), 0)
+			m.sync()
+		}
 	case "prev", "next":
 		m.cur = move(key, min(m.cur, len(m.rows())-1), len(m.rows()))
 		m.sync()
@@ -147,7 +169,18 @@ func (m *Merge) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		case rowSpend:
 			return m, screens.Emit(game.Spend{Item: onSale(st)[r.i]})
 		case rowDaemon:
+			if len(st.Daemons) >= st.Rules.MaxDaemons {
+				// A swap: which running daemon it takes over comes next.
+				m.swap, m.rep = r.i, 0
+				m.cur = slices.Index(m.rows(), mergeRow{rowReplace, 0})
+				m.sync()
+				return m, nil
+			}
 			return m, screens.Emit(game.PickDaemon{Daemon: st.DaemonOffers[r.i]})
+		case rowReplace:
+			d := st.DaemonOffers[m.swap]
+			m.swap = -1
+			return m, screens.Emit(game.PickDaemon{Daemon: d, Replace: st.Daemons[r.i]})
 		default:
 			return m, screens.Emit(game.LeaveMerge{})
 		}
@@ -387,8 +420,15 @@ func (m *Merge) sections(width, cw int, cur mergeRow, intro bool, defeat string)
 		// anyone has said. A full window has nothing to pick, so it only
 		// says what runs.
 		note := fmt.Sprintf("pick one, it runs for the rest of the boot%sheld %d/%d", ui.G.Sep, len(st.Daemons), st.Rules.MaxDaemons)
-		if full {
+		swaps := len(st.DaemonOffers) > 0 && len(st.Daemons) >= st.Rules.MaxDaemons
+		switch {
+		case full:
 			note = fmt.Sprintf("held %d/%d", len(st.Daemons), st.Rules.MaxDaemons)
+		case swaps && m.swap >= 0:
+			name, _ := daemonText(st.DaemonOffers[m.swap], st)
+			note = fmt.Sprintf("take %s over which? %s%sesc keeps them all", name, units.Bytes(st.Rules.Perk.SwapPrice), ui.G.Sep)
+		case swaps:
+			note = fmt.Sprintf("every seat taken: one swaps in for %s%sheld %d/%d", units.Bytes(st.Rules.Perk.SwapPrice), ui.G.Sep, len(st.Daemons), st.Rules.MaxDaemons)
 		}
 		if len(held) > 0 {
 			note += ": " + strings.Join(held, ", ")
@@ -404,9 +444,17 @@ func (m *Merge) sections(width, cw int, cur mergeRow, intro bool, defeat string)
 			}
 		}
 		secs = append(secs, label("daemon")+ui.Muted.Render(note))
-		if !full {
+		switch {
+		case m.swap >= 0:
+			r := -1
+			if cur.kind == rowReplace {
+				r = m.rep
+			}
+			secs = append(secs, indent(4, optionList(daemonOptions(st.Daemons, st), r, cw-4))...)
+		case !full:
 			secs = append(secs, indent(4, optionList(opts, c, cw-4))...)
-		} else if s := fl.Story(fullHook, st.Seed); s != "" {
+		}
+		if s := fl.Story(fullHook, st.Seed); full && s != "" {
 			// The Hatter's "No room!", true this once (merge.full), where the
 			// offers would be.
 			secs = append(secs, "    "+ui.Voice.Render(ui.Muted.Render(ui.Clip(s, cw-4))))
@@ -424,7 +472,7 @@ func (m *Merge) sections(width, cw int, cur mergeRow, intro bool, defeat string)
 // onSale lists the items this boot's merge windows sell.
 func onSale(st *game.State) []game.Item {
 	var out []game.Item
-	for _, it := range game.AllItems {
+	for _, it := range st.ItemPool() { // the window's shelf, under the roster
 		if st.Price(it) > 0 {
 			out = append(out, it)
 		}

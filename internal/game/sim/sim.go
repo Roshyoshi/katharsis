@@ -862,6 +862,7 @@ func (b *boot) buy() game.Item {
 		{game.Dup, s.Ducks == 0},
 		{game.Shuf, s.Rerolls == 0 && !bossNext},
 		{game.At, s.AtTime == 0 && bossNext},
+		{game.Nohup, s.Nohup == 0 && bossNext},
 	} {
 		if want.ok && s.CanSpend(want.it) == nil {
 			return want.it
@@ -878,10 +879,11 @@ func (b *boot) buyFixed() game.Item {
 		b.window, b.shelf = s.Biome, 0
 		b.budget = int64(b.p.SpendShare * float64(s.Uncommitted))
 	}
-	n := len(game.AllItems)
+	pool := s.ItemPool()
+	n := len(pool)
 	for k := range n {
 		i := (b.shelf + k) % n
-		it := game.AllItems[i]
+		it := pool[i]
 		if s.CanSpend(it) == nil && s.Price(it) <= b.budget {
 			b.budget -= s.Price(it)
 			b.shelf = i + 1
@@ -922,10 +924,21 @@ func (b *boot) upgrade() game.Upgrade {
 			return want.u
 		}
 	}
-	for _, u := range offers {
-		if u != game.Overclock || b.s.Rules.OverclockCycles == 0 {
+	// The roster's, by what the model's crashes need (timeouts at bosses):
+	// clock and safety first, the cursed -Ofast and the skip last.
+	for _, u := range []game.Upgrade{game.Turbo, game.Snapshot, game.Microcode, game.PrefetchPick,
+		game.Heatsink, game.Smt, game.Fsanitize} {
+		if slices.Contains(offers, u) {
 			return u
 		}
+	}
+	for _, u := range offers {
+		if u != game.Ofast && u != game.Skip && (u != game.Overclock || b.s.Rules.OverclockCycles == 0) {
+			return u
+		}
+	}
+	if slices.Contains(offers, game.Skip) {
+		return game.Skip
 	}
 	return offers[0]
 }
@@ -933,11 +946,15 @@ func (b *boot) upgrade() game.Upgrade {
 // daemon is the model's pick of the window's daemons, false to take none
 // (none on offer, or Player.DeclineDaemons).
 func (b *boot) daemon() (game.Daemon, bool) {
-	if len(b.s.DaemonOffers) == 0 {
+	// A full window's offers are swaps (PickDaemon.Replace); the model
+	// keeps what runs.
+	if len(b.s.DaemonOffers) == 0 || len(b.s.Daemons) >= b.s.Rules.MaxDaemons {
 		return "", false
 	}
 	// chrt last: most of the model's crashes are timeouts.
-	for _, d := range []game.Daemon{game.Fork, game.Kexec, game.DevRandom, game.Cron, game.Strace, game.Nice, game.Chrt} {
+	// The roster's nets and engines first, its glass cannons never.
+	for _, d := range []game.Daemon{game.Kdump, game.Watchdog, game.Fork, game.Kexec, game.Ksmd, game.Burst, game.Ccache,
+		game.Tuned, game.DevRandom, game.Cron, game.Strace, game.Nice, game.Quiet, game.Chrt} {
 		if b.p.DeclineDaemons && (d == game.Chrt || d == game.Nice && b.s.Rules.NiceLifeCost > 1) {
 			continue
 		}
@@ -1020,6 +1037,17 @@ func (b *boot) attempt(biome int) {
 		}
 		b.clock = opened.Add(ev.at)
 		b.step(ev.a)
+	}
+	// watchdog's overtime keeps the door open past its clock: a model that
+	// solves it by the new deadline does, else the overtime runs out.
+	if s.Phase == game.PhaseProblem && s.Current != nil && s.Current.Overtime && s.Rules.OnExpire != rules.ExpireOvertime {
+		if at := opened.Add(t); capable && at.Before(s.Current.Deadline) && !at.Before(b.clock) {
+			b.clock = at
+			b.step(game.SubmitResult{Verdict: "AC", Passed: 20, Total: 20})
+		} else {
+			b.clock = maxTime(b.clock, s.Current.Deadline)
+			b.step(game.Tick{})
+		}
 	}
 	if s.Phase == game.PhaseProblem { // only if the engine missed the deadline
 		b.sums.rep.Errors++
@@ -1245,4 +1273,11 @@ func (sm *sums) trial(s *game.State) {
 // before Boss II can buy fsck to the cap.
 func (b *boot) hoard() bool {
 	return b.p.Trial && len(b.s.Rules.Nodes) > 0 && b.s.Biome < rules.TierActII
+}
+
+func maxTime(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
+	}
+	return b
 }

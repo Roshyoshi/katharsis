@@ -125,3 +125,39 @@ func openVaults(st *game.State) []string {
 	}
 	return out
 }
+
+// heldLine is what the boot holds for its next doors, for the doors screen:
+// the roster's one-shot charges, and -Ofast's curse on the door opened next
+// first, as a warning. "" for nothing held.
+//
+//	-Ofast: the door you open is cursed · held snapshot ×2 · nohup · turbo
+func heldLine(st *game.State) string {
+	var parts []string
+	held := func(n int, name string) {
+		switch {
+		case n == 1:
+			parts = append(parts, name)
+		case n > 1:
+			parts = append(parts, fmt.Sprintf("%s ×%d", name, n))
+		}
+	}
+	held(st.Snapshots, "snapshot")
+	held(st.Turbo, "turbo")
+	held(st.Fsanitizes, "-fsanitize")
+	held(st.Nohup, "nohup")
+	held(st.FreeRetreats, "popd")
+	held(st.Diffs, "diff")
+	held(st.Sudo, "sudo")
+	s := ""
+	if len(parts) > 0 {
+		s = ui.Muted.Render("held " + strings.Join(parts, ui.G.Sep))
+	}
+	if st.Ofast {
+		curse := ui.Danger.Render("-Ofast: the door you open is cursed")
+		if s == "" {
+			return curse
+		}
+		return curse + ui.Muted.Render(ui.G.Sep) + s
+	}
+	return s
+}

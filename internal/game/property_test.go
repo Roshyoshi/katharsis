@@ -41,7 +41,8 @@ type checker struct {
 	dumpLost  int64  // what a crash must destroy: the dump's bytes, if any
 	phase     game.Phase
 	lives     int
-	fountain  int // State.Fountained at the last step
+	fountain  int  // State.Fountained at the last step
+	kdumped   bool // State.Kdumped at the last step
 	spent     int64
 	installed []string // meta.Installed when the boot began
 	theme     string
@@ -162,7 +163,8 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	}
 	// Cycles come back only by an ECC pick that heals, an fsck, or a merge
 	// window's fountain, each by at most its heal (a cap can make it less);
-	// nothing else raises them (D47: no heal on AC).
+	// nothing else raises them (D47: no heal on AC). The roster's heals are
+	// its own (rosterHeal).
 	gain := s.Cycles - c.lives
 	fountain := s.Fountained - c.fountain
 	switch {
@@ -170,6 +172,8 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	case a == game.PickUpgrade{Upgrade: game.ECC} && s.Rules.ECCPenalty.Duration <= 0 && gain <= s.ECCHeal():
 	case a == game.Spend{Item: game.Fsck} && gain <= s.FsckHeal():
 	case fountain > 0 && gain == fountain && s.Phase == game.PhaseMerge && s.Cycles <= s.StartCycles():
+	case s.Kdumped && !c.kdumped && s.Cycles == min(s.Rules.Perk.KdumpCycles, s.MaxCycles): // kdump's reboot
+	case rosterHeal(s, a, gain):
 	default:
 		fail("cycles %d -> %d (fountain %d)", c.lives, s.Cycles, fountain)
 	}
@@ -177,6 +181,7 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 		fail("fountain %d this window, %d -> %d in all", s.Fountain, c.fountain, s.Fountained)
 	}
 	c.lives, c.fountain = s.Cycles, s.Fountained
+	c.kdumped = s.Kdumped
 	if s.UpgradePicks < 0 || s.PendingUpgrade != (s.UpgradePicks > 0) || s.PendingUpgrade != (len(s.UpgradeOffers) > 0) {
 		fail("picks %d pending %v offers %v", s.UpgradePicks, s.PendingUpgrade, s.UpgradeOffers)
 	}
@@ -233,7 +238,8 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 				if slices.Contains(s.Daemons, game.Nice) {
 					flat *= 1 - s.Rules.NiceBytesFrac
 				}
-				if d.Regression && slices.Contains(s.Daemons, game.Cron) {
+				// The roster's cron frees cycles at the clear instead.
+				if d.Regression && slices.Contains(s.Daemons, game.Cron) && s.Rules.Perk.Pool == 0 {
 					flat *= s.Rules.CronMult
 				}
 				if want := float64(s.Rules.BaseBytes) / 2 * flat; math.Abs(d.SolveP*float64(d.Bytes)-want) > 0.5 {
@@ -287,8 +293,16 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 		len(s.DaemonOffers) > s.Rules.DaemonOffers+s.Rules.Grants(s.Packages).DaemonOffers {
 		fail("daemons %v, offers %v with packages %v", s.Daemons, s.DaemonOffers, s.Packages)
 	}
+	// The roster adds microcode's offers and the skip.
+	maxOffers := s.Rules.UpgradeOffers + s.Rules.Grants(s.Packages).UpgradeOffers
+	if s.Rules.Perk.Pool > 0 {
+		maxOffers++ // the skip
+		if slices.Contains(s.Upgrades, game.Microcode) {
+			maxOffers += s.Rules.Perk.MicrocodeOffer
+		}
+	}
 	if slices.ContainsFunc(s.UpgradeOffers, s.UpgradeLocked) || slices.ContainsFunc(s.Upgrades, s.UpgradeLocked) ||
-		len(s.UpgradeOffers) > s.Rules.UpgradeOffers+s.Rules.Grants(s.Packages).UpgradeOffers {
+		len(s.UpgradeOffers) > maxOffers || slices.Contains(s.Upgrades, game.Skip) {
 		fail("upgrades %v, offers %v with packages %v", s.Upgrades, s.UpgradeOffers, s.Packages)
 	}
 	for _, it := range game.AllItems {
@@ -296,7 +310,8 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 			fail("%s is for sale without its package (%v)", it, s.Packages)
 		}
 	}
-	if s.AtTime < 0 || s.AtTime > 0 && s.ItemLocked(game.At) {
+	// Under the roster, burst, prefetch and mesg add to it too.
+	if s.AtTime < 0 || s.AtTime > 0 && s.ItemLocked(game.At) && s.Rules.Perk.Pool == 0 {
 		fail("at time %v with packages %v", s.AtTime, s.Packages)
 	}
 	// Prestige climbs one level, only by a clear at the top unlocked one
@@ -313,9 +328,9 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	// Bytes are conserved: every byte a clear paid is committed, still
 	// uncommitted, or lost to the crash, and only commits reach the bank.
 	// A crash destroys the earlier dump first, then dumps what it lost.
-	lost := int64(0)
+	lost := s.KdumpBytes // kdump's capture moved them into the dump
 	if s.Crash != nil {
-		lost = s.Crash.Lost
+		lost += s.Crash.Lost
 		if s.Uncommitted != 0 {
 			fail("uncommitted %d after a crash", s.Uncommitted)
 		}
@@ -326,7 +341,7 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 			if got := mustJSON(t, d); got != c.dump0 || s.Crash.DumpLost != 0 {
 				fail("trial crash changed the core dump %s to %s", c.dump0, got)
 			}
-		case s.Crash.DumpLost != c.dumpLost:
+		case s.Crash.DumpLost != c.dumpLost && !s.Kdumped: // kdump wrote a dump mid-boot
 			fail("crash destroyed %d B of dump, want the %d B the boot started with", s.Crash.DumpLost, c.dumpLost)
 		case s.Crash.Cause == game.Abandoned:
 			// Abandoned between doors: no door to dump on, so the bytes
@@ -334,10 +349,10 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 			if d != nil || s.Crash.Door.Problem != "" {
 				fail("abandoned boot left core dump %+v, door %+v", d, s.Crash.Door)
 			}
-		case (lost > 0) != (d != nil) || d != nil && (d.Problem != s.Crash.Door.Problem || d.Bytes != lost):
-			fail("crash lost %d, core dump %+v", lost, d)
+		case (s.Crash.Lost > 0) != (d != nil) || d != nil && (d.Problem != s.Crash.Door.Problem || d.Bytes != s.Crash.Lost):
+			fail("crash lost %d, core dump %+v", s.Crash.Lost, d)
 		}
-	} else if got := mustJSON(t, m.CoreDump); got != c.dump0 {
+	} else if got := mustJSON(t, m.CoreDump); got != c.dump0 && !s.Kdumped { // kdump's capture writes one
 		fail("core dump %s became %s without a crash", c.dump0, got)
 	}
 	if s.Crash != nil && s.Trial == nil && s.Crash.Cause != game.Abandoned {
@@ -374,7 +389,9 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 		if h.Biome != biome {
 			fail("attempt %+v in biome %d, the walk says %d", h.Door, h.Biome, biome)
 		}
-		failed := (h.Outcome == game.TimedOut || h.Outcome == game.GaveUp) && (s.Crash == nil || i < len(s.History)-1)
+		// kdump's capture goes on from a crash, out of cycles included.
+		failed := (h.Outcome == game.TimedOut || h.Outcome == game.GaveUp || h.Outcome == game.OutOfLives && s.Kdumped) &&
+			(s.Crash == nil || i < len(s.History)-1)
 		lost := failed && s.Rules.FailMoveOn && s.Biomes[biome].Kind != rules.Boss && (room+1 < s.Biomes[biome].Rooms || biome < last)
 		if h.Outcome == game.Cleared || lost {
 			for room++; room >= s.Biomes[biome].Rooms && biome < last; {
@@ -1048,4 +1065,27 @@ func TestJSONRoundTrip(t *testing.T) {
 			t.Errorf("%s: only %d moves played after a reload", tc.name, resumed)
 		}
 	}
+}
+
+// rosterHeal reports whether a raised the cycles by gain as one of the
+// roster's heals may (perks.go), each by its own number at most: selinux
+// fills them as it starts; heatsink and a skipped pick add a few up to the
+// start; ksmd frees some at a Boss I or II clear and cron at a regression's
+// (both on an AC). kdump's reboot is checked where it fires.
+func rosterHeal(s *game.State, a game.Action, gain int) bool {
+	p := &s.Rules.Perk
+	switch a := a.(type) {
+	case game.PickDaemon:
+		return a.Daemon == game.Selinux && s.Cycles == s.MaxCycles
+	case game.PickUpgrade:
+		switch a.Upgrade {
+		case game.Heatsink:
+			return gain <= p.HeatsinkCycles && s.Cycles <= s.StartCycles()
+		case game.Skip:
+			return gain <= p.SkipCycles && s.Cycles <= s.StartCycles()
+		}
+	case game.SubmitResult:
+		return a.Verdict == game.Accepted && gain <= p.KsmdCycles+p.CronCycles && s.Cycles <= s.MaxCycles
+	}
+	return false
 }

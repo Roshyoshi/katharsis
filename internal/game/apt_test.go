@@ -132,13 +132,13 @@ func TestPackagesInBoot(t *testing.T) {
 func TestStandardPackages(t *testing.T) {
 	t.Parallel()
 	for _, p := range rules.Legacy().Packages {
-		if p.Daemon != "" && !slices.Contains(game.AllDaemons, game.Daemon(p.Daemon)) {
+		if p.Daemon != "" && !slices.Contains(slices.Concat(game.AllDaemons, game.PerkDaemons), game.Daemon(p.Daemon)) {
 			t.Errorf("%s unlocks %q, not a daemon", p.Name, p.Daemon)
 		}
 		if p.Item != "" && !slices.Contains(game.AllItems, game.Item(p.Item)) {
 			t.Errorf("%s unlocks %q, not an item", p.Name, p.Item)
 		}
-		if p.Upgrade != "" && !slices.Contains(game.AllUpgrades, game.Upgrade(p.Upgrade)) {
+		if p.Upgrade != "" && !slices.Contains(slices.Concat(game.AllUpgrades, game.PerkUpgrades), game.Upgrade(p.Upgrade)) {
 			t.Errorf("%s unlocks %q, not an upgrade", p.Name, p.Upgrade)
 		}
 		if p.Daemon == "" && p.Item == "" && p.Upgrade == "" && p.Theme == "" && p.Ducks == 0 &&

@@ -26,7 +26,7 @@ func (e *engine) doorTimer(b rules.Biome, boss bool, gap float64) time.Duration 
 		base = min(max(fit, scale(base, r.TimerFitLo)), scale(base, r.TimerFitHi))
 	}
 	own := r.FirstClockOwn && e.s.Biome == 0 && e.s.Trial == nil
-	return roundTimer(scale(base, e.timerMult(!own)))
+	return roundTimer(scale(base, e.timerMult(!own, boss)))
 }
 
 // RouteTimer is the timer the current biome's doors get if the player
@@ -45,12 +45,25 @@ func (s *State) RouteTimer(m *Meta, topic string) time.Duration {
 // plus the time bought with at, which goes to whichever door opens next.
 // Door cards show it, so the clock a door starts on is the one its card
 // said.
-func (s *State) OpenTimer(d Door) time.Duration { return d.Timer + s.AtTime }
+func (s *State) OpenTimer(d Door) time.Duration { return d.Timer + s.nextBought(d) }
+
+// nextBought is the time bought for door d if it opens next: at's,
+// prefetch's, burst's carry and mesg's (AtTime), and turbo's share of a
+// boss door's clock. It is Attempt.At once d opens, which -O3 and the
+// timed vault take out (baseTimer).
+func (s *State) nextBought(d Door) time.Duration {
+	t := s.AtTime
+	if s.Turbo > 0 && d.Boss != "" {
+		t += scale(d.Timer, s.Rules.Perk.TurboFrac)
+	}
+	return t
+}
 
 // timerMult is the product of every timer modifier this boot runs with:
-// the clock's setting (rules.TimerMult), ascension, Overclock, nice and
-// chrt; the ascensions' only when asc is set.
-func (e *engine) timerMult(asc bool) float64 {
+// the clock's setting (rules.TimerMult), ascension, Overclock and the
+// daemons' (daemonClock, capped together, chrt's cut after); the
+// ascensions' only when asc is set, and selinux's on a topic door only.
+func (e *engine) timerMult(asc, boss bool) float64 {
 	r := &e.s.Rules
 	m := r.Clock()
 	if asc {
@@ -63,13 +76,8 @@ func (e *engine) timerMult(asc bool) float64 {
 			m *= 1 + r.OverclockFrac
 		}
 	}
-	if slices.Contains(e.s.Daemons, Nice) {
-		m *= 1 + r.NiceTimerFrac
-	}
-	if slices.Contains(e.s.Daemons, Chrt) {
-		m *= 1 - r.ChrtTimerFrac
-	}
-	return m
+	gain, cut := e.s.daemonClock(boss)
+	return m * gain * cut
 }
 
 // overclock is what n Overclock picks multiply a timer by: +OverclockFrac
@@ -108,11 +116,8 @@ func (s *State) o3Timer(a Attempt) time.Duration {
 // (at, Overclock, nice), as the boot holds them now: when a is the open
 // door, what it was given on its own.
 func (s *State) baseTimer(a Attempt) time.Duration {
-	r := &s.Rules
-	bought := s.overclock(s.count(Overclock))
-	if slices.Contains(s.Daemons, Nice) {
-		bought *= 1 + r.NiceTimerFrac
-	}
+	gain, _ := s.daemonClock(a.Door.Boss != "")
+	bought := s.overclock(s.count(Overclock)) * gain
 	return scale(a.Door.Timer-a.At, 1/bought)
 }
 

@@ -69,7 +69,7 @@ func TestTableTexts(t *testing.T) {
 		".two-miles-high":        "Reach the cycle cap (♥ 50/50) in a boot.",
 		"cartographer":           "Clear a room in every map node: 17.",
 		"regular-course":         "Hold all 11 capabilities.",
-		"apt-full":               "Install every package: 19.",
+		"apt-full":               "Install every package: 22.",
 		"own-invention":          "Clear a boot with each daemon running: 7.",
 		"every-topic":            "Master every topic but mixed: 15.",
 		"one-topic":              "Master a topic: 10 rated doors on it.",

@@ -505,6 +505,10 @@ type Rules struct {
 	// Twists are the rule each boss bends: a boss door's modifier, as
 	// blind, mystery and cursed are a door's, shown on its boss card.
 	Twists Twists `toml:"twists"`
+
+	// Perk is the pick pools' roster and numbers (perk.go); its zero value
+	// keeps the first pools.
+	Perk PerkRules `toml:"perk"`
 }
 
 // Twists is one setting per boss (game.BossKeys, game.FinalBoss), each
@@ -976,6 +980,12 @@ func Legacy() Rules {
 			// A fourth daemon on offer means nothing while the pool holds
 			// three, so procps waits on two of the locked ones.
 			{Name: "procps", Price: 544, DaemonOffers: 1, Requires: []string{"rng-tools", "strace"}},
+			// The roster's apt extras (perk.go): a net for one crash, -O3's
+			// wider share, and the sanitizers back on a boss's samples. Late
+			// on the ladder, under binutils.
+			{Name: "kdump-tools", Price: 896, Daemon: "kdump"},
+			{Name: "tuned", Price: 640, Daemon: "tuned"},
+			{Name: "clang-tools", Price: 768, Upgrade: "fsanitize"},
 			{Name: "binutils", Price: 4096, LinkSlots: 1},
 		},
 	}
@@ -1209,6 +1219,9 @@ func (r Rules) validateCycles() error {
 	}
 	if !(r.TimedVault >= 0 && r.TimedVault <= 2) || r.VaultPicks < 0 {
 		return fmt.Errorf("rules %q: need 0 <= timed_vault <= 2, vault_picks >= 0", r.Name)
+	}
+	if err := r.Perk.validate(r.Name); err != nil {
+		return err
 	}
 	// The negated test also catches NaN.
 	if !(r.TimerMult >= 0 && r.TimerMult <= MaxTimerMult) {

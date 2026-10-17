@@ -68,6 +68,16 @@ upgrade pick: the timed door, for an act within 60% of its doors' clocks,
 and the untouched door, for an act with no failed submit, timeout, `:q!` or
 paid retreat. The doors screen shows the split as you go.
 
+Each pick pool has ten from the first boot, more with apt, drawn by
+rarity (common, uncommon, rare): daemons at merge windows, three seats,
+and once they are full a swap for 64 B; an upgrade after every clear, or a
+skip for 2 cycles; a shelf of five items a window, fsck always on it. The
+rare ones change the rules: `selinux` fills your cycles and curses every
+topic door with a longer clock; `cpupower` lengthens every clock and caps
+cycles at 20, so every boss is one shot; `-Ofast` curses your next door
+for two more picks. The full roster and its numbers:
+[docs/research/perks.md](docs/research/perks.md).
+
 **In vim** (the game adds these commands; your vimrc loads as usual):
 
 | | |

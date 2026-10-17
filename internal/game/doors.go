@@ -243,7 +243,7 @@ func (e *engine) roomSize(b *BiomeState) int {
 	if slices.Contains(e.s.Daemons, Fork) && len(h) > 0 && h[len(h)-1].Outcome == Cleared {
 		n = max(n, r.ForkDoors)
 	}
-	return n
+	return n + e.s.Smt // smt's, for this room
 }
 
 // rollRoom offers the current room's doors. fresh is false for the re-roll
@@ -309,6 +309,12 @@ func (e *engine) drawDoors(skip []Door) []Door {
 // easing's timers are settled here, after any regression door joined.
 func (e *engine) offer(doors []Door, reason string, rng uint64) {
 	s := e.s
+	// smt's door and whatis's sight are for the one room they were bought
+	// for; a retreat's re-roll is plain again.
+	s.Smt = 0
+	if s.Whatis > 0 {
+		s.Whatis--
+	}
 	e.plainDoors(doors)
 	e.buyTimers(doors)
 	s.Doors = doors
@@ -378,6 +384,16 @@ func (e *engine) makeDoor(p *catalog.Problem, i int, boss string, regression boo
 	d.Blind = r.BlindAll || d.Mystery || blind < r.BlindChance+asc.BlindChance
 	// A cursed node (the Trial) curses every door; the roll is drawn anyway.
 	d.Cursed = rb.Cursed || boss == "" && !regression && cursed < r.CursedChance+asc.CursedChance
+	if e.s.perks() {
+		// selinux enforcing: every topic door cursed (a regression aside, as
+		// the roll spares it). whatis: the room shows what each door is.
+		if e.s.has(Selinux) && boss == "" && !regression {
+			d.Cursed = true
+		}
+		if e.s.Whatis > 0 {
+			d.Blind, d.Mystery = false, false
+		}
+	}
 	if e.s.Trial != nil {
 		// The unit shows tags; the integration doors are blind.
 		d.Blind, d.Mystery, d.Cursed = e.s.Biome > 0 || r.BlindAll, false, false
@@ -484,7 +500,7 @@ func (e *engine) doorBytes(d Door) int64 {
 	switch {
 	case d.Mystery:
 		mult *= r.MysteryMult
-		if slices.Contains(e.s.Daemons, DevRandom) {
+		if e.s.has(DevRandom) && !e.s.perks() { // the roster's pays a pick (rosterClear)
 			mult *= r.DevRandomMult
 		}
 	case d.Blind:
@@ -499,7 +515,7 @@ func (e *engine) doorBytes(d Door) int64 {
 	case d.Boss != "":
 		mult *= r.BossMult
 	}
-	if d.Regression && slices.Contains(e.s.Daemons, Cron) {
+	if d.Regression && e.s.has(Cron) && !e.s.perks() { // the roster's frees cycles
 		mult *= r.CronMult
 	}
 	if slices.Contains(e.s.Daemons, Chrt) {

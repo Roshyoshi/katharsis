@@ -21,14 +21,25 @@ func upgradeOptions(us []game.Upgrade, st *game.State) []option {
 	out := make([]option, len(us))
 	for i, u := range us {
 		out[i].name, out[i].desc = upgradeText(u, st)
+		out[i].desc += rarityTag(game.RarityOf(u), st)
 	}
 	return out
+}
+
+// rarityTag names a perk's rarity on its card under the roster, honest
+// about what is rare: " · rare". A common one says nothing.
+func rarityTag(r game.Rarity, st *game.State) string {
+	if r == game.Common || st.Rules.Perk.Pool == 0 {
+		return ""
+	}
+	return ui.G.Sep + r.String()
 }
 
 func daemonOptions(ds []game.Daemon, st *game.State) []option {
 	out := make([]option, len(ds))
 	for i, d := range ds {
 		out[i].name, out[i].desc = daemonText(d, st)
+		out[i].desc += rarityTag(game.RarityOf(d), st)
 	}
 	return out
 }
@@ -105,12 +116,12 @@ func optionList(opts []option, cursor, width int) []string {
 // its cursor with ←/→ or 1-9; the merge window draws it as a list under a
 // cursor of its own.
 type picker struct {
-	offers []game.Upgrade // st's, in game.AllUpgrades' order
+	offers []game.Upgrade // st's, in its pool's order (State.UpgradePool), the skip last
 	cursor int
 	st     *game.State // the boot, whose numbers the descriptions quote
 }
 
-// set takes the offers from st in game.AllUpgrades' order, however the
+// set takes the offers from st in its pool's order, however the
 // engine drew them, so a redraw after a pick leaves each card where it
 // stood (UX J18). The cursor stays on the upgrade it was on while that is
 // offered still, so a second enter takes the card the first did, and else
@@ -118,8 +129,10 @@ type picker struct {
 func (p *picker) set(st *game.State) {
 	was := p.selected()
 	p.offers, p.st = slices.Clone(st.UpgradeOffers), st
+	// The boot's pool order, the skip last.
+	order := append(st.UpgradePool(), game.Skip)
 	slices.SortStableFunc(p.offers, func(a, b game.Upgrade) int {
-		return slices.Index(game.AllUpgrades, a) - slices.Index(game.AllUpgrades, b)
+		return slices.Index(order, a) - slices.Index(order, b)
 	})
 	if i := slices.Index(p.offers, was); was != "" && i >= 0 {
 		p.cursor = i

@@ -14,7 +14,7 @@ find / -perm -4000 -ls · 8 of 61 set                                           
  -rwxr-xr-x     2/6                /usr/bin/every-bug                               │   Oct 14 01:55  there-goes-bill         boot #39
  -rwxr-xr-x    9/17                /usr/bin/cartographer                            │   Oct 14 01:12  two-twins               boot #39
  -rwxr-xr-x    4/11                /usr/bin/regular-course                          │   Oct 13 23:40  exit-0                  boot #38
- -rwxr-xr-x    0/19                /usr/bin/apt-full                                │   Oct  2 21:07  hello-world             from git log
+ -rwxr-xr-x    0/22                /usr/bin/apt-full                                │   Oct  2 21:07  hello-world             from git log
  -rwxr-xr-x     2/7                /usr/bin/own-invention                           │
  -rwxr-xr-x     0/5                /usr/bin/her-list                                │
  -rwxr-xr-x     0/5                /usr/bin/ledger                                  │

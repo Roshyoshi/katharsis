@@ -139,6 +139,9 @@ func (d *Doors) View(width, height int) string {
 	if v := vaultSplit(st); v != "" {
 		notes = append(notes, ui.Center(v, width))
 	}
+	if h := heldLine(st); h != "" {
+		notes = append(notes, ui.Center(h, width))
+	}
 	if len(notes) > 0 {
 		notes = append(notes, "")
 	}

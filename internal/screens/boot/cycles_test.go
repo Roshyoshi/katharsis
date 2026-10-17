@@ -375,11 +375,12 @@ func TestSubmitPrice(t *testing.T) {
 
 // TestCyclesUpgradeCards: an Overclock card quotes its price and cap in
 // the boot's numbers and how many are taken (D50); ECC is the clock
-// conversion.
+// conversion; a card past common names its rarity.
 func TestCyclesUpgradeCards(t *testing.T) {
 	st := fixture.CyclesUpgrade()
 	opts := upgradeOptions(st.UpgradeOffers, st)
-	want := []string{"+15% timer; 5 cycles a pick, 2 at most; 1 of 2 taken", "a failed submit costs 05:00, not cycles", "+1 rubber duck"}
+	// Overclock and ECC are uncommon, and their cards say so.
+	want := []string{"+15% timer; 5 cycles a pick, 2 at most; 1 of 2 taken · uncommon", "a failed submit costs 05:00, not cycles · uncommon", "+1 rubber duck"}
 	for i, o := range opts {
 		if o.desc != want[i] {
 			t.Errorf("%s: %q, want %q", o.name, o.desc, want[i])

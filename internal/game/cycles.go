@@ -29,7 +29,17 @@ import (
 // (OneShot) and a biome without a failure price (rules.Biome.FailCycles,
 // D44's TimeoutLife aside) end the boot whatever the cycles: cycles is 0
 // then. When the burn would leave none, cycles is the price and ok false.
+// Under nohup the next such fail that has a price costs nothing.
 func (s *State) FailCost(o Outcome) (cycles int, ok bool) {
+	c, ok := s.failCost(o)
+	if c > 0 && s.Nohup > 0 && s.perks() {
+		return 0, true
+	}
+	return c, ok
+}
+
+// failCost is FailCost before nohup.
+func (s *State) failCost(o Outcome) (cycles int, ok bool) {
 	r := &s.Rules
 	if s.Trial != nil || s.Biome >= len(r.Biomes) || o != TimedOut && o != GaveUp {
 		return 0, false
@@ -114,8 +124,8 @@ func (s *State) ECCShort(failing int, now time.Time) bool {
 // when kexec's swap is unused. A retreat that would leave no cycles is
 // refused, as is one at or past RetreatLockAt.
 func (s *State) RetreatCost() (cycles int, free bool) {
-	if slices.Contains(s.Daemons, Kexec) && !s.KexecUsed {
-		return 0, true
+	if slices.Contains(s.Daemons, Kexec) && !s.KexecUsed || s.FreeRetreats > 0 && s.perks() {
+		return 0, true // kexec's swap, else popd's
 	}
 	return s.Rules.RetreatPrice(), false
 }
@@ -232,7 +242,7 @@ func (e *engine) abandon() error {
 	case PhaseProblem:
 		// A deadline already past is the timeout's: under cycles it may
 		// end only the door, and what is left is abandoned below.
-		if !e.expired() {
+		if !e.expire(false) {
 			e.crash(GaveUp, false)
 		}
 		if s.Phase == PhaseCrashed || s.Phase == PhaseCleared {
@@ -268,6 +278,10 @@ func (e *engine) saveFail(o Outcome) bool {
 	cost, ok := s.FailCost(o)
 	if !ok {
 		return false
+	}
+	if c, _ := s.failCost(o); cost == 0 && c > 0 {
+		s.Nohup-- // nohup: this one costs nothing
+		e.logf("nohup: the fail costs no cycles, %d held", s.Nohup)
 	}
 	b := s.Biomes[s.Biome]
 	boss := b.Kind == rules.Boss
@@ -312,6 +326,9 @@ func (e *engine) saveFail(o Outcome) bool {
 // left than it burns.
 func (s *State) offerable(u Upgrade) bool {
 	r := &s.Rules
+	if ok, roster := s.rosterOfferable(u); roster {
+		return ok
+	}
 	switch u {
 	case Overclock:
 		return (r.OverclockMax <= 0 || s.count(Overclock) < r.OverclockMax) && s.Cycles > r.OverclockCycles
@@ -376,7 +393,7 @@ func (e *engine) fountain() {
 		r.FountainWhere == rules.FountainBoss && (next >= len(s.Biomes) || s.Biomes[next].Kind != rules.Boss):
 		return
 	}
-	gain = min(gain, s.StartCycles()-s.Cycles)
+	gain = min(gain, s.startCap()-s.Cycles) // cpupower's cap too
 	if gain <= 0 {
 		return
 	}
