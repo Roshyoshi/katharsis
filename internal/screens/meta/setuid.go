@@ -114,7 +114,7 @@ func NewSetuid(c SetuidConfig) *Setuid {
 			s.rows = append(s.rows, setuidRow{kind: k, def: d})
 		}
 	}
-	s.sel = s.next(0, 1)
+	s.sel = max(s.next(0, 1), 0)
 	return s
 }
 
@@ -158,15 +158,23 @@ func setCount(m *game.Meta, kind setuid.Kind) (set, of int) {
 	return set, of
 }
 
-// next is the first bit's row from i on in direction d (+1 or -1), i if
-// none.
+// next is the first bit's row from i on in direction d (+1 or -1), -1 if
+// none: past either end of the table there is no row, and returning i
+// there handed j at the last bit, and k at the first, a row out of range.
 func (s *Setuid) next(i, d int) int {
 	for j := i; j >= 0 && j < len(s.rows); j += d {
 		if s.rows[j].def != nil {
 			return j
 		}
 	}
-	return i
+	return -1
+}
+
+// move selects next(i, d)'s bit, and stays put when there is none.
+func (s *Setuid) move(i, d int) {
+	if j := s.next(i, d); j >= 0 {
+		s.sel = j
+	}
 }
 
 func (s *Setuid) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
@@ -174,26 +182,21 @@ func (s *Setuid) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	if !ok {
 		return s, nil
 	}
-	last := s.next(len(s.rows)-1, -1)
 	switch k.String() {
 	case "q", "esc":
 		return s, screens.Emit(screens.Back{})
 	case "up", "k":
-		if j := s.next(s.sel-1, -1); j < s.sel && s.rows[j].def != nil {
-			s.sel = j
-		}
+		s.move(s.sel-1, -1)
 	case "down", "j":
-		if j := s.next(s.sel+1, 1); j > s.sel && s.rows[j].def != nil {
-			s.sel = j
-		}
+		s.move(s.sel+1, 1)
 	case "home", "g":
-		s.sel = s.next(0, 1)
+		s.move(0, 1)
 	case "end", "G":
-		s.sel = last
+		s.move(len(s.rows)-1, -1)
 	case "pgup":
-		s.sel = s.next(max(s.sel-max(s.h-1, 1), 0), 1)
+		s.move(max(s.sel-max(s.h-1, 1), 0), 1)
 	case "pgdown":
-		s.sel = s.next(min(s.sel+max(s.h-1, 1), last), -1)
+		s.move(min(s.sel+max(s.h-1, 1), len(s.rows)-1), -1)
 	case "tab", "shift+tab":
 		s.sel = s.dirJump(k.String() == "tab")
 	case "?":
@@ -221,7 +224,10 @@ func (s *Setuid) dirJump(fwd bool) int {
 		i = (i - 1 + len(ks)) % len(ks)
 	}
 	h := slices.IndexFunc(s.rows, func(r setuidRow) bool { return r.def == nil && r.kind == ks[i] })
-	return s.next(h, 1)
+	if j := s.next(h, 1); h >= 0 && j >= 0 {
+		return j
+	}
+	return s.sel
 }
 
 // ---- view ----------------------------------------------------------------------

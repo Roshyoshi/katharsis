@@ -241,3 +241,31 @@ func TestLogAwake(t *testing.T) {
 		t.Errorf("the cleared filter drops the awake boot:\n%s", v)
 	}
 }
+
+// Every key keeps the cursor on a bit, held past either end of the table:
+// j at the last bit and k at the first indexed past the rows (a panic seen
+// in play), and so could tab, pgup and pgdown at the ends.
+func TestSetuidKeysStayInTheTable(t *testing.T) {
+	var keys []string
+	for range 80 {
+		keys = append(keys, "j")
+	}
+	keys = append(keys, "pgdown", "pgdown", "G", "j", "end", "down")
+	for range 80 {
+		keys = append(keys, "k")
+	}
+	keys = append(keys, "pgup", "pgup", "g", "k", "home", "up")
+	for range 10 {
+		keys = append(keys, "tab")
+	}
+	for range 10 {
+		keys = append(keys, "shift+tab")
+	}
+	s := setuidScreen(t, fixture.SetuidConfig(), keys...)
+	for _, k := range []string{"j", "k", "?", "G", "?", "g", "?"} {
+		press(t, s, k) // ? reads the bit under the cursor
+	}
+	if v := plain(s.View(80, 24)); !strings.Contains(v, "find / -perm -4000") {
+		t.Errorf("the table after the keys:\n%s", v)
+	}
+}
