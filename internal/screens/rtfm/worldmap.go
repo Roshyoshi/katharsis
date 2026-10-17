@@ -194,6 +194,10 @@ func (p *Map) overworldKey(k string) tea.Cmd {
 		if len(p.lv) > 0 {
 			p.world = p.ow
 		}
+	case "n":
+		if l, _, ok := p.next(); ok {
+			p.show(l.Module)
+		}
 	case "i", "/":
 		return screens.Emit(screens.OpenIndex{})
 	case "q", "esc":
@@ -214,6 +218,10 @@ func (p *Map) worldKey(k string) tea.Cmd {
 		*i = p.grid.step(*i, 1, n)
 	case "up", "k":
 		*i = p.grid.step(*i, -1, n)
+	case "n":
+		if l, _, ok := p.next(); ok {
+			p.show(l.Module)
+		}
 	case "home", "g":
 		*i = 0
 	case "end", "G":
@@ -248,6 +256,26 @@ func (p *Map) worldKey(k string) tea.Cmd {
 		p.ow, p.world = p.world, -1
 	}
 	return nil
+}
+
+// next is the level to do next: the first trial (or castle) in guide order
+// not passed yet, outside the library (General, whose pages are for any
+// time). Pages are read along the way, not checkpoints: opening one says
+// nothing of reading it, so a skipped one would be "next" for good. ok is
+// false when every trial is passed.
+func (p *Map) next() (l curriculum.Level, world int, ok bool) {
+	for wi, s := range p.lv {
+		if p.prog.Sum(p.atlas.Worlds[wi]).Trials == 0 {
+			continue
+		}
+		for _, x := range s {
+			lp := p.prog[x.Module]
+			if x.Kind.HasTrial() && !lp.Passed {
+				return x.Level, wi, true
+			}
+		}
+	}
+	return curriculum.Level{}, -1, false
 }
 
 // warp is w: from a level with warps to its next target in turn, and from
@@ -292,12 +320,16 @@ func (p *Map) worldView(w, h int) string {
 	crumb := ui.Strong.Render("RTFM") + ui.Muted.Render(ui.G.Crumb) + wd.Title
 	out := []string{ui.Spread(crumb, tally(p.prog.Sum(wd)), w), ui.Rule(w)}
 	room := max(h-len(out)-1, 0)
-	keys := []string{"←/→", "path", "↑/↓", "row", "enter", "level", "r", "read", "t", "trial",
+	keys := []string{"h/l", "path", "j/k", "row", "n", "next", "enter", "level", "r", "read", "t", "trial",
 		"w", "warp", "tab", "world", "i", "index", "q", "map"}
 	if p.linked {
 		keys[len(keys)-1] = "back"
 	}
-	bar := ui.StatusBar(w, wd.Title, keys...)
+	left := wd.Title
+	if l, _, ok := p.next(); ok {
+		left = "next " + ui.G.Cursor + " " + l.Title
+	}
+	bar := ui.StatusBar(w, left, keys...)
 
 	s := p.spot()
 	tag := wd.Title + ui.G.Crumb + wd.Regions[s.region].Title
@@ -616,13 +648,23 @@ func (p *Map) card() []string {
 	}
 	out := []string{what, ui.Muted.Render("needs ") + p.needs(l)}
 
-	var did []string
-	if lp.Opened {
-		did = append(did, "opened")
+	// The level's loop, a step each and ✓ once done: open the page, solve
+	// some practice (two, or all when fewer), pass the trial. It guides;
+	// nothing waits on a step. A page has no loop, only what it holds.
+	step := func(done bool, s string) string {
+		if done {
+			return ui.OK.Render(ui.G.Pass + " " + s)
+		}
+		return s
 	}
+	read := step(false, "read")
+	if lp.Opened {
+		read = step(true, "opened") // opening is not reading (plan Q4)
+	}
+	did := []string{read}
 	switch n := len(l.Playable); {
 	case n > 0 && l.Kind.HasTrial():
-		did = append(did, fmt.Sprintf("practice %d/%d solved", lp.Solved, n))
+		did = append(did, step(lp.Solved >= min(2, n), fmt.Sprintf("practice %d/%d", lp.Solved, n)))
 	case n > 0:
 		did = append(did, units.Plural(n, "example")+" from the guide")
 	}
@@ -632,14 +674,15 @@ func (p *Map) card() []string {
 		did = append(did, "trial in "+p.titles([]string{earned.Module})+ui.Muted.Render(": t goes there"))
 	case l.Kind == curriculum.PageLevel:
 	case lp.Passed:
-		did = append(did, ui.OK.Render(ui.G.Pass+" trial passed"))
+		did = append(did, step(true, "trial"))
 	default:
 		did = append(did, fmt.Sprintf("trial %s + %d blind", units.Plural(curriculum.DefaultUnitSize, "door"), integrationDoors))
 	}
-	if len(did) == 0 {
-		did = append(did, ui.Muted.Render("r opens it in the pager"))
+	sep := ui.Muted.Render(" " + ui.G.Arrow + " ")
+	if !l.Kind.HasTrial() {
+		sep = ui.Muted.Render(ui.G.Sep)
 	}
-	out = append(out, strings.Join(did, ui.Muted.Render(ui.G.Sep)))
+	out = append(out, strings.Join(did, sep))
 
 	switch {
 	case len(l.Warps) > 0:
@@ -732,7 +775,11 @@ func (p *Map) overworld(w, h int) string {
 	out = append(out, "", "",
 		ui.Clip("  "+capMark(held > 0)+fmt.Sprintf(" %d/%d capabilities held", held, total)+
 			ui.Muted.Render(ui.G.Sep+"each opens topic exits on the boot map"), w))
-	bar := ui.StatusBar(w, "rtfm(7)", "↑/↓", "world", "enter", "open", "i", "index", "q", "quit")
+	left := "rtfm(7)"
+	if l, wi, ok := p.next(); ok {
+		left = "next " + ui.G.Cursor + " " + p.atlas.Worlds[wi].Title + ui.G.Crumb + l.Title
+	}
+	bar := ui.StatusBar(w, left, "j/k", "world", "enter", "open", "n", "next", "i", "index", "q", "quit")
 	return ui.Layout(w, h, out, bar)
 }
 

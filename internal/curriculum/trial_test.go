@@ -53,8 +53,10 @@ func TestTrialUnit(t *testing.T) {
 		// One per label, easiest labels first; within Easy the starred
 		// non-focus problem beats the focus problem; N/A sorts last.
 		{"default", nil, DefaultUnitSize, ids("usaco:5", "usaco:3", "cses:10", "usaco:7")},
-		{"second round", nil, 7, ids("usaco:5", "usaco:3", "usaco:1", "cses:10", "usaco:7", "usaco:6", "usaco:8")},
-		{"judgeable filter", noCSES, 4, ids("usaco:5", "usaco:3", "usaco:7", "usaco:6")},
+		// Insane (usaco:6) is stretch: in a unit only once the rest run out.
+		{"second round", nil, 7, ids("usaco:5", "usaco:3", "usaco:1", "cses:10", "usaco:7", "usaco:4", "usaco:8")},
+		{"judgeable filter", noCSES, 4, ids("usaco:5", "usaco:3", "usaco:7", "usaco:8")},
+		{"stretch last", func(id catalog.ID) bool { return id == "usaco:6" || id == "usaco:2" }, 4, ids("usaco:2", "usaco:6")},
 		{"everything, deduplicated", nil, 100, ids("usaco:5", "usaco:3", "usaco:1", "usaco:2", "cses:10", "usaco:7", "usaco:4", "usaco:6", "usaco:8")},
 		{"nothing judgeable", func(catalog.ID) bool { return false }, 4, nil},
 	} {

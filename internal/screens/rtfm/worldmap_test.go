@@ -345,34 +345,65 @@ func TestMapNothingHeld(t *testing.T) {
 	}
 }
 
-// Meta refreshed under an open level (back from a practice problem) keeps
-// the level's cursor where it was, and shows the solve.
+// Back from a practice AC (Meta refreshed under the open level), the cursor
+// keeps its row: the solved problem moves down among the solved ones, so
+// the row holds the next problem to try, and the solve shows.
 func TestMapRefreshKeepsTheLevel(t *testing.T) {
 	c := loadCurriculum(t)
 	m := rtfm.NewMap(c, fixture.Meta(), fixture.Judgeable, fixture.Lookup)
 	m.Open("two-pointers")
 	press(t, m, "enter", "p", "j")
-	cursorLine := func() string {
-		for _, l := range strings.Split(ansi.Strip(m.View(80, 24)), "\n") {
-			if strings.Contains(l, ui.G.Cursor) {
-				return l
-			}
-		}
-		return ""
+	lines := func() []string { return strings.Split(ansi.Strip(m.View(80, 24)), "\n") }
+	cursor := func(ls []string) int {
+		return slices.IndexFunc(ls, func(l string) bool { return strings.Contains(l, ui.G.Cursor) })
 	}
-	// The line under the cursor, the ✓ a solve adds left out.
-	norm := func(s string) string { return strings.Join(strings.Fields(strings.ReplaceAll(s, ui.G.Pass, "")), " ") }
-	before := norm(cursorLine())
-	if before == "" || strings.Contains(before, "READ") {
-		t.Fatalf("p j put the cursor on %q, want a problem", before)
+	norm := func(s string) string { return strings.Join(strings.Fields(s), " ") }
+	ls := lines()
+	at := cursor(ls)
+	if at < 0 || at+1 >= len(ls) || !strings.Contains(ls[at], "Paired Up") {
+		t.Fatalf("p j put the cursor on %q, want Paired Up (usaco:738)", ls[max(at, 0)])
 	}
+	next := norm(ls[at+1])
 	meta := fixture.Meta()
 	meta.Solves = []game.Solve{{Problem: "usaco:738", Upsolve: true}}
 	m.Refresh(meta)
-	if after := norm(cursorLine()); after != before {
-		t.Errorf("the cursor moved: before %q, after %q", before, after)
+	ls = lines()
+	if got := strings.TrimPrefix(norm(ls[cursor(ls)]), ui.G.Cursor+" "); got != next {
+		t.Errorf("after the solve the cursor is on %q, want the next problem %q", got, next)
 	}
-	if !strings.Contains(ansi.Strip(m.View(80, 24)), "1/") {
-		t.Errorf("the solve does not show:\n%s", ansi.Strip(m.View(80, 24)))
+	if i := slices.IndexFunc(ls, func(l string) bool { return strings.Contains(l, "Paired Up") }); i < 0 || !strings.Contains(ls[i], ui.G.Pass) {
+		t.Errorf("Paired Up is not ticked:\n%s", strings.Join(ls, "\n"))
+	}
+}
+
+// n goes to the next trial: the first in guide order not passed, past
+// General and past pages, from anywhere on the map, and the bar names it.
+func TestMapNext(t *testing.T) {
+	a := fixture.Atlas()
+	m := rtfm.NewMapOf(a, game.Meta{})
+	if v := ansi.Strip(m.View(80, 24)); !strings.Contains(v, "next "+ui.G.Cursor+" Bronze"+ui.G.Crumb+"Simulation") {
+		t.Errorf("a new player's overworld bar:\n%s", v)
+	}
+	press(t, m, "n")
+	if got := m.Selected(); got != "simulation" {
+		t.Errorf("n on a new player's map goes to %q, want simulation (Bronze's first trial)", got)
+	}
+
+	meta := midSilver(t, a)
+	m = rtfm.NewMapOf(a, meta)
+	press(t, m, "n")
+	got := m.Selected()
+	var order []curriculum.Level
+	for _, w := range a.Worlds[1:] { // past General
+		order = append(order, w.Levels()...)
+	}
+	i := slices.IndexFunc(order, func(l curriculum.Level) bool { return l.Module == got })
+	if i < 0 || !order[i].Kind.HasTrial() || slices.Contains(meta.TrialsPassed, got) {
+		t.Fatalf("n goes to %q, want a trial not passed", got)
+	}
+	for _, l := range order[:i] {
+		if l.Kind.HasTrial() && !slices.Contains(meta.TrialsPassed, l.Module) {
+			t.Errorf("n skips %s, a trial before %s not passed", l.Module, got)
+		}
 	}
 }

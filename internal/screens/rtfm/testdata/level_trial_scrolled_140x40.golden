@@ -4,21 +4,21 @@ RTFM › Silver › Sorting & Searching › Two Pointers                        
  Iterating two monotonic pointers across an array to search for a pair of indices satisfying some condition in linear time.
 
    READ      the module, in the reader                                                                                                opened
-   PRACTICE  1/4 solved
-             ✓ Paired Up                                Silver   Easy       ◆1350
-               Diamond Collector                        Silver   Medium     ◆1500
-               Sleepy Cow Herding                       Silver   Medium
-               Cow Checkups                             Silver   Hard
-               Sum of Two Values                        CSES     Very Easy   link
-               Books                                    CF       Very Easy   link
-               Subarray Sums I                          CSES     Very Easy   link
-               Sum of Three Values                      CSES     Easy        link
- ▸             Cellular Network                         CF       Easy        link
-               They Are Everywhere                      CF       Easy        link
-               Quiz Master                              CF       Easy        link
-               An impassioned circulation of affection  CF       Medium      link
-               2010 - A Huge Tower                      CEOI     Hard        link
-               MEX vs MED                               CF       Hard        link
+   PRACTICE  1/4 solved · near you ◆1432–1732
+               ★ Diamond Collector                        Silver   Medium     ◆1500
+                 Sleepy Cow Herding                       Silver   Medium
+                 Cow Checkups                             Silver   Hard
+             ✓   Paired Up                                Silver   Easy       ◆1350
+               ★ Sum of Two Values                        CSES     Very Easy   link
+               ★ Books                                    CF       Very Easy   link
+                 Subarray Sums I                          CSES     Very Easy   link
+               ★ Sum of Three Values                      CSES     Easy        link
+ ▸               Cellular Network                         CF       Easy        link
+                 They Are Everywhere                      CF       Easy        link
+                 Quiz Master                              CF       Easy        link
+                 An impassioned circulation of affection  CF       Medium      link
+                 2010 - A Huge Tower                      CEOI     Hard        link
+                 MEX vs MED                               CF       Hard        link
    TRIAL     1  Paired Up           Easy       ◆1350  2017 US Open, Silver P1
              2  Diamond Collector   Medium     ◆1500  2016 US Open, Silver P2
              3  Sleepy Cow Herding  Medium

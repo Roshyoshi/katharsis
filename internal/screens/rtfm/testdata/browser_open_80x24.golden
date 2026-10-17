@@ -6,10 +6,10 @@ NAME
        "Casework," sighs the Mock Turtle. "We did it at sea."
 
 TRIAL                         unit: Easy → Hard, tags shown · integration: blind
-       1  Sleepy Cow Herding  Medium
-       2  Fence Painting      Medium
-       3  Leaders             Hard
-       4  Spaced Out          Very Hard
+       1  Sleepy Cow Herding   Medium
+       2  Fence Painting       Medium
+       3  Social Distancing I  Medium
+       4  Leaders              Hard
        +  2 blind integration doors · Userland · ◆1000–1300
        ○  pass → ✓ only: grants no capability, Userland is open to every boot
 

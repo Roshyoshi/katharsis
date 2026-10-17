@@ -2,13 +2,13 @@ RTFM / Silver / Sorting & Searching / Two Pointers                [x] CAP_TWOPTR
 --------------------------------------------------------------------------------
  Two Pointers  **.. not frequent | *1350-1650 | The Sliding Window
  > READ      the module, in the reader                                    opened
-   PRACTICE  1/4 solved
-             + Paired Up                    Silver   Easy       *1350
-               Diamond Collector            Silver   Medium     *1500
-               Sleepy Cow Herding           Silver   Medium
-               Cow Checkups                 Silver   Hard
-               Sum of Two Values            CSES     Very Easy   link
-               Books                        CF       Very Easy   link  +8 more
+   PRACTICE  1/4 solved | near you *1432-1732
+               * Diamond Collector          Silver   Medium     *1500
+                 Sleepy Cow Herding         Silver   Medium
+                 Cow Checkups               Silver   Hard
+             +   Paired Up                  Silver   Easy       *1350
+               * Sum of Two Values          CSES     Very Easy   link
+               * Books                      CF       Very Easy   link  +8 more
    TRIAL     1  Paired Up           Easy       *1350  2017 US Open, Silver P1
              2  Diamond Collector   Medium     *1500  2016 US Open, Silver P2
              3  Sleepy Cow Herding  Medium

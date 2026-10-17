@@ -3,7 +3,7 @@ RTFM / Bronze                                                                   
      Getting Started 1/1                    Complete Search 2/2       Sorting & Sets 2/2      +- Time Comple...  Bronze / Getting Started -+
     >= ---------  = ---------  + ---------  + ---------  + ---------  + -----------+          | = reading only                             |
                   [x]                                                              |          | needs nothing                              |
-     Time Comp... Introduct... Simulation   Basic Com... Complete ... Introduct... |          | r opens it in the pager                    |
+     Time Comp... Introduct... Simulation   Basic Com... Complete ... Introduct... |          | read                                       |
                                                                                    |          +--------------------------------------------+
      Additional 4/5                                                   Sorting &... |
  +-  . ---------  + ---------  + ---------  + ---------  + ---------  + -----------+
@@ -37,4 +37,4 @@ RTFM / Bronze                                                                   
 
 
 
- Bronze                                          ←/→ path | ↑/↓ row | enter level | r read | t trial | w warp | tab world | i index | q map
+ next > Ad Hoc Problems                 h/l path | j/k row | n next | enter level | r read | t trial | w warp | tab world | i index | q map

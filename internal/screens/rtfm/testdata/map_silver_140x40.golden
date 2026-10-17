@@ -5,7 +5,7 @@ RTFM › Silver                                                                 
      ■            ■            ■            □            □                         │          │ frequent                                   │
      Introductio… More on Pre… Two Pointers Binary Sear… Binary Sear… Custom Comp… │          │ needs Introduction to Graphs (Bronze) ✓ ·  │
                                                                                    │          │ Complete Search with Recursion (Bronze) ✓  │
-     Graphs 0/4                                          Sorting & Searching 1/6   │          │ practice 0/14 solved · trial 4 doors + 2   │
+     Graphs 0/4                                          Sorting & Searching 1/6   │          │ read → practice 0/14 → trial 4 doors + 2   │
  ╭─  ○ ─────────  ○ ─────────  ○ ───────── ▸○ ─────────  ○ ─────────  ○ ───────────╯          │ blind                                      │
  │   ■            □ ↑          ■            ■ ↑          ■                                    │ ↑ opens Eulerian Tours (Advanced), String  │
  │   Introductio… Introductio… Flood Fill   Graph Trave… Priority Qu… Greedy Algo…            │ Searching (Advanced)                       │
@@ -37,4 +37,4 @@ RTFM › Silver                                                                 
 
 
 
- Silver                                          ←/→ path · ↑/↓ row · enter level · r read · t trial · w warp · tab world · i index · q map
+ next ▸ Ad Hoc Problems                 h/l path · j/k row · n next · enter level · r read · t trial · w warp · tab world · i index · q map

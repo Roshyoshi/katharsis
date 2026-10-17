@@ -3,7 +3,7 @@ RTFM › Bronze                                                                 
      Getting Started 1/1                    Complete Search 2/2       Sorting & Sets 2/2      ╭─ Time Complexi…  Bronze › Getting Started ─╮
     ▸▪ ─────────  ▪ ─────────  ✓ ─────────  ✓ ─────────  ✓ ─────────  ✓ ───────────╮          │ ▪ reading only                             │
                   ■                                                                │          │ needs nothing                              │
-     Time Comple… Introductio… Simulation   Basic Compl… Complete Se… Introductio… │          │ r opens it in the pager                    │
+     Time Comple… Introductio… Simulation   Basic Compl… Complete Se… Introductio… │          │ read                                       │
                                                                                    │          ╰────────────────────────────────────────────╯
      Additional 4/5                                                   Sorting & S… │
  ╭─  ○ ─────────  ✓ ─────────  ✓ ─────────  ✓ ─────────  ✓ ─────────  ✓ ───────────╯
@@ -37,4 +37,4 @@ RTFM › Bronze                                                                 
 
 
 
- Bronze                                          ←/→ path · ↑/↓ row · enter level · r read · t trial · w warp · tab world · i index · q map
+ next ▸ Ad Hoc Problems                 h/l path · j/k row · n next · enter level · r read · t trial · w warp · tab world · i index · q map

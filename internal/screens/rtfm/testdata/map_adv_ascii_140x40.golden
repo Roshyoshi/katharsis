@@ -4,7 +4,7 @@ RTFM / Advanced                                                                 
      . :::::::::  = :::::::::  . ---------  = ---------  . ---------  . -----------+          | [x] CAP_GRAPH -> Routing Table | .... has  |
      [x]          [x]          [x]          [x]          [x]          [x]          |          | not appeared                               |
      Max Suffi... Wavelet Tree Counting ... Segment T... Persisten... Treaps       |          | needs Graph Traversal (Silver)             |
-                                                                                   |          | practice 0/3 solved | trial 4 doors + 2    |
+                                                                                   |          | read -> practice 0/3 -> trial 4 doors + 2  |
      Graphs 0/5                             Convexity 0/3                          |          | blind                                      |
  +-  . --------- >. :::::::::  . :::::::::  . ---------  . ---------  . -----------+          | ^ from Graph Traversal (Silver)            |
  |   [x]          [x]          [ ]          [ ]                       [x]                     +--------------------------------------------+
@@ -37,4 +37,4 @@ RTFM / Advanced                                                                 
 
 
 
- Advanced                                        ←/→ path | ↑/↓ row | enter level | r read | t trial | w warp | tab world | i index | q map
+ next > Ad Hoc Problems                 h/l path | j/k row | n next | enter level | r read | t trial | w warp | tab world | i index | q map

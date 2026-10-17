@@ -19,6 +19,6 @@ RTFM / Bronze                               trials 9/11 | [x] 3/3 | solved 12/98
 +- Time Complexity --------------------------------- Bronze / Getting Started -+
 | = reading only                                                               |
 | needs nothing                                                                |
-| r opens it in the pager                                                      |
+| read                                                                         |
 +------------------------------------------------------------------------------+
- Bronze    ←/→ path | ↑/↓ row | enter level | r read | t trial | w warp | q map
+ next > Ad Hoc Problems       h/l path | j/k row | n next | enter level | q map

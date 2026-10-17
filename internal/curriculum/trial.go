@@ -140,21 +140,35 @@ func TrialForN(m Module, judgeable func(catalog.ID) bool, n int) Trial {
 		sort.SliceStable(g, func(i, j int) bool { return rankWithin(g[i], g[j]) })
 	}
 
+	// The unit ramps Easy → Hard (DESIGN.md "Learn mode"). The guide's Very
+	// Hard and Insane problems are its stretch: they fill a unit only when
+	// the module has too few others, as the module's own problems still
+	// beat the catalog's filler.
+	var ramp, stretch []int
+	for _, r := range labels {
+		if r == difficultyRank["Very Hard"] || r == difficultyRank["Insane"] {
+			stretch = append(stretch, r)
+		} else {
+			ramp = append(ramp, r)
+		}
+	}
 	var picked []candidate
-	for len(picked) < n {
-		progress := false
-		for _, r := range labels {
-			if len(picked) == n {
+	for _, pass := range [][]int{ramp, stretch} {
+		for len(picked) < n {
+			progress := false
+			for _, r := range pass {
+				if len(picked) == n {
+					break
+				}
+				if g := byLabel[r]; len(g) > 0 {
+					picked = append(picked, g[0])
+					byLabel[r] = g[1:]
+					progress = true
+				}
+			}
+			if !progress {
 				break
 			}
-			if g := byLabel[r]; len(g) > 0 {
-				picked = append(picked, g[0])
-				byLabel[r] = g[1:]
-				progress = true
-			}
-		}
-		if !progress {
-			break
 		}
 	}
 	sort.SliceStable(picked, func(i, j int) bool {

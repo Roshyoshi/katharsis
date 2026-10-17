@@ -153,8 +153,8 @@ func TestLevelIntents(t *testing.T) {
 	}{
 		{"enter on READ", trialLevel, []string{"enter"}, screens.OpenModule{Module: "two-pointers"}},
 		{"r", trialLevel, []string{"j", "r"}, screens.OpenModule{Module: "two-pointers"}},
-		{"enter on a problem", trialLevel, []string{"j", "enter"}, screens.Upsolve{Problem: "usaco:738"}},
-		{"p then enter", trialLevel, []string{"p", "j", "enter"}, screens.Upsolve{Problem: "usaco:643"}},
+		{"enter on a problem", trialLevel, []string{"j", "enter"}, screens.Upsolve{Problem: "usaco:643"}},
+		{"p then enter", trialLevel, []string{"p", "j", "enter"}, screens.Upsolve{Problem: "usaco:918"}},
 		{"t", trialLevel, []string{"t"}, screens.StartTrial{Module: "two-pointers"}},
 		{"enter on TRIAL", trialLevel, []string{"G", "enter"}, screens.StartTrial{Module: "two-pointers"}},
 		{"castle t", castleLevel, []string{"t"}, screens.StartTrial{Module: "bronze-conclusion"}},
@@ -173,6 +173,52 @@ func TestLevelIntents(t *testing.T) {
 	for _, k := range []string{"q", "esc", "h", "left", "backspace"} {
 		if msg := press(t, trialLevel(t), k); msg != nil {
 			t.Errorf("%s emitted %#v, want nothing", k, msg)
+		}
+	}
+}
+
+// PRACTICE runs in the order to try it: unsolved before solved, the
+// guide's starred (★) first among the unsolved, the stretch (Very Hard,
+// Insane) after the rest, links last.
+func TestPracticeOrder(t *testing.T) {
+	for name, mk := range map[string]func(testing.TB) *rtfm.Level{"trial": trialLevel, "castle": castleLevel, "page": pageLevel} {
+		v := mk(t)
+		v.Practice()
+		lines := strings.Split(plain(v.View(140, 60)), "\n")
+		var rows []string
+		in := false
+		for _, l := range lines {
+			switch {
+			case strings.Contains(l, "PRACTICE") || strings.Contains(l, "EXAMPLES"):
+				in = true
+				continue
+			case strings.Contains(l, "TRIAL") || strings.Contains(l, "SEE ALSO"):
+				in = false
+			}
+			if in && strings.TrimSpace(l) != "" {
+				rows = append(rows, l)
+			}
+		}
+		if len(rows) < 2 {
+			t.Fatalf("%s: %d practice rows, too few to order", name, len(rows))
+		}
+		rank := func(l string) int {
+			switch {
+			case strings.Contains(l, "link"):
+				return 4
+			case strings.Contains(l, "Very Hard") || strings.Contains(l, "Insane"):
+				return 3
+			case strings.Contains(l, ui.G.Pass):
+				return 2
+			case strings.Contains(l, ui.G.Star):
+				return 0
+			}
+			return 1
+		}
+		for i := 1; i < len(rows); i++ {
+			if rank(rows[i]) < rank(rows[i-1]) {
+				t.Errorf("%s: %q comes after %q", name, strings.TrimSpace(rows[i]), strings.TrimSpace(rows[i-1]))
+			}
 		}
 	}
 }

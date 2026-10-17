@@ -154,7 +154,13 @@ with a problem the game can judge has a trial; one on an ungated topic
 grants only its ✓. Nothing is locked: the path lights behind what is
 cleared, and ↑ marks the guide's three world-skipping prerequisite edges.
 Enter opens the level: READ, PRACTICE (untimed upsolves, 0 B) and TRIAL.
-i opens the man index, which searches.
+i opens the man index, which searches. n goes to the next trial in guide
+order not passed; a card shows the level's loop (read → practice →
+trial, ✓ as each is done). PRACTICE runs in the order to try it: the
+guide's ★ picks, then easiest by rating, the solved, then the stretch
+(Very Hard, Insane). A trial's unit ramps Easy → Hard; stretch problems
+fill it only when the module has too few others. General's problems are
+the pages' examples, not practice.
 
 ## Content
 

@@ -3,6 +3,7 @@ package rtfm
 import (
 	"cmp"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 
@@ -37,19 +38,22 @@ type Level struct {
 	warps  string   // what the level opens a shortcut to, "" for nothing
 	items  []practiceItem
 	solved int // of the playable items
+	rating int // the player's, for the practice that is near it
 
 	cur  int // 0 is READ, 1..len(items) PRACTICE's rows, then TRIAL
 	ptop int // first PRACTICE row shown, when the list does not fit
 }
 
 // practiceItem is one PRACTICE row: a problem the game can judge, or one
-// it cannot (external), which only opens its URL.
+// it cannot (external), which only opens its URL. starred is the guide's
+// pick; stretch a Very Hard or Insane label, the guide's for later.
 type practiceItem struct {
 	id                   catalog.ID // "" for an external problem
 	title, source, label string
 	url                  string
 	rating               int
 	solved               bool
+	starred, stretch     bool
 }
 
 func (it practiceItem) playable() bool { return it.id != "" }
@@ -84,6 +88,7 @@ func NewLevel(c *curriculum.Curriculum, l curriculum.Level, region string, m gam
 	}
 	v.warps = warpText(c, l.Warps)
 	v.items, v.solved = practiceItems(mod, l.Playable, m, lookup)
+	v.rating = int(m.Rating)
 	return v
 }
 
@@ -115,19 +120,22 @@ func warpText(c *curriculum.Curriculum, ids []string) string {
 	return strings.Join(parts, ui.G.Sep)
 }
 
-// practiceItems lists mod's problems: the playable ones first, each once,
-// marked solved when the player solved it anywhere, then the external
-// ones, each once.
+// practiceItems lists mod's problems, each once (starred if the guide
+// stars any of its listings), in the order to try them: the playable ones
+// not yet solved, the guide's starred first and then the easiest by
+// rating; those solved anywhere; the stretch ones (Very Hard, Insane);
+// then the external ones in the guide's order.
 func practiceItems(mod curriculum.Module, playable []catalog.ID, m game.Meta, lookup screens.Lookup) (items []practiceItem, solved int) {
 	done := map[catalog.ID]bool{}
 	for _, s := range m.Solves {
 		done[s.Problem] = true
 	}
-	var ext []practiceItem
-	seen := map[string]bool{}
+	var all []practiceItem
+	at := map[string]int{}
 	for _, list := range mod.Problems {
 		for _, r := range list.Problems {
-			it := practiceItem{title: r.Name, source: r.Source, label: r.Difficulty, url: r.URL}
+			it := practiceItem{title: r.Name, source: r.Source, label: r.Difficulty, url: r.URL, starred: r.Starred,
+				stretch: r.Difficulty == "Very Hard" || r.Difficulty == "Insane"}
 			key := r.UniqueID
 			if slices.Contains(playable, r.ID) {
 				key = string(r.ID)
@@ -139,21 +147,46 @@ func practiceItems(mod curriculum.Module, playable []catalog.ID, m game.Meta, lo
 					}
 				}
 			}
-			if seen[key] {
+			if i, dup := at[key]; dup {
+				all[i].starred = all[i].starred || it.starred
 				continue
 			}
-			seen[key] = true
-			switch {
-			case it.playable():
-				items = append(items, it)
-				if it.solved {
-					solved++
-				}
-			default:
-				ext = append(ext, it)
-			}
+			at[key] = len(all)
+			all = append(all, it)
 		}
 	}
+	var ext []practiceItem
+	for _, it := range all {
+		switch {
+		case it.playable():
+			items = append(items, it)
+			if it.solved {
+				solved++
+			}
+		default:
+			ext = append(ext, it)
+		}
+	}
+	group := func(it practiceItem) int {
+		switch {
+		case it.stretch:
+			return 2
+		case it.solved:
+			return 1
+		}
+		return 0
+	}
+	rated := func(it practiceItem) int { return cmp.Or(it.rating, math.MaxInt) } // unrated last
+	slices.SortStableFunc(items, func(a, b practiceItem) int {
+		star := 0
+		switch {
+		case a.starred && !b.starred:
+			star = -1
+		case b.starred && !a.starred:
+			star = 1
+		}
+		return cmp.Or(cmp.Compare(group(a), group(b)), star, cmp.Compare(rated(a), rated(b)))
+	})
 	return append(items, ext...), solved
 }
 
@@ -350,7 +383,10 @@ func (v *Level) practiceLines(w, n int) []string {
 			head = ui.Muted.Render("from the guide, not practice: enter opens one untimed")
 		}
 	case playable > 0:
-		head = fmt.Sprintf("%d/%d solved", v.solved, playable)
+		// From the player's rating to 300 over it: practice that stretches
+		// without breaking (the list runs easiest first, so it is a block).
+		head = fmt.Sprintf("%d/%d solved", v.solved, playable) +
+			ui.Muted.Render(ui.G.Sep+"near you ") + ui.RatingBand(v.rating, v.rating+300)
 	case len(v.items) > 0:
 		head = ui.Muted.Render("none the game can judge: o opens one")
 	default:
@@ -376,13 +412,16 @@ func (v *Level) practiceLines(w, n int) []string {
 	if n < len(v.items) {
 		more = len(" +999 above")
 	}
-	fixed := contentCol + 2 + colGap + srcW + colGap + diffW + colGap + ratingW
+	fixed := contentCol + 4 + colGap + srcW + colGap + diffW + colGap + ratingW // ✓ ★
 	titleW = max(min(titleW, w-fixed-more), 8)
 	for i := v.ptop; i < v.ptop+n; i++ {
 		it := v.items[i]
-		mark := " "
+		mark, star := " ", " "
 		if it.solved {
 			mark = ui.OK.Render(ui.G.Pass)
+		}
+		if it.starred {
+			star = ui.Warn.Render(ui.G.Star) // the guide's pick
 		}
 		rating := ""
 		switch {
@@ -391,10 +430,11 @@ func (v *Level) practiceLines(w, n int) []string {
 		case it.rating > 0:
 			rating = ui.Rating(it.rating)
 		}
-		line := mark + " " + ui.Fit(it.title, titleW) + strings.Repeat(" ", colGap) +
+		line := mark + " " + star + " " + ui.Fit(it.title, titleW) + strings.Repeat(" ", colGap) +
 			ui.Fit(it.source, srcW) + strings.Repeat(" ", colGap) + ui.Fit(it.label, diffW) +
 			strings.Repeat(" ", colGap) + ui.AlignRight(rating, ratingW)
-		if !it.playable() {
+		// Links, and the stretch its label already names, step back.
+		if !it.playable() || it.stretch {
 			line = ui.Muted.Render(line)
 		}
 		switch {
