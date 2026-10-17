@@ -244,6 +244,7 @@ func NewGrub(c GrubConfig) *Menu {
 		entry{label: "git log", msg: screens.OpenLog{}, note: sub("gitlog")},
 		entry{label: "top", msg: screens.OpenTop{}, note: sub("top")},
 		entry{label: "find / -perm -4000", msg: screens.OpenSetuid{}, note: sub("setuid")},
+		entry{label: "passwd", msg: screens.OpenSettings{}, note: sub("passwd")},
 		entry{label: "poweroff", msg: screens.Quit{}, note: sub("poweroff")},
 	)
 	m.stack = []*page{{entries: es}}

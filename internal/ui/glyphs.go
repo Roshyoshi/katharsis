@@ -44,6 +44,7 @@ type Glyphs struct {
 	Star       string // achievement; a frequency level reached
 	StarOff    string // a frequency level not reached
 	Ellipsis   string // marks a cut
+	Mask       string // one character of a password, masked
 	Times      string // multiplier prefix: "×1.5"
 	Approx     string // estimate prefix: "≈74%"
 	Range      string // between a range's ends: "850–1050"
@@ -70,7 +71,7 @@ var Unicode = Glyphs{
 	Boss: "⚔", Mystery: "?", Blind: "◌", Cursed: "☠", Regression: "↺", Retreat: "↩",
 	Here: "●", Ahead: "○", Rating: "◆", AtMost: "≤", Cap: "■", CapLocked: "□",
 	Cursor: "▸", FoldOpen: "▾", FoldShut: "▹", Crumb: " › ", Sep: " · ",
-	Fill: "▓", Empty: "░", Star: "★", StarOff: "☆", Ellipsis: "…",
+	Fill: "▓", Empty: "░", Star: "★", StarOff: "☆", Ellipsis: "…", Mask: "•",
 	Times: "×", Approx: "≈", Range: "–", Arrow: "→", Rule: "─",
 	Page: "▪", Warp: "↑", Dotted: "┄", DottedV: "┆",
 	Heat: [5]string{"·", "░", "▒", "▓", "█"},
@@ -86,7 +87,7 @@ var ASCII = Glyphs{
 	Boss: "X", Mystery: "M", Blind: "B", Cursed: "C", Regression: "R", Retreat: "<",
 	Here: "@", Ahead: ".", Rating: "*", AtMost: "<=", Cap: "[x]", CapLocked: "[ ]",
 	Cursor: ">", FoldOpen: "-", FoldShut: "+", Crumb: " / ", Sep: " | ",
-	Fill: "#", Empty: ".", Star: "*", StarOff: ".", Ellipsis: "...",
+	Fill: "#", Empty: ".", Star: "*", StarOff: ".", Ellipsis: "...", Mask: "*",
 	Times: "x", Approx: "~", Range: "-", Arrow: "->", Rule: "-",
 	Page: "=", Warp: "^", Dotted: ":", DottedV: ":",
 	Heat:   [5]string{" ", ".", ":", "*", "#"},

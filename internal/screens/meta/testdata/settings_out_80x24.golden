@@ -1,0 +1,24 @@
+passwd · settings and accounts
+
+SETTINGS · read-only here
+  session_budget   3h                      settings.toml (~/.config/katharsis)
+  setuid_notices   true                    default
+  setuid_spoilers  none                    default
+  sample_warnings  -Wall -Wextra -Wshadow  default
+  budget           1h                      flag --budget
+
+ACCOUNTS · logins the content sources need
+▸ CSES  not logged in  CSES problems in RTFM practice and trials
+
+
+
+
+
+
+
+
+
+
+
+
+j/k move · enter log in · q back

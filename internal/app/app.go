@@ -112,6 +112,11 @@ type Deps struct {
 	// Store.BackfillSetuid, for a test that fakes the bits; nil is them.
 	SetuidCheck    func(m *game.Meta, s *game.State, now time.Time) []game.SetuidBit
 	SetuidBackfill func(m *game.Meta, now time.Time) ([]game.SetuidBit, error)
+	// Accounts are the logins passwd offers (settings.go); nil hides its
+	// accounts section. Settings lists the settings in effect there; nil
+	// lists none.
+	Accounts []Account
+	Settings func() []Setting
 }
 
 // Model is the root tea.Model.

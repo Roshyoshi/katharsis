@@ -1,0 +1,40 @@
+passwd · settings and accounts
+
+SETTINGS · read-only here
+  session_budget   3h                      settings.toml (~/.config/katharsis)
+▸ setuid_notices   true                    default
+  setuid_spoilers  none                    default
+  sample_warnings  -Wall -Wextra -Wshadow  default
+  budget           1h                      flag --budget
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+setuid_notices = true (default) · settings.toml and the flags are read at launch
+j/k move · q back

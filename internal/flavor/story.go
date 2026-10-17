@@ -127,6 +127,7 @@ The Wizards are still passing the ball. Eval. Apply. Eval.
 	"grub.subtitle.top":             fixedOf(`"Who are you?" said the Caterpillar.`),
 	"grub.subtitle.poweroff":        fixedOf(`"Wake up, Alice dear!" The Rabbit will wait. Late, but he'll wait.`),
 	"grub.subtitle.setuid":          fixedOf("Nobody checks your privileges. Somebody keeps a list."),
+	"grub.subtitle.passwd":          fixedOf("settings, and who you are to the doors that ask"),
 
 	// ---- Story beats ----
 	"story.prologue": blockOf(`

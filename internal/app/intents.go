@@ -47,6 +47,10 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 		return m.openTop(), true
 	case screens.OpenSetuid, meta.SetuidHint, meta.SetuidNotices:
 		return m.setuidIntent(msg), true
+	case screens.OpenSettings:
+		return m.openSettings(), true
+	case meta.AccountDone:
+		return m.accountDone(msg), true
 	case screens.OpenCredits:
 		return m.openCredits(), true
 	case screens.OpenLearn:

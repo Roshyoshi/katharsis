@@ -220,7 +220,7 @@ func TestFits(t *testing.T) {
 func TestGrubEntries(t *testing.T) {
 	// Entries top to bottom: prestige 2, the upsolves under it, named by
 	// the core dump (RT4), prestige 1, 0, nightly build, RTFM, other
-	// presets…, apt, git log, top, find / -perm -4000, poweroff.
+	// presets…, apt, git log, top, find / -perm -4000, passwd, poweroff.
 	down := func(n int) []string {
 		ks := make([]string, n)
 		for i := range ks {
@@ -248,7 +248,8 @@ func TestGrubEntries(t *testing.T) {
 		{"git log", append(down(8), "enter"), screens.OpenLog{}},
 		{"top", append(down(9), "enter"), screens.OpenTop{}},
 		{"setuid", append(down(10), "enter"), screens.OpenSetuid{}},
-		{"poweroff", append(down(11), "enter"), screens.Quit{}},
+		{"passwd", append(down(11), "enter"), screens.OpenSettings{}},
+		{"poweroff", append(down(12), "enter"), screens.Quit{}},
 		// The credits are a key, as real GRUB's command line is, in any menu.
 		{"c opens the credits", []string{"c"}, screens.OpenCredits{}},
 		{"c in a submenu too", append(down(6), "enter", "c"), screens.OpenCredits{}},
@@ -713,7 +714,7 @@ func TestASCIISeparators(t *testing.T) {
 	c.Away, c.Today, c.Budget = 5, 4*time.Hour, 3*time.Hour
 	for name, s := range map[string]screens.Screen{
 		"grub": meta.NewGrub(c), "log": log, "top": meta.NewTop(fixture.Stats()),
-		"shop": meta.NewShop(fixture.ShopConfig()), "prior": meta.NewPrior(),
+		"shop": meta.NewShop(fixture.ShopConfig()), "prior": meta.NewPrior(), "settings": settingsWith(cses()),
 	} {
 		for _, sz := range sizes {
 			if v := plain(s.View(sz[0], sz[1])); strings.Contains(v, "·") {

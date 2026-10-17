@@ -40,6 +40,7 @@ type (
 	OpenLog       struct{}                     // git log
 	OpenTop       struct{}                     // stats
 	OpenSetuid    struct{}                     // find / -perm -4000, the setuid bits
+	OpenSettings  struct{}                     // passwd: the settings in effect, the accounts
 	OpenCredits   struct{}                     // music, licenses, sources
 	Upsolve       struct{ Problem catalog.ID } // a core dump, a regression or RTFM practice
 	OpenStatement struct{ Problem catalog.ID }

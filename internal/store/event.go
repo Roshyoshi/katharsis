@@ -46,6 +46,7 @@ const (
 	EventAptInstall     = "apt_install"
 	EventWorthIt        = "worth_it"    // json answer: yes | no | skip
 	EventAlarmShown     = "alarm_shown" // json alarm: a retention alarm's name
+	EventAccount        = "account"     // json source, action: login | logout; never a password
 
 	// The setuid bits (docs/design/achievements.md §(h)), local only
 	// (GR12): their payloads are SetuidSet, SetuidOpen and SetuidHint.

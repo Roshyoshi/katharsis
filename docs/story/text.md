@@ -326,6 +326,12 @@ where: `find / -perm -4000`, the setuid bits' screen (`meta.NewSetuid`), GRUB's 
 Nobody checks your privileges. Somebody keeps a list.
 ```
 
+### grub.subtitle.passwd
+where: `passwd`, the settings screen (`meta.NewSettings`), GRUB's entry after `find / -perm -4000`: the settings in effect and the content sources' logins · when: every · pick: fixed
+```text
+settings, and who you are to the doors that ask
+```
+
 ---
 
 ## Story beats

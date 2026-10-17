@@ -682,7 +682,7 @@ func TestStoryFamilies(t *testing.T) {
 		"route.locked", "route.locked.prestige", "quit.warn")
 	// The setuid bits and the Trial (docs/design/achievements.md (f)-(h)): the
 	// GRUB entry, the Trial's card and its locked exit, the ending's beats.
-	add("", "grub.subtitle.setuid", "boss.enter."+game.TrialBoss, "route.locked.full")
+	add("", "grub.subtitle.passwd", "grub.subtitle.setuid", "boss.enter."+game.TrialBoss, "route.locked.full")
 	for i := 1; i <= 6; i++ {
 		add("", fmt.Sprintf("ending.wake.%d", i))
 	}
