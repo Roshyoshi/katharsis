@@ -30,6 +30,11 @@ const MODULE_ORDERING: { [key in SectionID]: Chapter[] } = {
       name: 'Additional',
       items: ['casework'],
     },
+    {
+      name: 'Conclusion',
+      description: 'Congratulations on making it this far!',
+      items: ['bronze-conclusion'],
+    },
   ],
   silver: [
     {

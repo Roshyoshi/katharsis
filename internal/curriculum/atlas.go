@@ -21,13 +21,18 @@ const (
 	// TrialLevel has a trial: a capability's, or for a module that grants
 	// none, one that clears the level only.
 	TrialLevel LevelKind = iota
-	// PageLevel is reading only: no problem the game can judge (General's
-	// pages, mostly).
+	// PageLevel is reading only: General's pages, and a module that
+	// grants no capability and lists no problem the game can judge. A
+	// module that grants one keeps its trial with nothing judgeable: the
+	// engine tops the whole unit up.
 	PageLevel
 	// CastleLevel is a division's conclusion: a mixed trial at the
 	// division's band, the world's gauntlet.
 	CastleLevel
 )
+
+// HasTrial reports whether a level of kind k has a trial to start.
+func (k LevelKind) HasTrial() bool { return k != PageLevel }
 
 // Level is one module on the map.
 type Level struct {
@@ -141,13 +146,22 @@ func (c *Curriculum) level(m Module, division string, judgeable func(catalog.ID)
 			}
 		}
 	}
-	switch {
-	case strings.HasSuffix(m.ID, "-conclusion"):
-		l.Kind = CastleLevel
-	case division == generalID || len(l.Playable) == 0:
-		l.Kind = PageLevel
-	}
+	l.Kind = levelKind(m.ID, division, len(l.Playable) > 0 || l.Capability != "")
 	return l
+}
+
+// levelKind is the kind of module id's level in division, given whether
+// it can hold a trial outside General: it lists a problem the game can
+// judge, or passing grants a capability. A conclusion is a castle even
+// with neither: its trial's unit is then all topped up.
+func levelKind(id, division string, trial bool) LevelKind {
+	switch {
+	case strings.HasSuffix(id, "-conclusion"):
+		return CastleLevel
+	case division == generalID || !trial:
+		return PageLevel
+	}
+	return TrialLevel
 }
 
 // warp marks the shortcuts, Super Mario World's Star Road: a module of the
@@ -241,7 +255,7 @@ func (p Progress) Sum(w World) WorldSum {
 	for _, l := range w.Levels() {
 		s.Levels++
 		lp := p[l.Module]
-		if l.Kind != PageLevel {
+		if l.Kind.HasTrial() {
 			s.Trials++
 			if lp.Passed {
 				s.Passed++

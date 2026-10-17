@@ -1,24 +1,24 @@
-RTFM › Advanced › Data Structures › Counting Minimums with Segment Tree
+RTFM › General › Language-Specific › Fast Input & Output
 ────────────────────────────────────────────────────────────────────────────────
- Counting Minimums with Segment Tree  ☆☆☆☆ has not appeared
- Querying for the minimum and number of occurrences of minimum in a range
+ Fast Input & Output
+ Demonstrates how I/O speed can be the difference between TLE and AC.
 
    READ      the module, in the reader
-   PRACTICE  none the game can judge: o opens one
- ▸             Area of Rectangles     CSES     Medium      link
-               Culture Code           CF       Easy        link
-               Zookeepers' Gathering  mBIT     Medium      link
-               2008 - Pyramid Base    IOI      Hard        link
-               Strange Tree           HR       Hard        link
-               Good Subsegments       CF       Very Hard   link
+   PRACTICE  0/1 solved
+ ▸             Robotic Cow Herd         Platin…  Insane
+               Soldier and Number Game  CF       Medium      link
+
+
+
+
 
 
 
 
 
  SEE ALSO    needs nothing
-“Counting Minimums with Segment Tree” by Benjamin Qi, Dustin Miao, USACO Guide
-(https://usaco.guide/adv/count-min), CC BY-NC-SA 4.0
+“Fast Input & Output” by Benjamin Qi, Nathan Chen, USACO Guide
+(https://usaco.guide/general/fast-io), CC BY-NC-SA 4.0
 (https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
 Markdown.
- count-min(7)                 j/k move · enter go · r read · p practice · q map
+ fast-io(7)   j/k move · enter go · r read · p practice · o usaco.guide · q map

@@ -28,7 +28,7 @@ func TestLoadFixture(t *testing.T) {
 	for _, m := range c.Modules() {
 		ids = append(ids, m.ID)
 	}
-	want := "fast-io,casework,prefix-sums,two-pointers,hashmaps,matrix-expo,count-min"
+	want := "fast-io,casework,bronze-conclusion,prefix-sums,two-pointers,hashmaps,matrix-expo,count-min"
 	if got := strings.Join(ids, ","); got != want {
 		t.Errorf("modules = %s, want %s", got, want)
 	}

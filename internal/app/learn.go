@@ -146,15 +146,20 @@ func (m *Model) module(id string) (curriculum.Module, bool) {
 	return m.cur.Module(id)
 }
 
-// startTrial begins a learn-mode trial for a module.
+// startTrial begins a learn-mode trial for a module: any level of the atlas
+// but a page, whether or not passing grants a capability. A castle's is its
+// division's gauntlet (curriculum.TrialForN).
 func (m *Model) startTrial(id string) tea.Cmd {
 	mod, ok := m.module(id)
 	if !ok {
 		return fail("no module %q", id)
 	}
 	t := curriculum.TrialFor(mod, m.judgeable)
-	if t.Capability == "" {
-		return fail("%s has no trial: it teaches no gated topic", mod.Title)
+	if !t.Kind.HasTrial() {
+		if mod.Division == "general" {
+			return fail("%s has no trial: %s is reading only", mod.Title, mod.DivisionTitle)
+		}
+		return fail("%s has no trial: it grants no capability and lists no problem the game can judge", mod.Title)
 	}
 	return m.beginTrial(t.Spec())
 }

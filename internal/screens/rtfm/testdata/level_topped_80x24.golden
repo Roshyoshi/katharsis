@@ -1,0 +1,24 @@
+RTFM › Advanced › Data Structures › Counting Minimums with Segment Tree
+────────────────────────────────────────────────────────────────────────────────
+ Counting Minimums with Segment Tree  ☆☆☆☆ has not appeared · ◆2400–2800 · The …
+ Querying for the minimum and number of occurrences of minimum in a range
+
+   READ      the module, in the reader
+   PRACTICE  none the game can judge: o opens one
+ ▸             Area of Rectangles     CSES     Medium      link
+               Culture Code           CF       Easy        link
+               Zookeepers' Gathering  mBIT     Medium      link
+               2008 - Pyramid Base    IOI      Hard        link
+               Strange Tree           HR       Hard        link
+               Good Subsegments       CF       Very Hard   link
+   TRIAL     +  4 topped up from the catalog · The Heap · ◆2400–2800
+             +  2 blind integration doors · The Heap · ◆2400–2800
+             □  pass → ■ CAP_DS: The Heap joins your route choices
+
+
+ SEE ALSO    needs nothing
+“Counting Minimums with Segment Tree” by Benjamin Qi, Dustin Miao, USACO Guide
+(https://usaco.guide/adv/count-min), CC BY-NC-SA 4.0
+(https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
+Markdown.
+ count-min(7)       j/k move · enter go · r read · p practice · t trial · q map

@@ -19,11 +19,11 @@ import (
 )
 
 // Module is one module's page, set as a man page: NAME (id, title, what it
-// is about, a faint story line), TRIAL (the unit doors in the order a trial boot plays them,
-// any the catalog tops up, the blind integration doors, and what passing
-// grants), SEE ALSO (prerequisites, authors), then the module's CC BY-NC-SA
-// attribution. r reads the module, t starts its trial (when passing grants
-// a capability), o opens it on usaco.guide.
+// is about, a faint story line), TRIAL (the unit doors in the order a trial
+// boot plays them, any the catalog tops up, the blind integration doors, and
+// what passing grants, or why a page has no trial), SEE ALSO (prerequisites,
+// authors), then the module's CC BY-NC-SA attribution. r reads the module, t
+// starts its trial (any level but a page), o opens it on usaco.guide.
 type Module struct {
 	e      entry
 	prereq []string // prerequisites as display names
@@ -66,9 +66,8 @@ func (p *Module) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	case "r", "enter":
 		return p, screens.Emit(screens.OpenModule{Module: id})
 	case "t":
-		// A trial that grants no capability unlocks nothing, so the app
-		// refuses to start one.
-		if p.e.trial.Capability != "" {
+		// A page has no trial; the app would refuse one.
+		if p.e.trial.Kind.HasTrial() {
 			return p, screens.Emit(screens.StartTrial{Module: id})
 		}
 	case "o":
@@ -127,18 +126,28 @@ func (p *Module) body(w int) []string {
 		out = append(out, ui.Voice.Render(ui.Muted.Render(l)))
 	}
 
+	t := p.e.trial
+	if !t.Kind.HasTrial() {
+		out = append(out, "", ui.Strong.Render("TRIAL"), ind+p.passLine())
+		return append(out, p.seeAlso(text)...)
+	}
 	out = append(out, "", ui.Spread(ui.Strong.Render("TRIAL"),
 		ui.Muted.Render("unit: Easy → Hard, tags shown · integration: blind"), text))
 	out = append(out, p.unitLines(w)...)
-	t := p.e.trial
 	where := p.e.biome + ui.G.Sep + ui.RatingBand(t.IntegBand[0], t.IntegBand[1])
 	if n := p.e.short(); n > 0 {
 		out = append(out, ind+fmt.Sprintf("+  %d topped up from the catalog · %s", n, where))
 	}
 	out = append(out, ind+fmt.Sprintf("+  %d blind integration doors · %s", integrationDoors, where))
 	out = append(out, ind+p.passLine())
+	return append(out, p.seeAlso(text)...)
+}
 
-	out = append(out, "", ui.Strong.Render("SEE ALSO"))
+// seeAlso is the page's tail: SEE ALSO, then the module's attribution,
+// text cells wide.
+func (p *Module) seeAlso(text int) []string {
+	m := p.e.mod
+	out := []string{"", ui.Strong.Render("SEE ALSO")}
 	req := "nothing"
 	if len(p.prereq) > 0 {
 		req = strings.Join(p.prereq, ", ")
@@ -236,12 +245,19 @@ func (p *Module) ref(id catalog.ID) (curriculum.ProblemRef, bool) {
 	return curriculum.ProblemRef{}, false
 }
 
-// passLine says what passing the trial grants.
+// passLine says what passing the trial grants, or for a page why it has no
+// trial. A trial that grants no capability still clears its level: ✓.
 func (p *Module) passLine() string {
-	c := p.e.trial.Capability
+	t := p.e.trial
+	c := t.Capability
 	switch {
+	case !t.Kind.HasTrial() && p.e.mod.Division == "general":
+		return ui.Muted.Render("·  no trial: " + p.e.mod.DivisionTitle + " is reading only")
+	case !t.Kind.HasTrial():
+		return ui.Muted.Render("·  no trial: no capability to grant, no problem the game can judge")
 	case c == "":
-		return ui.Muted.Render("·  grants no capability: " + p.e.biome + " is open to every boot")
+		return ui.G.Ahead + "  pass " + ui.G.Arrow + " " + ui.OK.Render(ui.G.Pass+" only") +
+			": grants no capability, " + p.e.biome + " is open to every boot"
 	case p.caps[c]:
 		return ui.OK.Render(ui.G.Cap+"  "+c+" held") + ": " + p.e.biome + " is already on your routes"
 	}
@@ -253,7 +269,7 @@ func (p *Module) passLine() string {
 // the bar is short.
 func (p *Module) footer(w, lines, rows int) string {
 	keys := []string{"r", "read"}
-	if p.e.trial.Capability != "" {
+	if p.e.trial.Kind.HasTrial() {
 		keys = append(keys, "t", "start trial")
 	}
 	if p.e.mod.URL != "" {

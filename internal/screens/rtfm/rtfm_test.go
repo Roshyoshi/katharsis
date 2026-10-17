@@ -248,11 +248,12 @@ func TestFits(t *testing.T) {
 //
 //	0 GENERAL  1 Language-Specific  2 Fast Input & Output
 //	3 BRONZE   4 Additional         5 Casework
-//	6 SILVER   7 Prefix Sums        8 Introduction to Prefix Sums
-//	           9 Sorting & Searching 10 Two Pointers
-//	11 GOLD    12 Additional Topics 13 (Optional) Hashmaps
-//	14 PLATINUM 15 Misc. Topics     16 Matrix Exponentiation
-//	17 ADVANCED 18 Data Structures  19 Counting Minimums with Segment Tree
+//	           6 Conclusion         7 Additional Practice for USACO Bronze
+//	8 SILVER   9 Prefix Sums        10 Introduction to Prefix Sums
+//	           11 Sorting & Searching 12 Two Pointers
+//	13 GOLD    14 Additional Topics 15 (Optional) Hashmaps
+//	16 PLATINUM 17 Misc. Topics     18 Matrix Exponentiation
+//	19 ADVANCED 20 Data Structures  21 Counting Minimums with Segment Tree
 //
 // The cursor starts on row 2, the first module.
 
@@ -265,7 +266,7 @@ func TestBrowserOpensModules(t *testing.T) {
 		{"enter opens the first module; r reads it", []string{"enter", "r"}, screens.OpenModule{Module: "fast-io"}},
 		{"j moves to the next module", []string{"j", "j", "j", "enter", "r"}, screens.OpenModule{Module: "casework"}},
 		{"G is the last module", []string{"G", "enter", "t"}, screens.StartTrial{Module: "count-min"}},
-		{"g then down", []string{"g", "j", "j", "j", "j", "j", "j", "j", "j", "l", "t"}, screens.StartTrial{Module: "prefix-sums"}},
+		{"g then down", []string{"g", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "l", "t"}, screens.StartTrial{Module: "prefix-sums"}},
 		{"o opens the module online", []string{"j", "j", "j", "enter", "o"},
 			reader.OpenURL{URL: "https://usaco.guide/bronze/casework"}},
 		{"filter then open", cat([]string{"/"}, typed("matrix"), []string{"enter", "enter", "r"}),
@@ -466,7 +467,7 @@ func TestCapabilityMarks(t *testing.T) {
 		}
 	}
 	// Refresh: passing prefix sums flips its mark, here and on its page.
-	press(t, b, "j", "j", "j", "j", "j", "j", "enter")
+	press(t, b, "j", "j", "j", "j", "j", "j", "j", "j", "enter")
 	b.Refresh(game.Meta{Capabilities: []string{two, pre}})
 	if v := plain(b.View(140, 40)); !strings.Contains(v, "■  "+pre+" held") {
 		t.Errorf("open page should show %s held after Refresh:\n%s", pre, v)
@@ -497,13 +498,22 @@ func TestModuleKeys(t *testing.T) {
 	// No URL, no o.
 	bare := rtfm.NewModule(nil, curriculum.Module{ID: "x", Frequency: -1}, game.Meta{}, nil, nil)
 	wantMsg(t, press(t, bare, "o"), nil)
-	// Casework has a topic (mixed) but grants no capability, and the app
-	// refuses a trial that grants nothing: no t, and the bar does not offer
-	// it.
-	casework := module(t, "casework")
-	wantMsg(t, press(t, casework, "t"), nil)
-	if v := plain(casework.View(140, 40)); strings.Contains(v, "start trial") {
-		t.Errorf("casework offers a trial it cannot start:\n%s", v)
+	// Casework grants no capability, and the Bronze conclusion is a castle;
+	// both have a trial that clears the level only, so t starts it and the
+	// pass line says so.
+	for _, id := range []string{"casework", "bronze-conclusion"} {
+		p := module(t, id)
+		wantMsg(t, press(t, p, "t"), screens.StartTrial{Module: id})
+		v := plain(p.View(140, 40))
+		if !strings.Contains(v, "start trial") || !strings.Contains(v, "pass → ✓ only: grants no capability") {
+			t.Errorf("%s does not offer its trial, or misstates the pass:\n%s", id, v)
+		}
+	}
+	// Fast I/O is General's: a page, with no trial to start.
+	page := module(t, "fast-io")
+	wantMsg(t, press(t, page, "t"), nil)
+	if v := plain(page.View(140, 40)); strings.Contains(v, "start trial") || !strings.Contains(v, "no trial: General is reading only") {
+		t.Errorf("fast-io offers a trial it cannot start:\n%s", v)
 	}
 }
 

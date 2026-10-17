@@ -37,7 +37,7 @@ func TestAtlas(t *testing.T) {
 			if l.Kind == TrialLevel && len(l.Playable) > 0 {
 				trial = l
 			}
-			if (l.Kind == PageLevel) != (len(l.Playable) == 0) {
+			if (l.Kind == PageLevel) != (len(l.Playable) == 0 && l.Capability == "") {
 				t.Errorf("%s: kind %v with %d playable", l.Module, l.Kind, len(l.Playable))
 			}
 		}
@@ -110,4 +110,45 @@ func TestFullAtlas(t *testing.T) {
 			}
 		}
 	}
+}
+
+// Every level of the real guide but a page yields a trial the engine can
+// plan: the trial's kind is the atlas's, its band is not empty, and only a
+// level whose topic is gated grants a capability.
+func TestFullAtlasTrials(t *testing.T) {
+	dir := os.Getenv("KATHARSIS_GUIDE")
+	if dir == "" {
+		t.Skip("set KATHARSIS_GUIDE to a usaco-guide checkout to run")
+	}
+	c, err := Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	judgeable := func(id catalog.ID) bool { return id.Source() == catalog.USACO || id.Source() == catalog.CSES }
+	kinds := map[LevelKind]int{}
+	free, topped := 0, 0
+	for _, w := range c.Atlas(judgeable).Worlds {
+		for _, l := range w.Levels() {
+			kinds[l.Kind]++
+			if l.Kind.HasTrial() && len(l.Playable) == 0 {
+				topped++
+			}
+			m, _ := c.Module(l.Module)
+			tr := TrialFor(m, judgeable)
+			spec := tr.Spec()
+			switch {
+			case tr.Kind != l.Kind:
+				t.Errorf("%s: trial kind %v, atlas kind %v", l.Module, tr.Kind, l.Kind)
+			case !l.Kind.HasTrial():
+			case spec.Module != l.Module || spec.IntegBand[0] > spec.IntegBand[1] || spec.IntegTopic == "":
+				t.Errorf("%s: spec %+v cannot be planned", l.Module, spec)
+			case spec.Capability != l.Capability || l.Kind == CastleLevel && spec.Capability != "":
+				t.Errorf("%s (%v): grants %q, want %q", l.Module, l.Kind, spec.Capability, l.Capability)
+			case spec.Capability == "":
+				free++
+			}
+		}
+	}
+	t.Logf("%d trial levels (%d granting nothing, castles included; %d all topped up), %d castles, %d pages",
+		kinds[TrialLevel], free, topped, kinds[CastleLevel], kinds[PageLevel])
 }

@@ -11,7 +11,7 @@ TRIAL                         unit: Easy → Hard, tags shown · integration: bl
        3  Leaders             Hard
        4  Spaced Out          Very Hard
        +  2 blind integration doors · Userland · ◆1000–1300
-       ·  grants no capability: Userland is open to every boot
+       ○  pass → ✓ only: grants no capability, Userland is open to every boot
 
 SEE ALSO
        requires  nothing
@@ -21,4 +21,4 @@ SEE ALSO
 CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/); converted
 from MDX to Markdown.
 
- casework(7) line 1/20 (END)                    r read · o usaco.guide · q back
+ casework(7) line 1/20 (END)    r read · t start trial · o usaco.guide · q back

@@ -5,11 +5,8 @@ NAME
        Demonstrates how I/O speed can be the difference between TLE and AC.
        Fast Input & Output. "I only took the regular course."
 
-TRIAL                         unit: Easy → Hard, tags shown · integration: blind
-       1  Robotic Cow Herd  Insane
-       +  3 topped up from the catalog · Userland · ◆1000–1300
-       +  2 blind integration doors · Userland · ◆1000–1300
-       ·  grants no capability: Userland is open to every boot
+TRIAL
+       ·  no trial: General is reading only
 
 SEE ALSO
        requires  input-output
@@ -37,4 +34,7 @@ Markdown.
 
 
 
- fast-io(7) line 1/19 (END)                                                                                 r read · o usaco.guide · q back
+
+
+
+ fast-io(7) line 1/16 (END)                                                                                 r read · o usaco.guide · q back

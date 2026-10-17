@@ -48,21 +48,28 @@ func trialLevel(t testing.TB) *rtfm.Level {
 	return rtfm.NewLevel(c, l, region, m, fixture.Judgeable, fixture.Lookup)
 }
 
-// pageLevel is Counting Minimums: nothing the fixture catalog judges.
+// pageLevel is General's Fast I/O: a page, reading only, its problem one
+// to practise with no trial.
 func pageLevel(t testing.TB) *rtfm.Level {
+	c := loadCurriculum(t)
+	l, region := atlasLevel(t, c, "fast-io")
+	return rtfm.NewLevel(c, l, region, fixture.Meta(), fixture.Judgeable, fixture.Lookup)
+}
+
+// toppedLevel is Counting Minimums: a gated topic with nothing the fixture
+// catalog judges, so its unit is all topped up and its problems are links.
+func toppedLevel(t testing.TB) *rtfm.Level {
 	c := loadCurriculum(t)
 	l, region := atlasLevel(t, c, "count-min")
 	return rtfm.NewLevel(c, l, region, fixture.Meta(), fixture.Judgeable, fixture.Lookup)
 }
 
-// castleLevel is Casework made a castle, as the fixture has no conclusion
-// module: six playable problems, more than 80x24 shows.
+// castleLevel is the Bronze conclusion, its first problem upsolved.
 func castleLevel(t testing.TB) *rtfm.Level {
 	c := loadCurriculum(t)
-	l, region := atlasLevel(t, c, "casework")
-	l.Kind = curriculum.CastleLevel
+	l, region := atlasLevel(t, c, "bronze-conclusion")
 	m := fixture.Meta()
-	m.Solves = []game.Solve{{Problem: "usaco:567", Upsolve: true}, {Problem: "usaco:1515"}}
+	m.Solves = []game.Solve{{Problem: l.Playable[0], Upsolve: true}}
 	return rtfm.NewLevel(c, l, region, m, fixture.Judgeable, fixture.Lookup)
 }
 
@@ -74,6 +81,7 @@ func TestLevelGoldens(t *testing.T) {
 	}{
 		{"level_trial", trialLevel, nil},
 		{"level_page", pageLevel, []string{"p"}},
+		{"level_topped", toppedLevel, []string{"p"}},
 		{"level_castle", castleLevel, nil},
 		{"level_trial_scrolled", trialLevel, []string{"p", "j", "j", "j", "j", "j", "j", "j", "j"}},
 	}
@@ -108,7 +116,7 @@ func TestLevelGoldens(t *testing.T) {
 // height lines, none wider than width.
 func TestLevelFits(t *testing.T) {
 	states := map[string]func(t testing.TB) *rtfm.Level{
-		"trial": trialLevel, "page": pageLevel, "castle": castleLevel,
+		"trial": trialLevel, "page": pageLevel, "topped": toppedLevel, "castle": castleLevel,
 		"bare": func(testing.TB) *rtfm.Level {
 			return rtfm.NewLevel(nil, curriculum.Level{Module: "x"}, "", game.Meta{}, nil, nil)
 		},
@@ -148,9 +156,10 @@ func TestLevelIntents(t *testing.T) {
 		{"p then enter", trialLevel, []string{"p", "j", "enter"}, screens.Upsolve{Problem: "usaco:643"}},
 		{"t", trialLevel, []string{"t"}, screens.StartTrial{Module: "two-pointers"}},
 		{"enter on TRIAL", trialLevel, []string{"G", "enter"}, screens.StartTrial{Module: "two-pointers"}},
-		{"castle t", castleLevel, []string{"t"}, screens.StartTrial{Module: "casework"}},
+		{"castle t", castleLevel, []string{"t"}, screens.StartTrial{Module: "bronze-conclusion"}},
 		{"o on READ", trialLevel, []string{"o"}, reader.OpenURL{URL: "https://usaco.guide/silver/two-pointers"}},
-		{"o on an external problem", pageLevel, []string{"p", "o"}, reader.OpenURL{URL: cm.Problems[0].Problems[0].URL}},
+		{"o on an external problem", toppedLevel, []string{"p", "o"}, reader.OpenURL{URL: cm.Problems[0].Problems[0].URL}},
+		{"topped t", toppedLevel, []string{"t"}, screens.StartTrial{Module: "count-min"}},
 		{"page t", pageLevel, []string{"t"}, nil},
 		{"page t on its last row", pageLevel, []string{"G", "j", "t"}, nil},
 	}

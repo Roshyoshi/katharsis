@@ -641,10 +641,9 @@ func (b *Browser) lines(cols columns, w int) []string {
 				title = highlight(title, q)
 			}
 			unit := unitLabel(len(e.trial.Unit), e.short(), cols.compact)
-			if e.trial.Capability == "" {
-				// A trial that grants nothing cannot be started (see
-				// Module.Update), so its size is not worth the eye.
-				unit = ui.Muted.Render(ansi.Strip(unit))
+			if !e.trial.Kind.HasTrial() {
+				// A page has no trial to start (see Module.Update).
+				unit = ui.Muted.Render("-")
 			}
 			line = cols.cells(title, e.biome, capCell(e.trial.Capability, b.caps[e.trial.Capability]),
 				unit, stars(e.mod.Frequency))

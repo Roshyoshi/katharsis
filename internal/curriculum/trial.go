@@ -18,6 +18,12 @@ var DefaultUnitSize = rules.Trial().Biomes[0].Rooms
 // Trial is the learn-mode challenge for one module: a unit of problems from
 // the module's own lists, then two blind integration doors the engine draws
 // from the catalog by topic and rating band.
+//
+// Every level of the atlas but a page has one (Kind.HasTrial). Most grant
+// the capability of the module's topic. One whose topic is ungated (Bronze
+// material, "mixed") grants nothing: passing it records the module in
+// Meta.TrialsPassed, the level's ✓, and no more. A castle, a division's
+// conclusion, is its gauntlet and grants nothing either; see TrialForN.
 type Trial struct {
 	Module Module
 	// Unit is playable problems from the module, sorted Very Easy ->
@@ -29,6 +35,10 @@ type Trial struct {
 	// Capability is what passing grants: CapabilityFor(Module.Topic), ""
 	// when the module teaches no gated topic.
 	Capability string
+	// Kind is the module's level on the atlas: PageLevel when it has no
+	// trial to start (General, or no capability and no problem the game
+	// can judge).
+	Kind LevelKind
 }
 
 // Spec is the trial as game.NewTrial plays it. A unit shorter than
@@ -77,6 +87,14 @@ func rankWithin(a, b candidate) bool {
 // selection goes round-robin over difficulty labels from easiest up,
 // taking the best-ranked remaining problem of each label per round, and the
 // result is sorted by label.
+//
+// A castle's trial is built the same way, and that is already a division
+// gauntlet: a conclusion has no topic (TopicFor), so its unit is the
+// conclusion's own problems, the guide's uncategorised practice for the
+// division, ramped as above; the engine tops a short unit up and draws the
+// integration doors from every topic (Mixed) at the division's band; and
+// no capability is granted. Nothing new is asked of the engine, so a castle
+// trial plays and replays as any other.
 func TrialForN(m Module, judgeable func(catalog.ID) bool, n int) Trial {
 	t := Trial{
 		Module:     m,
@@ -115,6 +133,7 @@ func TrialForN(m Module, judgeable func(catalog.ID) bool, n int) Trial {
 		}
 		byLabel[r] = append(byLabel[r], c)
 	}
+	t.Kind = levelKind(m.ID, m.Division, len(cands) > 0 || t.Capability != "")
 	sort.Ints(labels)
 	for _, r := range labels {
 		g := byLabel[r]

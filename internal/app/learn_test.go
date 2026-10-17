@@ -13,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/curriculum"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
@@ -125,13 +126,14 @@ func TestTrialGrantsItsCapability(t *testing.T) {
 	})
 }
 
-func TestModuleWithoutTopicHasNoTrial(t *testing.T) {
+// A page (General's fast-io) has no trial to start.
+func TestPageHasNoTrial(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
 		loadGuide(h)
 		h.send(screens.StartTrial{Module: "fast-io"})
 		if h.m.state != nil && h.m.state.Trial != nil {
-			t.Fatal("a topic-less module started a trial")
+			t.Fatal("a page started a trial")
 		}
 	})
 }
@@ -334,6 +336,36 @@ func TestPassedTrialOffersTheNextModule(t *testing.T) {
 				h.send(key("r"))
 				if s := h.m.state; s.Boot == passed || s.Trial == nil || s.Trial.Module != "prefix-sums" {
 					t.Errorf("r after a pass: boot %d (was %d), trial %+v; want prefix-sums again", s.Boot, passed, s.Trial)
+				}
+			})
+		})
+	}
+}
+
+// A trial that grants no capability still clears its level: casework's
+// (an ungated topic) and the Bronze conclusion's (a castle) start, and
+// passing one records the module and grants nothing.
+func TestTrialWithoutCapabilityClearsOnly(t *testing.T) {
+	for _, id := range []string{"casework", "bronze-conclusion"} {
+		t.Run(id, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				h := newHarness(t)
+				loadGuide(h)
+				// The synthetic pool judges none of casework's problems; one it
+				// does makes casework a trial level, not a page.
+				c := h.m.d.Catalog.(*fakeCatalog)
+				p := catalog.Problem{ID: "usaco:915", Title: "Sleepy Cow Herding", Topic: "mixed", Rating: 1100, Judgeable: true}
+				c.all, c.byID[p.ID] = append(c.all, p), p
+				h.send(screens.StartTrial{Module: id})
+				if s := h.m.state; s == nil || s.Trial == nil || s.Trial.Module != id || s.Trial.Capability != "" {
+					t.Fatalf("no capability-less trial of %s running: %+v", id, s)
+				}
+				if got := h.play(); got != game.PhaseCleared {
+					t.Fatalf("trial ended %q, want cleared", got)
+				}
+				if !slices.Equal(h.m.meta.TrialsPassed, []string{id}) || len(h.m.meta.Capabilities) != 0 || h.m.state.Trial.Granted != "" {
+					t.Fatalf("passed %v, capabilities %v, granted %q; want %s passed and nothing granted",
+						h.m.meta.TrialsPassed, h.m.meta.Capabilities, h.m.state.Trial.Granted, id)
 				}
 			})
 		})

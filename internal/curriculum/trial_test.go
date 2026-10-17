@@ -127,3 +127,81 @@ func TestTrialForFixture(t *testing.T) {
 		t.Errorf("unit = %v, want %v", got.Unit, want)
 	}
 }
+
+// Every level but a page has a trial: one that grants no capability for an
+// ungated topic, a castle's for a conclusion, and none for General. The
+// trial's kind is the atlas's.
+func TestTrialKinds(t *testing.T) {
+	c := loadFixture(t)
+	usaco := func(id catalog.ID) bool { return id.Source() == catalog.USACO }
+	for _, tc := range []struct {
+		id    string
+		kind  LevelKind
+		topic string
+		cap   string
+	}{
+		{"fast-io", PageLevel, catalog.Mixed, ""},
+		{"casework", TrialLevel, "mixed", ""},
+		{"bronze-conclusion", CastleLevel, catalog.Mixed, ""},
+		{"prefix-sums", TrialLevel, "prefix-sums", "CAP_PREFIX"},
+		{"matrix-expo", TrialLevel, "math", ""},
+	} {
+		m, ok := c.Module(tc.id)
+		if !ok {
+			t.Fatalf("fixture has no %s", tc.id)
+		}
+		got := TrialFor(m, usaco)
+		if got.Kind != tc.kind || got.IntegTopic != tc.topic || got.Capability != tc.cap {
+			t.Errorf("%s: kind %v topic %q cap %q, want %v %q %q", tc.id, got.Kind, got.IntegTopic, got.Capability, tc.kind, tc.topic, tc.cap)
+		}
+		if l, _, _ := c.Atlas(usaco).Level(tc.id); l.Kind != got.Kind {
+			t.Errorf("%s: trial kind %v, atlas kind %v", tc.id, got.Kind, l.Kind)
+		}
+	}
+	// No judgeable problem: a page, but a conclusion stays a castle and a
+	// module that grants a capability keeps its trial, all topped up.
+	none := func(catalog.ID) bool { return false }
+	for id, want := range map[string]LevelKind{"casework": PageLevel, "bronze-conclusion": CastleLevel, "prefix-sums": TrialLevel} {
+		m, _ := c.Module(id)
+		if got := TrialFor(m, none).Kind; got != want {
+			t.Errorf("%s with nothing judgeable: kind %v, want %v", id, got, want)
+		}
+		if l, _, _ := c.Atlas(none).Level(id); l.Kind != want {
+			t.Errorf("%s with nothing judgeable: atlas kind %v, want %v", id, l.Kind, want)
+		}
+	}
+}
+
+// A castle's trial is the division's gauntlet: the conclusion's own
+// problems ramped, the integration doors on every topic at the division's
+// band, nothing granted, and the engine plays it as it plays any trial.
+func TestCastleTrialSpec(t *testing.T) {
+	m, _ := loadFixture(t).Module("bronze-conclusion")
+	tr := TrialFor(m, func(id catalog.ID) bool { return id.Source() == catalog.USACO })
+	spec := tr.Spec()
+	// The conclusion's USACO problems: 642, 509 (Medium), 1181, 1085 (Hard).
+	if want := ids("usaco:642", "usaco:509", "usaco:1181", "usaco:1085"); !reflect.DeepEqual(spec.Unit, want) {
+		t.Errorf("unit %v, want %v", spec.Unit, want)
+	}
+	if spec.Module != "bronze-conclusion" || spec.IntegTopic != catalog.Mixed ||
+		spec.IntegBand != DivisionBand("bronze") || spec.Capability != "" {
+		t.Errorf("spec %+v, want bronze-conclusion, mixed at Bronze's band, no capability", spec)
+	}
+
+	// Two of the unit judgeable, the rest of the pool on other topics:
+	// the engine tops the unit up and draws integration from any topic.
+	spec.Unit = spec.Unit[:2]
+	var pool []catalog.Problem
+	topics := []string{"graphs", "dp", "simulation", "math", "strings", "trees"}
+	for i, id := range append(slices.Clone(spec.Unit), ids("usaco:900", "usaco:901", "usaco:902", "usaco:903")...) {
+		pool = append(pool, catalog.Problem{ID: id, Topic: topics[i], Rating: 1000 + 50*i, Judgeable: true})
+	}
+	meta := &game.Meta{}
+	s, _, err := game.NewTrial(rules.Trial(), meta, pool, spec, 1, time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Trial.Plan[0]) != 4 || len(s.Trial.TopUp) != 2 || len(s.Trial.Plan[1]) != 2 {
+		t.Errorf("plan %v, top-ups %v: want a unit of 4 (2 topped up) and 2 integration doors", s.Trial.Plan, s.Trial.TopUp)
+	}
+}

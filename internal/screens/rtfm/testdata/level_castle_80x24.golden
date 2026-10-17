@@ -1,24 +1,24 @@
-RTFM › Bronze › Additional › Casework
+RTFM › Bronze › Conclusion › Additional Practice for USACO Bronze
 ────────────────────────────────────────────────────────────────────────────────
- ⚔ Casework  ★★☆☆ not frequent · ◆1000–1300 · Userland
-
+ ⚔ Additional Practice for USACO Bronze · ◆1000–1300 · Userland
  ▸ READ      the module, in the reader
-   PRACTICE  2/6 solved
-               Sleepy Cow Herding             Bronze   Medium
-             ✓ Fence Painting                 Bronze   Medium
-               Social Distancing I            Bronze   Medium
-             ✓ Hoof Paper Scissors Minus One  Bronze   Medium
-               Leaders                        Bronze   Hard
-               Spaced Out                     Silver   Very Hard
-               Three Logos                    CF       Easy        link
-   TRIAL     1  Sleepy Cow Herding  Medium
-             2  Fence Painting      Medium
-             3  Leaders             Hard
-             4  Spaced Out          Very Hard
+   PRACTICE  1/4 solved
+             ✓ Field Reduction          Silver   Medium
+               It's All About the Base  Old Br…  Medium
+               Drought                  Bronze   Hard
+               Just Stalling            Bronze   Hard
+               Election                 CF       Very Easy   link
+               Who's Opposite?          CF       Very Easy   link
+               Reading Books            CSES     Easy        link  +9 more
+   TRIAL     1  Field Reduction          Medium
+             2  It's All About the Base  Medium
+             3  Drought                  Hard
+             4  Just Stalling            Hard
              +  2 blind integration doors · Userland · ◆1000–1300
-             ·  grants no capability: Userland is open to every boot
+             ○  pass → ✓ only: grants no capability, Userland is open to every …
  SEE ALSO    needs nothing
-“Casework” by Aarav Sharma, USACO Guide (https://usaco.guide/bronze/casework),
-CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/); converted
-from MDX to Markdown.
- casework(7)        j/k move · enter go · r read · p practice · t trial · q map
+“Additional Practice for USACO Bronze” by Nathan Wang, USACO Guide
+(https://usaco.guide/bronze/bronze-conclusion), CC BY-NC-SA 4.0
+(https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
+Markdown.
+ bronze-conclusion(7)         j/k move · enter go · r read · p practice · q map
