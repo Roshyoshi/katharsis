@@ -57,7 +57,7 @@ func (t Trial) Spec() game.TrialSpec {
 
 // TrialFor builds the trial for m with DefaultUnitSize unit doors.
 // judgeable reports whether the catalog can serve and judge an ID; nil
-// accepts every USACO/CSES reference.
+// accepts every reference CatalogID maps.
 func TrialFor(m Module, judgeable func(catalog.ID) bool) Trial {
 	return TrialForN(m, judgeable, DefaultUnitSize)
 }

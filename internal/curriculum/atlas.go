@@ -104,9 +104,9 @@ func Conclusion(id string) bool { return strings.HasSuffix(id, "-conclusion") }
 const generalID = "general"
 
 // Atlas lays the curriculum out as the map. judgeable reports whether the
-// catalog can serve and judge an ID; nil accepts every USACO/CSES
-// reference. The guide's own pages (Module.Meta) are left out, as the
-// index leaves them.
+// catalog can serve and judge an ID; nil accepts every reference CatalogID
+// maps (USACO, CSES, Codeforces). The guide's own pages (Module.Meta) are
+// left out, as the index leaves them.
 func (c *Curriculum) Atlas(judgeable func(catalog.ID) bool) Atlas {
 	if judgeable == nil {
 		judgeable = func(catalog.ID) bool { return true }

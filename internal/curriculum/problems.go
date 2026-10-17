@@ -38,19 +38,25 @@ type ProblemRef struct {
 
 var numericID = regexp.MustCompile(`^[0-9]+$`)
 
+// cfID is a Codeforces problem as the guide and the catalog both name it:
+// the contest, then the index ("1398C", "1741F2").
+var cfID = regexp.MustCompile(`^[0-9]+[A-Z][0-9]?$`)
+
 // CatalogID maps a guide uniqueId to a catalog ID: "usaco-615" ->
-// "usaco:615", "cses-1094" -> "cses:1094". Anything else, including
-// non-numeric suffixes, is external and returns "".
+// "usaco:615", "cses-1094" -> "cses:1094", "cf-1398C" -> "cf:1398C".
+// Anything else is external and returns "": another judge, a Codeforces
+// gym ("cfgym-", "cf-gym-…"), an id of the wrong shape. Whether the game
+// can judge a mapped id is the catalog's to say.
 func CatalogID(uniqueID string) catalog.ID {
 	src, num, ok := strings.Cut(uniqueID, "-")
-	if !ok || !numericID.MatchString(num) {
-		return ""
-	}
-	switch src {
-	case "usaco":
+	switch {
+	case !ok:
+	case src == "usaco" && numericID.MatchString(num):
 		return catalog.NewID(catalog.USACO, num)
-	case "cses":
+	case src == "cses" && numericID.MatchString(num):
 		return catalog.NewID(catalog.CSES, num)
+	case src == "cf" && cfID.MatchString(num):
+		return catalog.NewID(catalog.CF, num)
 	}
 	return ""
 }

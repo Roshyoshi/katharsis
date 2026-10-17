@@ -14,7 +14,11 @@ func TestCatalogID(t *testing.T) {
 	}{
 		{"usaco-615", "usaco:615"},
 		{"cses-1094", "cses:1094"},
-		{"cf-1398C", ""},
+		{"cf-1398C", "cf:1398C"},
+		{"cf-1741F2", "cf:1741F2"},
+		{"cf-gym-103329f", ""},
+		{"cf-ThreeOccurrences", ""},
+		{"cfgym-102951A", ""},
 		{"usaco-", ""},
 		{"usaco-12a", ""},
 		{"cses-dp-1", ""},

@@ -31,7 +31,7 @@ import (
 
 // Judgeable reports whether the catalog can serve and judge a problem; it
 // decides which of a module's problems make its trial unit. nil accepts
-// every USACO and CSES reference, as curriculum.TrialFor does.
+// every reference curriculum.CatalogID maps, as curriculum.TrialFor does.
 type Judgeable = func(catalog.ID) bool
 
 // integrationDoors is how many blind doors follow a trial's unit: the rooms

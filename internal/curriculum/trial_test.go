@@ -23,7 +23,7 @@ var trialModule = Module{
 			ref("usaco-1", "Easy", true, "internal"), // focus problem again, starred here
 			ref("usaco-2", "Easy", false, "internal"),
 			ref("usaco-3", "Easy", true, "internal"),
-			ref("cf-9A", "Very Easy", true, "internal"), // external: never playable
+			ref("ac-abc100_a", "Very Easy", true, "internal"), // external: never playable
 			ref("cses-10", "Medium", false, "internal"),
 			ref("usaco-4", "Hard", false, "internal"),
 			ref("usaco-5", "Very Easy", false, "internal"),
