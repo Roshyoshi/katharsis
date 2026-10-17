@@ -146,6 +146,16 @@ RTFM › Silver › Prefix Sums                         □ CAP_PREFIX
   pass   ■ CAP_PREFIX → topic biomes join route choices; lib unlocked
 ```
 
+RTFM opens on a world map (D60, `.agents/work/rtfm-map-plan.md`): an
+overworld of the guide's divisions, and in each, its modules as levels on
+one folded path in guide order. A level is a trial (○ → ✓), a page (▪,
+reading only) or the division's conclusion, its castle (⚔). Every module
+with a problem the game can judge has a trial; one on an ungated topic
+grants only its ✓. Nothing is locked: the path lights behind what is
+cleared, and ↑ marks the guide's three world-skipping prerequisite edges.
+Enter opens the level: READ, PRACTICE (untimed upsolves, 0 B) and TRIAL.
+i opens the man index, which searches.
+
 ## Content
 
 Local judging only until the game is complete. Doors pick by difficulty

@@ -26,6 +26,7 @@ type Browser struct {
 	all    []entry // every module, for column widths and the totals
 	cur    *curriculum.Curriculum
 	caps   map[string]bool
+	passed map[string]bool // the modules whose trial is passed
 	lookup screens.Lookup
 
 	rows     []row // what is visible: folds and the filter applied
@@ -82,7 +83,7 @@ type row struct {
 // itself (curriculum.Module.Meta) are left out, and with them a chapter
 // or division they would leave empty (UX J21).
 func NewBrowser(c *curriculum.Curriculum, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Browser {
-	b := &Browser{cur: c, caps: capSet(m), lookup: lookup}
+	b := &Browser{cur: c, caps: capSet(m), passed: passedSet(m), lookup: lookup}
 	if c != nil {
 		for _, d := range c.Divisions {
 			dv := division{title: d.Title}
@@ -114,9 +115,9 @@ func NewBrowser(c *curriculum.Curriculum, m game.Meta, judgeable Judgeable, look
 // Refresh swaps in the player's Meta (a passed trial grants a capability),
 // keeping folds, filter, selection and an open module page.
 func (b *Browser) Refresh(m game.Meta) {
-	b.caps = capSet(m)
+	b.caps, b.passed = capSet(m), passedSet(m)
 	if b.page != nil {
-		b.page.caps = b.caps
+		b.page.caps, b.page.passed = b.caps, b.passed[b.page.e.mod.ID]
 	}
 }
 
@@ -265,7 +266,8 @@ func (b *Browser) refold(r row) {
 }
 
 func (b *Browser) open(r row) {
-	b.page, b.linked = newModule(b.cur, b.entry(r), b.caps, b.lookup), false
+	e := b.entry(r)
+	b.page, b.linked = newModule(b.cur, e, b.caps, b.passed[e.mod.ID], b.lookup), false
 }
 
 func (b *Browser) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {

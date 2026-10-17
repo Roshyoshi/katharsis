@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/anim"
 	"katharsis/internal/curriculum"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
@@ -43,6 +44,11 @@ type Map struct {
 	// again goes on to its next target.
 	warpFrom string
 	warpTo   int
+
+	// flipped is the capabilities the switch palace fills in (flip.go), and
+	// flip its clip; nil before Flip.
+	flipped map[string]bool
+	flip    *anim.Player
 
 	level  *Level // the open level; nil shows the map
 	linked bool   // opened at a level for another screen (Open): q goes Back
@@ -148,6 +154,11 @@ func (p *Map) cleared(l curriculum.Level) bool {
 // Update moves on the map. An open level gets every message but the keys
 // that close it, as the index's module page does.
 func (p *Map) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
+	if p.flip != nil {
+		if cmd, used := p.flip.Update(msg); used {
+			return p, cmd
+		}
+	}
 	k, isKey := msg.(tea.KeyPressMsg)
 	if p.level != nil {
 		if isKey {
@@ -403,7 +414,7 @@ func (p *Map) drawWorld(mw, room int) []string {
 			c.put(y, x-1, ui.Focus.Render(ui.G.Cursor))
 		}
 		c.put(y, x, p.glyph(l.Level, need[l.Module]))
-		c.put(y+1, x, p.marks(l.Level))
+		c.put(y+1, x, p.marks(i))
 		if g.titles {
 			tok := ui.Muted
 			if i == sel {
@@ -446,13 +457,15 @@ func (p *Map) glyph(l curriculum.Level, need bool) string {
 	return tok.Render(g)
 }
 
-// marks is the line under a node: ■ or □ for the capability its trial
-// grants, ↑ when it opens a warp.
-func (p *Map) marks(l curriculum.Level) string {
+// marks is the line under level i's node: ■ or □ for the capability its
+// trial grants (□ still while the switch palace has yet to reach it), ↑
+// when it opens a warp.
+func (p *Map) marks(i int) string {
+	l := p.lv[p.world][i]
 	var m []string
 	switch {
 	case l.Capability == "":
-	case p.prog[l.Module].CapHeld:
+	case p.prog[l.Module].CapHeld && !p.unflipped(i):
 		m = append(m, ui.OK.Render(ui.G.Cap))
 	default:
 		m = append(m, ui.Muted.Render(ui.G.CapLocked))

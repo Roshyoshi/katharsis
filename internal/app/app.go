@@ -123,6 +123,9 @@ type Model struct {
 	// every boot start reload it.
 	pool []catalog.Problem
 	cur  *curriculum.Curriculum // RTFM, loaded on first use
+	// rtfmCaps is the capabilities RTFM's map last showed this session, nil
+	// before it first did: those granted since get its switch palace.
+	rtfmCaps []string
 
 	stack   []screens.Screen // top is shown; the bottom is GRUB or a boot screen
 	open    *Door            // the door being played, nil otherwise

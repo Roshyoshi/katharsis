@@ -68,6 +68,15 @@ func capSet(m game.Meta) map[string]bool {
 	return s
 }
 
+// passedSet is the modules whose trial the player passed.
+func passedSet(m game.Meta) map[string]bool {
+	s := make(map[string]bool, len(m.TrialsPassed))
+	for _, id := range m.TrialsPassed {
+		s[id] = true
+	}
+	return s
+}
+
 // ---- formatting -------------------------------------------------------------
 
 // capCell renders a capability with its status mark: ■ held (OK), □ not

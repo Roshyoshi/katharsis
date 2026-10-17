@@ -458,18 +458,22 @@ every screen.
 | pass, AC, cleared | `✓` | `+` | `ok` | |
 | fail | `✗` | `x` | `danger` | |
 | crash, lethal | `☠` | `!` | `danger` | also cursed: "this kills you" |
-| boss | `⚔` | `X` | `special` | taint letter (`X (boss)` on the crash screen) |
+| boss | `⚔` | `X` | `special` | taint letter (`X (boss)` on the crash screen); on the RTFM map, a division's conclusion (its castle) |
 | mystery | `?` | `M` | `special` | taint letter |
 | blind | `◌` | `B` | `muted` | taint letter |
 | cursed | `☠` | `C` | `danger` | taint letter |
 | regression | `↺` | `R` | `warn` | taint letter; **only** meaning of ↺ |
 | retreat | `↩` | `<` | `warn` | NetHack's up-stairs; **only** meaning of ↩ |
 | you are here / ahead | `●` / `○` | `@` / `.` | `focus` / `muted` | `@` is the roguelike player |
-| capability held / locked | `◆` / `◇` | `[x]` / `[ ]` | `ok` / `muted` | **only** meaning of ◆/◇ |
+| capability held / locked | `■` / `□` | `[x]` / `[ ]` | `ok` / `muted` | **only** meaning of ■/□; ◆ stays difficulty (D27) |
 | difficulty | `*1300` | same | rank ramp | §2.3 |
 | reward, multiplier, chance | `+80 B`, `×1.5`, `≈74%` | `+80 B`, `x1.5`, `~74%` | `ok`, `fg`, `muted` | |
 | cursor | `▸` | `>` | `focus` | **only** meaning of ▸ |
 | fold open / shut | `▾` / `▹` | `-` / `+` | `muted` | not ▸ |
+| RTFM page (reading only) | `▪` | `=` | `muted`, `fg` once opened | the map's node for a level with no trial; never ticked |
+| RTFM warp | `↑` | `^` | `special` | a shortcut to a later world (a real prerequisite edge) |
+| RTFM path | `─` `│` `╭╮╰╯` | `-` `\|` `+` | `fg` lit, `muted` ahead | Rule's cell and Thin's sides and corners |
+| RTFM optional path | `┄` / `┆` | `:` | as the path | into an optional or never-asked level |
 | chain, breadcrumb | ` › ` | ` / ` | `muted` | the map's line view already uses › (`bootmap.go:155`) |
 | separator | ` · ` | ` \| ` | `muted` | exactly one space each side |
 | bar fill / empty | `▓` / `░` | `#` / `.` | `ok` / `muted` | |

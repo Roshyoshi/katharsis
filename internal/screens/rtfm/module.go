@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"hash/fnv"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -28,6 +29,7 @@ type Module struct {
 	e      entry
 	prereq []string // prerequisites as display names
 	caps   map[string]bool
+	passed bool // its trial is passed (Meta.TrialsPassed)
 	lookup screens.Lookup
 
 	top int // first body line shown, when the body does not fit
@@ -37,11 +39,11 @@ type Module struct {
 // NewModule builds the page for mod. c resolves prerequisite ids to titles
 // and may be nil; judgeable and lookup are as for NewBrowser.
 func NewModule(c *curriculum.Curriculum, mod curriculum.Module, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Module {
-	return newModule(c, newEntry(mod, judgeable), capSet(m), lookup)
+	return newModule(c, newEntry(mod, judgeable), capSet(m), slices.Contains(m.TrialsPassed, mod.ID), lookup)
 }
 
-func newModule(c *curriculum.Curriculum, e entry, caps map[string]bool, lookup screens.Lookup) *Module {
-	p := &Module{e: e, caps: caps, lookup: lookup}
+func newModule(c *curriculum.Curriculum, e entry, caps map[string]bool, passed bool, lookup screens.Lookup) *Module {
+	p := &Module{e: e, caps: caps, passed: passed, lookup: lookup}
 	for _, id := range e.mod.Prerequisites {
 		name := id
 		if c != nil {
@@ -255,6 +257,8 @@ func (p *Module) passLine() string {
 		return ui.Muted.Render("·  no trial: " + p.e.mod.DivisionTitle + " is reading only")
 	case !t.Kind.HasTrial():
 		return ui.Muted.Render("·  no trial: no capability to grant, no problem the game can judge")
+	case c == "" && p.passed:
+		return ui.OK.Render(ui.G.Pass+"  passed") + ": grants no capability, " + p.e.biome + " is open to every boot"
 	case c == "":
 		return ui.G.Ahead + "  pass " + ui.G.Arrow + " " + ui.OK.Render(ui.G.Pass+" only") +
 			": grants no capability, " + p.e.biome + " is open to every boot"

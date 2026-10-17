@@ -712,3 +712,21 @@ func TestBrowserHidesMetaModules(t *testing.T) {
 	}
 	wantMsg(t, press(t, b, "enter", "r"), screens.OpenModule{Module: "intro-cp"})
 }
+
+// A passed trial that grants no capability says so on its page, where it
+// asked to be passed before.
+func TestModulePassedCheckOnly(t *testing.T) {
+	c := loadCurriculum(t)
+	mod, ok := c.Module("casework")
+	if !ok {
+		t.Fatal("fixture has no casework")
+	}
+	before := ansi.Strip(rtfm.NewModule(c, mod, game.Meta{}, nil, fixture.Lookup).View(100, 40))
+	after := ansi.Strip(rtfm.NewModule(c, mod, game.Meta{TrialsPassed: []string{"casework"}}, nil, fixture.Lookup).View(100, 40))
+	if !strings.Contains(before, "pass → ✓ only") || strings.Contains(before, "✓  passed") {
+		t.Errorf("before passing:\n%s", before)
+	}
+	if !strings.Contains(after, "✓  passed: grants no capability") {
+		t.Errorf("after passing:\n%s", after)
+	}
+}

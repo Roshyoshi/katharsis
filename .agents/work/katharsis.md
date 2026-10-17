@@ -296,6 +296,17 @@ D57 settled 10-15  A GitHub-style contribution graph (user: "a git commit graph 
                    days and the load average. No streak counter: "Graph, no streak
                    (Recommended)" (GR1 stands).
 
+D60 settled 10-16  RTFM world map (user: "a map sorta for RTFM ... like the new super mario
+                   maps"; "yes lets do the world map"), rtfm-map-plan.md with Q1-Q8 at
+                   their defaults: curriculum.Atlas (divisions = worlds, modules =
+                   levels, 106 trials / 4 castles / 34 pages on the full guide, warps =
+                   the 3 world-skipping prereq edges), rtfm.Map + Level, no locks,
+                   every judgeable or gated module trial-able (✓ only when ungated),
+                   Meta.Opened ("opened", never "read"), setuid lobster-quadrille and
+                   best-of-educations, a switch palace flip once per grant. Built with
+                   3 parallel agents in jj workspaces (user: "parallelize across agents
+                   where it would speed up"); integrated linearly, one gate.
+
 D59 settled 10-16  Ten perks a pool (user: "go w perks roster"; "bytes are a byproduct ... like
                    cells in dead cells"; "make all doors cursed but restore all hp / 1.5x
                    time"). rules.PerkRules + game/perks.go, docs/research/perks.md

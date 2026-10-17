@@ -42,6 +42,9 @@ func (m *Model) openLearn(o screens.OpenLearn) tea.Cmd {
 		if id := cmp.Or(o.Module, m.learnModule(o.Topic)); id != "" {
 			p.Open(id)
 		}
+		if caps := m.freshCaps(); len(caps) > 0 {
+			p.Flip(caps)
+		}
 		cmd := m.push(p)
 		// The Mock Turtle's school, over the first visit (story bible).
 		if m.d.Story && m.unseen("story.first-rtfm") {
@@ -59,6 +62,25 @@ func (m *Model) openLearn(o screens.OpenLearn) tea.Cmd {
 		cur, err := curriculum.Load(dir)
 		return learnLoadedMsg{cur: cur, err: err, open: o}
 	})
+}
+
+// freshCaps is the capabilities granted since RTFM's map last showed,
+// for its switch palace, and notes that it now shows them all. The first
+// map of a session has none: what was granted before was shown then, on
+// the trial's clear screen.
+func (m *Model) freshCaps() []string {
+	seen := m.rtfmCaps
+	m.rtfmCaps = append([]string{}, m.meta.Capabilities...)
+	if seen == nil {
+		return nil
+	}
+	var fresh []string
+	for _, c := range m.meta.Capabilities {
+		if !slices.Contains(seen, c) {
+			fresh = append(fresh, c)
+		}
+	}
+	return fresh
 }
 
 // openIndex shows RTFM's man index over the map, which searches, at
@@ -96,9 +118,10 @@ func (m *Model) learnModule(topic string) string {
 }
 
 // trialNext is End.Learn for a passed trial: the next module after its own
-// in guide order whose trial earns a capability the player lacks, or, when
-// none is left or the curriculum is not loaded (a trial resumed after a
-// restart), the trial's own module, back in RTFM.
+// in guide order with a trial still to pass that earns something, a
+// capability the player lacks or, granting none, its ✓; or, when none is
+// left or the curriculum is not loaded (a trial resumed after a restart),
+// the trial's own module, back in RTFM.
 func (m *Model) trialNext(st *game.State) *bootui.Learn {
 	back := &bootui.Learn{Module: st.Trial.Module}
 	if m.cur == nil {
@@ -110,7 +133,11 @@ func (m *Model) trialNext(st *game.State) *bootui.Learn {
 		return back
 	}
 	for _, mod := range mods[i+1:] {
-		if c := curriculum.CapabilityFor(mod.Topic); !mod.Meta && c != "" && !slices.Contains(m.meta.Capabilities, c) {
+		c := curriculum.CapabilityFor(mod.Topic)
+		if mod.Meta || slices.Contains(m.meta.TrialsPassed, mod.ID) || c != "" && slices.Contains(m.meta.Capabilities, c) {
+			continue
+		}
+		if curriculum.TrialFor(mod, m.judgeable).Kind.HasTrial() {
 			return &bootui.Learn{Module: mod.ID, Title: mod.Title}
 		}
 	}

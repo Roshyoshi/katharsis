@@ -3,7 +3,12 @@
 Ask: "we should add a map sorta for RTFM ... can be like the new super mario
 maps and like there can be levels and stuff inside ig".
 
-Status: plan only. Nothing in ~/katharsis was changed. Snapshot read:
+Status: built 10-16, phases 1-9 (D60). Departures from the plan: a module
+whose topic is gated is a trial even with nothing judgeable (its unit all
+topped up), so the full guide has 106 trials, 4 castles and 34 pages, not
+the 61 uncleared nodes §7 Q1 counted; the switch palace's flash is the
+clear screen's existing rtfm.trial.pass line, and the map's part is the
+□ → ■ fill along the path. The plan below is as written. Snapshot read:
 `~/Library/Caches/katharsis/guide/092bf547…/content` (commit 092bf547).
 Scratch joins used for the counts: `/Users/roshanhegde/.claude/jobs/e2124f03/tmp/w/`
 (`mods.txt` = division, chapter, id, topic, capability, playable, all problems;

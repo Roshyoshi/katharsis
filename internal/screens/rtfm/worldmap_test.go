@@ -12,6 +12,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/anim"
 	"katharsis/internal/catalog"
 	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
@@ -285,4 +286,48 @@ func TestMapOpen(t *testing.T) {
 		t.Errorf("Open shows:\n%s", v)
 	}
 	wantMsg(t, press(t, m, "q"), screens.Back{})
+}
+
+// The switch palace: after Flip, the world's marks for the new capability
+// show □ until the clip reaches them; a key skips to the end without
+// acting, and under reduced motion the map opens at the end.
+func TestMapFlip(t *testing.T) {
+	a := fixture.Atlas()
+	si := world(t, a, "silver")
+	l, _, _ := a.Level("graph-traversal")
+	meta := midSilver(t, a)
+	if !slices.Contains(meta.Capabilities, l.Capability) {
+		meta.Capabilities = append(meta.Capabilities, l.Capability)
+	}
+	n := 0
+	for _, x := range a.Worlds[si].Levels() {
+		if x.Capability == l.Capability {
+			n++
+		}
+	}
+	if n == 0 {
+		t.Fatalf("Silver has no level teaching %s", l.Capability)
+	}
+	held := func(m *rtfm.Map) int { return strings.Count(ansi.Strip(m.View(80, 24)), ui.G.Cap) }
+	open := func() *rtfm.Map {
+		m := rtfm.NewMapOf(a, meta)
+		m.Open("graph-traversal")
+		m.Flip([]string{l.Capability})
+		m.Init()
+		return m
+	}
+
+	m := open()
+	before := held(m)
+	wantMsg(t, press(t, m, "t"), nil) // skips; does not start the trial
+	if got := held(m) - before; got != n {
+		t.Errorf("the switch palace filled in %d marks, want %d", got, n)
+	}
+	wantMsg(t, press(t, m, "t"), screens.StartTrial{Module: "graph-traversal"})
+
+	anim.SetMotion(anim.Motion{Reduced: true})
+	defer anim.SetMotion(anim.Motion{})
+	if got := held(open()); got != before+n {
+		t.Errorf("reduced motion shows %d marks held, want %d", got, before+n)
+	}
 }

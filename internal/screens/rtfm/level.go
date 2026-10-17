@@ -67,7 +67,7 @@ func NewLevel(c *curriculum.Curriculum, l curriculum.Level, region string, m gam
 	caps := capSet(m)
 	e := newEntry(mod, judgeable)
 	v := &Level{
-		l: l, region: region, e: e, page: newModule(c, e, caps, lookup), caps: caps,
+		l: l, region: region, e: e, page: newModule(c, e, caps, slices.Contains(m.TrialsPassed, l.Module), lookup), caps: caps,
 		opened: slices.Contains(m.Opened, l.Module),
 	}
 	for _, id := range l.Prereqs {

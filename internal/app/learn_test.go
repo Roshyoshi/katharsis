@@ -301,13 +301,16 @@ func TestRTFMLinkGoesBack(t *testing.T) {
 // only the retry.
 func TestPassedTrialOffersTheNextModule(t *testing.T) {
 	for _, tc := range []struct {
-		name string
-		held []string
-		line string // the next step
-		page string // the module m opens at
+		name  string
+		held  []string
+		check bool   // the catalog judges Matrix Exponentiation's problem
+		line  string // the next step
+		page  string // the module m opens at
 	}{
-		{"next module", nil, "m next module: Two Pointers", "two-pointers"},
-		{"none left", []string{"CAP_TWOPTR", "CAP_DS"}, "m back to RTFM", "prefix-sums"},
+		{"next module", nil, false, "m next module: Two Pointers", "two-pointers"},
+		// With nothing left to grant, a trial that grants only its ✓.
+		{"a check only", []string{"CAP_TWOPTR", "CAP_DS"}, true, "m next module: Matrix Exponentiation", "matrix-expo"},
+		{"none left", []string{"CAP_TWOPTR", "CAP_DS"}, false, "m back to RTFM", "prefix-sums"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
@@ -315,6 +318,11 @@ func TestPassedTrialOffersTheNextModule(t *testing.T) {
 				loadGuide(h)
 				for _, c := range tc.held {
 					game.GrantCapability(&h.m.meta, c)
+				}
+				if tc.check {
+					c := h.m.d.Catalog.(*fakeCatalog)
+					p := catalog.Problem{ID: "usaco:746", Title: "USACO 746", Topic: "mixed", Rating: 2200, Judgeable: true}
+					c.all, c.byID[p.ID] = append(c.all, p), p
 				}
 				h.send(screens.StartTrial{Module: "prefix-sums"})
 				if got := h.play(); got != game.PhaseCleared {
@@ -429,6 +437,27 @@ func TestRTFMIndexOverTheMap(t *testing.T) {
 		h.send(key("q"))
 		if h.m.top() != p {
 			t.Errorf("q on the index shows %T, want the map", h.m.top())
+		}
+	})
+}
+
+// RTFM's switch palace plays once per grant: not on the session's first
+// map, then for what was granted since the map last showed, then not
+// again.
+func TestRTFMFlipsEachGrantOnce(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		loadGuide(h)
+		game.GrantCapability(&h.m.meta, "CAP_DS")
+		if got := h.m.freshCaps(); got != nil {
+			t.Errorf("the first map flips %v", got)
+		}
+		game.GrantCapability(&h.m.meta, "CAP_PREFIX")
+		if got := h.m.freshCaps(); !slices.Equal(got, []string{"CAP_PREFIX"}) {
+			t.Errorf("after a grant the map flips %v, want CAP_PREFIX", got)
+		}
+		if got := h.m.freshCaps(); got != nil {
+			t.Errorf("the next map flips %v again", got)
 		}
 	})
 }
