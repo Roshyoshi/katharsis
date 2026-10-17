@@ -145,6 +145,7 @@ func runGame(args []string) error {
 	}
 	cats := catalog.NewUnion(us)
 	cfNote := joinCodeforces(ctx, cats)
+	csesAcct := joinCSES(ctx, cats)
 
 	runner := &app.TmuxRunner{
 		Root:      *root,
@@ -174,6 +175,7 @@ func runGame(args []string) error {
 		SetuidNotices: prefs.SetuidNotices,
 		Spoilers:      prefs.SetuidSpoilers,
 		Settings:      func() []app.Setting { return rows },
+		Accounts:      []app.Account{csesAcct},
 	})
 	if err != nil {
 		return err

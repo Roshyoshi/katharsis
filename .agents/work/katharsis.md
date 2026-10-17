@@ -296,6 +296,17 @@ D57 settled 10-15  A GitHub-style contribution graph (user: "a git commit graph 
                    days and the load average. No streak counter: "Graph, no streak
                    (Recommended)" (GR1 stands).
 
+D61 settled 10-17  More of the guide playable (user: "why are some RTFM stuff link only";
+                   "we can do CSES after the codeforces mapping ... add a settings tab and
+                   in that list CSES login"). Reverses 10-14's "CSES stays out".
+                   CatalogID maps cf- (216 of the guide's 369 judgeable); content/cses:
+                   400 tasks, rating 800+600*log10(top/solvers), tests by the player's
+                   login fetched per door and cached, password in the macOS Keychain
+                   (security -i, never argv), judgeable only logged in or cached and
+                   never interactive (6) or any-answer (68); GRUB passwd lists settings
+                   with their source and the CSES account. Tests download unverified
+                   until the player logs in (TestNetwork).
+
 D60 settled 10-16  RTFM world map (user: "a map sorta for RTFM ... like the new super mario
                    maps"; "yes lets do the world map"), rtfm-map-plan.md with Q1-Q8 at
                    their defaults: curriculum.Atlas (divisions = worlds, modules =
