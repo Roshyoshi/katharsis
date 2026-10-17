@@ -16,12 +16,12 @@ import (
 	"katharsis/internal/setuid"
 )
 
-// TestTable: 61 bits, 23 progression, 16 skill, 10 secret and 12
+// TestTable: 63 bits, 25 progression, 16 skill, 10 secret and 12
 // completion (achievements.md §(d)); ids unique, a secret's a dotfile with
 // a hint and no other bit with one; every bit named and stating its
 // barrier.
 func TestTable(t *testing.T) {
-	want := map[setuid.Kind]int{setuid.KindProgression: 23, setuid.KindSkill: 16, setuid.KindSecret: 10, setuid.KindCompletion: 12}
+	want := map[setuid.Kind]int{setuid.KindProgression: 25, setuid.KindSkill: 16, setuid.KindSecret: 10, setuid.KindCompletion: 12}
 	got := map[setuid.Kind]int{}
 	seen := map[string]bool{}
 	for _, d := range setuid.Table {
@@ -40,8 +40,8 @@ func TestTable(t *testing.T) {
 			t.Errorf("Lookup(%s) = %v, %v", d.ID, def.ID, ok)
 		}
 	}
-	if len(setuid.Table) != 61 || !maps.Equal(got, want) {
-		t.Errorf("%d bits by kind %v, want 61: %v", len(setuid.Table), got, want)
+	if len(setuid.Table) != 63 || !maps.Equal(got, want) {
+		t.Errorf("%d bits by kind %v, want 63: %v", len(setuid.Table), got, want)
 	}
 	if d, _ := setuid.Lookup(".dull-reality"); d.Path() != "/home/you/.dull-reality" {
 		t.Errorf("path %q", d.Path())

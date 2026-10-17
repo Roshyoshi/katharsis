@@ -3,6 +3,7 @@ package game_test
 import (
 	"encoding/json"
 	"slices"
+	"strings"
 	"testing"
 
 	"katharsis/internal/game"
@@ -57,5 +58,35 @@ func TestSeenRoundTripsAsJSON(t *testing.T) {
 	}
 	if old.Seen != nil || game.HasSeen(&old, "story.prologue") {
 		t.Errorf("an old save has seen %+v", old.Seen)
+	}
+}
+
+// TestMarkOpened: a module is recorded once, in the order first opened,
+// and a save from before Opened reads as nothing opened (Meta is JSON).
+func TestMarkOpened(t *testing.T) {
+	t.Parallel()
+	var m game.Meta
+	if !game.MarkOpened(&m, "intro-dp") || !game.MarkOpened(&m, "bfs") {
+		t.Fatal("first MarkOpened reported a repeat")
+	}
+	if game.MarkOpened(&m, "intro-dp") || game.MarkOpened(&m, "") {
+		t.Error("MarkOpened recorded a repeat or an empty id")
+	}
+	if want := []string{"intro-dp", "bfs"}; !slices.Equal(m.Opened, want) {
+		t.Errorf("Opened = %v, want %v", m.Opened, want)
+	}
+	raw, err := json.Marshal(game.Meta{Boots: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), `"Opened":`) {
+		t.Errorf("an empty Opened is written: %s", raw)
+	}
+	var old game.Meta
+	if err := json.Unmarshal([]byte(`{"Boots": 12, "TrialsPassed": ["intro-dp"]}`), &old); err != nil {
+		t.Fatal(err)
+	}
+	if old.Opened != nil {
+		t.Errorf("an old save has opened %v", old.Opened)
 	}
 }

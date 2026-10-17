@@ -13,7 +13,7 @@ a snapshot taken on 2026-10-15.
 
 ## (a) Summary
 
-**Recommendation: 61 achievements called setuid bits, in four kinds.**
+**Recommendation: 63 achievements called setuid bits, in four kinds.**
 
 - **They pay nothing.** They are listed on a `find / -perm -4000` screen
   reached from GRUB.
@@ -27,7 +27,7 @@ a snapshot taken on 2026-10-15.
 
 | Kind | Count | Dir | What sets it | Example |
 |---|---|---|---|---|
-| progression | 23 | `/bin` | playing on: each boss, each ring, the first of each learning act | `snicker-snack`: defeat The Halting Problem |
+| progression | 25 | `/bin` | playing on: each boss, each ring, the first of each learning act | `snicker-snack`: defeat The Halting Problem |
 | skill | 16 | `/sbin` | a run you set out to do: door-time speedruns, clean and constrained clears, one twist per boss, two speed completions on boot time | `stopped-looking`: defeat Heisenbug without running the samples |
 | secret | 10 | `/home/you/.*` | curiosity: a hidden route, a hidden state, a clutch moment | `two-miles-high`: hit the cycle cap |
 | completion | 12 | `/usr/bin` | counters with progress shown, then 100% and 112% | `regular-course`: hold all 11 capabilities |
@@ -252,7 +252,7 @@ Abandoned boots set nothing. Easing never counts against a bit (R8).
 - Names that quote Carroll keep each quote within two hooks (tone
   rule 11). The new quotes are listed in §(f).
 
-### Progression · `/bin` · 23
+### Progression · `/bin` · 25
 
 | # | id | Name | Text | Condition |
 |---|---|---|---|---|
@@ -279,6 +279,13 @@ Abandoned boots set nothing. Easing never counts against a bit (R8).
 | P21 | `one-topic` | One Topic Knows You | Master a topic: 10 rated doors on it. | ∃t ≠ mixed: M.TopicAttempts[t] ≥ Rules.MasteryAttempts (as `milestone.mastered.1`) |
 | P22 | `by-railway` | By Railway | Clear a boot that took act III's skip. | ∃B full: ∃i B.Biomes[i].Node = skip |
 | P23 | `un-birthday` | An Un-Birthday Present | Clear a nightly build, any date. | ∃B full: B.Seed = NightlySeed(local date of B.Started) |
+| P24 | `lobster-quadrille` | The Lobster Quadrille | Pass a division's conclusion trial in RTFM. | ∃id ∈ M.TrialsPassed: id ends in `-conclusion` (a castle) |
+| P25 | `best-of-educations` | The Best of Educations | Pass every trial of one RTFM division. | ∃ world W of RTFM's map with a trial: every level of W but its pages ∈ M.TrialsPassed (General has none, so never) |
+
+P24 and P25 read RTFM (.agents/work/rtfm-map-plan.md Q5). P25 needs the
+map, which the app loads on first use: `setuid.CheckRTFM` checks both when
+the trials passed change, and backfills them, marked, at launch and once
+RTFM loads.
 
 The ring bits read `B.Unlocked` on a built-in boot, not `Meta.Prestige`. A
 custom preset can unlock prestige (`./internal/game/engine.go:774`, which
@@ -381,9 +388,9 @@ Every row shows its progress in the SIZE column (R4).
 | C11 | `hundred` | 100% | Reach 100%. | Completion(M) ≥ 100 (§(e)) |
 | C12 | `hundred-twelve` | 112% | Reach 112%. | Completion(M) ≥ 112 |
 
-**Counts.** 61 in all:
+**Counts.** 63 in all:
 
-- 51 visible and 10 secret. The completion bits and the ring bits show
+- 53 visible and 10 secret. The completion bits and the ring bits show
   their progress.
 - About half are off the main path (skill, secret, the apt and daemon sets), as Charla recommends.
 - `hello-world` sets in boot #1's first ten minutes.

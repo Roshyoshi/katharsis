@@ -11,6 +11,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/catalog"
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
 	"katharsis/internal/hud"
 	"katharsis/internal/screens"
@@ -384,6 +386,105 @@ func TestSetuidSamplesPair(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		if h := heisenbugClear(t, 0); !setuid.IsSet(&h.m.meta, "stopped-looking") {
 			t.Errorf("no :w, and stopped-looking is not set: %v", h.m.meta.Setuid)
+		}
+	})
+}
+
+// trialsOf is the modules of the world with division id that hold a
+// trial on h's RTFM map, once h's catalog judges every problem the
+// guide serves (the fake one has none of them).
+func trialsOf(h *harness, id string) []string {
+	h.t.Helper()
+	cat := h.m.d.Catalog.(*fakeCatalog)
+	for _, mod := range h.m.cur.Modules() {
+		for _, list := range mod.Problems {
+			for _, p := range list.Problems {
+				if _, ok := cat.byID[p.ID]; p.ID != "" && !ok {
+					cat.byID[p.ID] = catalog.Problem{ID: p.ID, Rating: 1400, Judgeable: true}
+				}
+			}
+		}
+	}
+	var out []string
+	for _, w := range h.m.rtfmMap().Worlds {
+		if w.ID != id {
+			continue
+		}
+		for _, l := range w.Levels() {
+			if l.Kind != curriculum.PageLevel {
+				out = append(out, l.Module)
+			}
+		}
+	}
+	return out
+}
+
+// Passing a world's last trial sets best-of-educations at the trial's
+// end, live, with RTFM's map loaded.
+func TestSetuidWorldOnTrialPass(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		loadGuide(h)
+		silver := trialsOf(h, "silver")
+		if len(silver) < 2 || !slices.Contains(silver, "prefix-sums") {
+			t.Fatalf("the fixture's Silver trials %v: want prefix-sums and another", silver)
+		}
+		h.m.meta.TrialsPassed = slices.DeleteFunc(slices.Clone(silver), func(id string) bool { return id == "prefix-sums" })
+		h.send(screens.StartTrial{Module: "prefix-sums"})
+		if setuid.IsSet(&h.m.meta, "best-of-educations") {
+			t.Fatal("set before the world's last trial passed")
+		}
+		if got := h.play(); got != game.PhaseCleared {
+			t.Fatalf("trial ended %q, want cleared", got)
+		}
+		b, ok := setuid.Bit(&h.m.meta, "best-of-educations")
+		if !ok || b.Backfill {
+			t.Fatalf("best-of-educations %+v (set %v), want it live", b, ok)
+		}
+		if m, _ := h.st.LoadMeta(); !setuid.IsSet(&m, "best-of-educations") {
+			t.Error("the bit was not saved")
+		}
+	})
+}
+
+// A save backfilled before the RTFM bits gets them on launch, marked
+// "from git log": the conclusion's at once, the world's once RTFM loads,
+// since it reads the map. GRUB counts them.
+func TestSetuidRTFMBackfill(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		loadGuide(h)
+		silver := trialsOf(h, "silver")
+		cur := h.m.cur
+		m := h.m.meta
+		m.TrialsPassed = append(slices.Clone(silver), "bronze-conclusion")
+		if err := h.st.SaveMeta(m); err != nil {
+			t.Fatal(err)
+		}
+		d := h.m.d
+		d.SetuidNotices = true
+		h.start(d)
+		saved, _ := h.st.LoadMeta()
+		if b, ok := setuid.Bit(&saved, "lobster-quadrille"); !ok || !b.Backfill {
+			t.Fatalf("lobster-quadrille %+v (set %v) at launch, want it from git log", b, ok)
+		}
+		if setuid.IsSet(&saved, "best-of-educations") {
+			t.Fatal("best-of-educations set before RTFM loaded")
+		}
+		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "setuid +1") {
+			t.Errorf("GRUB lacks the backfill's news:\n%s", v)
+		}
+		h.send(rtfmLoadedMsg{cur})
+		saved, _ = h.st.LoadMeta()
+		if b, ok := setuid.Bit(&saved, "best-of-educations"); !ok || !b.Backfill {
+			t.Fatalf("best-of-educations %+v (set %v) once RTFM loaded, want it from git log", b, ok)
+		}
+		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "setuid +2") {
+			t.Errorf("GRUB lacks the second backfill's news:\n%s", v)
+		}
+		h.start(d)
+		if set := h.eventsOf(store.EventSetuidSet); len(set) != 2 {
+			t.Errorf("setuid_set %v: want each RTFM bit once", set)
 		}
 	})
 }

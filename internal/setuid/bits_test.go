@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/setuid"
@@ -120,11 +121,33 @@ func clone(m *game.Meta) *game.Meta {
 	return &out
 }
 
-// sets reports whether Check sets id on a copy of m with boot s.
+// sets reports whether Check, and CheckRTFM against rtfmMap, set id on a
+// copy of m with boot s.
 func sets(m *game.Meta, s *game.State, id string) bool {
 	m = clone(m)
 	setuid.Check(m, s, t0.Add(10*time.Hour))
+	setuid.CheckRTFM(m, rtfmMap, t0.Add(10*time.Hour), false)
 	return setuid.IsSet(m, id)
+}
+
+// rtfmMap is a small RTFM map: General's pages, and Bronze's page, two
+// trials and conclusion.
+var rtfmMap = &curriculum.Atlas{Worlds: []curriculum.World{
+	{ID: "general", Regions: []curriculum.Region{{Levels: []curriculum.Level{
+		{Module: "using-this-guide", Kind: curriculum.PageLevel},
+		{Module: "intro-cpp", Kind: curriculum.PageLevel},
+	}}}},
+	{ID: "bronze", Regions: []curriculum.Region{{Levels: []curriculum.Level{
+		{Module: "time-comp", Kind: curriculum.PageLevel},
+		{Module: "intro-sorting", Kind: curriculum.TrialLevel},
+		{Module: "intro-graphs", Kind: curriculum.TrialLevel, Capability: "CAP_GRAPHS"},
+		{Module: "bronze-conclusion", Kind: curriculum.CastleLevel},
+	}}}},
+}}
+
+// passed is metas for a Meta that passed the trials of modules.
+func passed(modules ...string) func() (*game.Meta, *game.State) {
+	return metas(func(m *game.Meta) { m.TrialsPassed = modules })
 }
 
 // full100 is a Meta at exactly 100%, and full112 one at 112%.
@@ -239,6 +262,20 @@ func cases() map[string]bitCase {
 		"stamped": {
 			meet: []func() (*game.Meta, *game.State){metas(func(m *game.Meta) { m.Capabilities = []string{"CAP_DP"} })},
 			miss: []func() (*game.Meta, *game.State){metas(func(*game.Meta) {})},
+		},
+		"lobster-quadrille": {
+			meet: []func() (*game.Meta, *game.State){passed("bronze-conclusion"), passed("intro-sorting", "gold-conclusion")},
+			miss: []func() (*game.Meta, *game.State){passed(), passed("intro-sorting", "intro-graphs"),
+				metas(func(m *game.Meta) { m.Opened = []string{"bronze-conclusion"} })},
+		},
+		"best-of-educations": {
+			// Bronze's page is no trial; General has none, so it never counts.
+			meet: []func() (*game.Meta, *game.State){passed("intro-graphs", "bronze-conclusion", "intro-sorting")},
+			miss: []func() (*game.Meta, *game.State){passed(), passed("intro-sorting", "intro-graphs"),
+				metas(func(m *game.Meta) {
+					m.TrialsPassed = []string{"intro-sorting", "bronze-conclusion"}
+					m.Opened = []string{"using-this-guide", "intro-cpp", "time-comp", "intro-graphs"}
+				})},
 		},
 		"another-road": {
 			// The Heap is behind CAP_DS; The ALU is open to all.
@@ -799,4 +836,46 @@ func mustJSON(t *testing.T, v any) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+// TestRTFMBits: a conclusion passed sets its bit at the trial's own check;
+// a world's trials all passed wait for the map, which the app loads on
+// first use, and CheckRTFM checks only the RTFM bits, marked "from git
+// log" in a backfill, each once.
+func TestRTFMBits(t *testing.T) {
+	m := &game.Meta{TrialsPassed: []string{"intro-sorting", "intro-graphs", "bronze-conclusion"},
+		Capabilities: []string{"CAP_GRAPHS"}}
+	got := setuid.Check(m, nil, t0)
+	if ids := bitIDs(got); !slices.Equal(ids, []string{"stamped", "lobster-quadrille"}) {
+		t.Fatalf("Check set %v, want stamped and the conclusion's", ids)
+	}
+	if got := setuid.CheckRTFM(m, nil, t0, false); len(got) != 0 {
+		t.Errorf("no map: CheckRTFM set %v", got)
+	}
+	now := t0.Add(time.Hour)
+	got = setuid.CheckRTFM(m, rtfmMap, now, true)
+	if len(got) != 1 || got[0].ID != "best-of-educations" || !got[0].Backfill || !got[0].At.Equal(now) || got[0].Boot != 0 {
+		t.Errorf("with the map: %+v, want best-of-educations, from git log, at %v", got, now)
+	}
+	if again := setuid.CheckRTFM(m, rtfmMap, now, false); len(again) != 0 {
+		t.Errorf("twice: %v", again)
+	}
+
+	// Live, not backfilled; and only the RTFM bits, whatever else holds.
+	live := &game.Meta{TrialsPassed: []string{"intro-sorting", "intro-graphs", "bronze-conclusion"}, Retired: 1}
+	got = setuid.CheckRTFM(live, rtfmMap, now, false)
+	if ids := bitIDs(got); !slices.Equal(ids, []string{"lobster-quadrille", "best-of-educations"}) || got[0].Backfill {
+		t.Errorf("live CheckRTFM set %+v", got)
+	}
+	if setuid.IsSet(live, "struck-off") {
+		t.Error("CheckRTFM set a bit that reads no trial")
+	}
+}
+
+func bitIDs(bits []game.SetuidBit) []string {
+	var ids []string
+	for _, b := range bits {
+		ids = append(ids, b.ID)
+	}
+	return ids
 }

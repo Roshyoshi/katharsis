@@ -106,6 +106,22 @@ func (v *view) took(pick func(n rules.Biome) bool) bool {
 	return false
 }
 
+// schooled reports whether every trial of one of RTFM's worlds passed: its
+// levels that hold one (curriculum.WorldSum's Trials), in a world that has
+// any, so General's pages never count. False until the map is loaded.
+func (v *view) schooled() bool {
+	if v.atlas == nil {
+		return false
+	}
+	p := v.atlas.Progress(v.m)
+	for _, w := range v.atlas.Worlds {
+		if s := p.Sum(w); s.Trials > 0 && s.Passed == s.Trials {
+			return true
+		}
+	}
+	return false
+}
+
 // samples is how many sample runs door i (a) of the boot checked made, ok
 // false when nobody counted: a boot saved before Attempt.Samples, whose
 // door a backfill finds no events for.

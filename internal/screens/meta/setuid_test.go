@@ -206,7 +206,7 @@ func TestSetuidProvenance(t *testing.T) {
 		t.Errorf("provenance:\n%s", v)
 	}
 	m := game.Meta{}
-	if v := plain(meta.NewSetuid(meta.SetuidConfig{Meta: m, Now: fixture.Now}).View(80, 24)); !strings.Contains(v, "0 of 61 set") {
+	if v := plain(meta.NewSetuid(meta.SetuidConfig{Meta: m, Now: fixture.Now}).View(80, 24)); !strings.Contains(v, "0 of 63 set") {
 		t.Errorf("an empty save:\n%s", v)
 	}
 }

@@ -25,3 +25,14 @@ func MarkSeen(m *Meta, id string) bool {
 	m.Seen = append(m.Seen, SeenScene{ID: id, Boot: m.Boots})
 	return true
 }
+
+// MarkOpened records that RTFM module id's page was opened in the reader
+// (Meta.Opened). It reports false, and changes nothing, when it was opened
+// before, so the list keeps the order first opened.
+func MarkOpened(m *Meta, id string) bool {
+	if id == "" || slices.Contains(m.Opened, id) {
+		return false
+	}
+	m.Opened = append(m.Opened, id)
+	return true
+}

@@ -217,6 +217,7 @@ func New(d Deps) (*Model, error) {
 	// Once, for a save from before the bits (setuid.go): before the first
 	// screen, so GRUB counts what it set.
 	m.backfillSetuid()
+	m.backfillRTFM()
 	m.reset()
 	m.askPrior()
 	return m, nil

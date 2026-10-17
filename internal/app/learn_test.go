@@ -371,3 +371,35 @@ func TestTrialWithoutCapabilityClearsOnly(t *testing.T) {
 		})
 	}
 }
+
+// Opening a module's page records it in Meta.Opened, once, in the order
+// first opened, and saves it: between boots and over one in flight.
+func TestOpenModuleRecordsOpened(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		loadGuide(h)
+		h.send(screens.OpenModule{Module: "prefix-sums"})
+		h.send(screens.Back{})
+		h.send(screens.OpenModule{Module: "fast-io"})
+		h.send(screens.Back{})
+		h.send(screens.OpenModule{Module: "prefix-sums"})
+		h.send(screens.Back{})
+		want := []string{"prefix-sums", "fast-io"}
+		if !slices.Equal(h.m.meta.Opened, want) {
+			t.Fatalf("Opened %v, want %v", h.m.meta.Opened, want)
+		}
+		if m, err := h.st.LoadMeta(); err != nil || !slices.Equal(m.Opened, want) {
+			t.Fatalf("saved Opened %v (%v), want %v", m.Opened, err, want)
+		}
+		h.send(screens.OpenModule{Module: "no-such-module"})
+		h.send(screens.StartBoot{Preset: "standard"})
+		if h.m.state == nil {
+			t.Fatal("no boot in flight")
+		}
+		h.send(screens.OpenModule{Module: "casework"})
+		want = append(want, "casework")
+		if m, err := h.st.LoadMeta(); err != nil || !slices.Equal(m.Opened, want) {
+			t.Errorf("saved over a boot: Opened %v (%v), want %v", m.Opened, err, want)
+		}
+	})
+}

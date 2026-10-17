@@ -120,7 +120,8 @@ func (m *Model) judgeable(id catalog.ID) bool {
 	return ok && p.Judgeable
 }
 
-// openModule shows a module's guide page in the reader.
+// openModule shows a module's guide page in the reader, and records it
+// opened the first time (Meta.Opened: the map's "opened", never "read").
 func (m *Model) openModule(id string) tea.Cmd {
 	mod, ok := m.module(id)
 	if !ok {
@@ -129,6 +130,9 @@ func (m *Model) openModule(id string) tea.Cmd {
 	md, err := mod.Markdown()
 	if err != nil {
 		return fail("module %s: %v", id, err)
+	}
+	if game.MarkOpened(&m.meta, mod.ID) {
+		m.checkpointMeta()
 	}
 	return m.push(reader.New(reader.Doc{
 		Title:     mod.Title,

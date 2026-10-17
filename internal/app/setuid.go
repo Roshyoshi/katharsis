@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
@@ -26,7 +27,9 @@ import (
 //	                     ├─ cleared ───────── the kept block (bootui.setuidKept)
 //	                     └─ route, doors, merge the strip, after this look
 //	outside a boot: an upsolve, an install ─ Check(nil), in the flash
+//	a trial passed ──────────────────────── CheckRTFM too, with RTFM's map
 //	launch: !Record.Backfilled ───────────── the backfill, saved, then GRUB
+//	launch, RTFM loaded ──────────────────── backfillRTFM, saved
 //
 // setuid_notices off says none of it; the screen still lists every bit.
 
@@ -42,20 +45,46 @@ type setuidState struct {
 	// backfill's: GRUB's status line says "setuid +n" until a boot or the
 	// find screen leaves it.
 	news int
+	// passed is len(Meta.TrialsPassed) when the RTFM bits were last checked
+	// (checkSetuid, backfillRTFM): a trial passed since checks them again.
+	passed int
 }
 
 // checkSetuid sets the bits that hold for Meta and the boot (nil outside
-// one) at now: a safe point, never while a door is open. Deps.SetuidCheck
-// stands in for setuid.Check in tests.
+// one) at now: a safe point, never while a door is open. A trial passed
+// since the last check also checks the bits that read RTFM's map
+// (setuid.CheckRTFM). Deps.SetuidCheck stands in for both in tests.
 func (m *Model) checkSetuid(s *game.State, now time.Time) []game.SetuidBit {
 	if s != nil && s.Phase == game.PhaseProblem {
 		return nil
 	}
-	check := m.d.SetuidCheck
-	if check == nil {
-		check = setuid.Check
+	if m.d.SetuidCheck != nil {
+		return m.d.SetuidCheck(&m.meta, s, now)
 	}
-	return check(&m.meta, s, now)
+	bits := setuid.Check(&m.meta, s, now)
+	if n := len(m.meta.TrialsPassed); n != m.setuid.passed && (s == nil || s.Current == nil) {
+		m.setuid.passed = n
+		bits = append(bits, setuid.CheckRTFM(&m.meta, m.rtfmMap(), now, false)...)
+	}
+	return bits
+}
+
+// rtfmMap is RTFM's map, nil until RTFM is loaded.
+func (m *Model) rtfmMap() *curriculum.Atlas {
+	if m.cur == nil {
+		return nil
+	}
+	a := m.cur.Atlas(m.judgeable)
+	return &a
+}
+
+// checkpointMeta saves Meta, with the boot in play when there is one.
+func (m *Model) checkpointMeta() {
+	if m.state != nil {
+		m.saved(m.d.Store.Checkpoint(m.meta, m.state))
+	} else {
+		m.saved(m.d.Store.SaveMeta(m.meta))
+	}
 }
 
 // setuidSet records each bit set (setuid_set), noticed in phase ("" outside
@@ -114,14 +143,33 @@ func (m *Model) backfillSetuid() {
 		m.logErr("setuid backfill", err)
 		return
 	}
-	if m.state != nil {
-		m.saved(m.d.Store.Checkpoint(m.meta, m.state))
-	} else {
-		m.saved(m.d.Store.SaveMeta(m.meta))
-	}
+	m.checkpointMeta()
 	m.setuidSet(bits, "")
 	if m.setuid.notices {
 		m.setuid.news += len(bits)
+	}
+}
+
+// backfillRTFM sets the RTFM bits that trials passed before them earned
+// (setuid.CheckRTFM, marked "from git log"), and saves when it set any.
+// It runs at launch, after backfillSetuid, which a save backfilled before
+// these bits skips, and again once RTFM loads, for the bits that read its
+// map. GRUB's status line counts them. A test that fakes the bits
+// (Deps.SetuidCheck) gets none.
+func (m *Model) backfillRTFM() {
+	if m.d.SetuidCheck != nil {
+		return
+	}
+	m.setuid.passed = len(m.meta.TrialsPassed)
+	bits := setuid.CheckRTFM(&m.meta, m.rtfmMap(), m.d.Now(), true)
+	if len(bits) == 0 {
+		return
+	}
+	m.checkpointMeta()
+	m.setuidSet(bits, "")
+	if m.setuid.notices {
+		m.setuid.news += len(bits)
+		m.regrub() // its status line says it
 	}
 }
 

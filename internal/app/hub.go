@@ -317,6 +317,7 @@ func (m *Model) onRTFMLoaded(msg rtfmLoadedMsg) tea.Cmd {
 	m.rtfmLoading = false
 	if m.cur == nil && msg.cur != nil {
 		m.cur = msg.cur
+		m.backfillRTFM() // its map is here now (setuid.go)
 		m.refresh()
 	}
 	return nil

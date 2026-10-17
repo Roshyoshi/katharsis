@@ -91,6 +91,10 @@ func (a Atlas) Level(id string) (Level, int, bool) {
 	return Level{}, -1, false
 }
 
+// Conclusion reports whether module id is a division's conclusion, a
+// CastleLevel.
+func Conclusion(id string) bool { return strings.HasSuffix(id, "-conclusion") }
+
 // generalID is the division of pages about contests in general: a library
 // island, reading only.
 const generalID = "general"
@@ -156,7 +160,7 @@ func (c *Curriculum) level(m Module, division string, judgeable func(catalog.ID)
 // with neither: its trial's unit is then all topped up.
 func levelKind(id, division string, trial bool) LevelKind {
 	switch {
-	case strings.HasSuffix(id, "-conclusion"):
+	case Conclusion(id):
 		return CastleLevel
 	case division == generalID || !trial:
 		return PageLevel

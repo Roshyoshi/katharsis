@@ -1,5 +1,5 @@
 // Package setuid is the game's achievements, setuid bits
-// (docs/design/achievements.md): 61 bits in four kinds, each a pure
+// (docs/design/achievements.md): 63 bits in four kinds, each a pure
 // function of Meta, one boot's State and Meta.Record, the fold of the boots
 // already finished. They pay nothing and steer nothing: internal/game never
 // imports this package (GR7), and a bit set is only a line in Meta.Setuid.
@@ -10,6 +10,7 @@
 //	   │                                   appends what holds to m.Setuid
 //	   └─ store.Checkpoint(m, s)           the bits land with the boot
 //	outside a boot: Check(&m, nil, now)    an upsolve, a trial, an install
+//	trials passed, RTFM loaded: CheckRTFM  the bits that read RTFM's map
 //	launch: !m.Record.Backfilled → store.BackfillSetuid, then SaveMeta
 //
 // Only the built-in presets' boots count (Counts), and easing never counts
@@ -20,6 +21,7 @@ import (
 	"slices"
 	"time"
 
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 )
@@ -74,6 +76,9 @@ type Def struct {
 	current bool
 	// progress is a counter's have and need, nil for no counter.
 	progress func(m *game.Meta) (have, need int)
+	// rtfm marks a bit that reads RTFM's trials (Meta.TrialsPassed), and
+	// perhaps its map (view.atlas): CheckRTFM checks these alone.
+	rtfm bool
 }
 
 // Path is the bit's path on the find screen: "/bin/hello-world".
@@ -139,13 +144,15 @@ var builtIns = func() []string {
 
 // view is what one check reads: Meta, the boot checked when it counts (s,
 // nil otherwise and outside a boot), the boot whatever it is (boot), when,
-// and in a backfill the events table's sample runs.
+// in a backfill the events table's sample runs, and RTFM's map where the
+// app has it loaded (CheckRTFM; nil otherwise).
 type view struct {
 	m        *game.Meta
 	s        *game.State
 	boot     *game.State
 	now      time.Time
 	backfill *Samples
+	atlas    *curriculum.Atlas
 }
 
 // Check sets every bit that holds for m and boot s (nil outside a boot)
@@ -164,6 +171,23 @@ func Check(m *game.Meta, s *game.State, now time.Time) []game.SetuidBit {
 	}
 	Fold(m, s)
 	return check(&view{m: m, boot: s, now: now}, func(Def) bool { return true })
+}
+
+// CheckRTFM sets the bits that read RTFM's trials and are not set yet, at
+// now, against RTFM's map a: the app loads it on first use, so a is nil
+// until then, and a bit that needs it waits. The app calls it when the
+// trials passed change and once RTFM loads. backfill marks what it sets
+// "from git log", for trials passed before the bits, or before the map
+// was there to read: history cannot date them.
+func CheckRTFM(m *game.Meta, a *curriculum.Atlas, now time.Time, backfill bool) []game.SetuidBit {
+	if m == nil {
+		return nil
+	}
+	v := &view{m: m, now: now, atlas: a}
+	if backfill {
+		v.backfill = &Samples{} // the RTFM bits read no sample runs
+	}
+	return check(v, func(d Def) bool { return d.rtfm })
 }
 
 // check sets the bits of Table that which picks and that hold in v,

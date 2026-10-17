@@ -305,3 +305,23 @@ func TestBackfillHistory(t *testing.T) {
 		}
 	}
 }
+
+// TestBackfillRTFM: a save that passed a conclusion before the bits gets
+// its bit from the backfill, stamped now and marked; the world's waits for
+// RTFM's map (CheckRTFM), which the backfill does not have.
+func TestBackfillRTFM(t *testing.T) {
+	t.Parallel()
+	now := t0.Add(30 * 24 * time.Hour)
+	m := &game.Meta{TrialsPassed: []string{"intro-sorting", "intro-graphs", "bronze-conclusion"}}
+	got := setuid.NewBackfill(m, setuid.Samples{}, now).Done()
+	b, ok := setuid.Bit(m, "lobster-quadrille")
+	if !ok || !b.Backfill || !b.At.Equal(now) {
+		t.Errorf("lobster-quadrille %+v (set %v): want it from git log, at %v", b, ok, now)
+	}
+	if setuid.IsSet(m, "best-of-educations") {
+		t.Errorf("the backfill set best-of-educations without the map: %+v", got)
+	}
+	if fill := setuid.CheckRTFM(m, rtfmMap, now, true); len(fill) != 1 || fill[0].ID != "best-of-educations" || !fill[0].Backfill {
+		t.Errorf("once the map loads: %+v", fill)
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/units"
@@ -107,6 +108,12 @@ func table() []Def {
 			holds: full(func(v *view) bool { return v.s.Prestige == top })},
 		{ID: "stamped", Kind: KindProgression, Name: "Stamped by the Gryphon", Text: "Pass an RTFM trial that grants a capability.",
 			current: true, holds: func(v *view) bool { return len(v.m.Capabilities) > 0 }},
+		{ID: "lobster-quadrille", Kind: KindProgression, Name: "The Lobster Quadrille",
+			Text:    "Pass a division's conclusion trial in RTFM.",
+			current: true, rtfm: true, holds: func(v *view) bool { return slices.ContainsFunc(v.m.TrialsPassed, curriculum.Conclusion) }},
+		{ID: "best-of-educations", Kind: KindProgression, Name: "The Best of Educations",
+			Text:    "Pass every trial of one RTFM division.",
+			current: true, rtfm: true, holds: (*view).schooled},
 		{ID: "another-road", Kind: KindProgression, Name: "Another Road Opens",
 			Text: "Clear a room behind a locked exit (a capability, or `apt git`).",
 			holds: func(v *view) bool {

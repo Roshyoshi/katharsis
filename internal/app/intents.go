@@ -63,7 +63,9 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 	case screens.StartTrial:
 		return m.startTrial(msg.Module), true
 	case learnLoadedMsg:
-		return m.onLearnLoaded(msg), true
+		cmd := m.onLearnLoaded(msg)
+		m.backfillRTFM() // its map is here now (setuid.go)
+		return cmd, true
 	case linkMsg:
 		return m.onLink(msg), true
 	case screens.Upsolve:

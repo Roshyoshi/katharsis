@@ -1,6 +1,6 @@
-find / -perm -4000 -ls · 8 of 61 set                                                                            spoilers: none · notices: on
+find / -perm -4000 -ls · 8 of 63 set                                                                            spoilers: none · notices: on
  MODE          SIZE  SET           PATH                                             │ /bin/there-goes-bill
- /bin · progression                                                         5 of 23 │
+ /bin · progression                                                         5 of 25 │
  -rwsr-xr-x       -  Oct  2 21:07  /bin/hello-world                                 │ There Goes Bill
  -rwsr-xr-x       -  Oct 13 23:40  /bin/exit-0                                      │   Defeat the OOM Killer.
  -rwsr-xr-x       -  Oct 14 01:12  /bin/two-twins                                   │   act I boss · behind Brute Force Bunker or The
@@ -17,6 +17,8 @@ find / -perm -4000 -ls · 8 of 61 set                                           
  -rwxr-xr-x       -                /bin/where-the-fall-began                        │   Oct 14 01:12  two-twins               boot #39
  -rwxr-xr-x       -                /bin/you-halted                                  │   Oct 13 23:40  exit-0                  boot #38
  -rwxr-xr-x       -                /bin/stamped                                     │   Oct  2 21:07  hello-world             from git log
+ -rwxr-xr-x       -                /bin/lobster-quadrille                           │
+ -rwxr-xr-x       -                /bin/best-of-educations                          │
  -rwxr-xr-x       -                /bin/another-road                                │
  -rwxr-xr-x       -                /bin/grin-returns                                │
  -rwxr-xr-x       -                /bin/struck-off                                  │
@@ -32,8 +34,6 @@ find / -perm -4000 -ls · 8 of 61 set                                           
  -rwxr-xr-x       -                /sbin/catless                                    │
  -rwxr-xr-x       -                /sbin/essence                                    │
  -rwxr-xr-x       -                /sbin/doesnt-blink                               │
- -rwsr-xr-x       -  Oct 14 03:02  /sbin/ditto-ditto                                │
- -rwxr-xr-x       -                /sbin/rss-modest                                 │
  ↓ more                                                                             │
 ────────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────
  setuid bits open nothing. They record what you did, and when.
