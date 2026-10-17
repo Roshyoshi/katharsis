@@ -117,6 +117,9 @@ type Meta struct {
 	// TrialsPassed lists the modules (TrialSpec.Module) whose trial was
 	// cleared, each once, in the order first passed.
 	TrialsPassed []string
+	// Opened lists the RTFM modules whose page was opened in the reader, each
+	// once: what the map's cards call "opened", never "read".
+	Opened []string `json:",omitempty"`
 
 	// Installed lists the packages (rules.Package) bought with the bank,
 	// each once, in the order installed; Theme is the installed banner theme

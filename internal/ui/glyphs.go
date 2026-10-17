@@ -49,6 +49,10 @@ type Glyphs struct {
 	Range      string // between a range's ends: "850–1050"
 	Arrow      string // leads to
 	Rule       string // a horizontal rule's cell
+	// The RTFM map's: a reading-only page, a shortcut to a later world (Super
+	// Mario World's Star Road), and an optional path's cells, across and
+	// down. Its paths are Rule's cells and Thin's sides and corners.
+	Page, Warp, Dotted, DottedV string
 
 	// Heat is a heat map's cell by level: none, then least to most.
 	Heat [5]string
@@ -68,6 +72,7 @@ var Unicode = Glyphs{
 	Cursor: "▸", FoldOpen: "▾", FoldShut: "▹", Crumb: " › ", Sep: " · ",
 	Fill: "▓", Empty: "░", Star: "★", StarOff: "☆", Ellipsis: "…",
 	Times: "×", Approx: "≈", Range: "–", Arrow: "→", Rule: "─",
+	Page: "▪", Warp: "↑", Dotted: "┄", DottedV: "┆",
 	Heat: [5]string{"·", "░", "▒", "▓", "█"},
 	Thin: lipgloss.RoundedBorder(), Thick: lipgloss.ThickBorder(), Double: lipgloss.DoubleBorder(),
 }
@@ -83,6 +88,7 @@ var ASCII = Glyphs{
 	Cursor: ">", FoldOpen: "-", FoldShut: "+", Crumb: " / ", Sep: " | ",
 	Fill: "#", Empty: ".", Star: "*", StarOff: ".", Ellipsis: "...",
 	Times: "x", Approx: "~", Range: "-", Arrow: "->", Rule: "-",
+	Page: "=", Warp: "^", Dotted: ":", DottedV: ":",
 	Heat:   [5]string{" ", ".", ":", "*", "#"},
 	Thin:   lipgloss.ASCIIBorder(),
 	Thick:  asciiBorder("#", "=", "#"),
