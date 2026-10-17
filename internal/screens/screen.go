@@ -59,4 +59,11 @@ type (
 	UseTheme struct{ Theme string }
 	// OpenGrub leaves a boot that has ended for the GRUB menu (UX J12).
 	OpenGrub struct{}
+	// Continue leaves GRUB, opened over a boot paused on its map, for where
+	// the boot stopped.
+	Continue struct{}
+	// EndBoot ends the boot in flight as a crash (game.Abandon) and goes on
+	// to Then, the StartBoot or StartTrial that was asked about, or to GRUB
+	// for nil, where the next boot is chosen.
+	EndBoot struct{ Then tea.Msg }
 )

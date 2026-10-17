@@ -240,3 +240,45 @@ func TestTopTimePlus(t *testing.T) {
 		}
 	}
 }
+
+// Over a boot paused from its map GRUB offers to continue it first, the
+// cursor on it, and esc continues too; a new boot asks before it ends the
+// paused one, y going ahead and any other key keeping it, from an entry
+// and from the editor alike.
+func TestGrubOverAPausedBoot(t *testing.T) {
+	paused := func() *meta.Menu {
+		c := fixture.GrubConfig()
+		c.InFlight = &meta.InFlight{Boot: 42, Where: "The Heap room 2/2", Cost: "ends boot #42 as a crash, 96 B uncommitted lost"}
+		return meta.NewGrub(c)
+	}
+	g := paused()
+	if v := plain(g.View(80, 24)); !strings.Contains(v, "*continue boot #42 (The Heap room 2/2)") {
+		t.Errorf("continue is not first and selected:\n%s", v)
+	}
+	wantMsg(t, press(t, g, "enter"), screens.Continue{})
+	wantMsg(t, press(t, paused(), "esc"), screens.Continue{})
+
+	g = paused()
+	wantMsg(t, press(t, g, "down", "enter"), nil) // prestige 2, under continue: it asks
+	if v := plain(g.View(80, 24)); !strings.Contains(v, "Boot #42 is in flight") || !strings.Contains(v, "uncommitted lost") {
+		t.Errorf("no confirm:\n%s", v)
+	}
+	wantMsg(t, press(t, g, "y"), screens.EndBoot{Then: screens.StartBoot{Prestige: 2, Preset: "standard"}})
+
+	g = paused()
+	press(t, g, "down", "enter")
+	wantMsg(t, press(t, g, "n"), nil)
+	if v := plain(g.View(80, 24)); strings.Contains(v, "in flight") {
+		t.Errorf("the confirm stayed after n:\n%s", v)
+	}
+	wantMsg(t, press(t, g, "enter"), nil) // asks again
+	wantMsg(t, press(t, g, "y"), screens.EndBoot{Then: screens.StartBoot{Prestige: 2, Preset: "standard"}})
+
+	g = paused()
+	press(t, g, "down", "e", "ctrl+x")
+	wantMsg(t, press(t, g, "y"), screens.EndBoot{Then: screens.StartBoot{Prestige: 2, Preset: "standard"}})
+
+	// Between boots there is nothing to continue, and a boot boots.
+	wantMsg(t, press(t, grub(), "enter"), screens.StartBoot{Prestige: 2, Preset: "standard"})
+	wantMsg(t, press(t, grub(), "esc"), nil)
+}

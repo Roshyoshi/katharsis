@@ -24,6 +24,8 @@ import (
 // GrubConfig is what the start screen shows.
 type GrubConfig struct {
 	Meta game.Meta
+	// InFlight is the boot paused under GRUB from its map, nil for none.
+	InFlight *InFlight
 	// Presets are the preset names past "standard", which is always
 	// offered, in the order listed: the built-ins short and patch first.
 	Presets []string
@@ -91,6 +93,10 @@ type Menu struct {
 	firstRegression bool
 	lastH           int // box rows at the last View, for page up/down
 	sources         func() string
+	// inFlight is the boot paused under GRUB, nil for none; confirm is the
+	// boot asked for over it, waiting on y.
+	inFlight *InFlight
+	confirm  *screens.StartBoot
 }
 
 type page struct {
@@ -196,6 +202,12 @@ func NewGrub(c GrubConfig) *Menu {
 	}
 	var es []entry
 	var divisions *page
+	// A boot paused from its map comes first, where enter continues it.
+	if f := c.InFlight; f != nil {
+		m.inFlight = f
+		es = append(es, entry{label: fmt.Sprintf("continue boot #%d (%s)", f.Boot, f.Where), msg: screens.Continue{},
+			note: "back where it stopped; a new boot ends it as a crash"})
+	}
 	for p := m.maxP; p >= 0; p-- {
 		e := m.bootEntry(p, standardPreset)
 		e.note = prestigeNote(p, sub)
@@ -342,6 +354,15 @@ func (m *Menu) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	if !ok {
 		return m, nil
 	}
+	if m.confirm != nil {
+		// y ends the boot in flight and boots; any other key keeps it.
+		next := *m.confirm
+		m.confirm = nil
+		if k.String() == "y" {
+			return m, screens.Emit(screens.EndBoot{Then: next})
+		}
+		return m, nil
+	}
 	if m.edit != nil {
 		return m, m.editKey(k)
 	}
@@ -370,7 +391,7 @@ func (m *Menu) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 				return m, screens.Emit(story.Read{ID: firstRegression})
 			}
 		case e.boot != nil:
-			return m, screens.Emit(*e.boot)
+			return m, m.start(*e.boot)
 		case e.msg != nil:
 			return m, screens.Emit(e.msg)
 		}
@@ -383,8 +404,11 @@ func (m *Menu) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		// entry, so the menu keeps its row for the banner at 80x24.
 		return m, screens.Emit(screens.OpenCredits{})
 	case "esc", "q", "left", "backspace":
-		if len(m.stack) > 1 {
+		switch {
+		case len(m.stack) > 1:
 			m.stack = m.stack[:len(m.stack)-1]
+		case m.inFlight != nil && k.String() == "esc":
+			return m, screens.Emit(screens.Continue{}) // back to the paused boot
 		}
 	}
 	return m, nil
@@ -425,7 +449,7 @@ func (m *Menu) editKey(k tea.KeyPressMsg) tea.Cmd {
 	case "ctrl+x", "f10", "enter":
 		seed, _ := strconv.ParseUint(ed.seedText(), 16, 64)
 		m.edit = nil
-		return screens.Emit(screens.StartBoot{
+		return m.start(screens.StartBoot{
 			Prestige: ed.prestige, Preset: m.presets[ed.preset], Seed: seed,
 		})
 	case "up", "ctrl+p", "shift+tab":
@@ -532,9 +556,18 @@ func (m *Menu) View(width, height int) string {
 	case len(m.stack) > 1:
 		help = helpSub
 	}
+	if m.confirm != nil {
+		// A boot asked for over the paused one: what it costs, in the hub's
+		// words, where the help was.
+		help = fmt.Sprintf("Boot #%d is in flight: a new boot %s. Press y to end it and boot, any other key to keep it.",
+			m.inFlight.Boot, m.inFlight.Cost)
+	}
 	helpW := min(w-4, 70)
 	foot := strings.Split(ansi.Wordwrap(help, max(helpW, 10), ""), "\n")
 	for i := range foot {
+		if m.confirm != nil {
+			foot[i] = ui.Danger.Render(foot[i])
+		}
 		foot[i] = strings.Repeat(" ", max((w-helpW)/2, 1)) + foot[i]
 	}
 	news := m.status
@@ -722,4 +755,22 @@ func regressionNote(r game.Regression, story func(string, uint64) string) string
 		}
 	}
 	return story("grub.subtitle.regressions", 0)
+}
+
+// InFlight is a boot paused under GRUB from its map: GRUB offers to
+// continue it first, and asks before a boot started over it ends it.
+type InFlight struct {
+	Boot  int
+	Where string // where it stands: "The Heap room 2/2" (boot.Where)
+	Cost  string // what ending it costs (boot.EndCost)
+}
+
+// start boots b, or over a boot in flight asks first: y ends that one as a
+// crash and boots (screens.EndBoot), any other key keeps it.
+func (m *Menu) start(b screens.StartBoot) tea.Cmd {
+	if m.inFlight != nil {
+		m.confirm = &b
+		return nil
+	}
+	return screens.Emit(b)
 }

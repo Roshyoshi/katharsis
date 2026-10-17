@@ -23,6 +23,7 @@ import (
 //	enter, esc, m   Resume: back where the boot stopped
 //	n               asks first (map.abandon), then Abandon: the boot ends
 //	                as a crash, and GRUB starts the next one
+//	g               Pause: GRUB, the boot suspended under it
 //	t               screens.OpenLearn: RTFM
 //	q               screens.Quit: the boot stays suspended, saved
 //
@@ -40,10 +41,13 @@ type Hub struct {
 // launch landed on the hub, so the boot resumes from suspension.
 type Resume struct{ Launch bool }
 
-// Abandon ends the boot in flight as a crash (game.Abandon) and goes on to
-// Then, the screens.StartBoot or StartTrial the hub asked about, or to
-// GRUB for nil, where the next boot is chosen.
-type Abandon struct{ Then tea.Msg }
+// Abandon is the hub's screens.EndBoot: the boot in flight ends as a crash
+// and goes on to Then, as GRUB's does over a paused boot.
+type Abandon = screens.EndBoot
+
+// Pause leaves the map for GRUB, the boot suspended under it: GRUB offers
+// to continue it, and asks before a new boot ends it.
+type Pause struct{}
 
 // NewHub is the hub over the boot env holds; launch says the game's launch
 // landed on it.
@@ -74,6 +78,8 @@ func (h *Hub) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		return h, screens.Emit(Resume{Launch: h.launch})
 	case "n":
 		h.Ask(nil)
+	case "g":
+		return h, screens.Emit(Pause{})
 	case "t":
 		return h, screens.Emit(screens.OpenLearn{})
 	case "q":
@@ -91,7 +97,7 @@ func (h *Hub) View(width, height int) string {
 	}
 	foot = append([]string{ui.Rule(width)}, foot...)
 	keys := []string{"enter", "resume", "n", "new boot"}
-	keys = append(keys, "t", "RTFM", "q", "quit")
+	keys = append(keys, "g", "GRUB", "t", "RTFM", "q", "quit")
 	footer := ui.Footer(width, keys...)
 	if h.asking {
 		footer = ui.Footer(width, "y", fmt.Sprintf("abandon boot #%d", st.Boot), "any other key", "keep it")
@@ -141,14 +147,7 @@ func (h *Hub) askLines(width int) []string {
 			out = append(out, " "+ui.Voice.Render(l))
 		}
 	}
-	cost := []string{fmt.Sprintf("ends boot #%d as a crash", st.Boot)}
-	if st.Uncommitted > 0 {
-		cost = append(cost, units.Bytes(st.Uncommitted)+" uncommitted lost")
-	}
-	if d := h.env.Meta.CoreDump; d != nil && st.Trial == nil {
-		cost = append(cost, fmt.Sprintf("the core dump on %q destroyed", h.env.problem(d.Problem).Title))
-	}
-	for _, l := range ui.WrapN(strings.Join(cost, ", "), max(width-2, 10), 2) {
+	for _, l := range ui.WrapN(EndCost(h.env), max(width-2, 10), 2) {
 		out = append(out, " "+ui.Danger.Render(l))
 	}
 	return out
@@ -156,8 +155,11 @@ func (h *Hub) askLines(width int) []string {
 
 // where is where the boot stands, for the header: the room it is at, or
 // the last place it cleared when it stands between biomes.
-func (h *Hub) where() string {
-	st := h.env.State
+func (h *Hub) where() string { return Where(h.env.State) }
+
+// Where is where a suspended boot stands, for the hub's header and
+// GRUB's continue: "The Heap room 2/2", "merge window", "after ⚔ Heisenbug".
+func Where(st *game.State) string {
 	b, r := position(st)
 	switch {
 	case st.Phase == game.PhaseDoors && st.PendingUpgrade:
@@ -191,3 +193,18 @@ func cyclesText(st *game.State) string {
 
 // NewMap is the hub opened between doors, not at launch.
 func NewMap(env Env) *Hub { return NewHub(env, false) }
+
+// EndCost is what ending the boot in flight costs, as the hub and GRUB
+// ask it: "ends boot #42 as a crash, 96 B uncommitted lost, the core dump
+// on "Bovine Shuffle" destroyed".
+func EndCost(env Env) string {
+	st := env.State
+	cost := []string{fmt.Sprintf("ends boot #%d as a crash", st.Boot)}
+	if st.Uncommitted > 0 {
+		cost = append(cost, units.Bytes(st.Uncommitted)+" uncommitted lost")
+	}
+	if d := env.Meta.CoreDump; d != nil && st.Trial == nil {
+		cost = append(cost, fmt.Sprintf("the core dump on %q destroyed", env.problem(d.Problem).Title))
+	}
+	return strings.Join(cost, ", ")
+}

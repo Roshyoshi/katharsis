@@ -218,8 +218,8 @@ func TestNarrowExits(t *testing.T) {
 }
 
 // The hub draws the path taken, where the boot stands and the bosses
-// ahead, and its keys: enter resumes, n asks before y abandons, t opens
-// RTFM, q quits. Upsolves are GRUB's, not the map's.
+// ahead, and its keys: enter resumes, n asks before y abandons, g pauses
+// into GRUB, t opens RTFM, q quits. Upsolves are GRUB's, not the map's.
 func TestHubKeys(t *testing.T) {
 	h := NewHub(hubEnv(fixture.MapRoute()), true)
 	v := ansi.Strip(h.View(80, 24))
@@ -230,7 +230,7 @@ func TestHubKeys(t *testing.T) {
 	}
 	key := func(k string) tea.Msg { _, cmd := h.Update(press(k)); return emitted(cmd) }
 	for k, want := range map[string]tea.Msg{
-		"enter": Resume{Launch: true}, "u": nil,
+		"enter": Resume{Launch: true}, "u": nil, "g": Pause{},
 		"t": screens.OpenLearn{}, "q": screens.Quit{},
 	} {
 		if got := key(k); got != want {

@@ -121,6 +121,7 @@ func (m *Model) grub() screens.Screen {
 	std, now := m.aptRules(), m.d.Now()
 	return meta.NewGrub(m.grubEnd(meta.GrubConfig{ // the nightly's best, the budget (debrief.go)
 		Meta:     m.meta,
+		InFlight: m.inFlight(),
 		Presets:  presets,
 		Lookup:   m.d.Catalog.Get,
 		Now:      now,

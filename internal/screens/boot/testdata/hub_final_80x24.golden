@@ -21,4 +21,4 @@ MAP · boot #42 · suspended · after ⚔ Heisenbug                ♥ 8/50 cycl
  ▸ Kernel Space                                                   
  ▸ skip +2                                                        
 ────────────────────────────────────────────────────────────────────────────────
-enter resume · n new boot · t RTFM · q quit
+enter resume · n new boot · g GRUB · t RTFM · q quit

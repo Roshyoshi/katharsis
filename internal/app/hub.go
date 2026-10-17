@@ -17,6 +17,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
+	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/story"
 	"katharsis/internal/units"
 )
@@ -29,7 +30,8 @@ import (
 //	        ├─ a door open ───────> the door, its deadline kept (D31)
 //	        └─ between doors ─────> the hub, over the phase's screen
 //	                                  enter resume · n abandon → GRUB ·
-//	                                  u upsolve · t RTFM · q quit
+//	                                  g pause → GRUB (continue, or a new
+//	                                  boot asks) · t RTFM · q quit
 //	between doors   m → the hub · q, ctrl+c → saved, suspended, quit
 //	inside a door   ctrl+c → refused (doorQuit): solve, retreat or :q!
 //
@@ -129,6 +131,10 @@ func (m *Model) hubIntent(msg tea.Msg) (tea.Cmd, bool) {
 	switch msg := msg.(type) {
 	case bootui.Resume:
 		return m.resume(msg.Launch), true
+	case bootui.Pause:
+		return m.pauseGrub(), true
+	case screens.Continue:
+		return m.continueBoot(), true
 	case bootui.Abandon:
 		return m.abandonThen(msg.Then), true
 	case rtfmLoadedMsg:
@@ -154,6 +160,25 @@ func (m *Model) resume(launch bool) tea.Cmd {
 		m.flash = flavor.Fill(s, "boot", strconv.Itoa(m.state.Boot))
 	}
 	return m.storyResume()
+}
+
+// pauseGrub leaves the map for GRUB, the boot suspended under it (saved,
+// as after every step): GRUB offers to continue it and asks before a new
+// boot ends it.
+func (m *Model) pauseGrub() tea.Cmd {
+	if _, ok := m.top().(*bootui.Hub); ok {
+		m.pop()
+	}
+	return m.push(m.grub())
+}
+
+// continueBoot leaves a paused GRUB, and whatever it opened, for where
+// the boot stopped: the phase's own screen, under them all.
+func (m *Model) continueBoot() tea.Cmd {
+	for len(m.stack) > 1 {
+		m.pop()
+	}
+	return nil
 }
 
 // askAbandon shows the hub asking before next (a StartBoot or StartTrial)
@@ -295,4 +320,13 @@ func (m *Model) onRTFMLoaded(msg rtfmLoadedMsg) tea.Cmd {
 		m.refresh()
 	}
 	return nil
+}
+
+// inFlight is the boot GRUB is opened over from its map, nil between
+// boots.
+func (m *Model) inFlight() *meta.InFlight {
+	if !m.suspended() {
+		return nil
+	}
+	return &meta.InFlight{Boot: m.state.Boot, Where: bootui.Where(m.state), Cost: bootui.EndCost(m.env())}
 }

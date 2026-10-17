@@ -37,4 +37,4 @@ MAP · boot #42 · Silver · suspended · after ⚔ Off-by-One                  
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-enter resume · n new boot · t RTFM · q quit
+enter resume · n new boot · g GRUB · t RTFM · q quit

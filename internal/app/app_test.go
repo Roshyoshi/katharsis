@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -1751,6 +1752,52 @@ func TestUpsolveLostDoor(t *testing.T) {
 		}
 		if due := h.m.meta.Regressions[0].Due; !due.After(h.m.d.Now()) {
 			t.Errorf("the regression moved to %s", due)
+		}
+	})
+}
+
+// g on the map pauses into GRUB, the boot suspended under it; GRUB's
+// continue goes back to where the boot stopped; a boot started from a
+// paused GRUB asks first, and y ends the paused boot as a crash and boots
+// the next. A rebuild of the paused GRUB (an apt install) keeps it where
+// it is, still offering to continue.
+func TestPauseIntoGrub(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		boot := h.m.state.Boot
+		h.send(key("m"))
+		h.send(key("g"))
+		g, ok := h.m.top().(*meta.Menu)
+		if !ok || h.m.state == nil || !h.m.suspended() {
+			t.Fatalf("g: top %T, suspended %v", h.m.top(), h.m.suspended())
+		}
+		if v := view(h); !strings.Contains(v, fmt.Sprintf("continue boot #%d", boot)) {
+			t.Fatalf("paused GRUB:\n%s", v)
+		}
+		h.m.regrub()
+		if _, ok := h.m.top().(*meta.Menu); !ok || h.m.top() == screens.Screen(g) || !strings.Contains(view(h), "continue boot") {
+			t.Errorf("regrub left %T on top", h.m.top())
+		}
+
+		h.send(tea.KeyPressMsg{Code: tea.KeyEnter})
+		if len(h.m.stack) != 1 || h.m.state == nil || h.m.state.Boot != boot {
+			t.Fatalf("continue: %d screens, %T on top", len(h.m.stack), h.m.top())
+		}
+		if _, ok := h.m.top().(*meta.Menu); ok {
+			t.Fatal("continue stayed in GRUB")
+		}
+
+		h.send(key("m"))
+		h.send(key("g"))
+		h.send(tea.KeyPressMsg{Code: tea.KeyDown})
+		h.send(tea.KeyPressMsg{Code: tea.KeyEnter}) // the highest prestige: asks
+		if h.m.state.Boot != boot || !strings.Contains(view(h), fmt.Sprintf("Boot #%d is in flight", boot)) {
+			t.Fatalf("a new boot did not ask:\n%s", view(h))
+		}
+		h.send(key("y"))
+		if h.m.state == nil || h.m.state.Boot != boot+1 {
+			t.Fatalf("y: boot %v, want #%d", h.m.state, boot+1)
 		}
 	})
 }

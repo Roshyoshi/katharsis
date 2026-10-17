@@ -1,11 +1,14 @@
 package app
 
 import (
+	"slices"
+
 	tea "charm.land/bubbletea/v2"
 
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
+	"katharsis/internal/screens"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/store"
 )
@@ -93,16 +96,16 @@ func (m *Model) shopChanged() {
 
 // regrub rebuilds GRUB under the screens over it, for a change its lines
 // show (the bank, apt's next package, the setuid news), the cursor kept
-// on the entry it was on. Outside GRUB it does nothing.
+// on the entry it was on: GRUB at the base between boots, or over a boot
+// paused from its map. Outside GRUB it does nothing.
 func (m *Model) regrub() {
-	if m.state != nil {
+	i := slices.IndexFunc(m.stack, func(s screens.Screen) bool { _, ok := s.(*meta.Menu); return ok })
+	if i < 0 {
 		return
 	}
 	g := m.grub()
-	if old, ok := m.stack[0].(*meta.Menu); ok {
-		if nw, ok := g.(*meta.Menu); ok {
-			nw.Follow(old)
-		}
+	if nw, ok := g.(*meta.Menu); ok {
+		nw.Follow(m.stack[i].(*meta.Menu))
 	}
-	m.stack[0] = g
+	m.stack[i] = g
 }
