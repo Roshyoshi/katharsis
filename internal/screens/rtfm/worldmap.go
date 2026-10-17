@@ -99,7 +99,11 @@ func newMap(c *curriculum.Curriculum, a curriculum.Atlas, m game.Meta, judgeable
 func (p *Map) Refresh(m game.Meta) {
 	p.meta, p.prog = m, p.atlas.Progress(&m)
 	if p.level != nil {
+		// The level is built again where its cursor was: back from a
+		// practice problem, on that problem.
+		cur, ptop := p.level.cur, p.level.ptop
 		p.openLevel()
+		p.level.cur, p.level.ptop = cur, ptop
 	}
 }
 
@@ -321,7 +325,11 @@ func tally(s curriculum.WorldSum) string {
 		parts = append(parts, fmt.Sprintf("trials %d/%d", s.Passed, s.Trials))
 	}
 	if s.Caps > 0 {
-		parts = append(parts, fmt.Sprintf("%s %d/%d", ui.G.Cap, s.CapsHeld, s.Caps))
+		mark := ui.G.CapLocked
+		if s.CapsHeld > 0 {
+			mark = ui.G.Cap
+		}
+		parts = append(parts, fmt.Sprintf("%s %d/%d", mark, s.CapsHeld, s.Caps))
 	}
 	if s.Playable > 0 {
 		parts = append(parts, fmt.Sprintf("solved %d/%d", s.Solved, s.Playable))
@@ -712,7 +720,7 @@ func (p *Map) overworld(w, h int) string {
 	}
 	held, total := p.capCount()
 	out = append(out, "", "",
-		ui.Clip("  "+ui.OK.Render(ui.G.Cap)+fmt.Sprintf(" %d/%d capabilities held", held, total)+
+		ui.Clip("  "+capMark(held > 0)+fmt.Sprintf(" %d/%d capabilities held", held, total)+
 			ui.Muted.Render(ui.G.Sep+"each opens topic exits on the boot map"), w))
 	bar := ui.StatusBar(w, "rtfm(7)", "↑/↓", "world", "enter", "open", "i", "index", "q", "quit")
 	return ui.Layout(w, h, out, bar)

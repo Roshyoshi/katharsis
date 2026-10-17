@@ -331,3 +331,48 @@ func TestMapFlip(t *testing.T) {
 		t.Errorf("reduced motion shows %d marks held, want %d", got, before+n)
 	}
 }
+
+// A player holding nothing sees □ beside the counts, not ■: the glyph says
+// held, so it waits for the first.
+func TestMapNothingHeld(t *testing.T) {
+	m := rtfm.NewMapOf(fixture.Atlas(), game.Meta{})
+	if v := ansi.Strip(m.View(80, 24)); !strings.Contains(v, ui.G.CapLocked+" 0/11 capabilities held") {
+		t.Errorf("the overworld of a new player:\n%s", v)
+	}
+	m.Update(key("enter"))
+	if v := ansi.Strip(m.View(80, 24)); !strings.Contains(v, ui.G.CapLocked+" 0/3") || strings.Contains(v, ui.G.Cap+" 0/") {
+		t.Errorf("Bronze for a new player:\n%s", v)
+	}
+}
+
+// Meta refreshed under an open level (back from a practice problem) keeps
+// the level's cursor where it was, and shows the solve.
+func TestMapRefreshKeepsTheLevel(t *testing.T) {
+	c := loadCurriculum(t)
+	m := rtfm.NewMap(c, fixture.Meta(), fixture.Judgeable, fixture.Lookup)
+	m.Open("two-pointers")
+	press(t, m, "enter", "p", "j")
+	cursorLine := func() string {
+		for _, l := range strings.Split(ansi.Strip(m.View(80, 24)), "\n") {
+			if strings.Contains(l, ui.G.Cursor) {
+				return l
+			}
+		}
+		return ""
+	}
+	// The line under the cursor, the ✓ a solve adds left out.
+	norm := func(s string) string { return strings.Join(strings.Fields(strings.ReplaceAll(s, ui.G.Pass, "")), " ") }
+	before := norm(cursorLine())
+	if before == "" || strings.Contains(before, "READ") {
+		t.Fatalf("p j put the cursor on %q, want a problem", before)
+	}
+	meta := fixture.Meta()
+	meta.Solves = []game.Solve{{Problem: "usaco:738", Upsolve: true}}
+	m.Refresh(meta)
+	if after := norm(cursorLine()); after != before {
+		t.Errorf("the cursor moved: before %q, after %q", before, after)
+	}
+	if !strings.Contains(ansi.Strip(m.View(80, 24)), "1/") {
+		t.Errorf("the solve does not show:\n%s", ansi.Strip(m.View(80, 24)))
+	}
+}
