@@ -121,6 +121,11 @@ func TestCalibrationHitsTargets(t *testing.T) {
 		t.Skip("slow")
 	}
 	r := rules.Standard()
+	// The aim machinery, unheld: a tier's band (D63) holds a 1600 player's
+	// Bronze aim down to 1300 and lifts its Gold one to 1700 on purpose, so
+	// its doors miss the targets there by design (TestGuardrailBand plays
+	// players who fit their tier).
+	r.TierBands, r.TierWarmup = nil, 0
 	pool := sim.SyntheticPool(20000, 1)
 	for _, prestige := range []int{0, 2} {
 		rep := sim.Run(sim.Config{

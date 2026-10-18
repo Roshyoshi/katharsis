@@ -349,6 +349,18 @@ type Rules struct {
 	// PrestigeOffset is added to every door's target rating per prestige
 	// level.
 	PrestigeOffset float64 `toml:"prestige_offset"`
+	// TierBands are the door ratings each prestige keeps to, a USACO tier a
+	// level (D63, the original idea: Dead Cells' boss cells as Bronze,
+	// Silver, Gold, Platinum and Advanced). A door's aim at the player is
+	// held inside its level's band, so a tier above the player is a wall
+	// until they are better. Levels past the list keep its last; empty
+	// holds no band (a boot saved before D63).
+	TierBands [][2]int `toml:"tier_bands"`
+	// TierWarmup lowers the first biome's band by that many points, so a
+	// tier's Userland is a stepping stone from the tier below (Silver's
+	// opens at 1150-1450) and the tier bites in its acts and bosses, as a
+	// Dead Cells boss cell does. 0 keeps the band.
+	TierWarmup int `toml:"tier_warmup"`
 	// Ascensions add difficulty per prestige level on top of the rating
 	// offset; a boot at prestige p applies every entry with Level <= p.
 	Ascensions []Ascension `toml:"ascension"`
@@ -1232,6 +1244,14 @@ func (r Rules) validateCycles() error {
 	if r.ECCPenalty.Duration < 0 || r.ECCMargin.Duration < 0 || r.RetreatLock.Duration < 0 {
 		return fmt.Errorf("rules %q: need ecc_penalty, ecc_margin, retreat_lock >= 0", r.Name)
 	}
+	for i, b := range r.TierBands {
+		if b[0] <= 0 || b[0] >= b[1] {
+			return fmt.Errorf("rules %q: tier_bands[%d] %v needs 0 < low < high", r.Name, i, b)
+		}
+	}
+	if r.TierWarmup < 0 {
+		return fmt.Errorf("rules %q: tier_warmup %d is negative", r.Name, r.TierWarmup)
+	}
 	if !(r.TimedVault >= 0 && r.TimedVault <= 2) || r.VaultPicks < 0 || r.DaemonActs < 0 {
 		return fmt.Errorf("rules %q: need 0 <= timed_vault <= 2, vault_picks >= 0, daemon_acts >= 0", r.Name)
 	}
@@ -1375,4 +1395,13 @@ func (r Rules) validateBytes() error {
 			r.Name, worst, int64(MaxDoorBytes))
 	}
 	return nil
+}
+
+// TierBand is the door ratings prestige p keeps to (TierBands, its last
+// for a level past them); ok is false when the rules hold no band.
+func (r *Rules) TierBand(p int) (band [2]int, ok bool) {
+	if len(r.TierBands) == 0 {
+		return [2]int{}, false
+	}
+	return r.TierBands[min(max(p, 0), len(r.TierBands)-1)], true
 }

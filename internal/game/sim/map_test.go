@@ -335,8 +335,9 @@ func TestMapLearn(t *testing.T) {
 }
 
 // TestGuardrailBand holds the map default to the trial-by-fire band
-// (D49, map.md §(a)) with the boss twists on: at P0 the static model
-// players clear 35 to 60% of their boots (the band's 40-55% with two
+// (D49, map.md §(a)) with the boss twists on: static model players at a
+// tier that fits them (D63: 1000 at Bronze, 1500 at Silver) clear 35 to
+// 60% of their boots (the band's 40-55% with two
 // seeds' noise), deaths come late (each act's hazard above the last's, act
 // III's under 45%), and no one boss ends more than half the boots that
 // reach it. Synthetic pool, boots 51-250 of seeds 7 and 8.
@@ -346,10 +347,16 @@ func TestGuardrailBand(t *testing.T) {
 		t.Skip("slow")
 	}
 	pool := sim.SyntheticPool(20000, 1)
-	for _, rating := range []float64{1000, 1600} {
+	// Players who fit their tier (D63): a 1600 player at Bronze is meant to
+	// breeze, one at Gold to meet a wall, so the band holds for a tier's own.
+	for _, tc := range []struct {
+		rating   float64
+		prestige int
+	}{{1000, 0}, {1500, 1}} {
+		rating := tc.rating
 		t.Run(fmt.Sprint(rating), func(t *testing.T) {
 			t.Parallel()
-			m := cell(rules.Standard(), pool, rating, 0, 200, []uint64{7, 8})
+			m := cell(rules.Standard(), pool, rating, tc.prestige, 200, []uint64{7, 8})
 			h := m.hazard()
 			t.Logf("model %.0f: %s\n  bosses: %s", rating, m.line(), m.bossLine())
 			if f := pct(m.full, m.boots); f < 35 || f > 60 {

@@ -383,3 +383,38 @@ func TestD62Supply(t *testing.T) {
 		t.Errorf("daemons on offer by act %v: want act I's windows only", offered)
 	}
 }
+
+// TestTierBands: a prestige keeps its USACO tier's doors (D63). Bronze
+// holds a strong player's aim down to its top, Silver lifts a Bronze
+// player's up to its floor in its acts, Userland opens 200 under the tier
+// (never under Bronze's 800, which lifts no aim: the pool's floor handles
+// one under it), and a level past the tiers keeps Advanced's.
+func TestTierBands(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2800, 20)
+	for _, tc := range []struct {
+		prestige int
+		rating   float64
+		biome    int
+		lo, hi   float64
+	}{
+		{0, 2000, 1, 800, 1300},
+		{0, 700, 0, 0, 1100}, // Bronze lifts nothing: under 800 is the floor's (buy-back)
+		{0, 2000, 0, 800, 1100},
+		{1, 1000, 0, 1150, 1450},
+		{1, 1000, 1, 1350, 1650},
+		{8, 1000, 1, 2400, 2800},
+	} {
+		h := newHarness(t, mapPlain(), &game.Meta{Rating: tc.rating, Prestige: tc.prestige}, ps, tc.prestige, 1)
+		h.s.Biome = tc.biome
+		if got := h.s.Target(h.m, game.Mixed); got < tc.lo || got > tc.hi {
+			t.Errorf("prestige %d, player %.0f, biome %d: target %.0f, want within %.0f-%.0f", tc.prestige, tc.rating, tc.biome, got, tc.lo, tc.hi)
+		}
+	}
+	legacy := mapPlain()
+	legacy.TierBands = nil
+	h := newHarness(t, legacy, &game.Meta{Rating: 1000, Prestige: 1}, ps, 1, 1)
+	if got := h.s.Target(h.m, game.Mixed); got >= 1350 {
+		t.Errorf("without bands a 1000 player's prestige-1 target is %.0f, want it at the player", got)
+	}
+}

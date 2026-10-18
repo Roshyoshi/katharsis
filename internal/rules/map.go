@@ -41,6 +41,10 @@ func Map() Rules {
 	// and no content-floor life (D34 removed: a boot is not rescued).
 	r.PickPerBiome, r.O3NoPick, r.DaemonActs = true, true, 1
 	r.EaseAbove = 0
+	// D63: each prestige a USACO tier's doors, Bronze down to Codeforces'
+	// floor ("increase bronze's scope to include down to 800").
+	r.TierBands = [][2]int{{800, 1300}, {1350, 1650}, {1700, 2000}, {2100, 2400}, {2400, 2800}}
+	r.TierWarmup = 200
 	r.Perk = MapPerks() // ten a pool (perk.go)
 	r.FountainCycles, r.FountainWhere = 5, FountainAct
 	r.KexecPerAct = true

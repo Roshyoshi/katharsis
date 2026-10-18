@@ -26,7 +26,7 @@ fixed rule. Settings are locked for the length of a boot.
 |---|---|---|
 | run | boot | "Boot #42"; run length is `uptime`, the time inside doors (it stands still between them) |
 | start screen | GRUB menu | pick prestige, preset, seed |
-| difficulty tier | prestige 0–8 | Bronze, Silver, Gold, Platinum, Advanced, then Prestige 5–8; 60 rated doors and a clear at the top level unlock the next |
+| difficulty tier | prestige 0–8 | Bronze, Silver, Gold, Platinum, Advanced, then Prestige 5–8; 60 rated doors and a clear at the top level unlock the next. Like Dead Cells' boss cells, a tier changes the problems (D63): doors keep to its band (Bronze ◆800–1300, Silver 1350–1650, Gold 1700–2000, Platinum 2100–2400, Advanced 2400–2800; Userland 200 under, never under 800), aimed at the player inside it; 5–8 keep Advanced's with more risk |
 | currency | bytes | shown as B, KiB, MiB |
 | run map | map | three acts on a graph: Userland, a topic biome, a boss, twice, then a biome or a skip and the final; the exit taken picks the boss; the hub where a boot suspended between doors resumes |
 | bank between biomes | merge window | `commit` bytes; uncommitted bytes are lost on a crash; between acts a fountain refills 5 cycles, free, up to 30 |

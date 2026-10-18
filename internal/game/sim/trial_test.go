@@ -106,12 +106,18 @@ func TestTrialCheck(t *testing.T) {
 		t.Skip("slow")
 	}
 	pool := sim.SyntheticPool(20000, 1)
-	levels, boots := []int{0}, 120
+	levels, boots := []int{0, 1}, 120
 	if os.Getenv("KATHARSIS_TRIAL") != "" {
-		levels, boots = []int{0, 4}, 200
+		levels, boots = []int{0, 1, 4}, 200
 	}
+	std := rules.Standard()
 	for _, prestige := range levels {
 		for _, rating := range []float64{1000, 1300, 1600} {
+			// Each tier with the players who fit it (D63): a 1600 player
+			// breezes through Bronze's doors by design.
+			if b, ok := std.TierBand(prestige); ok && (rating < float64(b[0])-300 || rating > float64(b[1])+200) {
+				continue
+			}
 			t.Run(fmt.Sprintf("P%d/%.0f", prestige, rating), func(t *testing.T) {
 				t.Parallel()
 				seeker := sim.DefaultPlayer(rating)

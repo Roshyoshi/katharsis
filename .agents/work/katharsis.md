@@ -296,6 +296,17 @@ D57 settled 10-15  A GitHub-style contribution graph (user: "a git commit graph 
                    days and the load average. No streak counter: "Graph, no streak
                    (Recommended)" (GR1 stands).
 
+D63 settled 10-18  Prestige is a USACO tier's problems (user: "The original idea was dead
+                   cells with bcs corresponding to USACO tiers"; "increase bronze's scope
+                   to include down to 800"). TierBands: Bronze 800-1300, Silver
+                   1350-1650, Gold 1700-2000, Platinum 2100-2400, Advanced 2400-2800 (5-8
+                   keep it); the aim at the player is held in the band, Userland 200
+                   under (TierWarmup), Bronze lifting nothing (the pool floor's buy-back
+                   handles aims under 800). Tier-matched players: 1000 Bronze 38.7%,
+                   1350 Silver 29.3%, 1500 Silver 35.7%, 1700 Gold 26.3%, 8-11 h a
+                   clear; a tier above ~0-2%. Balance tests now play tier-matched
+                   players; calibration runs unheld.
+
 D62 settled 10-17  A boot's supply cut (user: "way too many upgrades per door", "daemon
                    choice should end by end of first boss", the act III skip "should have a
                    penalty", "remove D34"; full clears are not a target: "how many dead

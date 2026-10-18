@@ -32,7 +32,22 @@ func (e *engine) target(topic string, i int) float64 {
 	if rb.MinClear > 0 {
 		aim = min(aim, Aim(R, rb.MinClear))
 	}
-	return aim + e.aimOffset(rb)
+	aim += e.aimOffset(rb)
+	// The tier's band holds the aim (D63): Silver's doors are Silver's
+	// however the player is rated.
+	if b, ok := r.TierBand(e.s.Prestige); ok {
+		if i == 0 { // Userland: a step down into the tier, never under Bronze's
+			b[0], b[1] = max(b[0]-r.TierWarmup, r.TierBands[0][0]), b[1]-r.TierWarmup
+		}
+		// Bronze's floor is the pool's (Codeforces rates nothing under 800):
+		// an aim under it is the floor's to handle (FloorDrop, the timer
+		// buy-back), which a raised aim would hide. Only a higher tier lifts.
+		if b[0] > r.TierBands[0][0] {
+			aim = max(aim, float64(b[0]))
+		}
+		aim = min(aim, float64(b[1]))
+	}
+	return aim
 }
 
 // Target is the door rating the current biome aims topic doors at for m:

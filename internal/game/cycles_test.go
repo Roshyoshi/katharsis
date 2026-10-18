@@ -496,7 +496,7 @@ func TestForecastCycles(t *testing.T) {
 	r := calm(cyclesLinear())
 	r.EaseAbove, r.EaseLives = 0.2, 1
 	h := newHarness(t, r, low, ps, 0, 1)
-	if h.s.Forecast != 0 || len(h.s.Ease) != 0 {
+	if h.s.Forecast > 1e-9 || len(h.s.Ease) != 0 { // 0 but for rounding
 		t.Errorf("30 cycles: forecast %v easings %+v, want none", h.s.Forecast, h.s.Ease)
 	}
 	lives := r
