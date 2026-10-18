@@ -37,6 +37,10 @@ func Map() Rules {
 	// The vaults: an act in 60% of its doors' own clocks, or with no door
 	// hit, each earns a pick, as Dead Cells' timed and no-hit doors pay.
 	r.TimedVault, r.UntouchedVault, r.VaultPicks = 0.6, true, 1
+	// D62: a pick a biome, none for -O3, the roster set by boss I's end,
+	// and no content-floor life (D34 removed: a boot is not rescued).
+	r.PickPerBiome, r.O3NoPick, r.DaemonActs = true, true, 1
+	r.EaseAbove = 0
 	r.Perk = MapPerks() // ten a pool (perk.go)
 	r.FountainCycles, r.FountainWhere = 5, FountainAct
 	r.KexecPerAct = true
@@ -162,7 +166,7 @@ func MapNodes() []Biome {
 	fb := gated(node(TierActIII, "geometry", "The Framebuffer", "geometry", "halting-problem"))
 	fb.MinPrestige = 2
 	skip := node(TierActIII, "skip", "skip", "", "halting-problem")
-	skip.Skip, skip.Picks = true, 2
+	skip.Skip, skip.Toll = true, 0.2 // D62: no scrolls, a shorter final
 	return []Biome{
 		node(TierUserland, "userland", "Userland", "", "bunker", "emulator", "scheduler", "accumulator"),
 

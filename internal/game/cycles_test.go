@@ -17,6 +17,7 @@ import (
 func cyclesPlain() rules.Rules {
 	r := calm(cyclesLinear())
 	r.BlindChance, r.MysteryChance, r.CursedChance = 0, 0, 0
+	r.PickPerBiome = false // a pick a door: these test the picks, not the supply (D62)
 	return r
 }
 

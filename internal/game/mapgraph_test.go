@@ -155,8 +155,9 @@ func TestMapGates(t *testing.T) {
 	}
 }
 
-// TestMapSkip: every Boss II exits to a skip past act III: no room, two
-// upgrade picks, then The Halting Problem.
+// TestMapSkip: every Boss II exits to a skip past act III: no room and no
+// picks (D62: the skip used to pay two), the final's clock 20% shorter,
+// then The Halting Problem.
 func TestMapSkip(t *testing.T) {
 	t.Parallel()
 	ps := dense(catalog.Topics, 800, 2600, 20)
@@ -173,16 +174,23 @@ func TestMapSkip(t *testing.T) {
 	h.do(game.ChooseRoute{Index: exitIndex(t, h.s, "heisenbug")})
 	nextTier(h)
 	x := h.s.Biomes[5].Exits[exitIndex(t, h.s, "skip")]
-	if !x.Skip || x.Picks != 2 || x.Rooms != 0 || x.Topic != "" || x.Locked != "" || !slices.Equal(x.Bosses, []string{game.FinalBoss}) {
+	if !x.Skip || x.Picks != 0 || x.Toll != 0.2 || x.Rooms != 0 || x.Topic != "" || x.Locked != "" || !slices.Equal(x.Bosses, []string{game.FinalBoss}) {
 		t.Errorf("skip exit %+v", x)
 	}
 	picks := h.s.UpgradePicks
 	h.do(game.ChooseRoute{Index: exitIndex(t, h.s, "skip")})
-	if h.s.Biome != 6 || h.s.Biomes[5].Rooms != 0 || h.s.Biomes[6].Boss != game.FinalBoss || h.s.UpgradePicks != picks+2 ||
+	if h.s.Biome != 6 || h.s.Biomes[5].Rooms != 0 || h.s.Biomes[6].Boss != game.FinalBoss || h.s.UpgradePicks != picks ||
 		h.s.Phase != game.PhaseDoors || !h.s.OneShot() {
 		t.Fatalf("skipped: biome %d tiers %+v picks %d phase %s", h.s.Biome, h.s.Biomes[5:], h.s.UpgradePicks, h.s.Phase)
 	}
-	h.pick()
+	// The toll: the final's clock is 20% under what it would be untolled.
+	tolled := h.s.RouteTimer(h.m, game.Mixed)
+	h.s.Toll = 0
+	free := h.s.RouteTimer(h.m, game.Mixed)
+	h.s.Toll = 0.2
+	if d := tolled - time.Duration(0.8*float64(free)); d < -time.Minute || d > time.Minute {
+		t.Errorf("the final's clock %v tolled, %v untolled: want 80%%", tolled, free)
+	}
 	h.clearDoor(0, time.Minute)
 	if h.s.Phase != game.PhaseCleared {
 		t.Errorf("the final cleared: phase %s", h.s.Phase)
@@ -330,4 +338,48 @@ func boolInt(b bool) int {
 		return 1
 	}
 	return 0
+}
+
+// TestD62Supply: the map pays a biome's pick at its exit, not one a door
+// and none more for -O3; daemons are on offer through the window after
+// boss I and in none after it; and no content-floor life (D34) is dealt.
+func TestD62Supply(t *testing.T) {
+	t.Parallel()
+	if r := rules.Map(); r.EaseAbove != 0 || !r.PickPerBiome || !r.O3NoPick || r.DaemonActs != 1 {
+		t.Fatalf("the map's supply: ease_above %v, pick_per_biome %v, o3_no_pick %v, daemon_acts %d",
+			r.EaseAbove, r.PickPerBiome, r.O3NoPick, r.DaemonActs)
+	}
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	h := newHarness(t, mapPlain(), &game.Meta{}, ps, 0, 4)
+	h.clearDoor(0, time.Minute) // Userland's first room, fast enough for -O3
+	if h.s.PendingUpgrade {
+		t.Fatalf("Userland's first room owes %d picks", h.s.UpgradePicks)
+	}
+	toMergeFast(h) // its last room, then the window
+	if h.s.UpgradePicks != 1 {
+		t.Errorf("Userland owes %d picks at its exit, want 1", h.s.UpgradePicks)
+	}
+
+	h = newHarness(t, mapPlain(), &game.Meta{}, ps, 0, 4)
+	offered := map[int]bool{} // by the act of the biome the window follows
+	for range 5 {             // Userland, act I, boss I, act II, boss II
+		toMergeFast(h)
+		if h.s.Phase != game.PhaseMerge {
+			break
+		}
+		act := h.s.ActOf(h.s.Biome)
+		offered[act] = offered[act] || len(h.s.DaemonOffers) > 0
+		h.pick()
+		h.do(game.LeaveMerge{})
+		if h.s.Phase == game.PhaseRoute {
+			i := slices.IndexFunc(h.s.Biomes[h.s.Biome].Exits, func(x game.Exit) bool { return x.Locked == "" && !x.Skip })
+			h.do(game.ChooseRoute{Index: i})
+		}
+	}
+	if _, ok := offered[1]; !ok {
+		t.Fatalf("the walk reached no window after boss I: %v", offered)
+	}
+	if !offered[0] || offered[1] {
+		t.Errorf("daemons on offer by act %v: want act I's windows only", offered)
+	}
 }

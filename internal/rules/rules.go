@@ -115,6 +115,10 @@ type Biome struct {
 	// entered at once (Dead Cells' Guardian's Haven: two scrolls for the
 	// level skipped).
 	Skip bool `toml:"skip"`
+	// Toll is what taking the node costs every door after it: their clocks
+	// run Toll shorter (D62: the act III skip shortens the final by 0.2). 0
+	// costs nothing.
+	Toll float64 `toml:"toll"`
 
 	// ---- a secret node (docs/design/achievements.md §(f)) -------------------
 
@@ -463,6 +467,17 @@ type Rules struct {
 	TimedVault     float64 `toml:"timed_vault"`
 	UntouchedVault bool    `toml:"untouched_vault"`
 	VaultPicks     int     `toml:"vault_picks"`
+
+	// D62, the boot's supply. PickPerBiome owes a biome's upgrade pick at
+	// its exit, after its last room, not one for each door cleared;
+	// O3NoPick pays a -O3 clear nothing more (the timed vault is speed's
+	// reward); DaemonActs offers daemons only in the merge windows of the
+	// first DaemonActs acts, the one after the act's boss included, so the
+	// roster is set by the end of boss I at 1. Zero values are the old
+	// supply: a pick a door, a -O3 pick, daemons in every window.
+	PickPerBiome bool `toml:"pick_per_biome"`
+	O3NoPick     bool `toml:"o3_no_pick"`
+	DaemonActs   int  `toml:"daemon_acts"`
 
 	// ---- the map (docs/design/map.md) -----------------------------------------
 
@@ -1217,8 +1232,8 @@ func (r Rules) validateCycles() error {
 	if r.ECCPenalty.Duration < 0 || r.ECCMargin.Duration < 0 || r.RetreatLock.Duration < 0 {
 		return fmt.Errorf("rules %q: need ecc_penalty, ecc_margin, retreat_lock >= 0", r.Name)
 	}
-	if !(r.TimedVault >= 0 && r.TimedVault <= 2) || r.VaultPicks < 0 {
-		return fmt.Errorf("rules %q: need 0 <= timed_vault <= 2, vault_picks >= 0", r.Name)
+	if !(r.TimedVault >= 0 && r.TimedVault <= 2) || r.VaultPicks < 0 || r.DaemonActs < 0 {
+		return fmt.Errorf("rules %q: need 0 <= timed_vault <= 2, vault_picks >= 0, daemon_acts >= 0", r.Name)
 	}
 	if err := r.Perk.validate(r.Name); err != nil {
 		return err
@@ -1232,8 +1247,8 @@ func (r Rules) validateCycles() error {
 	}
 	for _, bs := range [][]Biome{r.Biomes, r.Nodes} {
 		for i, b := range bs {
-			if b.FailCycles < 0 || b.Picks < 0 || b.MinPrestige < 0 {
-				return fmt.Errorf("rules %q: biome %d needs fail_cycles, picks, min_prestige >= 0", r.Name, i)
+			if b.FailCycles < 0 || b.Picks < 0 || b.MinPrestige < 0 || !(b.Toll >= 0 && b.Toll < 1) {
+				return fmt.Errorf("rules %q: biome %d needs fail_cycles, picks, min_prestige >= 0 and 0 <= toll < 1", r.Name, i)
 			}
 		}
 	}

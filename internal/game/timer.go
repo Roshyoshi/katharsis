@@ -77,7 +77,7 @@ func (e *engine) timerMult(asc, boss bool) float64 {
 		}
 	}
 	gain, cut := e.s.daemonClock(boss)
-	return m * gain * cut
+	return m * gain * cut * (1 - e.s.Toll)
 }
 
 // overclock is what n Overclock picks multiply a timer by: +OverclockFrac

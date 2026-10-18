@@ -102,6 +102,10 @@ func (e *engine) enterMapTier(i int) bool {
 func (e *engine) takeNode(i int, id string) {
 	s := e.s
 	e.applyNode(i, id)
+	if n := s.Rules.Biomes[i]; n.Toll > 0 {
+		s.Toll = 1 - (1-s.Toll)*(1-n.Toll)
+		e.logf("route: %s takes its toll, later clocks -%.0f%%", id, 100*n.Toll)
+	}
 	if n := s.Rules.Biomes[i]; n.Skip {
 		e.logf("route: biome_%d skipped by %s, %s", i, id, units.Plural(n.Picks, "upgrade pick"))
 		e.owe(n.Picks)
@@ -141,7 +145,7 @@ func (e *engine) exits(i int) []Exit {
 // exitOf is node n's exit card as tier i's.
 func (e *engine) exitOf(n rules.Biome, i int) Exit {
 	s := e.s
-	x := Exit{Node: n.ID, Name: n.Name, Topic: n.Topic, Rooms: n.Rooms, Boss: n.Boss, Picks: n.Picks, Skip: n.Skip,
+	x := Exit{Node: n.ID, Name: n.Name, Topic: n.Topic, Rooms: n.Rooms, Boss: n.Boss, Picks: n.Picks, Skip: n.Skip, Toll: n.Toll,
 		Hidden: n.Hidden, Ending: n.Ending}
 	if x.Topic == "" {
 		x.Topic = Mixed

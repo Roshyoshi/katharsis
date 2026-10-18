@@ -27,7 +27,7 @@ MAP · boot #42 · Silver · suspended · after ⚔ Heisenbug                   
    The Filesystem                                                 
    The Framebuffer                                                
  ▸ Kernel Space                                                   
- ▸ skip +2                                                        
+ ▸ skip ⏱ -20%                                                    
 
 
 

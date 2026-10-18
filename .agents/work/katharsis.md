@@ -296,6 +296,14 @@ D57 settled 10-15  A GitHub-style contribution graph (user: "a git commit graph 
                    days and the load average. No streak counter: "Graph, no streak
                    (Recommended)" (GR1 stands).
 
+D62 settled 10-17  A boot's supply cut (user: "way too many upgrades per door", "daemon
+                   choice should end by end of first boss", the act III skip "should have a
+                   penalty", "remove D34"; full clears are not a target: "how many dead
+                   cells runs are you actually completing"). PickPerBiome (a pick at a
+                   biome's exit), O3NoPick, DaemonActs 1, skip Toll 0.2 and 0 picks,
+                   EaseAbove 0. Synthetic 20k, player 1000: P0 40.0 -> 38.2%, climbing
+                   p8 10.0 -> 7.5%, P1..P8 unlocked at boots 11..95 (was 10..38).
+
 D61 settled 10-17  More of the guide playable (user: "why are some RTFM stuff link only";
                    "we can do CSES after the codeforces mapping ... add a settings tab and
                    in that list CSES login"). Reverses 10-14's "CSES stays out".

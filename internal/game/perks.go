@@ -294,6 +294,12 @@ func (e *engine) offerDaemons() {
 	if s.Trial != nil || full && !s.perks() {
 		return
 	}
+	// D62: the roster is set once the first DaemonActs acts are done, the
+	// window after their last boss the last to offer one.
+	if r.DaemonActs > 0 && s.ActOf(s.Biome) >= r.DaemonActs {
+		s.DaemonOffers = nil
+		return
+	}
 	var pool, rares []Daemon
 	for _, d := range s.DaemonPool() {
 		if s.has(d) || s.DaemonLocked(d) || s.idle(d) || d == Quiet && e.duckRefill() == 0 {

@@ -19,6 +19,6 @@ MAP · boot #42 · Silver · The ALU room 1/1       ♥ 23/50 cycles  0 B uncomm
    The Filesystem                                                   
    The Framebuffer                                                  
    Kernel Space                                                     
-   skip +2                                                          
+   skip ⏱ -20%                                                      
 ────────────────────────────────────────────────────────────────────────────────
 enter resume · n new boot · g GRUB · t RTFM · q quit

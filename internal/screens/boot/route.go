@@ -270,6 +270,10 @@ func (r *Route) exitCard(e game.Exit) card {
 		}
 		c.picks = ui.OK.Render(fmt.Sprintf("+%d", e.Picks)) + word
 	}
+	if e.Toll > 0 {
+		// The skip's price, on the line a scroll would take (D62).
+		c.picks = ui.Warn.Render(fmt.Sprintf("later clocks -%.0f%%", 100*e.Toll))
+	}
 	for _, b := range e.Bosses {
 		c.behind = append(c.behind, ui.Muted.Render(ui.G.Arrow+" ")+ui.Special.Render(ui.G.Boss+" "+bossLabel(b)))
 	}

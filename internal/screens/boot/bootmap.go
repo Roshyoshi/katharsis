@@ -221,12 +221,13 @@ type spot struct {
 	id, name   string
 	boss, skip bool
 	picks      int
-	taken      bool   // its tier played it
-	offered    bool   // an exit on offer: at the route, or in the merge window before it
-	reach      bool   // ahead, and reachable from the node the boot stands on
-	gate       string // what locks it, "" when open: "CAP_DS", "P1", "pool"
-	oneShot    bool   // a boss whose fail ends the boot
-	rooms      []node // a taken node's rooms
+	toll       float64 // what taking it cuts later clocks by (rules.Biome.Toll)
+	taken      bool    // its tier played it
+	offered    bool    // an exit on offer: at the route, or in the merge window before it
+	reach      bool    // ahead, and reachable from the node the boot stands on
+	gate       string  // what locks it, "" when open: "CAP_DS", "P1", "pool"
+	oneShot    bool    // a boss whose fail ends the boot
+	rooms      []node  // a taken node's rooms
 }
 
 // reachable is every node the boot has played or can still play: the
@@ -294,7 +295,7 @@ func tierSpots(st *game.State, t int, reach map[string]bool, nodes [][]node, off
 		if n.Hidden && ex < 0 && bs.Node != n.ID {
 			continue
 		}
-		s := spot{id: n.ID, name: n.Name, boss: n.Boss != "", skip: n.Skip, picks: n.Picks, reach: reach[n.ID]}
+		s := spot{id: n.ID, name: n.Name, boss: n.Boss != "", skip: n.Skip, picks: n.Picks, toll: n.Toll, reach: reach[n.ID]}
 		switch {
 		case n.Hidden && ex >= 0 && bs.Exits[ex].Locked != "":
 			s.name = "???"
@@ -407,6 +408,9 @@ func (s spot) label() string {
 	}
 	if s.picks > 0 && live {
 		name += " " + ui.OK.Render(fmt.Sprintf("+%d", s.picks))
+	}
+	if s.toll > 0 && live {
+		name += " " + tollText(s.toll)
 	}
 	if s.oneShot && live && !s.taken {
 		name += " " + ui.Danger.Render("one shot")
@@ -554,14 +558,15 @@ func plainName(s spot) string {
 
 // aheadParts is a tier ahead: its reachable bosses by name, each after
 // the first behind sep, else one or two biomes by name and more as a
-// count, and the skip as "or skip +2".
+// count, and the skip as "or skip ⏱-20%" (its toll; "+2", its picks,
+// before D62).
 func aheadParts(reach []spot, sep string) []string {
 	var bosses, biomes []string
-	skip := 0
+	var skip *spot
 	for _, s := range reach {
 		switch {
 		case s.skip:
-			skip = s.picks
+			skip = &s
 		case s.boss && len(bosses) == 0:
 			bosses = append(bosses, s.label())
 		case s.boss:
@@ -577,13 +582,25 @@ func aheadParts(reach []spot, sep string) []string {
 	if len(biomes) > 2 {
 		part = fmt.Sprintf("1 of %d biomes", len(biomes))
 	}
-	if skip > 0 {
-		part += ui.Muted.Render(", or skip ") + ui.OK.Render(fmt.Sprintf("+%d", skip))
+	if skip != nil && (skip.picks > 0 || skip.toll > 0) {
+		part += ui.Muted.Render(", or skip")
+		if skip.picks > 0 {
+			part += " " + ui.OK.Render(fmt.Sprintf("+%d", skip.picks))
+		}
+		if skip.toll > 0 {
+			part += " " + tollText(skip.toll)
+		}
 	}
 	if part == "" {
 		part = nodeAhead.glyph()
 	}
 	return []string{part}
+}
+
+// tollText is a toll on the hub: what taking the exit cuts later clocks
+// by, "⏱-20%", in the warning's colour.
+func tollText(toll float64) string {
+	return ui.Warn.Render(fmt.Sprintf("%s-%.0f%%", ui.G.Timer, 100*toll))
 }
 
 // wrapParts runs parts into lines of at most w cells, breaking only

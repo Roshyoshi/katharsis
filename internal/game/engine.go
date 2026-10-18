@@ -618,11 +618,14 @@ func (e *engine) clear() {
 		return
 	}
 	picks := 1
+	if r.PickPerBiome && more {
+		picks = 0 // the biome's pick waits for its exit (D62)
+	}
 	if n := r.Biomes[s.Biome].Picks; !more && n > 0 {
 		picks += n // the scroll at a gated biome's exit
 		e.logf("%s: %s cleared, %s at its exit", name, s.Biomes[s.Biome].Name, units.Plural(n, "upgrade pick"))
 	}
-	if a.O3 {
+	if a.O3 && !r.O3NoPick {
 		picks++
 		e.logf("%s: -O3, under %s, free upgrade", name, units.Clock(scale(s.o3Timer(*a), o3)))
 	}

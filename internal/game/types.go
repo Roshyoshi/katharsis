@@ -350,9 +350,11 @@ type Exit struct {
 	Boss   string   `json:",omitempty"`
 	Bosses []string `json:",omitempty"`
 	// Picks are the upgrade picks owed at its end: a gated biome's scroll,
-	// or a skip's two.
-	Picks int  `json:",omitempty"`
-	Skip  bool `json:",omitempty"`
+	// or, before D62, a skip's two. Toll is what taking it cuts every later
+	// door's clock by (rules.Biome.Toll).
+	Picks int     `json:",omitempty"`
+	Skip  bool    `json:",omitempty"`
+	Toll  float64 `json:",omitempty"`
 	// Gate is what the node needs, zero when nothing (always open).
 	Gate Gate `json:",omitzero"`
 	// Locked is why it cannot be taken, "" when it can: the gate's terms
@@ -576,8 +578,11 @@ type State struct {
 	// cursed fails survived (sudo). Ofast curses the next door opened;
 	// WatchdogActs are the acts (State.Acts index + 1) watchdog fired in;
 	// Kdumped is set once kdump has rebooted the boot.
-	Stock        []Item  `json:",omitempty"`
-	QuietClock   float64 `json:",omitempty"`
+	Stock      []Item  `json:",omitempty"`
+	QuietClock float64 `json:",omitempty"`
+	// Toll is what the route taken has cut later clocks by (an exit's
+	// rules.Biome.Toll, D62's act III skip), 0 for none.
+	Toll         float64 `json:",omitempty"`
 	Snapshots    int     `json:",omitempty"`
 	Prefetches   int     `json:",omitempty"`
 	Turbo        int     `json:",omitempty"`

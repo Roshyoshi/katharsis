@@ -188,7 +188,7 @@ func TestMapGraph(t *testing.T) {
 			t.Errorf("%s exits %v", id, n.Next)
 		}
 	}
-	if s := nodes["skip"]; !s.Skip || s.Picks != 2 {
+	if s := nodes["skip"]; !s.Skip || s.Picks != 0 || s.Toll != 0.2 { // D62: a toll, no picks
 		t.Errorf("skip %+v", s)
 	}
 	// Every act II node leads, hidden, to the Trial at Boss II's tier.

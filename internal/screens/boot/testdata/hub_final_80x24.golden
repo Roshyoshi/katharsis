@@ -19,6 +19,6 @@ MAP · boot #42 · suspended · after ⚔ Heisenbug                ♥ 8/50 cycl
    The Filesystem                                                 
    The Framebuffer                                                
  ▸ Kernel Space                                                   
- ▸ skip +2                                                        
+ ▸ skip ⏱ -20%                                                    
 ────────────────────────────────────────────────────────────────────────────────
 enter resume · n new boot · g GRUB · t RTFM · q quit

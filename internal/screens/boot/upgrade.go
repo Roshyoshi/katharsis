@@ -347,7 +347,9 @@ func skipped(st *game.State) (picks int, ok bool) {
 		return 0, false
 	}
 	n, ok := st.Rules.Node(st.Biomes[b].Node)
-	if !ok || !n.Skip {
+	// A skip that pays nothing (D62's, a toll instead) earned none of the
+	// picks owed.
+	if !ok || !n.Skip || n.Picks == 0 {
 		return 0, false
 	}
 	for _, s := range steps(st) {

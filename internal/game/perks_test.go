@@ -16,6 +16,9 @@ func mapBoot(t *testing.T, seed uint64) *harness {
 	t.Helper()
 	r := mapPlain()
 	r.O3Frac = 0 // a fast clear's free pick apart
+	// A pick a door, as before D62: these test what the perks do once
+	// picked, not how many picks a boot gets.
+	r.PickPerBiome = false
 	return newHarness(t, r, &game.Meta{}, dense(catalog.Topics, 800, 2600, 20), 0, seed)
 }
 

@@ -142,7 +142,7 @@ func TestExitCards(t *testing.T) {
 		t.Errorf("the prestige lock: %q", got)
 	}
 	v = ansi.Strip(NewRoute(env(fixture.MapRouteFinal())).View(140, 40))
-	for _, want := range []string{"skip", "+2 upgrade picks", "→ ⚔ The Halting Problem", "Kernel Space", "The Cache"} {
+	for _, want := range []string{"skip", "later clocks -20%", "→ ⚔ The Halting Problem", "Kernel Space", "The Cache"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("act III exits lack %q:\n%s", want, v)
 		}
@@ -272,8 +272,15 @@ func TestHubKeys(t *testing.T) {
 // The skip's two picks are the skip's: the pick screen at the final's
 // doors does not show the last clear (Boss II's, its bytes long banked)
 // as if just made, nor credit the picks to its -O3.
+// A boot saved before D62, whose skip paid two picks, names it on the pick
+// screen; D62's skip pays none, so it claims no picks.
 func TestSkipPicks(t *testing.T) {
 	st := fixture.MapRouteFinal()
+	for i, n := range st.Rules.Nodes {
+		if n.Skip {
+			st.Rules.Nodes[i].Picks, st.Rules.Nodes[i].Toll = 2, 0
+		}
+	}
 	st.History[len(st.History)-1].O3 = true
 	st.Biomes[5] = game.BiomeState{Name: "skip", Kind: rules.Choice, Node: "skip", Exits: st.Biomes[5].Exits, Offers: st.Biomes[5].Offers}
 	st.Biomes[6] = game.BiomeState{Name: "The Halting Problem", Topic: game.Mixed, Kind: rules.Boss, Rooms: 1, Boss: game.FinalBoss, Node: game.FinalBoss}
@@ -288,6 +295,11 @@ func TestSkipPicks(t *testing.T) {
 	}
 	if !strings.Contains(v, "skip") || !strings.Contains(v, "+2 upgrade picks") {
 		t.Errorf("after the skip the pick screen does not name it:\n%s", v)
+	}
+	d := fixture.MapRouteFinal()
+	d.Biomes, d.Biome = st.Biomes, st.Biome
+	if n, ok := skipped(d); ok {
+		t.Errorf("D62's skip claims %d picks", n)
 	}
 }
 
