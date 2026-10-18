@@ -45,6 +45,7 @@ func Map() Rules {
 	// floor ("increase bronze's scope to include down to 800").
 	r.TierBands = [][2]int{{800, 1300}, {1350, 1650}, {1700, 2000}, {2100, 2400}, {2400, 2800}}
 	r.TierWarmup = 200
+	r.DuckTest = true   // D64: the duck debugs
 	r.Perk = MapPerks() // ten a pool (perk.go)
 	r.FountainCycles, r.FountainWhere = 5, FountainAct
 	r.KexecPerAct = true
@@ -73,12 +74,13 @@ func Map() Rules {
 // doors and three bosses, and banks about 2.5 times what a boot of the
 // legacy rules did (sim TestAptLadder: 531 and 605 B a boot for the 1000-
 // and 1600-rated models over their first 40 boots at these prices,
-// against 203 and 249).
+// against 203 and 249); after D62's supply and D64's duck, 485 for the
+// 1000 model, so 2.65 (a 544 B package at 1440 B, within three boots).
 // The prices follow, so the ladder stays 40 boots deep, every next package
 // within three boots and binutils, the capstone, after 40 boots of the
 // ladder; the first stays one cleared door (32 B), as boot #1 still plays
 // the short shape and banks what it did.
-const MapPriceMult = 2.7
+const MapPriceMult = 2.65
 
 // mapPrice is a legacy price on the map, to the nearest 8 B.
 func mapPrice(p int64) int64 { return int64(math.Round(float64(p)*MapPriceMult/8)) * 8 }

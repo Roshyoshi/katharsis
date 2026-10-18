@@ -268,6 +268,8 @@ func (m *Model) effects(effs []game.Effect) tea.Cmd {
 			m.d.Audio.Play(e.Name)
 		case game.Prefetch:
 			cmds = append(cmds, m.prefetch(e.Problems))
+		case game.RevealTest:
+			cmds = append(cmds, m.duckTest())
 		}
 	}
 	return tea.Batch(cmds...)

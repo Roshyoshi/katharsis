@@ -1474,3 +1474,42 @@ func TestRouteTimer(t *testing.T) {
 		}
 	}
 }
+
+// TestDuckDebugs: under DuckTest (D64) the duck's second quack debugs. It
+// needs a failed submit to look at, then asks for a failed test among the
+// door's samples (RevealTest) instead of naming the technique, which a
+// topic biome already does; a door with hidden tags still spends its
+// first quack on them. Either way the clear is hinted.
+func TestDuckDebugs(t *testing.T) {
+	t.Parallel()
+	ps := dense(catalog.Topics, 800, 2600, 20)
+	r := plain()
+	r.DuckTest, r.Ducks = true, 3
+	h := newHarness(t, r, nil, ps, 0, 1)
+	d := h.open(0)
+	if err := h.try(game.Quack{}); !errors.Is(err, game.ErrInvalid) {
+		t.Fatal("the duck debugged before any submit failed")
+	}
+	h.do(game.SubmitResult{Verdict: "WA", Passed: 3, Total: 10})
+	fx := h.do(game.Quack{})
+	if rt, ok := has[game.RevealTest](fx); !ok || rt.Problem != d.Problem {
+		t.Errorf("the debugging quack's effects %v, want RevealTest of %s", fx, d.Problem)
+	}
+	if _, ok := has[game.RevealTags](fx); ok {
+		t.Errorf("the debugging quack named the technique too: %v", fx)
+	}
+	if h.s.Current.Hint != 2 || h.s.Ducks != 2 || h.s.Current.Quacks != 1 {
+		t.Errorf("after it: hint %d, ducks %d, quacks %d", h.s.Current.Hint, h.s.Ducks, h.s.Current.Quacks)
+	}
+
+	r.BlindAll = true
+	h = newHarness(t, r, nil, ps, 0, 1)
+	h.open(0)
+	if rt, ok := has[game.RevealTags](h.do(game.Quack{})); !ok || rt.Level != 1 {
+		t.Fatal("a blind door's first quack did not show its tags")
+	}
+	h.do(game.SubmitResult{Verdict: "WA", Passed: 3, Total: 10})
+	if _, ok := has[game.RevealTest](h.do(game.Quack{})); !ok {
+		t.Error("a blind door's second quack did not debug")
+	}
+}

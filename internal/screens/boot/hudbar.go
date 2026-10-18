@@ -132,7 +132,10 @@ func HUDBar(st *game.State, prob catalog.Problem, now time.Time, width int) stri
 			out = append(out, pre+l)
 		}
 	}
-	if att.Hint >= 2 && prob.Topic != "" {
+	switch {
+	case att.Hint >= 2 && st.Rules.DuckTest:
+		out = append(out, ui.Muted.Render("duck: a failed test is in your samples (w)"))
+	case att.Hint >= 2 && prob.Topic != "":
 		out = append(out, ui.Muted.Render("technique ")+ui.Strong.Render(prob.Topic))
 	}
 

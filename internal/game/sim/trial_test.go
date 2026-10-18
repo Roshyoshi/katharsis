@@ -113,9 +113,10 @@ func TestTrialCheck(t *testing.T) {
 	std := rules.Standard()
 	for _, prestige := range levels {
 		for _, rating := range []float64{1000, 1300, 1600} {
-			// Each tier with the players who fit it (D63): a 1600 player
-			// breezes through Bronze's doors by design.
-			if b, ok := std.TierBand(prestige); ok && (rating < float64(b[0])-300 || rating > float64(b[1])+200) {
+			// Each tier with the players who fit it (D63): a rating in its
+			// band or up to 200 over. A 1600 player breezes through Bronze's
+			// doors by design, and a 1300 one is Bronze's, not Silver's.
+			if b, ok := std.TierBand(prestige); ok && (rating < float64(b[0]) || rating > float64(b[1])+200) {
 				continue
 			}
 			t.Run(fmt.Sprintf("P%d/%.0f", prestige, rating), func(t *testing.T) {

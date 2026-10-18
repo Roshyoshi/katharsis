@@ -1001,7 +1001,14 @@ func (b *boot) attempt(biome int) {
 	}
 	var evs []event
 	half := timer / 2
-	if (!capable || t > half) && b.p.DuckBoost > 0 && s.Ducks > 0 && !d.Cursed {
+	// D64: the duck debugs a failed submit. A model stuck on the door fails
+	// one first, at its price, as a player who reaches for it has; one only
+	// slow has nothing to debug and no reason to fail one.
+	duck := !capable || t > half && !s.Rules.DuckTest
+	if duck && b.p.DuckBoost > 0 && s.Ducks > 0 && !d.Cursed {
+		if s.Rules.DuckTest {
+			evs = append(evs, event{half - time.Second, b.fail()})
+		}
 		evs = append(evs, event{half, game.Quack{}})
 		if !capable {
 			capable = b.rng.Float64() < b.p.DuckBoost

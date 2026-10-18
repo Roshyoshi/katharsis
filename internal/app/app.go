@@ -21,6 +21,7 @@ import (
 	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
 	"katharsis/internal/hud"
+	"katharsis/internal/problem"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
@@ -57,6 +58,9 @@ type Door struct {
 	// Libs are the boot's linked libs, pasted above main when the door's
 	// source is first written.
 	Libs []game.Lib
+	// Failed are the tests the door's last submit failed, for the duck's
+	// debugging quack (D64, duck.go).
+	Failed []problem.Test
 }
 
 // Judge runs the full tests of an open door, for a Runner without a HUD
@@ -366,6 +370,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case hud.SubmittedMsg:
 		if msg.Err != nil {
 			return m, m.onJudged(judgedMsg{err: msg.Err}) // the HUD answered it
+		}
+		if m.open != nil {
+			m.open.Failed = msg.Failed // what the duck can debug
 		}
 		s, lives, sample := msg.Summary, m.doorLives(), m.sampleFailed(msg.Failed)
 		cmd := m.onJudged(judgedMsg{verdict: string(s.Verdict), passed: s.Passed, total: s.Total, sample: sample})

@@ -164,6 +164,12 @@ type Rules struct {
 	CursedMult    float64 `toml:"cursed_mult"`
 	// BlindAll hides tags on every door (a run modifier).
 	BlindAll bool `toml:"blind_all"`
+	// DuckTest makes the duck's second quack rubber-duck debugging (D64):
+	// after a failed submit it copies the smallest test that submit failed
+	// into the door's samples, so :w runs it and w shows it, where it named
+	// the technique, which a topic biome already does. false is the
+	// technique (a boot saved before D64).
+	DuckTest bool `toml:"duck_test"`
 
 	// MasteryAttempts and MasteryMargin hide the tags of doors on a topic
 	// the player has mastered: one with MasteryAttempts rated attempts whose

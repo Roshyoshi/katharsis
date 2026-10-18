@@ -296,6 +296,14 @@ D57 settled 10-15  A GitHub-style contribution graph (user: "a git commit graph 
                    days and the load average. No streak counter: "Graph, no streak
                    (Recommended)" (GR1 stands).
 
+D64 settled 10-18  The duck debugs (user: "rubber duck is lowkey useless"; "fix rubber
+                   duck"). Its 2nd quack named the topic, which a topic biome already
+                   names. DuckTest: after a failed submit it copies the smallest test that
+                   submit failed into the door's tests as the next sample (:w runs it, w
+                   shows it); before one it refuses. The 1st quack still shows hidden
+                   tags; a ducked clear still rates 0.7. Boot length left as is for the
+                   user to play-test.
+
 D63 settled 10-18  Prestige is a USACO tier's problems (user: "The original idea was dead
                    cells with bcs corresponding to USACO tiers"; "increase bronze's scope
                    to include down to 800"). TierBands: Bronze 800-1300, Silver

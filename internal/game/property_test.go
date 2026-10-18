@@ -678,6 +678,9 @@ func (f *fuzzer) action(s *game.State) game.Action {
 		case 0:
 			return game.GiveUp{}
 		case 1, 2:
+			if s.Rules.DuckTest && s.Current.Failed == 0 { // D64: a failed submit first
+				return game.SubmitResult{Verdict: "WA", Passed: 3, Total: 10}
+			}
 			return game.Quack{}
 		case 3, 4:
 			return game.Retreat{}

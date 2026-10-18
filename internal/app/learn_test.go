@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -17,6 +18,9 @@ import (
 	"katharsis/internal/curriculum"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
+	"katharsis/internal/hud"
+	"katharsis/internal/judge"
+	"katharsis/internal/problem"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/rtfm"
 )
@@ -576,6 +580,43 @@ func TestCSESDrawsNoDoors(t *testing.T) {
 		}
 		if got := cses(h); !slices.Equal(got, want) {
 			t.Errorf("the trial's pool holds CSES %v, want its unit's %v", got, want)
+		}
+	})
+}
+
+// The duck's debugging quack (D64) copies the smallest test the last
+// submit failed into the door's tests as the next sample, so :w runs it.
+func TestDuckCopiesAFailedTest(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var r *srcRunner
+		h := newHarnessWith(t, func(f *fakeRunner) Runner {
+			r = &srcRunner{fakeRunner: f, dir: t.TempDir(), write: "int main() {}\n"}
+			return r
+		})
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.m.state.Rules.DuckTest = true // the harness's steady preset predates D64
+		h.enterDoor()
+		hidden := t.TempDir()
+		write := func(name, body string) string {
+			p := filepath.Join(hidden, name)
+			if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			return p
+		}
+		big := problem.Test{Name: "7", In: write("7.in", strings.Repeat("9 ", 500)), Out: write("7.out", "big\n")}
+		small := problem.Test{Name: "9", In: write("9.in", "3\n1 2 3\n"), Out: write("9.out", "6\n")}
+		h.send(hud.SubmittedMsg{Summary: judge.Summary{Verdict: judge.WA, Passed: 3, Total: 10, Done: 10, First: 6},
+			Failed: []problem.Test{big, small}})
+		samples := len(h.m.open.Assets.Samples)
+		h.send(game.Quack{})
+		n := samples + 1
+		got, err := os.ReadFile(filepath.Join(filepath.Dir(r.Source()), "tests", fmt.Sprint(n)+".in"))
+		if err != nil || string(got) != "3\n1 2 3\n" {
+			t.Fatalf("sample %d is %q (%v), want the smallest failed test; flash %q", n, got, err, h.m.flash)
+		}
+		if len(h.m.open.Assets.Samples) != n || !strings.Contains(h.m.flash, "hidden test #9") {
+			t.Errorf("samples %d, flash %q", len(h.m.open.Assets.Samples), h.m.flash)
 		}
 	})
 }

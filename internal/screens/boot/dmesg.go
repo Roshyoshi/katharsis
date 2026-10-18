@@ -339,7 +339,10 @@ func (t *Tracker) diff(p, n snapshot, st *game.State, m *game.Meta, now time.Tim
 		c := st.Current
 		prob := t.problem(c.Door.Problem)
 		what, hook, fill := "tags shown", "duck.quack.1", []string{"tags", ui.Clip(strings.Join(prob.Tags, ", "), 24)}
-		if c.Hint >= 2 {
+		switch {
+		case c.Hint >= 2 && st.Rules.DuckTest: // D64: the duck debugs
+			what, hook, fill = "a failed test in your samples (w)", "", nil
+		case c.Hint >= 2:
 			what, hook, fill = "technique shown", "duck.quack.2", []string{"technique", ui.Clip(prob.Topic, 15)}
 		}
 		add(EvQuack, "duck: "+what+ui.Muted.Render(ui.G.Sep)+fmt.Sprintf("%s%d left", ui.G.Duck, n.ducks), hook, fill...)

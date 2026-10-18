@@ -336,11 +336,13 @@ func TestMapLearn(t *testing.T) {
 
 // TestGuardrailBand holds the map default to the trial-by-fire band
 // (D49, map.md §(a)) with the boss twists on: static model players at a
-// tier that fits them (D63: 1000 at Bronze, 1500 at Silver) clear 35 to
-// 60% of their boots (the band's 40-55% with two
-// seeds' noise), deaths come late (each act's hazard above the last's, act
-// III's under 45%), and no one boss ends more than half the boots that
-// reach it. Synthetic pool, boots 51-250 of seeds 7 and 8.
+// tier that fits them (D63: 1000 at Bronze, 1500 at Silver) clear 25 to
+// 60% of their boots. The floor was D49's 35 when every door was aimed at
+// the player; a tier's clears are its own now (D62-D64: no absolute target,
+// 26-43% across tiers), so it guards against hopeless and trivial only.
+// Deaths come late (each act's hazard above the last's, act III's under
+// 45%), and no one boss ends more than half the boots that reach it.
+// Synthetic pool, boots 51-250 of seeds 7 and 8.
 func TestGuardrailBand(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -359,8 +361,8 @@ func TestGuardrailBand(t *testing.T) {
 			m := cell(rules.Standard(), pool, rating, tc.prestige, 200, []uint64{7, 8})
 			h := m.hazard()
 			t.Logf("model %.0f: %s\n  bosses: %s", rating, m.line(), m.bossLine())
-			if f := pct(m.full, m.boots); f < 35 || f > 60 {
-				t.Errorf("full clears %.1f%%, want 35-60%%", f)
+			if f := pct(m.full, m.boots); f < 25 || f > 60 {
+				t.Errorf("full clears %.1f%%, want 25-60%%", f)
 			}
 			if !(h[0] < h[2] && h[1] < h[2]) || h[2] > 45 {
 				t.Errorf("hazard by act %.1f/%.1f/%.1f%%: deaths should come late, act III under 45%%", h[0], h[1], h[2])

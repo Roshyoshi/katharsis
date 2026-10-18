@@ -467,12 +467,23 @@ func (e *engine) quack() error {
 	if level == 1 && !a.Door.TagsHidden() {
 		level = 2 // tags are already on screen; don't spend a duck on them
 	}
+	debug := level == 2 && s.Rules.DuckTest
+	if debug && a.Failed == 0 {
+		return invalid("the duck needs a failed submit to look at")
+	}
 	s.Ducks--
 	a.Quacks++
 	a.Hint = level
 	e.event(AttemptEvent{Kind: "quack", Level: level})
 	what := map[int]string{1: "tags", 2: "technique"}[level]
+	if debug {
+		what = "a failed test"
+	}
 	e.logf("%s: quack %d (%s), %d ducks left", e.door(), a.Quacks, what, s.Ducks)
+	if debug {
+		e.emit(RevealTest{Problem: a.Door.Problem})
+		return nil
+	}
 	e.emit(RevealTags{Problem: a.Door.Problem, Level: level})
 	return nil
 }

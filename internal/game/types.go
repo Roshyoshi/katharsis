@@ -848,6 +848,10 @@ type RevealTags struct {
 	Problem catalog.ID
 	Level   int
 } // 1 tags, 2 technique
+
+// RevealTest is the duck's debugging quack (rules.DuckTest): the app puts
+// a test the last submit failed among the door's samples.
+type RevealTest struct{ Problem catalog.ID }
 type OpenEditorial struct{ Problem catalog.ID }
 type ShowCrash struct{ Crash Crash }
 
@@ -860,6 +864,7 @@ type Prefetch struct{ Problems []catalog.ID } // doors on offer: fetch ahead
 func (OpenProblem) isEffect()   {}
 func (CloseProblem) isEffect()  {}
 func (RevealTags) isEffect()    {}
+func (RevealTest) isEffect()    {}
 func (OpenEditorial) isEffect() {}
 func (ShowCrash) isEffect()     {}
 func (ShowCleared) isEffect()   {}

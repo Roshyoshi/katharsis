@@ -33,7 +33,7 @@ fixed rule. Settings are locked for the length of a boot.
 | death | crash | kernel panic screen |
 | shade | core dump | uncommitted bytes stay on the problem that killed you; upsolving it recovers them; crashing again first loses them |
 | give up | `:q!` | burns the act's price (10, 12, 15; a boss 20 and a new boss door); the room is lost and the boot goes on; the final is one shot |
-| hint charge | rubber duck | 1st quack reveals tags, 2nd the technique; refills at merge windows |
+| hint charge | rubber duck | 1st quack reveals hidden tags; 2nd, after a failed submit, copies the smallest test it failed into the door's samples (D64: rubber-duck debugging); a ducked clear rates 0.7; refills at merge windows |
 | health | cycles | `♥ 30/50 cycles`: a failed hidden-test submit burns 2 (a CE or a sample's fail is free), a timeout as `:q!` does, a retreat 5; fsck buys 10; 0 is a crash |
 | scroll | upgrade | after each clear pick one: Overclock (+15% timer for 5 cycles, two at most), ECC (a failed submit costs 05:00 of the door's clock, not cycles, while more is left), Duck (+1 duck) |
 | mutation | daemon | passive perk picked at a merge window |
