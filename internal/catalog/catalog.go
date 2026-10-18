@@ -43,6 +43,12 @@ type ID string
 // "1598") is "usaco:1598".
 func NewID(src Source, native string) ID { return ID(string(src) + ":" + native) }
 
+// ShowsRating reports whether id's rating is fit to show a player. CSES's
+// come from solver counts, which fall down its list as people stop, not as
+// its tasks get harder (Missing Number rated over Codeforces' 800
+// Rebellion): the game orders by them, never shows them.
+func ShowsRating(id ID) bool { return id.Source() != CSES }
+
 // Source is the source part of the ID, "" when it has none.
 func (id ID) Source() Source {
 	src, _, ok := strings.Cut(string(id), ":")

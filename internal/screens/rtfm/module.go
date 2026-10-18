@@ -209,7 +209,10 @@ func (p *Module) unitLines(w int) []string {
 				if pr.Title != "" {
 					d.title = pr.Title
 				}
-				d.rating, d.contest = pr.Rating, pr.Contest
+				d.contest = pr.Contest
+				if catalog.ShowsRating(id) {
+					d.rating = pr.Rating
+				}
 			}
 		}
 		ds = append(ds, d)

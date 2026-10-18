@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
@@ -350,14 +351,21 @@ func tagLines(t doorText, cw, n int) []string {
 // hidden before its door opens as well as in it: "⏱ ??:??".
 func (d *Doors) doorStats(door game.Door) string {
 	rating := ui.Rating(door.Rating)
-	if door.Floor {
+	switch {
+	case !catalog.ShowsRating(door.Problem):
+		rating = ""
+	case door.Floor:
 		rating = ui.RatingAtMost(door.Rating)
 	}
 	clock := units.Clock(d.env.State.OpenTimer(door))
 	if door.HiddenClock {
 		clock = ClockHidden
 	}
-	return rating + "  " + ui.G.Timer + clock + "  " + ui.OK.Render("+"+units.Bytes(door.Bytes))
+	stats := ui.G.Timer + clock + "  " + ui.OK.Render("+"+units.Bytes(door.Bytes))
+	if rating == "" {
+		return stats
+	}
+	return rating + "  " + stats
 }
 
 func withMult(s string, m float64) string {

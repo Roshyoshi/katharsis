@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/ui"
@@ -706,8 +707,11 @@ func historyRows(env Env, width int) []string {
 		// The last attempt of a crashed boot is the crash; every other one
 		// left the boot running.
 		last := env.State.Phase == game.PhaseCrashed && i == len(ss)-1
-		out = append(out, row(fmt.Sprint(s.N), biomeLabel(env.State, s.Biome), title,
-			ui.Rank(float64(a.Door.Rating)).Render(fmt.Sprint(a.Door.Rating)), outcomeLabel(a, last), tm))
+		rating := ""
+		if catalog.ShowsRating(a.Door.Problem) {
+			rating = ui.Rank(float64(a.Door.Rating)).Render(fmt.Sprint(a.Door.Rating))
+		}
+		out = append(out, row(fmt.Sprint(s.N), biomeLabel(env.State, s.Biome), title, rating, outcomeLabel(a, last), tm))
 	}
 	return out
 }

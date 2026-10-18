@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
@@ -359,7 +360,7 @@ func attemptLine(a AttemptRow, lay attemptLayout) string {
 	// right-aligned as numerals are, so a long topic is cut, never the
 	// rating (§2.6).
 	rating := ""
-	if a.Rating > 0 {
+	if a.Rating > 0 && catalog.ShowsRating(a.Problem) {
 		rating = ui.Rating(a.Rating)
 	}
 	t := ui.AlignRight(units.Clock(a.Elapsed), 5)

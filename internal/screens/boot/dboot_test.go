@@ -356,3 +356,17 @@ func TestDoorsShowAtTime(t *testing.T) {
 		}
 	}
 }
+
+// A door shows its rating unless it is CSES's: those come from solver
+// counts, too rough to show (catalog.ShowsRating).
+func TestDoorStatsHideCSESRating(t *testing.T) {
+	d := NewDoors(env(fixture.Doors()))
+	cf := ansi.Strip(d.doorStats(game.Door{Problem: "cf:1746B", Rating: 800, Bytes: 40}))
+	cses := ansi.Strip(d.doorStats(game.Door{Problem: "cses:1083", Rating: 850, Bytes: 40}))
+	if !strings.Contains(cf, "800") {
+		t.Errorf("a Codeforces door shows %q, want its rating", cf)
+	}
+	if strings.Contains(cses, "850") || strings.HasPrefix(cses, " ") {
+		t.Errorf("a CSES door shows %q, want no rating and no gap for it", cses)
+	}
+}

@@ -427,7 +427,7 @@ func (v *Level) practiceLines(w, n int) []string {
 		switch {
 		case !it.playable():
 			rating = "link"
-		case it.rating > 0:
+		case it.rating > 0 && catalog.ShowsRating(it.id):
 			rating = ui.Rating(it.rating)
 		}
 		line := mark + " " + star + " " + ui.Fit(it.title, titleW) + strings.Repeat(" ", colGap) +

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
@@ -451,8 +452,11 @@ func leverText(env Env, l game.Lever) string {
 	case game.LeverAbandoned:
 		return "a new boot started while this one was suspended between doors"
 	case game.LeverCleared:
-		s = fmt.Sprintf("%q %s cleared in %s of %s", env.problem(l.Door.Problem).Title, ui.Rating(l.Door.Rating),
-			units.Clock(l.Elapsed), units.Clock(l.Timer))
+		name := fmt.Sprintf("%q", env.problem(l.Door.Problem).Title)
+		if catalog.ShowsRating(l.Door.Problem) {
+			name += " " + ui.Rating(l.Door.Rating)
+		}
+		s = fmt.Sprintf("%s cleared in %s of %s", name, units.Clock(l.Elapsed), units.Clock(l.Timer))
 		if l.Quacks > 0 {
 			s += ui.Muted.Render(ui.G.Sep) + units.Plural(l.Quacks, "duck")
 		}

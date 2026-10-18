@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"katharsis/internal/catalog"
 	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
 	"katharsis/internal/screens"
@@ -220,5 +221,30 @@ func TestPracticeOrder(t *testing.T) {
 				t.Errorf("%s: %q comes after %q", name, strings.TrimSpace(rows[i]), strings.TrimSpace(rows[i-1]))
 			}
 		}
+	}
+}
+
+// A CSES problem in PRACTICE shows no rating: CSES's come from solver
+// counts, too rough to show. It still sorts by it.
+func TestPracticeHidesCSESRating(t *testing.T) {
+	c := loadCurriculum(t)
+	_, region := atlasLevel(t, c, "prefix-sums")
+	judge := func(id catalog.ID) bool { return id.Source() == catalog.USACO || id.Source() == catalog.CSES }
+	l, _, ok := c.Atlas(judge).Level("prefix-sums")
+	if !ok {
+		t.Fatal("no prefix-sums level")
+	}
+	lookup := func(id catalog.ID) (catalog.Problem, bool) {
+		if id.Source() == catalog.CSES {
+			return catalog.Problem{ID: id, Title: "CSES " + string(id), Rating: 1777}, true
+		}
+		return fixture.Lookup(id)
+	}
+	v := plain(rtfm.NewLevel(c, l, region, fixture.Meta(), judge, lookup).View(140, 40))
+	if !strings.Contains(v, "CSES cses:1661") {
+		t.Fatalf("no CSES problem in PRACTICE:\n%s", v)
+	}
+	if strings.Contains(v, "1777") {
+		t.Errorf("a CSES rating shows:\n%s", v)
 	}
 }
