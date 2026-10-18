@@ -218,7 +218,7 @@ func New(d Deps) (*Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := &Model{d: d, meta: meta, state: st, pool: d.Catalog.All(), editorials: map[catalog.ID]time.Time{}}
+	m := &Model{d: d, meta: meta, state: st, pool: drawPool(d.Catalog), editorials: map[catalog.ID]time.Time{}}
 	m.setuid.notices = d.SetuidNotices
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 	m.startTelemetry()

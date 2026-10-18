@@ -86,7 +86,7 @@ func (m *Model) startBoot(b screens.StartBoot) tea.Cmd {
 	}
 	// A fetch outside the doors (a statement, say) may have found problems
 	// unjudgeable since the pool was last read.
-	m.pool = m.d.Catalog.All()
+	m.pool = drawPool(m.d.Catalog)
 	st, effs, err := game.NewBoot(r, &m.meta, m.pool, b.Prestige, seed, m.d.Now())
 	if err != nil {
 		return fail("new boot: %v", err)
@@ -344,6 +344,15 @@ func (m *Model) closeDoor() {
 	m.open, m.judging, m.resumed = nil, false, resumedSubmit{}
 }
 
+// drawPool is the catalog the engine draws doors from: every source but
+// CSES. Its tasks are the guide's practice, reached by id (RTFM's
+// PRACTICE, a trial's unit), and its ratings come from solver counts,
+// too rough to draw doors by: Missing Number rated over Codeforces'
+// Rebellion, which needs a greedy idea.
+func drawPool(c catalog.Catalog) []catalog.Problem {
+	return slices.DeleteFunc(c.All(), func(p catalog.Problem) bool { return p.Source == catalog.CSES })
+}
+
 // recheck takes the catalog's word on problems a fetch just touched: one
 // whose tests turned out missing (a zip that 404s, say) is no longer
 // judgeable, and the engine must stop offering it. It rereads only the
@@ -361,7 +370,7 @@ func (m *Model) recheck(ids ...catalog.ID) {
 			for _, q := range m.pool {
 				srcs[q.Source] = true
 			}
-			m.pool = slices.DeleteFunc(m.d.Catalog.All(), func(q catalog.Problem) bool { return !srcs[q.Source] })
+			m.pool = slices.DeleteFunc(drawPool(m.d.Catalog), func(q catalog.Problem) bool { return !srcs[q.Source] })
 			return
 		}
 	}

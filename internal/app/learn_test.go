@@ -526,3 +526,56 @@ func TestRTFMOpensAModuleWithATrial(t *testing.T) {
 		}
 	})
 }
+
+// CSES is the guide's practice, not a door source: a boot draws none, and
+// a trial's pool holds only the CSES problems of its own unit (it plays
+// them by id), never one drawn by rating.
+func TestCSESDrawsNoDoors(t *testing.T) {
+	setup := func(t *testing.T) *harness {
+		h := newHarness(t)
+		loadGuide(h)
+		c := h.m.d.Catalog.(*fakeCatalog)
+		for _, id := range []catalog.ID{"cses:1661", "cses:1662", "cses:9999"} {
+			p := catalog.Problem{ID: id, Source: catalog.CSES, Title: string(id), Topic: "prefix-sums", Rating: 1400, Judgeable: true}
+			c.all, c.byID[id] = append(c.all, p), p
+		}
+		return h
+	}
+	cses := func(h *harness) (ids []catalog.ID) {
+		for _, p := range h.m.pool {
+			if p.Source == catalog.CSES {
+				ids = append(ids, p.ID)
+			}
+		}
+		return ids
+	}
+	synctest.Test(t, func(t *testing.T) {
+		h := setup(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		if h.m.state == nil {
+			t.Fatal("no boot")
+		}
+		if got := cses(h); len(got) > 0 {
+			t.Errorf("a boot's pool holds CSES problems %v", got)
+		}
+	})
+	synctest.Test(t, func(t *testing.T) {
+		h := setup(t)
+		h.send(screens.StartTrial{Module: "prefix-sums"})
+		if h.m.state == nil || h.m.state.Trial == nil {
+			t.Fatalf("no trial: %s", h.m.flash)
+		}
+		var want []catalog.ID
+		for _, id := range h.m.state.Trial.Unit {
+			if id.Source() == catalog.CSES {
+				want = append(want, id)
+			}
+		}
+		if len(want) == 0 {
+			t.Fatalf("prefix-sums's unit %v has no CSES problem to check", h.m.state.Trial.Unit)
+		}
+		if got := cses(h); !slices.Equal(got, want) {
+			t.Errorf("the trial's pool holds CSES %v, want its unit's %v", got, want)
+		}
+	})
+}

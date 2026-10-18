@@ -221,7 +221,14 @@ func (m *Model) beginTrial(t game.TrialSpec) tea.Cmd {
 	if err := m.abandon(); err != nil {
 		return fail("abandon boot %d: %v", m.state.Boot, err)
 	}
-	m.pool = m.d.Catalog.All() // as in startBoot
+	// The doors drawn by rating come from the boots' pool; the unit's own
+	// CSES problems join it, as the trial plays them by id.
+	m.pool = drawPool(m.d.Catalog)
+	for _, id := range t.Unit {
+		if p, ok := m.d.Catalog.Get(id); ok && p.Source == catalog.CSES {
+			m.pool = append(m.pool, p)
+		}
+	}
 	st, effs, err := game.NewTrial(rules.Trial(), &m.meta, m.pool, t, m.d.Seed(), m.d.Now())
 	if err != nil {
 		return fail("trial: %v", err)
