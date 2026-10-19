@@ -226,7 +226,7 @@ act: its topic biome plays `act1`, its boss `boss1`.
 
 | Pool | Plays in | Touhou role | Tracks |
 |---|---|---|---|
-| `grub` | GRUB menu, git log, top | title screens | 12 |
+| `grub` | home: GRUB, RTFM, upsolves, git log, top, settings, also over a paused boot | title screens, plus `cleared`'s ending themes | 19 |
 | `userland` | the first biome | stage 1-2 themes, plus Misty Lake | 22 |
 | `act1` | act I's topic biomes | stage 3-4 themes, PoFV themes of early bosses | 23 |
 | `act2` | act II's topic biomes | stage 5-6 and final stage themes, PoFV themes of stage 5 bosses | 19 |
@@ -234,9 +234,9 @@ act: its topic biome plays `act1`, its boss `boss1`.
 | `boss1` | Boss I (Off-by-One, OOM Killer) | stage 1-3 boss themes | 27 |
 | `boss2` | Boss II (Heisenbug, Race Condition, Undefined Behavior, the Court) | stage 4-5 and extra boss themes | 24 |
 | `final` | The Halting Problem | final, extra and phantasm boss themes | 21 |
-| `merge` | merge window | staff rolls and "Player's Score" | 8 |
+| `merge` | the map between stages: merge window and route | staff rolls and "Player's Score" | 8 |
 | `cleared` | after the last boss | ending themes | 7 |
-| `rtfm` | learn mode | ZUN's music-CD pieces and quiet unused tracks | 6 |
+| `trial` | RTFM trials | ZUN's music-CD pieces and quiet unused tracks | 6 |
 | `panic` | kernel panic | silent by default (`panic = ""` in audio.toml); one track if set | 1 |
 
 PoFV's character themes have no stage, so each goes by its character's
@@ -266,7 +266,7 @@ Bandcamp albums above can go once the player has downloaded them.
 
 The full lists:
 
-#### grub (12)
+#### grub (12, plus cleared's 7)
 
 | id | title | original |
 |---|---|---|
@@ -491,7 +491,7 @@ The full lists:
 | `th12-16` | Yokai Temple (妖怪寺) | ZUN, Touhou 12 UFO, Ending theme |
 | `th12_8-07` | Spring Ice Fairy - Silent - (春の氷精 - 静 -) | ZUN, Touhou 12.8 Fairy Wars, Ending theme |
 
-#### rtfm (6)
+#### trial (6)
 
 | id | title | original |
 |---|---|---|

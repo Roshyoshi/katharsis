@@ -18,7 +18,7 @@ const TouhouNotice = "東方Project二次創作 — the Touhou music in katharsi
 
 // poolNames say where each pool plays, for the credits.
 var poolNames = map[string]string{
-	PoolGrub:     "GRUB menu",
+	PoolGrub:     "Home (GRUB, RTFM, upsolves)",
 	PoolUserland: "Userland (the first biome)",
 	PoolAct1:     "Act I",
 	PoolAct2:     "Act II",
@@ -26,10 +26,10 @@ var poolNames = map[string]string{
 	PoolBoss1:    "Boss I",
 	PoolBoss2:    "Boss II",
 	PoolFinal:    "The Halting Problem",
-	PoolMerge:    "Merge window",
+	PoolMerge:    "The map between stages",
 	PoolPanic:    "Kernel panic",
 	PoolCleared:  "Boot cleared",
-	PoolRTFM:     "RTFM (learn mode)",
+	PoolTrial:    "RTFM trials",
 }
 
 // Credits is the credits page: each source's license once, every track

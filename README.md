@@ -170,14 +170,16 @@ The music is Touhou chiptune: SUZUKI PLAN's 東方BGM on VGS, 175 chiptune
 arrangements of ZUN's music, used with the arranger's written permission
 for Touhou Project fan works, plus SwapXFO's NES "Misty Lake" (CC BY 4.0).
 Each biome draws from the matching part of the games and climbs by act
-as a run climbs by stage: title themes on GRUB, stage 1-2 themes in
-Userland, stage 3-4 in act I, 5-6 in act II, extra stages in act III;
-stage 1-3 bosses for Boss I, 4-5 and extra bosses for Boss II, and
-final-boss themes for The Halting Problem. A pool plays every track once
-before any plays again, across biomes and launches (the cache's
-`rotation.json` keeps its place), and GRUB and RTFM play their own music
-over a paused boot. A toast credits each track as it starts; GRUB →
-Credits lists them all. The game never bundles the
+as a run climbs by stage: stage 1-2 themes in Userland, stage 3-4 in act
+I, 5-6 in act II, extra stages in act III; stage 1-3 bosses for Boss I,
+4-5 and extra bosses for Boss II, and final-boss themes for The Halting
+Problem. A stage's track carries from its doors to the screens between
+them; staff rolls play on the map between stages. Outside a boot (GRUB,
+RTFM, upsolves, even over a paused boot) the calm title and ending
+themes play, and trials have ZUN's music-CD pieces. A pool plays every
+track once before any plays again, across biomes and launches (the
+cache's `rotation.json` keeps its place). A toast credits each track as
+it starts; GRUB → Credits lists them all. The game never bundles the
 music: `audio fetch` downloads it from each source, checked against
 pinned SHA-256 hashes. Without it the game plays on with its effects
 only. `ctrl+t` turns the music on or off.

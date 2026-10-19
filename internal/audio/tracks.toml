@@ -92,7 +92,7 @@ role = "unused HRtP track"
 sha256 = "ba69b5e749be9c4819833560609511eb219585886620aab919510ddf101deac7"
 size = 8583
 seconds = 75.0
-pools = ["rtfm"]
+pools = ["trial"]
 
 [[track]]
 id = "th04-01"
@@ -294,7 +294,7 @@ role = "ZUN's Strange Works (music CD, not a game)"
 sha256 = "93c76fd0009dfa971c17604adb24e47cbd8a7f2289b32a36f0e60acad2576c1b"
 size = 47733
 seconds = 320.8
-pools = ["rtfm"]
+pools = ["trial"]
 once = true
 note = "no loop mark: a song with an ending, played once a turn"
 
@@ -308,7 +308,7 @@ role = "ZUN's Strange Works (music CD)"
 sha256 = "1705fe57a8f30f84bf42772b2807ca91b19395d3391264d76badc790d1af41dc"
 size = 9495
 seconds = 72.9
-pools = ["rtfm"]
+pools = ["trial"]
 
 [[track]]
 id = "zsw-06"
@@ -321,7 +321,7 @@ role = "ZUN's Strange Works (music CD)"
 sha256 = "516529a3a5251916b96fdf17123707a383b6212aa1713511eca15418b061c0cd"
 size = 31060
 seconds = 289.5
-pools = ["rtfm"]
+pools = ["trial"]
 once = true
 note = "no loop mark: a song with an ending, played once a turn"
 
@@ -336,7 +336,7 @@ role = "Dolls in Pseudo Paradise (music CD)"
 sha256 = "7279cb8ab255e64f47bdfe04759393eefdb3d6270810d8f3a6b852dd49b189f3"
 size = 19041
 seconds = 206.9
-pools = ["rtfm"]
+pools = ["trial"]
 once = true
 note = "no loop mark: a song with an ending, played once a turn"
 
@@ -549,7 +549,7 @@ role = "Ending theme"
 sha256 = "8abb444e32c1ad98e181ad84829cb3b391af8d40a9dcd40abdaadf8f4aabf4a6"
 size = 5285
 seconds = 52.6
-pools = ["cleared"]
+pools = ["cleared", "grub"]
 
 [[track]]
 id = "th06-17"
@@ -812,7 +812,7 @@ role = "Ending theme"
 sha256 = "c9eaa35d1c52f7a129ba71874916791bb9e26ba9995652e7e4dde93fc03908ad"
 size = 3748
 seconds = 60.0
-pools = ["cleared"]
+pools = ["cleared", "grub"]
 
 [[track]]
 id = "th07-20"
@@ -838,7 +838,7 @@ role = "listed with PCB in 東方BGM on VGS"
 sha256 = "337851a4cc0feafa0e8b44181e62ba4ff76a06850e10acbd9b4de13a1a471c2a"
 size = 14546
 seconds = 122.5
-pools = ["rtfm"]
+pools = ["trial"]
 
 [[track]]
 id = "th08-01"
@@ -1085,7 +1085,7 @@ role = "Ending theme"
 sha256 = "483453622684c59a3ce1db74eab5117da5c0521c72384344d49355a456238628"
 size = 4976
 seconds = 83.4
-pools = ["cleared"]
+pools = ["cleared", "grub"]
 
 [[track]]
 id = "th08-20"
@@ -1517,7 +1517,7 @@ role = "Ending theme"
 sha256 = "40fb641032d2de1b1b6365d0732ebc61611b41dd94e1b3fd1b02ed51c28e546d"
 size = 8028
 seconds = 84.1
-pools = ["cleared"]
+pools = ["cleared", "grub"]
 
 [[track]]
 id = "th10-17"
@@ -1754,7 +1754,7 @@ role = "Ending theme"
 sha256 = "da4f8ba1d6fe7c3147b315af8cfac9cb0cb2d6d57bc3dc79aba4836aee246bd9"
 size = 10605
 seconds = 68.0
-pools = ["cleared"]
+pools = ["cleared", "grub"]
 
 [[track]]
 id = "th11-17"
@@ -1976,7 +1976,7 @@ role = "Ending theme"
 sha256 = "2f403af020ff5b29413f43daa00f9887f5724be41625e06e015c2932a113874b"
 size = 3680
 seconds = 48.0
-pools = ["cleared"]
+pools = ["cleared", "grub"]
 
 [[track]]
 id = "th12-17"
@@ -2080,7 +2080,7 @@ role = "Ending theme"
 sha256 = "aaa55608eaedc7519779de75e57ceb2cee4556e8afd3337d679bdebcf82ebedc"
 size = 6527
 seconds = 67.0
-pools = ["cleared"]
+pools = ["cleared", "grub"]
 
 [[track]]
 id = "th12_8-08"

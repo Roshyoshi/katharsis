@@ -143,21 +143,13 @@ func (m *Model) warnTimer() {
 	m.d.Audio.Play("warn")
 }
 
-// audioCue is the music the current state calls for. RTFM and GRUB play
-// their own over a boot in flight too: left for them, or for what they
-// open (git log, an upsolve), the boot takes its biome's music with it.
+// audioCue is the music the current state calls for. Inside a boot a
+// biome's track carries from its doors to the screens between them, and
+// the map between stages (the merge window, the route) has its own.
+// Outside one, home plays (home).
 func (m *Model) audioCue() audio.Cue {
-	if slices.ContainsFunc(m.stack, func(sc screens.Screen) bool {
-		switch sc.(type) {
-		case *rtfm.Map, *rtfm.Browser:
-			return true
-		}
-		return false
-	}) {
-		return audio.Cue{Pool: audio.PoolRTFM}
-	}
 	s := m.state
-	if s == nil || slices.ContainsFunc(m.stack, func(sc screens.Screen) bool { _, ok := sc.(*meta.Menu); return ok }) {
+	if m.home() {
 		return audio.Cue{Pool: audio.PoolGrub}
 	}
 	scene := s.Boot*100 + s.Biome
@@ -167,8 +159,8 @@ func (m *Model) audioCue() audio.Cue {
 	case s.Phase == game.PhaseCleared:
 		return audio.Cue{Pool: audio.PoolCleared, Scene: scene}
 	case s.Trial != nil:
-		return audio.Cue{Pool: audio.PoolRTFM, Scene: s.Boot * 100}
-	case s.Phase == game.PhaseMerge:
+		return audio.Cue{Pool: audio.PoolTrial, Scene: s.Boot * 100}
+	case s.Phase == game.PhaseMerge || s.Phase == game.PhaseRoute:
 		return audio.Cue{Pool: audio.PoolMerge, Scene: scene}
 	}
 	if s.Biome < 0 || s.Biome >= len(s.Biomes) {
@@ -185,6 +177,22 @@ func (m *Model) audioCue() audio.Cue {
 		return audio.Cue{Pool: audio.PoolUserland, Key: b.Topic, Scene: scene}
 	}
 	return audio.Cue{Pool: audio.ActPools[min(act, len(audio.ActPools)-1)], Key: b.Topic, Scene: scene}
+}
+
+// home reports whether the player is outside a boot, where the calm home
+// pool plays: no boot in flight, an upsolve open, or a boot left for GRUB,
+// RTFM or the screens they open (git log, top, apt, settings, setuid).
+func (m *Model) home() bool {
+	if m.state == nil || m.open != nil && m.open.Upsolve {
+		return true
+	}
+	return slices.ContainsFunc(m.stack, func(sc screens.Screen) bool {
+		switch sc.(type) {
+		case *meta.Menu, *meta.Log, *meta.Top, *meta.Shop, *meta.Settings, *meta.Setuid, *rtfm.Map, *rtfm.Browser:
+			return true
+		}
+		return false
+	})
 }
 
 // toggleMusic is the music key: flip it and say so.

@@ -15,6 +15,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/reader"
 )
 
@@ -246,7 +247,7 @@ func TestAudioLeavesAPausedBoot(t *testing.T) {
 			{key("g"), audio.PoolGrub},
 			{screens.Continue{}, biome},
 			{key("m"), biome},
-			{key("t"), audio.PoolRTFM},
+			{key("t"), audio.PoolGrub},
 		}
 		for _, s := range steps {
 			h.send(s.msg)
@@ -255,4 +256,37 @@ func TestAudioLeavesAPausedBoot(t *testing.T) {
 			}
 		}
 	})
+}
+
+// Where each kind of screen sits: a stage's track inside its doors, the
+// map between stages (the merge window and the route, one track for
+// both), a trial's own pool, and home for anything outside a boot,
+// whatever boot is under it: an upsolve, or git log over a crash.
+func TestAudioPlaces(t *testing.T) {
+	stage := func(p game.Phase) *game.State {
+		return &game.State{Boot: 3, Phase: p, Biomes: []game.BiomeState{{Kind: rules.Fixed, Topic: "dp"}}}
+	}
+	trial := stage(game.PhaseDoors)
+	trial.Trial = &game.TrialState{}
+	crashed := stage(game.PhaseCrashed)
+	tests := []struct {
+		name string
+		m    *Model
+		want audio.Cue
+	}{
+		{"a door", &Model{state: stage(game.PhaseProblem)}, audio.Cue{Pool: audio.PoolUserland, Key: "dp", Scene: 300}},
+		{"between doors", &Model{state: stage(game.PhaseDoors)}, audio.Cue{Pool: audio.PoolUserland, Key: "dp", Scene: 300}},
+		{"the merge window", &Model{state: stage(game.PhaseMerge)}, audio.Cue{Pool: audio.PoolMerge, Scene: 300}},
+		{"the route", &Model{state: stage(game.PhaseRoute)}, audio.Cue{Pool: audio.PoolMerge, Scene: 300}},
+		{"a trial", &Model{state: trial}, audio.Cue{Pool: audio.PoolTrial, Scene: 300}},
+		{"the crash", &Model{state: crashed}, audio.Cue{Pool: audio.PoolPanic, Scene: 300}},
+		{"an upsolve from the crash", &Model{state: crashed, open: &Door{Upsolve: true}}, audio.Cue{Pool: audio.PoolGrub}},
+		{"git log over the crash", &Model{state: crashed, stack: []screens.Screen{nil, meta.NewLog(nil, nil)}}, audio.Cue{Pool: audio.PoolGrub}},
+		{"no boot", &Model{}, audio.Cue{Pool: audio.PoolGrub}},
+	}
+	for _, tt := range tests {
+		if got := tt.m.audioCue(); got != tt.want {
+			t.Errorf("%s: %+v, want %+v", tt.name, got, tt.want)
+		}
+	}
 }
