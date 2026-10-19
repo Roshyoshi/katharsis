@@ -20,6 +20,7 @@ type Engine struct {
 	kick   chan struct{}
 	cmds   chan func() // run on the engine goroutine (Audition)
 	done   chan struct{}
+	exited chan struct{} // closed when the engine goroutine returns
 
 	mu  sync.Mutex
 	out output // nil until the device is open, and in tests
@@ -41,6 +42,7 @@ type Engine struct {
 	tracks  []Track
 	wasOn   bool
 	bags    map[string]*bag
+	rotDir  string          // where rotation.json keeps bags; "" for none
 	bad     map[string]bool // files that would not decode
 	nextID  uint64
 	rng     *rand.Rand
@@ -84,12 +86,16 @@ func newEngine(set Settings, lib *Library, fx map[string]Effect) *Engine {
 		kick:    make(chan struct{}, 1),
 		cmds:    make(chan func()),
 		done:    make(chan struct{}),
+		exited:  make(chan struct{}),
 		musicOn: set.Music,
 		ready:   true,
-		bags:    map[string]*bag{},
 		bad:     map[string]bool{},
 		rng:     rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
 	}
+	if lib != nil {
+		e.rotDir = lib.CacheDir
+	}
+	e.bags = loadRotation(e.rotDir)
 	e.mix = NewMixer(set, e.ending)
 	go e.run()
 	return e
@@ -102,6 +108,7 @@ func (e *Engine) Close() {
 		time.Sleep(300 * time.Millisecond)
 	}
 	close(e.done)
+	<-e.exited // its last rotation.json write done
 }
 
 func (e *Engine) live() bool {
@@ -165,6 +172,7 @@ func (e *Engine) poke() {
 }
 
 func (e *Engine) run() {
+	defer close(e.exited)
 	tick := time.NewTicker(250 * time.Millisecond)
 	defer tick.Stop()
 	for {
@@ -243,17 +251,17 @@ func (e *Engine) advance(fade float64) {
 		for i, t := range e.tracks {
 			ids[i] = t.ID
 		}
-		k := e.cue.Pool + "/" + e.cue.Key
-		pool := e.bag(k)
+		pool := e.bag(roundKey(e.cue.Pool, ids))
 		var id string
 		// A cue with a key (a boss) opens with one of the tracks that lead
 		// for it, then moves through its whole pool.
 		if lead := e.leads(); len(lead) > 0 {
-			id = e.bag(k+"/lead").next(lead, e.rng)
+			id = e.bag(e.cue.Pool+"/"+e.cue.Key+"/lead").next(lead, e.rng)
 			pool.avoid(id, e.rng)
 		} else {
 			id = pool.next(ids, e.rng)
 		}
+		_ = saveRotation(e.rotDir, e.bags) // the next launch goes on from here
 		i := slices.IndexFunc(e.tracks, func(t Track) bool { return t.ID == id })
 		t := e.tracks[i]
 		passes := e.set.Repeats

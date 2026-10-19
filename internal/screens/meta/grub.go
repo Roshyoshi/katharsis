@@ -110,6 +110,7 @@ type entry struct {
 	msg   tea.Msg            // emitted on enter
 	boot  *screens.StartBoot // boot entries: also editable with e
 	sub   *page              // submenus
+	id    string             // a submenu's name for key when its label varies
 	note  string             // the subtitle shown under the box while selected
 }
 
@@ -314,7 +315,9 @@ func (m *Menu) cur() *page { return m.stack[len(m.stack)-1] }
 // Follow puts the cursor where prev had it, for an app that rebuilds the
 // menu under a screen (an apt install changes the bank and apt's own
 // line): on the same entry when the new menu still has it, matched by what
-// it does, not its label, since apt's names the next package to buy.
+// it does, not its label, since apt's names the next package to buy. A
+// submenu prev had open opens again over the same entry, its cursor kept:
+// GRUB's upsolves, after one of them is solved.
 func (m *Menu) Follow(prev *Menu) {
 	if prev == nil || len(prev.stack) == 0 {
 		return
@@ -328,17 +331,31 @@ func (m *Menu) Follow(prev *Menu) {
 	for i, e := range root.entries {
 		if e.key() == want {
 			root.sel = i
+			break
+		}
+	}
+	for k := 1; k < len(prev.stack); k++ {
+		op, np := prev.stack[k-1], m.cur()
+		e := np.entries[np.sel]
+		if e.sub == nil || len(e.sub.entries) == 0 || e.key() != op.entries[op.sel].key() {
 			return
 		}
+		was := prev.stack[k]
+		e.sub.sel = min(was.sel, len(e.sub.entries)-1)
+		e.sub.top = min(was.top, e.sub.sel)
+		m.stack = append(m.stack, e.sub)
 	}
 }
 
 // key names what an entry does: the boot it starts, the screen it opens,
-// or, for a submenu, its label without the count it ends with.
+// or, for a submenu, its id, else its label without the count it ends
+// with.
 func (e entry) key() string {
 	switch {
 	case e.boot != nil:
 		return fmt.Sprintf("boot %+v", *e.boot)
+	case e.sub != nil && e.id != "":
+		return "menu " + e.id
 	case e.sub != nil:
 		return "menu " + strings.TrimRight(e.label, "0123456789 ")
 	}

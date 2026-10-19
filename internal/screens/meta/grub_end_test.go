@@ -282,3 +282,37 @@ func TestGrubOverAPausedBoot(t *testing.T) {
 	wantMsg(t, press(t, grub(), "enter"), screens.StartBoot{Prestige: 2, Preset: "standard"})
 	wantMsg(t, press(t, grub(), "esc"), nil)
 }
+
+// A lost door solved since it was lost is ticked in the upsolves (one
+// solved before the loss is not), and GRUB rebuilt after the solve, as
+// the app rebuilds it, opens on the same list and the same entry.
+func TestGrubTicksAnUpsolvedLostDoor(t *testing.T) {
+	c := fixture.GrubConfig()
+	game.MarkSeen(&c.Meta, "story.first-regression")
+	lost := fixture.Now.Add(-time.Hour)
+	c.Meta.CoreDump = nil
+	c.Meta.Regressions = []game.Regression{
+		{Problem: "usaco:891", Due: lost.AddDate(0, 0, 5), Days: []int{5, 40}},
+		{Problem: "usaco:1205", Due: lost.Add(-time.Minute).AddDate(0, 0, 5), Days: []int{5, 40}},
+	}
+	c.Meta.Solves = []game.Solve{{Problem: "usaco:1205", At: lost.Add(-48 * time.Hour)}}
+	g := meta.NewGrub(c)
+	press(t, g, "down", "enter")
+	if v := plain(g.View(140, 40)); !strings.Contains(v, "lost ") || strings.Contains(v, "✓") {
+		t.Fatalf("the upsolves before any solve:\n%s", v)
+	}
+
+	c.Meta.Solves = append(c.Meta.Solves, game.Solve{Problem: "usaco:891", Kind: game.Independent, At: fixture.Now})
+	again := meta.NewGrub(c)
+	again.Follow(g)
+	v := plain(again.View(140, 40))
+	var ticked []string
+	for _, l := range strings.Split(v, "\n") {
+		if strings.Contains(l, "lost ") && strings.Contains(l, "✓") {
+			ticked = append(ticked, l)
+		}
+	}
+	if len(ticked) != 1 || !strings.Contains(v, "upsolved; back as a regression in 5 days") {
+		t.Errorf("want the solved door ticked and selected, the other not:\n%s", v)
+	}
+}

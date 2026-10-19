@@ -227,3 +227,32 @@ func TestCreditsFromGrub(t *testing.T) {
 		}
 	})
 }
+
+// Leaving a boot in flight for GRUB or RTFM leaves its music too: the
+// hub keeps the biome's, GRUB over the paused boot plays GRUB's, RTFM
+// from the hub RTFM's, and resuming brings the biome's back.
+func TestAudioLeavesAPausedBoot(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		loadGuide(h)
+		r := withAudio(h)
+		h.send(screens.StartBoot{Preset: "standard"})
+		biome := r.cues[len(r.cues)-1].Pool
+		steps := []struct {
+			msg  tea.Msg
+			want string
+		}{
+			{key("m"), biome},
+			{key("g"), audio.PoolGrub},
+			{screens.Continue{}, biome},
+			{key("m"), biome},
+			{key("t"), audio.PoolRTFM},
+		}
+		for _, s := range steps {
+			h.send(s.msg)
+			if got := r.cues[len(r.cues)-1].Pool; got != s.want {
+				t.Fatalf("after %v (top %T): music %q, want %q", s.msg, h.m.top(), got, s.want)
+			}
+		}
+	})
+}

@@ -54,15 +54,20 @@ func upsolvePage(m game.Meta, now time.Time, title func(catalog.ID) string,
 	slices.SortStableFunc(lost, func(a, b game.Regression) int { return b.Due.Compare(a.Due) })
 	for _, r := range lost[:min(len(lost), maxLost)] {
 		label := "lost: " + title(r.Problem)
+		var at time.Time // when the boot lost it; zero when unknown
 		if len(r.Days) > 0 {
-			label = "lost " + ago(r.Due.AddDate(0, 0, -r.Days[0]), now) + ": " + title(r.Problem)
+			at = r.Due.AddDate(0, 0, -r.Days[0])
+			label = "lost " + ago(at, now) + ": " + title(r.Problem)
 		}
-		days := int(math.Ceil(r.Due.Sub(now).Hours() / 24))
-		p.entries = append(p.entries, entry{
-			label: label,
-			msg:   screens.Upsolve{Problem: r.Problem},
-			note:  "untimed, from where the boot left it; back as a regression in " + units.Plural(days, "day"),
-		})
+		back := "back as a regression in " + units.Plural(int(math.Ceil(r.Due.Sub(now).Hours()/24)), "day")
+		note := "untimed, from where the boot left it; " + back
+		// Solved since, it stays listed until its regression is due, and
+		// says so: ✓, as RTFM marks a solved problem.
+		if slices.ContainsFunc(m.Solves, func(s game.Solve) bool { return s.Problem == r.Problem && !s.At.Before(at) }) {
+			label += " " + ui.G.Pass
+			note = "upsolved; " + back
+		}
+		p.entries = append(p.entries, entry{label: label, msg: screens.Upsolve{Problem: r.Problem}, note: note})
 	}
 	if len(p.entries) == 0 {
 		return nil, false
@@ -73,7 +78,7 @@ func upsolvePage(m game.Meta, now time.Time, title func(catalog.ID) string,
 // upsolveEntry is GRUB's entry for the upsolves, named by the core dump
 // when there is one, the cliffhanger RT4 puts second.
 func upsolveEntry(d *game.CoreDump, ups *page, title func(catalog.ID) string, sub func(string, ...string) string) entry {
-	e := entry{label: "upsolve…", sub: ups, note: sub("upsolve")}
+	e := entry{label: "upsolve…", sub: ups, id: "upsolve", note: sub("upsolve")}
 	if d != nil {
 		e.label = fmt.Sprintf("upsolve… (core dump: %s, %s)", title(d.Problem), units.Bytes(d.Bytes))
 		e.note = sub("coredump", "bytes", units.Bytes(d.Bytes), "title", ui.Clip(title(d.Problem), 24))

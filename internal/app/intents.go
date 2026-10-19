@@ -397,15 +397,18 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 	return nil
 }
 
-// afterUpsolve takes an upsolve that was solved off the screen: back to
-// RTFM's map when it was practice from there, its level showing the new
-// ✓, else the stack from scratch (GRUB's list of dumps has changed).
+// afterUpsolve takes an upsolve that was solved off the screen back to
+// where it was picked: RTFM's map, its level showing the new ✓, or GRUB's
+// upsolves, rebuilt with it ticked, GRUB between boots or over a paused
+// one. Anything else (a crashed boot's screen) is rebuilt from scratch.
 func (m *Model) afterUpsolve() {
 	for i := len(m.stack) - 1; i >= 0; i-- {
-		if _, ok := m.stack[i].(*rtfm.Map); ok {
+		switch m.stack[i].(type) {
+		case *rtfm.Map, *meta.Menu:
 			for len(m.stack) > i+1 {
 				m.pop()
 			}
+			m.regrub() // shop.go; nothing outside GRUB
 			return
 		}
 	}

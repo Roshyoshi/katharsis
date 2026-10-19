@@ -12,6 +12,7 @@ import (
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
+	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/screens/rtfm"
 )
@@ -142,19 +143,21 @@ func (m *Model) warnTimer() {
 	m.d.Audio.Play("warn")
 }
 
-// audioCue is the music the current state calls for.
+// audioCue is the music the current state calls for. RTFM and GRUB play
+// their own over a boot in flight too: left for them, or for what they
+// open (git log, an upsolve), the boot takes its biome's music with it.
 func (m *Model) audioCue() audio.Cue {
-	s := m.state
-	if s == nil {
-		if slices.ContainsFunc(m.stack, func(sc screens.Screen) bool {
-			switch sc.(type) {
-			case *rtfm.Map, *rtfm.Browser:
-				return true
-			}
-			return false
-		}) {
-			return audio.Cue{Pool: audio.PoolRTFM}
+	if slices.ContainsFunc(m.stack, func(sc screens.Screen) bool {
+		switch sc.(type) {
+		case *rtfm.Map, *rtfm.Browser:
+			return true
 		}
+		return false
+	}) {
+		return audio.Cue{Pool: audio.PoolRTFM}
+	}
+	s := m.state
+	if s == nil || slices.ContainsFunc(m.stack, func(sc screens.Screen) bool { _, ok := sc.(*meta.Menu); return ok }) {
 		return audio.Cue{Pool: audio.PoolGrub}
 	}
 	scene := s.Boot*100 + s.Biome

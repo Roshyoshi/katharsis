@@ -1,7 +1,12 @@
 package audio
 
 import (
+	"encoding/json"
+	"fmt"
+	"hash/fnv"
 	"math/rand/v2"
+	"os"
+	"path/filepath"
 	"slices"
 )
 
@@ -54,4 +59,70 @@ func (b *bag) avoid(id string, rng *rand.Rand) {
 	} else {
 		b.pos++
 	}
+}
+
+// roundKey names the bag a set of tracks is dealt from: every cue that
+// plays the same set (each topic biome keys its cue, with only the pool's
+// tracks) goes on with the same round.
+func roundKey(pool string, ids []string) string {
+	h := fnv.New64a()
+	for _, id := range ids {
+		h.Write([]byte(id))
+		h.Write([]byte{0})
+	}
+	return fmt.Sprintf("%s#%016x", pool, h.Sum64())
+}
+
+// dealt is a bag as rotation.json keeps it, so a round goes on across
+// launches: a pool plays through before anything repeats, however short
+// the sessions it is heard in.
+type dealt struct {
+	Order []string `json:"order"`
+	Pos   int      `json:"pos"`
+	Last  string   `json:"last"`
+}
+
+func rotationPath(cache string) string { return filepath.Join(cache, "rotation.json") }
+
+// loadRotation reads the bags rotation.json kept; none when it is missing
+// or unreadable, as for a first launch.
+func loadRotation(cache string) map[string]*bag {
+	bags := map[string]*bag{}
+	b, err := os.ReadFile(rotationPath(cache))
+	if cache == "" || err != nil {
+		return bags
+	}
+	var kept map[string]dealt
+	if json.Unmarshal(b, &kept) != nil {
+		return bags
+	}
+	for k, d := range kept {
+		if len(d.Order) == 0 || d.Pos < 0 || d.Pos > len(d.Order) {
+			continue
+		}
+		ids := slices.Sorted(slices.Values(d.Order))
+		bags[k] = &bag{ids: ids, order: d.Order, pos: d.Pos, last: d.Last}
+	}
+	return bags
+}
+
+// saveRotation keeps bags in rotation.json, those that have dealt.
+func saveRotation(cache string, bags map[string]*bag) error {
+	if cache == "" {
+		return nil
+	}
+	kept := map[string]dealt{}
+	for k, b := range bags {
+		if len(b.order) > 0 {
+			kept[k] = dealt{Order: b.order, Pos: b.pos, Last: b.last}
+		}
+	}
+	out, err := json.MarshalIndent(kept, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(cache, 0o755); err != nil {
+		return err
+	}
+	return writeAtomic(rotationPath(cache), out)
 }

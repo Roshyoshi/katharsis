@@ -1837,3 +1837,36 @@ func TestPauseIntoGrub(t *testing.T) {
 		}
 	})
 }
+
+// An upsolve solved from GRUB over a paused boot goes back to GRUB, the
+// boot still paused under it, not to the boot's own screen.
+func TestUpsolveBackToPausedGrub(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.acFirst = 1
+		h.enterDoor()
+		h.send(submitMsg{})
+		var id catalog.ID // a door an earlier boot lost, say
+		for _, p := range h.m.d.Catalog.All() {
+			if !h.m.onOffer(p.ID) {
+				id = p.ID
+				break
+			}
+		}
+		h.send(key("m"))
+		h.send(key("g"))
+		if _, ok := h.m.top().(*meta.Menu); !ok || !h.m.suspended() {
+			t.Fatalf("g: top %T, suspended %v", h.m.top(), h.m.suspended())
+		}
+		h.verdict = "AC"
+		h.send(screens.Upsolve{Problem: id})
+		if h.m.open == nil || !h.m.open.Upsolve {
+			t.Fatal("upsolve did not open the problem")
+		}
+		h.send(submitMsg{})
+		if _, ok := h.m.top().(*meta.Menu); !ok || !h.m.suspended() || !strings.Contains(view(h), "continue boot") {
+			t.Fatalf("after the solve: top %T, suspended %v:\n%s", h.m.top(), h.m.suspended(), view(h))
+		}
+	})
+}

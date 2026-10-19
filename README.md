@@ -173,8 +173,11 @@ Each biome draws from the matching part of the games and climbs by act
 as a run climbs by stage: title themes on GRUB, stage 1-2 themes in
 Userland, stage 3-4 in act I, 5-6 in act II, extra stages in act III;
 stage 1-3 bosses for Boss I, 4-5 and extra bosses for Boss II, and
-final-boss themes for The Halting Problem. A toast credits each track as
-it starts; GRUB → Credits lists them all. The game never bundles the
+final-boss themes for The Halting Problem. A pool plays every track once
+before any plays again, across biomes and launches (the cache's
+`rotation.json` keeps its place), and GRUB and RTFM play their own music
+over a paused boot. A toast credits each track as it starts; GRUB →
+Credits lists them all. The game never bundles the
 music: `audio fetch` downloads it from each source, checked against
 pinned SHA-256 hashes. Without it the game plays on with its effects
 only. `ctrl+t` turns the music on or off.

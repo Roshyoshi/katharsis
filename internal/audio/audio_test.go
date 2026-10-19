@@ -736,3 +736,25 @@ func TestNull(t *testing.T) {
 		t.Error("Null is playing")
 	}
 }
+
+// Every biome of a pool deals from one round, whatever topic keys its
+// cue, and the round goes on in the next launch's engine: four biomes
+// over two launches hear each of a four-track pool's tracks once.
+func TestEngineRoundSpansKeysAndLaunches(t *testing.T) {
+	l := library(t, map[string][]string{"a": {PoolAct1}, "b": {PoolAct1}, "c": {PoolAct1}, "d": {PoolAct1}}, nil)
+	var heard []string
+	for launch, keys := range [][]string{{"dp", "graphs"}, {"strings", "math"}} {
+		e := newEngine(DefaultSettings(), l, DefaultEffects())
+		for i, k := range keys {
+			e.Cue(Cue{Pool: PoolAct1, Key: k, Scene: 10*launch + i + 1})
+			eventually(t, "the biome's track", func() bool { _, s := e.NowPlaying(); return int(s) == i+1 })
+			tr, _ := e.NowPlaying()
+			heard = append(heard, tr.ID)
+		}
+		e.Close()
+	}
+	got := slices.Sorted(slices.Values(heard))
+	if !slices.Equal(got, []string{"a", "b", "c", "d"}) {
+		t.Errorf("heard %v over four biomes, want each track once", heard)
+	}
+}
