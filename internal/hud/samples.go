@@ -50,8 +50,9 @@ type Samples struct {
 	Done, Compiled bool
 	Passed, Total  int
 	// Failed counts the samples judged and not AC so far: a pass still
-	// running can already have disproved the source.
-	Failed int
+	// running can already have disproved the source. OwnFailed are those
+	// of them that are the player's own cases (problem.Test.Own).
+	Failed, OwnFailed int
 }
 
 // Samples reports the sample pass.
@@ -59,9 +60,12 @@ func (m *Model) Samples() Samples {
 	s := Samples{Total: len(m.rows), Passed: m.passed()}
 	s.Done = m.build != nil && !m.running && m.passErr == nil
 	s.Compiled = m.build != nil && m.build.OK
-	for _, r := range m.rows {
+	for i, r := range m.rows {
 		if r.done && r.res.Verdict != judge.AC {
 			s.Failed++
+			if m.prob.Tests[i].Own() {
+				s.OwnFailed++
+			}
 		}
 	}
 	return s
@@ -88,8 +92,11 @@ type Pass struct {
 type PassTest struct {
 	Name     string
 	In, Want string
-	Done     bool
-	Result   judge.Result
+	// NoWant is a case of the player's own with no answer: it is run, and
+	// nothing is compared (judge.Result.Unchecked).
+	NoWant bool
+	Done   bool
+	Result judge.Result
 }
 
 // passFileCap is the head of a sample's file a Pass carries: a sample is
@@ -111,7 +118,10 @@ func (m *Model) Pass() Pass {
 	}
 	p.Name = m.prob.Name
 	for i, t := range m.prob.Tests {
-		pt := PassTest{Name: t.Name, In: m.head(t.In), Want: m.head(t.Out)}
+		pt := PassTest{Name: t.Name, In: m.head(t.In), NoWant: t.Out == ""}
+		if !pt.NoWant {
+			pt.Want = m.head(t.Out)
+		}
 		if i < len(m.rows) {
 			pt.Done, pt.Result = m.rows[i].done, m.rows[i].res
 		}

@@ -101,7 +101,7 @@ func (s *problemScreen) helpLines(w int) []string {
 		out = append(out, ui.Clip("  "+ui.Strong.Render(ui.Fit(p[0], 8))+ui.Muted.Render(p[1]), w))
 	}
 	out = append(out, "", ui.Strong.Render("vim"))
-	for _, l := range ui.WrapN(":w samples · :Submit judges, :Submit! over failing samples · "+
+	for _, l := range ui.WrapN(":w samples · :Case adds your own · :Submit judges, :Submit! over failing samples · "+
 		":Debug n · :Quack · :Retreat · :q! gives up", max(w-2, 10), 0) {
 		out = append(out, "  "+ui.Muted.Render(l))
 	}

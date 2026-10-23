@@ -1,0 +1,24 @@
+cf1675A_food_for_animals · samples 1/1 · asan+ubsan (libstdc++) · built 0.6s
+────────────────────────────────────────────────────────────────────────────────
+▸ #c1 ran
+────────────────────────────────────────────────────────────────────────────────
+#c1 ran · cpu 3ms · wall 41ms · peak 2M
+
+expected                               │ output
+(none: run only)                       │ NO
+
+input
+  1
+  100000000 0 0 100000000 100000000
+
+stderr
+need=100000000
+
+
+
+
+
+
+
+
+ #c1 of 1                                     h/l sample · j/k scroll · w close

@@ -28,7 +28,8 @@ import (
 // or the door is an upsolve, where a failure costs nothing either. On
 // Heisenbug's doors (Door.QuietSamples) it says only that they fail. A
 // submit that fails a sample again is free (sampleFailed), so it names no
-// price: the question guards against a misinput, not a cost.
+// price: the question guards against a misinput, not a cost. When only the
+// player's own cases fail it says so, and promises nothing free.
 func (m *Model) samplesFail(again string) (string, bool) {
 	h := m.hud()
 	// A submit still judging answers any other as busy first.
@@ -44,6 +45,10 @@ func (m *Model) samplesFail(again string) (string, bool) {
 	samples := fmt.Sprintf("samples %d/%d pass", s.Passed, s.Total)
 	if m.state.Current.Door.QuietSamples {
 		samples = "samples fail"
+	} else if s.OwnFailed == s.Failed {
+		// Only the player's own cases fail (:Case). No full test is one of
+		// them, so their failing makes no submit free (sampleFailed).
+		return samples + " · your own case fails · " + again, true
 	}
 	return samples + " · " + again + " · free if a sample fails again", true
 }

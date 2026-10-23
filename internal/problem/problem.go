@@ -5,6 +5,8 @@
 //
 //	<dir>/<name>.cpp     or sol.cpp, or the only .cpp in <dir>
 //	<dir>/tests/1.in     paired with tests/1.out
+//	<dir>/tests/c1.in    a case of the player's own: with c1.out it is
+//	                     judged like a sample; alone it is only run
 package problem
 
 import (
@@ -24,7 +26,17 @@ import (
 type Test struct {
 	Name string // "1", "2", ...
 	In   string // path to input
-	Out  string // path to expected output
+	// Out is the path to the expected output; "" for an input with none, a
+	// case the player added to see what the program prints (Load).
+	Out string
+}
+
+// Own reports whether t is a case the player added (:Case, c1): its name
+// starts with a letter, where the problem's samples, and the hidden tests
+// the duck copies beside them, are numbered.
+func (t Test) Own() bool {
+	_, err := strconv.Atoi(t.Name)
+	return err != nil
 }
 
 type Problem struct {
@@ -55,7 +67,9 @@ func Load(dir string) (*Problem, error) {
 	if err != nil {
 		return nil, err
 	}
-	tests, err := LoadTests(filepath.Join(dir, "tests"))
+	// The player's own tests: an input without an output is a case to run,
+	// not a broken pair, so the samples go on judging while it is written.
+	tests, err := loadTests(filepath.Join(dir, "tests"), true)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +124,11 @@ func namesWithSuffix(dir, suffix string) ([]string, error) {
 // LoadTests pairs dir/N.in with dir/N.out in natural order ("2" before
 // "10"). A missing dir means no tests; an input without an output is an
 // error so it is not silently skipped.
-func LoadTests(dir string) ([]Test, error) {
+func LoadTests(dir string) ([]Test, error) { return loadTests(dir, false) }
+
+// loadTests is LoadTests; with inputOnly, an input without an output is a
+// test with no Out.
+func loadTests(dir string, inputOnly bool) ([]Test, error) {
 	ins, err := namesWithSuffix(dir, ".in")
 	if err != nil {
 		return nil, err
@@ -120,7 +138,10 @@ func LoadTests(dir string) ([]Test, error) {
 		name := strings.TrimSuffix(in, ".in")
 		out := filepath.Join(dir, name+".out")
 		if _, err := os.Stat(out); errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("%s: missing %s.out", dir, name)
+			if !inputOnly {
+				return nil, fmt.Errorf("%s: missing %s.out", dir, name)
+			}
+			out = ""
 		}
 		tests = append(tests, Test{Name: name, In: filepath.Join(dir, in), Out: out})
 	}

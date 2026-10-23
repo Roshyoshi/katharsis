@@ -257,6 +257,44 @@ func TestOverlayFitsLongReplies(t *testing.T) {
 	waitScreen(t, pane, "history: whole")
 }
 
+// :Case opens c1's input below the source and its answer beside it, each
+// written under tests/; the next :Case, from either, takes c2; a number is
+// refused, as numbers are the samples. Nothing reaches the game: its
+// watch on tests/ judges the saves.
+func TestOverlayCase(t *testing.T) {
+	privateTmux(t)
+	sock, reqs := serve(t)
+	path := solution(t)
+	tests := filepath.Join(filepath.Dir(path), "tests")
+	pane := startVim(t, Overlay{}, sock, path)
+	saved := func(name, want string) {
+		t.Helper()
+		waitFor(t, name+" saved", func() bool {
+			b, err := os.ReadFile(filepath.Join(tests, name))
+			return err == nil && string(b) == want
+		})
+	}
+
+	ex(t, pane, "Case")
+	waitScreen(t, pane, "case c1")
+	keys(t, pane, "i3 4", "Escape")
+	ex(t, pane, "w")
+	saved("c1.in", "3 4\n")
+	ex(t, pane, "wincmd l")
+	keys(t, pane, "i7", "Escape")
+	ex(t, pane, "w")
+	saved("c1.out", "7\n")
+
+	ex(t, pane, "Case")
+	waitScreen(t, pane, "case c2")
+	ex(t, pane, "Case 3")
+	waitScreen(t, pane, "numbers are the samples")
+	noRequest(t, reqs)
+	if !PaneAlive(pane) {
+		t.Fatal("vim exited")
+	}
+}
+
 // :q! asks; no leaves vim as it was, yes gives up (and vim stays: the game
 // closes it).
 func TestOverlayQuitGivesUp(t *testing.T) {

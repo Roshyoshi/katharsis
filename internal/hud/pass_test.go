@@ -2,6 +2,7 @@ package hud
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -69,6 +70,42 @@ func TestPass(t *testing.T) {
 	}
 	if !m.load() || m.Pass().Tests[0].In != "changed\n" {
 		t.Error("a reload kept the old input")
+	}
+}
+
+// A case of the player's own with no answer (:Case) loads with no Want,
+// and once run reads "ran" with the first line it printed; it counts as
+// passing, so it is no failure for :Submit to ask about.
+func TestOwnCaseRuns(t *testing.T) {
+	m := fixture(t, 1)
+	must(t, os.WriteFile(filepath.Join(filepath.Dir(m.prob.Tests[0].In), "c1.in"), []byte("5\n"), 0o644))
+	if !m.load() || len(m.prob.Tests) != 2 {
+		t.Fatalf("load: %v, tests %+v", m.loadErr, m.prob.Tests)
+	}
+	if s := m.Pass().Tests[1]; s.Name != "c1" || !s.NoWant || s.Want != "" || s.In != "5\n" {
+		t.Errorf("own case: %+v", s)
+	}
+	feed(m, judge.BuildDone{Build: judge.Build{OK: true}},
+		judge.TestDone{Index: 0, Result: judge.Result{Verdict: judge.AC}},
+		judge.TestDone{Index: 1, Result: judge.Result{Verdict: judge.AC, Unchecked: true, Stdout: "NO\nmore\n"}},
+		judge.Finished{})
+	m.sel = 1
+	if s := screen(m); !strings.Contains(s, "c1  ran") || !strings.Contains(s, "out  NO …") ||
+		!strings.Contains(s, "no answer to compare") {
+		t.Errorf("pane:\n%s", s)
+	}
+	if got := m.Samples(); got.Failed != 0 || got.Passed != 2 {
+		t.Errorf("samples: %+v", got)
+	}
+	// Given an answer it is judged, and its failure is told apart from a
+	// sample's: no submit is free for it.
+	feed(m, judge.TestDone{Index: 1, Result: judge.Result{Verdict: judge.WA}})
+	if got := m.Samples(); got.Failed != 1 || got.OwnFailed != 1 {
+		t.Errorf("samples after c1's WA: %+v", got)
+	}
+	feed(m, judge.TestDone{Index: 0, Result: judge.Result{Verdict: judge.WA}})
+	if got := m.Samples(); got.Failed != 2 || got.OwnFailed != 1 {
+		t.Errorf("samples after both fail: %+v", got)
 	}
 }
 

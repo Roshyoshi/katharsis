@@ -108,6 +108,10 @@ var fixtures = map[string]hud.Pass{
 		p.Quiet = true
 		return p
 	}(),
+	// A case of the player's own with no answer (:Case): it ran, and there
+	// is nothing to compare.
+	"own": pass(hud.PassTest{Name: "c1", In: "1\n100000000 0 0 100000000 100000000\n", NoWant: true, Done: true,
+		Result: cost(judge.Result{Verdict: judge.AC, Unchecked: true, Stdout: "NO\n", Stderr: "need=100000000\n"})}),
 }
 
 func fixtures0() hud.Pass {
@@ -137,6 +141,7 @@ func TestSays(t *testing.T) {
 		"re":      {"heap-buffer-overflow", "SUMMARY: AddressSanitizer", "partial"},
 		"running": {"running…", "#2 ·"},
 		"quiet":   {"✗ fail", "pass or fail is all :w says"},
+		"own":     {"#c1 ran", "(none: run only)", "NO", "need=100000000"},
 	} {
 		for _, s := range sizes {
 			v := ansi.Strip(view(fixtures[name], s[0], s[1]))

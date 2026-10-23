@@ -573,6 +573,43 @@ func TestRun(t *testing.T) {
 	}
 }
 
+// TestRunUnchecked: a case with no answer (the player's own, :Case) is run
+// within the limits as any other: a clean run is an Unchecked AC with what
+// it printed, and a crash is still an RE.
+func TestRunUnchecked(t *testing.T) {
+	needCompiler(t)
+	t.Parallel()
+	lim := judge.Limits{Time: time.Second, Mem: 256 << 20, Output: 1 << 20}
+	for _, tc := range []struct {
+		src, in string
+		want    judge.Verdict
+	}{
+		{"ab.cpp", "1 2\n", judge.AC},
+		{"deref.cpp", "0\n", judge.RE},
+	} {
+		t.Run(tc.src, func(t *testing.T) {
+			t.Parallel()
+			p := both[0]
+			b := build(t, tc.src, p)
+			c := writeCase(t, tc.in, "")
+			c.Out = ""
+			r, err := judge.Run(context.Background(), b.Binary, c, lim, p)
+			if err != nil {
+				t.Fatalf("Run: %v", err)
+			}
+			if r.Verdict == judge.TLE {
+				skipStarved(t, r)
+			}
+			if r.Verdict != tc.want || r.Unchecked != (tc.want == judge.AC) {
+				t.Fatalf("Verdict = %s, Unchecked = %v (%q), want %s", r.Verdict, r.Unchecked, r.Reason, tc.want)
+			}
+			if tc.want == judge.AC && (r.Stdout != "3\n" || r.Label() != "ran") {
+				t.Errorf("Stdout = %q, Label = %q; want the program's answer, ran", r.Stdout, r.Label())
+			}
+		})
+	}
+}
+
 // TestHardenedMemory: the toolchain's Hardened profile, which samples held
 // to a memory limit run under (the OOM Killer's halved one), is judged on
 // memory as the judged build is: a std::map of 1M ints passes 64M and one

@@ -38,6 +38,14 @@ func startWatch(t *testing.T, path string) <-chan struct{} {
 // result, checked to be nil.
 func startWatchCtx(t *testing.T, ctx context.Context, path string, debounce time.Duration) (<-chan struct{}, <-chan error) {
 	t.Helper()
+	return startWatching(t, ctx, func(ctx context.Context, onChange, ready func()) error {
+		return watch(ctx, path, debounce, onChange, ready)
+	})
+}
+
+// startWatching is startWatchCtx for any of the watches, which run calls.
+func startWatching(t *testing.T, ctx context.Context, run func(ctx context.Context, onChange, ready func()) error) (<-chan struct{}, <-chan error) {
+	t.Helper()
 	ctx, cancel := context.WithCancel(ctx)
 	fired := make(chan struct{}, 16)
 	ready := make(chan struct{})
@@ -45,7 +53,7 @@ func startWatchCtx(t *testing.T, ctx context.Context, path string, debounce time
 	exited := make(chan struct{})
 	go func() {
 		defer close(exited)
-		done <- watch(ctx, path, debounce, func() { fired <- struct{}{} }, func() { close(ready) })
+		done <- run(ctx, func() { fired <- struct{}{} }, func() { close(ready) })
 	}()
 	t.Cleanup(func() {
 		cancel()
@@ -228,6 +236,33 @@ func TestWatchDirGone(t *testing.T) {
 	case <-time.After(patience):
 		t.Fatal("watch kept running after its directory was removed")
 	}
+}
+
+// TestWatchTests: a test saved, added or removed fires once per change, a
+// case's input and answer saved together once; swap files, backups and
+// other names do not.
+func TestWatchTests(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	fired, _ := startWatching(t, context.Background(), func(ctx context.Context, onChange, ready func()) error {
+		return watchTests(ctx, dir, testDebounce, onChange, ready)
+	})
+	write(t, filepath.Join(dir, "c1.in"), "3\n")
+	expectFires(t, fired, 1)
+
+	for _, name := range []string{".c1.in.swp", "c1.in~", "4913", "notes.txt"} {
+		write(t, filepath.Join(dir, name), "x")
+	}
+	expectFires(t, fired, 0)
+
+	write(t, filepath.Join(dir, "c2.in"), "4\n")
+	write(t, filepath.Join(dir, "c2.out"), "10\n")
+	expectFires(t, fired, 1)
+
+	if err := os.Remove(filepath.Join(dir, "c1.in")); err != nil {
+		t.Fatal(err)
+	}
+	expectFires(t, fired, 1)
 }
 
 func TestWatchMissingDir(t *testing.T) {

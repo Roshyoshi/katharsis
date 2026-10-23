@@ -78,17 +78,17 @@ func TestLoadSource(t *testing.T) {
 func TestLoadTests(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name    string
-		files   []string // under tests/
-		want    []string // test names in order
-		wantErr string
+		name  string
+		files []string // under tests/
+		want  []string // test names in order
 	}{
-		{"natural order", []string{"10.in", "10.out", "2.in", "2.out", "1.in", "1.out"}, []string{"1", "2", "10"}, ""},
-		{"numeric before named", []string{"b.in", "b.out", "11.in", "11.out", "a.in", "a.out", "3.in", "3.out"}, []string{"3", "11", "a", "b"}, ""},
-		{"equal numbers by name", []string{"1.in", "1.out", "01.in", "01.out"}, []string{"01", "1"}, ""},
-		{"a dir named .in is not a test", []string{"x.in/keep", "1.in", "1.out"}, []string{"1"}, ""},
-		{"missing out is an error", []string{"1.in", "1.out", "2.in"}, nil, "missing 2.out"},
-		{"empty tests dir", nil, nil, ""},
+		{"natural order", []string{"10.in", "10.out", "2.in", "2.out", "1.in", "1.out"}, []string{"1", "2", "10"}},
+		{"numeric before named", []string{"b.in", "b.out", "11.in", "11.out", "a.in", "a.out", "3.in", "3.out"}, []string{"3", "11", "a", "b"}},
+		{"equal numbers by name", []string{"1.in", "1.out", "01.in", "01.out"}, []string{"01", "1"}},
+		{"a dir named .in is not a test", []string{"x.in/keep", "1.in", "1.out"}, []string{"1"}},
+		// The player's own case before its answer, or with none: run only.
+		{"an input alone is a test with no out", []string{"1.in", "1.out", "c1.in"}, []string{"1", "c1"}},
+		{"empty tests dir", nil, nil},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -104,12 +104,6 @@ func TestLoadTests(t *testing.T) {
 				}
 			}
 			p, err := problem.Load(dir)
-			if tc.wantErr != "" {
-				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
-					t.Fatalf("Load: err = %v, want containing %q", err, tc.wantErr)
-				}
-				return
-			}
 			if err != nil {
 				t.Fatalf("Load: %v", err)
 			}
@@ -119,14 +113,28 @@ func TestLoadTests(t *testing.T) {
 				if want := filepath.Join(dir, "tests", tt.Name+".in"); tt.In != want {
 					t.Errorf("test %s: In = %s, want %s", tt.Name, tt.In, want)
 				}
-				if want := filepath.Join(dir, "tests", tt.Name+".out"); tt.Out != want {
-					t.Errorf("test %s: Out = %s, want %s", tt.Name, tt.Out, want)
+				want := filepath.Join(dir, "tests", tt.Name+".out")
+				if !slices.Contains(tc.files, tt.Name+".out") {
+					want = ""
+				}
+				if tt.Out != want {
+					t.Errorf("test %s: Out = %q, want %q", tt.Name, tt.Out, want)
 				}
 			}
 			if !slices.Equal(names, tc.want) {
 				t.Errorf("tests = %v, want %v", names, tc.want)
 			}
 		})
+	}
+}
+
+// TestLoadTestsWantsEveryOut: the caches' loader takes no input alone, so
+// a download that lost an answer is not judged as run only.
+func TestLoadTestsWantsEveryOut(t *testing.T) {
+	t.Parallel()
+	dir := mkdir(t, "p", map[string]string{"tests/1.in": "1\n", "tests/1.out": "1\n", "tests/2.in": "2\n"})
+	if _, err := problem.LoadTests(filepath.Join(dir, "tests")); err == nil || !strings.Contains(err.Error(), "missing 2.out") {
+		t.Fatalf("LoadTests: err = %v, want missing 2.out", err)
 	}
 }
 

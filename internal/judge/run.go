@@ -87,11 +87,22 @@ type Result struct {
 	// Rerun is set when JudgeFull judged this test again alone after a
 	// TLE in the parallel pass; this is the rerun's result.
 	Rerun bool
+	// Unchecked is an AC with nothing to compare: the case has no expected
+	// output, and the program ran within every limit (Label "ran").
+	Unchecked bool
 }
 
-// Case is one test: an input file and the expected output file. FileIO is
-// the stem the source names for file I/O (problem.FileIO), "" when it
-// names none.
+// Label is the verdict as a row shows it: "ran" for an Unchecked AC.
+func (r Result) Label() string {
+	if r.Unchecked {
+		return "ran"
+	}
+	return string(r.Verdict)
+}
+
+// Case is one test: an input file and the expected output file, "" for
+// none (the run is then Unchecked). FileIO is the stem the source names
+// for file I/O (problem.FileIO), "" when it names none.
 type Case struct {
 	In, Out string
 	FileIO  string
@@ -298,6 +309,10 @@ func Run(ctx context.Context, bin string, c Case, lim Limits, p Profile) (Result
 			res.Stdout = kept(b)
 			break
 		}
+	}
+	if c.Out == "" {
+		res.Verdict, res.Unchecked = AC, true
+		return res, nil
 	}
 	want, err := os.ReadFile(c.Out)
 	if err != nil {

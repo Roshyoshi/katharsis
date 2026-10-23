@@ -222,6 +222,16 @@ func runPractice(args []string) error {
 			p.Send(hud.WatchErrMsg{Err: err})
 		}
 	}()
+	// A case the player adds (:Case) judges as a save of the source does;
+	// tests/ is made for it, so a folder without one can take a first case.
+	if tests := filepath.Join(dir, "tests"); os.MkdirAll(tests, 0o755) == nil {
+		go func() {
+			err := session.WatchTests(ctx, tests, 80*time.Millisecond, func() { p.Send(hud.SavedMsg{}) })
+			if err != nil && ctx.Err() == nil {
+				p.Send(hud.WatchErrMsg{Err: err})
+			}
+		}()
+	}
 
 	_, err = p.Run()
 	m.Cleanup()

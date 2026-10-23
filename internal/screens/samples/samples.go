@@ -125,7 +125,7 @@ func (m *Model) View(w, h int) string {
 		body = []string{quietWord(p), ui.Muted.Render("pass or fail is all :w says on this door")}
 	case len(p.Tests) == 0:
 		head = append(head, warnings(p.Build.Log)...)
-		body = []string{ui.Muted.Render("no samples" + ui.G.Sep + ":Submit judges the full tests")}
+		body = []string{ui.Muted.Render("no samples" + ui.G.Sep + ":Submit judges the full tests" + ui.G.Sep + ":Case adds your own")}
 	default:
 		if ws := warnings(p.Build.Log); len(ws) > 0 {
 			head = append(head, ws...)
@@ -233,7 +233,7 @@ func tabs(p hud.Pass, sel, w int) string {
 		}
 		v := ui.Muted.Render("·")
 		if t.Done {
-			v = ui.Verdict(string(t.Result.Verdict)).Render(string(t.Result.Verdict))
+			v = ui.Verdict(t.Result.Label()).Render(t.Result.Label())
 		}
 		parts[i] = cur + "#" + t.Name + " " + v
 	}
@@ -247,11 +247,11 @@ func detail(t hud.PassTest, w int) []string {
 		return append([]string{ui.Muted.Render("#" + t.Name + " pending"), ""}, texts(t, w)...)
 	}
 	r := t.Result
-	head := fmt.Sprintf("#%s %s", t.Name, r.Verdict)
+	head := fmt.Sprintf("#%s %s", t.Name, r.Label())
 	if r.Reason != "" {
 		head += ui.G.Sep + r.Reason
 	}
-	out := []string{ui.Verdict(string(r.Verdict)).Render(head) + ui.Muted.Render(fmt.Sprintf("%scpu %s%swall %s%speak %s",
+	out := []string{ui.Verdict(r.Label()).Render(head) + ui.Muted.Render(fmt.Sprintf("%scpu %s%swall %s%speak %s",
 		ui.G.Sep, ms(r.CPU), ui.G.Sep, ms(r.Wall), ui.G.Sep, units.Mem(r.MaxRSS)))}
 	if d := r.Diff; d != nil {
 		out = append(out, ui.Muted.Render("want ")+token(d.Want)+ui.Muted.Render(fmt.Sprintf(" (line %d)", d.Line))+
@@ -291,6 +291,9 @@ type text struct {
 func texts(t hud.PassTest, w int) []string {
 	in := text{name: "input", lines: lines(t.In), empty: "(empty)"}
 	want := text{name: "expected", lines: lines(t.Want), empty: "(empty)"}
+	if t.NoWant {
+		want.empty = "(none: run only)"
+	}
 	got := text{name: "output", empty: "(nothing printed)"}
 	if t.Done {
 		got.lines = lines(t.Result.Stdout)

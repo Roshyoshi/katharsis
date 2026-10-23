@@ -180,6 +180,13 @@ func (r *TmuxRunner) Open(ctx context.Context, d Door) error {
 			r.Send(hud.WatchErrMsg{Err: err})
 		}
 	}()
+	go func() {
+		// A case the player adds (:Case) judges as a save of the source does.
+		err := session.WatchTests(wctx, filepath.Join(dir, "tests"), 80*time.Millisecond, func() { r.Send(hud.SavedMsg{}) })
+		if err != nil && wctx.Err() == nil {
+			r.Send(hud.WatchErrMsg{Err: err})
+		}
+	}()
 
 	r.pane, r.stop, r.door, r.dir, r.src = pane, stop, d, dir, src
 	r.hud = hud.New(opt)

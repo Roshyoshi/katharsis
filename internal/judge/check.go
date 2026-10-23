@@ -194,6 +194,10 @@ func show(tok []byte) string {
 	return b.String()
 }
 
+// Printable is s made safe to print as show makes a token, for a line of
+// a program's output.
+func Printable(s string) string { return show([]byte(s)) }
+
 var yesNo = regexp.MustCompile(`(?i)\b(yes|no)\b`)
 
 // FoldYesNo upper-cases the words yes and no, for problems that accept

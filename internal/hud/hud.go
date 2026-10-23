@@ -629,9 +629,9 @@ func (m *Model) View() tea.View {
 		switch {
 		case len(m.rows) > 0:
 		case m.opt.Embedded:
-			line(ui.Muted.Render("no samples · :Submit judges the full tests"))
+			line(ui.Muted.Render("no samples · :Case adds one · :Submit judges the full tests"))
 		default:
-			line(ui.Muted.Render("no tests: add tests/1.in and tests/1.out"))
+			line(ui.Muted.Render("no tests: :Case adds one (tests/c1.in, and c1.out to compare)"))
 		}
 		rule()
 		for _, l := range detail {
@@ -734,10 +734,10 @@ func (m *Model) rowLine(i int, r row) string {
 	if !r.done {
 		return cursor + fmt.Sprintf("%-3s ", name) + ui.Muted.Render("·")
 	}
-	v := r.res.Verdict
-	s := cursor + fmt.Sprintf("%-3s ", name) + ui.Verdict(string(v)).Render(fmt.Sprintf("%-4s", v))
+	v := r.res.Label()
+	s := cursor + fmt.Sprintf("%-3s ", name) + ui.Verdict(v).Render(fmt.Sprintf("%-4s", v))
 	s += fmt.Sprintf("%6dms %6s", r.res.CPU.Milliseconds(), units.Mem(r.res.MaxRSS))
-	if r.res.Reason != "" && v != judge.AC {
+	if r.res.Reason != "" && r.res.Verdict != judge.AC {
 		s += "  " + ui.Muted.Render(r.res.Reason)
 	}
 	return s
@@ -757,12 +757,17 @@ func (m *Model) detail(w int) []string {
 		return []string{ui.Muted.Render("#" + t.Name + " pending")}
 	}
 	res := r.res
-	head := fmt.Sprintf("#%s %s", t.Name, res.Verdict)
+	head := fmt.Sprintf("#%s %s", t.Name, res.Label())
 	if res.Reason != "" {
 		head += "  " + res.Reason
 	}
-	out := []string{ui.Verdict(string(res.Verdict)).Render(head)}
+	out := []string{ui.Verdict(res.Label()).Render(head)}
 	switch {
+	case res.Unchecked:
+		// The player's own case with no answer: what it printed is the
+		// point, in full under w.
+		out = append(out, ui.Muted.Render("out  ")+firstLine(res.Stdout),
+			ui.Muted.Render(fmt.Sprintf("no answer to compare · cpu %s · w shows it all", res.CPU.Round(time.Millisecond))))
 	case res.Diff != nil:
 		out = append(out,
 			ui.Muted.Render("want ")+res.Diff.Want,
@@ -802,6 +807,20 @@ func relLog(log, source string) string {
 		return log
 	}
 	return strings.ReplaceAll(log, filepath.Dir(source)+string(filepath.Separator), "")
+}
+
+// firstLine is a program's output as one line, safe to print: its first
+// line, "…" after it when more follow, or "(nothing printed)".
+func firstLine(s string) string {
+	l, rest, _ := strings.Cut(strings.TrimRight(s, "\n"), "\n")
+	l = judge.Printable(strings.TrimSuffix(l, "\r"))
+	switch {
+	case strings.TrimSpace(s) == "":
+		return ui.Muted.Render("(nothing printed)")
+	case rest != "":
+		return l + ui.Muted.Render(" …")
+	}
+	return l
 }
 
 func firstLines(s string, n int) []string {

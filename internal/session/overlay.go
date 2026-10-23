@@ -30,6 +30,9 @@ const ArgAsk = "ask"
 //	:Retreat     swap the door for cycles
 //	:GiveUp      ask the game what it costs (ctl giveup ask), confirm,
 //	             then give up
+//	:Case [name] open a case of the player's own under tests/ (c1, c2, ...
+//	             by default): its input below the source, its answer
+//	             beside it; the game's watch judges each save (WatchTests)
 type Overlay struct {
 	// Ctl is the argv that reaches the game, normally the absolute path of
 	// this binary and "ctl"; the command and its arguments follow it.
@@ -249,11 +252,44 @@ function! s:Submit(force) abort
   endif
 endfunction
 
+" :Case [name] opens a case of your own: its input in a split below the
+" source, the answer you expect beside it. Saving either judges it with the
+" samples; an answer never written runs the case without comparing. Names
+" start with a letter, as numbers are the problem's samples.
+function! s:Case(name) abort
+  let l:dir = expand('%:p:h')
+  if fnamemodify(l:dir, ':t') !=# 'tests'
+    let l:dir .= '/tests'
+  endif
+  let l:name = a:name
+  if l:name ==# ''
+    let l:n = 1
+    while filereadable(l:dir . '/c' . l:n . '.in') || bufexists(l:dir . '/c' . l:n . '.in')
+      let l:n += 1
+    endwhile
+    let l:name = 'c' . l:n
+  elseif l:name !~# '^\a[A-Za-z0-9_-]*$'
+    echohl ErrorMsg
+    echo s:Fit('katharsis: a case name starts with a letter (c1, edge); numbers are the samples')
+    echohl None
+    return
+  endif
+  if !isdirectory(l:dir)
+    call mkdir(l:dir, 'p')
+  endif
+  execute 'botright' max([&lines / 3, 6]) . 'split' fnameescape(l:dir . '/' . l:name . '.in')
+  execute 'rightbelow vsplit' fnameescape(l:dir . '/' . l:name . '.out')
+  wincmd p
+  redraw
+  echo s:Fit('katharsis: case ' . l:name . ': input here, answer right (or none: run only) · :w judges')
+endfunction
+
 command! -bar -bang Submit call s:Submit(<bang>0)
 command! -bar -nargs=? Debug call s:Run(1, 'debug', <f-args>)
 command! -bar Quack call s:Run(0, 'quack')
 command! -bar Retreat call s:Run(0, 'retreat')
 command! -bar GiveUp call s:GiveUp()
+command! -bar -nargs=? Case call s:Case(<q-args>)
 `
 
 const quitGivesUp = `

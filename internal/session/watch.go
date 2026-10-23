@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -33,8 +34,34 @@ func Watch(ctx context.Context, path string, debounce time.Duration, onChange fu
 // do not race their first write against setup.
 func watch(ctx context.Context, path string, debounce time.Duration, onChange, ready func()) error {
 	path = filepath.Clean(path)
-	dir, name := filepath.Dir(path), filepath.Base(path)
+	name := filepath.Base(path)
+	// The file is moved to the backup before the new one is written; with
+	// no new one yet, there is nothing to judge.
+	there := func() bool { _, err := os.Stat(path); return err == nil }
+	return watchDir(ctx, filepath.Dir(path), func(n string) bool { return n == name }, there,
+		debounce, onChange, ready)
+}
 
+// WatchTests calls onChange, debounced, whenever a test in dir (1.in,
+// 1.out, the player's c1.in) is saved, added or removed, so a case the
+// player adds is judged as a save of the source would judge it. Other
+// names (swap files, backups such as c1.in~) are ignored; like Watch it
+// returns nil once ctx is done, and an error if the watch breaks.
+func WatchTests(ctx context.Context, dir string, debounce time.Duration, onChange func()) error {
+	return watchTests(ctx, dir, debounce, onChange, nil)
+}
+
+func watchTests(ctx context.Context, dir string, debounce time.Duration, onChange, ready func()) error {
+	test := func(n string) bool { return strings.HasSuffix(n, ".in") || strings.HasSuffix(n, ".out") }
+	// A test removed changes the tests as much as one saved.
+	always := func() bool { return true }
+	return watchDir(ctx, filepath.Clean(dir), test, always, debounce, onChange, ready)
+}
+
+// watchDir watches dir for saves of the names match takes, and calls
+// onChange once they settle if saved still holds.
+func watchDir(ctx context.Context, dir string, match func(name string) bool, saved func() bool,
+	debounce time.Duration, onChange, ready func()) error {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return fmt.Errorf("session: watch %s: %w", dir, err)
@@ -67,10 +94,9 @@ func watch(ctx context.Context, path string, debounce time.Duration, onChange, r
 				return fmt.Errorf("session: watch %s: directory went away", dir)
 			}
 			// A rename or remove of the file arms the timer too, in case
-			// the backend misses the replacement's Create; the stat below
-			// drops it when nothing replaced the file. Chmod alone is not a
-			// save.
-			if filepath.Base(ev.Name) == name && ev.Has(save) {
+			// the backend misses the replacement's Create; saved drops it
+			// when nothing replaced the file. Chmod alone is not a save.
+			if match(filepath.Base(ev.Name)) && ev.Has(save) {
 				settle.Reset(debounce)
 			}
 
@@ -88,9 +114,7 @@ func watch(ctx context.Context, path string, debounce time.Duration, onChange, r
 			if ctx.Err() != nil {
 				return nil // select picks at random when both are ready
 			}
-			// The file is moved to the backup before the new one is
-			// written; with no new one yet, there is nothing to judge.
-			if _, err := os.Stat(path); err == nil {
+			if saved() {
 				onChange()
 			}
 		}

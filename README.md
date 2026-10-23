@@ -83,6 +83,7 @@ for two more picks. The full roster and its numbers:
 | | |
 |---|---|
 | `:w` | rejudge the samples (the HUD updates in about a second) |
+| `:Case [name]` | a case of your own: its input opens below the source and its answer beside it, as `tests/c1.in` and `c1.out` (then `c2`, …; a name of yours starts with a letter). Saving either judges it with the samples. With no answer saved it only runs, under the same limits and sanitizers, and shows `ran` and what it printed. A failing case of yours makes `:Submit` ask, as a failing sample does, but never makes a submit free. Any file in `tests/` works the same, from any editor |
 | `:Submit` | judge the full tests; the HP bar fills; a failure burns 2 cycles (a CE, or a fail on a sample, is free); another sent before the verdict is refused |
 | `:Debug [n]` | lldb on sample n, stopped at `main` (any test with the `strace` daemon) |
 | `:Quack` | rubber duck: first the tags, then the technique |
@@ -130,7 +131,7 @@ In a tmux session the game starts, `g++` and `clang++` on PATH are these.
 
 | | |
 |---|---|
-| `~/cp/runs/boot-N/<problem>/` | your solutions; the samples are in `tests/` |
+| `~/cp/runs/boot-N/<problem>/` | your solutions; the samples and your own cases (`:Case`) are in `tests/` |
 | `~/.local/share/katharsis/katharsis.db` | saves: boots, attempts, rating, bank |
 | `~/Library/Caches/katharsis/` | problems, tests, editorials, builds |
 | `~/.config/katharsis/presets/*.toml` | custom rules: each lists only what it changes from the standard rules ([rules.go](internal/rules/rules.go)), a `[[biome]]` list replaces them all, and an unknown key is an error; `standard`, `short` and `patch` are built-in names |
