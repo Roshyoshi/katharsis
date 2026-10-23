@@ -177,7 +177,8 @@ I, 5-6 in act II, extra stages in act III; stage 1-3 bosses for Boss I,
 Problem. A stage's track carries from its doors to the screens between
 them; staff rolls play on the map between stages. Outside a boot (GRUB,
 RTFM, upsolves, even over a paused boot) the calm title and ending
-themes play, and trials have ZUN's music-CD pieces. A pool plays every
+themes play, and trials have ZUN's music-CD pieces. A practice problem
+opened from an RTFM level shuffles all 176 tracks. A pool plays every
 track once before any plays again, across biomes and launches (the
 cache's `rotation.json` keeps its place). A toast credits each track as
 it starts; GRUB → Credits lists them all. The game never bundles the

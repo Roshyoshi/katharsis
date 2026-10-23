@@ -210,7 +210,8 @@ func (l *Library) Have(t Track) bool {
 // manifest tracks of the pool and those the key leads (Track.Keys), which
 // an "override" library drops when the player's folder had any. A boss's
 // leads join its room from any pool: the short preset's one boss is act
-// I's, and Heisenbug's leads sit in Boss II's.
+// I's, and Heisenbug's leads sit in Boss II's. PoolAll takes every
+// downloaded track.
 func (l *Library) Resolve(pool, key string) []Track {
 	if pool == "" {
 		return nil
@@ -227,7 +228,8 @@ func (l *Library) Resolve(pool, key string) []Track {
 	}
 	var out []Track
 	for _, t := range l.Tracks {
-		if (slices.Contains(t.Pools, pool) || key != "" && slices.Contains(t.Keys, key)) && l.Have(t) {
+		in := pool == PoolAll || slices.Contains(t.Pools, pool) || key != "" && slices.Contains(t.Keys, key)
+		if in && l.Have(t) {
 			t.Path = l.Path(t)
 			out = append(out, t)
 		}

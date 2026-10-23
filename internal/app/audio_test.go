@@ -12,11 +12,13 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"katharsis/internal/audio"
+	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/meta"
 	"katharsis/internal/screens/reader"
+	"katharsis/internal/screens/rtfm"
 )
 
 // recSink records what the app asks of the sound system; it plays
@@ -258,6 +260,39 @@ func TestAudioLeavesAPausedBoot(t *testing.T) {
 	})
 }
 
+// A practice problem opened from RTFM shuffles every track, and solving it
+// takes the music home with the map.
+func TestAudioRTFMPractice(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		loadGuide(h)
+		r := withAudio(h)
+		h.send(screens.StartBoot{Preset: "standard"})
+		var id catalog.ID
+		for _, p := range h.m.d.Catalog.All() {
+			if !h.m.onOffer(p.ID) {
+				id = p.ID
+				break
+			}
+		}
+		music := func() string { return r.cues[len(r.cues)-1].Pool }
+		h.send(key("m"))
+		h.send(key("t"))
+		if _, ok := h.m.top().(*rtfm.Map); !ok || music() != audio.PoolGrub {
+			t.Fatalf("t: top %T, music %q", h.m.top(), music())
+		}
+		h.send(screens.Upsolve{Problem: id}) // a level's enter on a practice row
+		if h.m.open == nil || !h.m.open.Upsolve || music() != audio.PoolAll {
+			t.Fatalf("practice: open %v, music %q, want %q", h.m.open != nil, music(), audio.PoolAll)
+		}
+		h.verdict = "AC"
+		h.send(submitMsg{})
+		if _, ok := h.m.top().(*rtfm.Map); !ok || music() != audio.PoolGrub {
+			t.Fatalf("after the solve: top %T, music %q, want %q", h.m.top(), music(), audio.PoolGrub)
+		}
+	})
+}
+
 // Where each kind of screen sits: a stage's track inside its doors, the
 // map between stages (the merge window and the route, one track for
 // both), a trial's own pool, and home for anything outside a boot,
@@ -281,6 +316,13 @@ func TestAudioPlaces(t *testing.T) {
 		{"a trial", &Model{state: trial}, audio.Cue{Pool: audio.PoolTrial, Scene: 300}},
 		{"the crash", &Model{state: crashed}, audio.Cue{Pool: audio.PoolPanic, Scene: 300}},
 		{"an upsolve from the crash", &Model{state: crashed, open: &Door{Upsolve: true}}, audio.Cue{Pool: audio.PoolGrub}},
+		{"an upsolve from GRUB", &Model{open: &Door{Upsolve: true},
+			stack: []screens.Screen{(*meta.Menu)(nil), newUpsolveScreen(nil, game.Door{})}}, audio.Cue{Pool: audio.PoolGrub}},
+		{"RTFM practice", &Model{open: &Door{Upsolve: true},
+			stack: []screens.Screen{(*rtfm.Map)(nil), newUpsolveScreen(nil, game.Door{})}}, audio.Cue{Pool: audio.PoolAll}},
+		{"RTFM practice, its statement open over it", &Model{state: crashed, open: &Door{Upsolve: true},
+			stack: []screens.Screen{nil, (*meta.Menu)(nil), (*rtfm.Map)(nil), newUpsolveScreen(nil, game.Door{}), nil}},
+			audio.Cue{Pool: audio.PoolAll}},
 		{"git log over the crash", &Model{state: crashed, stack: []screens.Screen{nil, meta.NewLog(nil, nil)}}, audio.Cue{Pool: audio.PoolGrub}},
 		{"no boot", &Model{}, audio.Cue{Pool: audio.PoolGrub}},
 	}

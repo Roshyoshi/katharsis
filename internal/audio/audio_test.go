@@ -584,6 +584,10 @@ func TestLibraryResolve(t *testing.T) {
 	if got := ids(l.Resolve(PoolBoss1, "")); len(got) != 0 {
 		t.Errorf("boss = %v, want nothing", got)
 	}
+	// RTFM practice: every downloaded track, whatever its pools.
+	if got := ids(l.Resolve(PoolAll, "")); !slices.Equal(got, []string{"g1", "m1", "m2"}) {
+		t.Errorf("all = %v", got)
+	}
 	// A partial download (wrong size) is not there.
 	if err := os.Truncate(l.Path(l.Tracks[0]), 10); err != nil {
 		t.Fatal(err)

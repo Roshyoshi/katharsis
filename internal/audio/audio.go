@@ -39,6 +39,10 @@ const (
 	PoolTrial    = "trial"    // an RTFM trial
 )
 
+// PoolAll is every track, for an RTFM level's practice problems. No track
+// lists it: the library resolves it to all of them, so it is not in Pools.
+const PoolAll = "all"
+
 // Pools lists every pool, in the order the credits show them.
 var Pools = []string{PoolGrub, PoolUserland, PoolAct1, PoolAct2, PoolAct3, PoolBoss1, PoolBoss2,
 	PoolFinal, PoolMerge, PoolPanic, PoolCleared, PoolTrial}

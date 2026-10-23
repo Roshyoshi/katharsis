@@ -89,13 +89,17 @@ func Credits(l *Library, set Settings) string {
 		}
 		b.WriteString("\n")
 	}
+	if len(tracks) > 0 {
+		b.WriteString("### RTFM practice\n\nEvery track above, shuffled: a practice problem opened from an " +
+			"RTFM level draws from all of them.\n\n")
+	}
 	b.WriteString("## Your own music\n\n")
 	if l != nil && l.UserDir != "" {
 		fmt.Fprintf(&b, "Audio files (mp3, ogg, wav, or VGS mml) in `%s/<pool>/` play in that pool, and "+
 			"`%s/<topic or boss>/` in that biome (`dp`, `graphs`, `heisenbug`, ...). With user_music = \"%s\" "+
 			"they %s. Pools: %s.\n\n", l.UserDir, l.UserDir, set.UserMusic,
 			map[string]string{"override": "replace the pool's tracks", "extend": "join the pool's tracks"}[set.UserMusic],
-			strings.Join(Pools, ", "))
+			strings.Join(append(slices.Clone(Pools), PoolAll+" (RTFM practice)"), ", "))
 	}
 	b.WriteString("## Sound effects\n\n")
 	b.WriteString("Synthesized by katharsis at start from the parameters in `internal/audio/sfx.toml`: " +

@@ -238,6 +238,7 @@ act: its topic biome plays `act1`, its boss `boss1`.
 | `cleared` | after the last boss | ending themes | 7 |
 | `trial` | RTFM trials | ZUN's music-CD pieces and quiet unused tracks | 6 |
 | `panic` | kernel panic | silent by default (`panic = ""` in audio.toml); one track if set | 1 |
+| `all` | a practice problem opened from an RTFM level | every track above, shuffled; no track lists it | 176 |
 
 PoFV's character themes have no stage, so each goes by its character's
 stage as a boss in the first game that has them as one (Reimu and Marisa

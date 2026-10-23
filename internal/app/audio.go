@@ -146,9 +146,13 @@ func (m *Model) warnTimer() {
 // audioCue is the music the current state calls for. Inside a boot a
 // biome's track carries from its doors to the screens between them, and
 // the map between stages (the merge window, the route) has its own.
-// Outside one, home plays (home).
+// Outside one, home plays (home), and every track shuffles on RTFM's
+// practice problems (practicing).
 func (m *Model) audioCue() audio.Cue {
 	s := m.state
+	if m.practicing() {
+		return audio.Cue{Pool: audio.PoolAll}
+	}
 	if m.home() {
 		return audio.Cue{Pool: audio.PoolGrub}
 	}
@@ -193,6 +197,23 @@ func (m *Model) home() bool {
 		}
 		return false
 	})
+}
+
+// practicing reports whether the open door is an RTFM level's practice
+// problem: an upsolve whose screen sits on RTFM's map, which opened it
+// (the level is the map's own view). One from GRUB or a crash sits on
+// theirs.
+func (m *Model) practicing() bool {
+	if m.open == nil || !m.open.Upsolve {
+		return false
+	}
+	for i := len(m.stack) - 1; i > 0; i-- {
+		if s, ok := m.stack[i].(*problemScreen); ok && s.upsolve {
+			_, onMap := m.stack[i-1].(*rtfm.Map)
+			return onMap
+		}
+	}
+	return false
 }
 
 // toggleMusic is the music key: flip it and say so.
