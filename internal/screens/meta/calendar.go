@@ -97,14 +97,14 @@ func (c *calendar) heat(d time.Duration) int {
 
 // ---- keys --------------------------------------------------------------------
 
-// enter puts the cursor on the day b started, or on today when b is nil or
-// older than the calendar.
-func (c *calendar) enter(b *BootRow) {
+// enter puts the cursor on at's day, or on today when at is zero or older
+// than the calendar.
+func (c *calendar) enter(at time.Time) {
 	c.focus, c.at = true, midnight(c.Today)
-	if b == nil {
+	if at.IsZero() {
 		return
 	}
-	if d := midnight(b.Started.In(c.Today.Location())); !d.Before(c.first) && !d.After(c.Today) {
+	if d := midnight(at.In(c.Today.Location())); !d.Before(c.first) && !d.After(c.Today) {
 		c.at = d
 	}
 }

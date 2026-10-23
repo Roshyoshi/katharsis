@@ -196,8 +196,33 @@ func Boots() []meta.BootRow {
 	return boots
 }
 
+// Upsolves are the two upsolves the calendar counts: boot #40's :q! door
+// solved after its editorial, recovering part of that core dump, and boot
+// #42's timed-out door left unsolved, its dump still waiting.
+func Upsolves() []meta.UpsolveRow {
+	return []meta.UpsolveRow{
+		{
+			Problem: "usaco:1014", Title: "Bovine Shuffle", Topic: "graphs", Rating: 1720,
+			Opened: at(14, 19, 10), Elapsed: mins(22, 5),
+			Verdicts: []meta.VerdictRow{
+				{Verdict: "TLE", Passed: 7, Total: 10, At: mins(9, 30)},
+				{Verdict: "WA", Passed: 8, Total: 10, At: mins(18, 2)},
+			},
+		},
+		{
+			Problem: "usaco:740", Title: "Haybale Stacking", Topic: "prefix-sums", Rating: 1480,
+			Opened: at(12, 22, 20), Elapsed: mins(14, 30),
+			Solved: game.Editorial, Editorial: true, Recovered: 70,
+			Verdicts: []meta.VerdictRow{
+				{Verdict: "WA", Passed: 6, Total: 10, At: mins(4, 10)},
+				{Verdict: "AC", Passed: 10, Total: 10, At: mins(12, 55), Editorial: true},
+			},
+		},
+	}
+}
+
 // Calendar is git log's calendar for the same player: the boots, and two
-// upsolves of what boots #40 and #42 crashed on.
+// upsolves of what boots #40 and #42 crashed on (Upsolves).
 func Calendar() meta.Calendar {
 	return CalendarOf(Boots(),
 		meta.Day{Date: day(at(12, 0, 0)), Door: mins(14, 30), Upsolves: 1},

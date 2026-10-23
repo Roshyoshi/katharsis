@@ -70,6 +70,32 @@ type AttemptRow struct {
 	Regress bool // a regression door
 }
 
+// UpsolveRow is one upsolve in git log: a door opened outside a boot, from
+// RTFM, GRUB's upsolves or a crash's screen, until it was left.
+type UpsolveRow struct {
+	Problem catalog.ID
+	Title   string
+	Topic   string
+	Rating  int
+
+	Opened  time.Time // shown in its own location; hand over local times
+	Elapsed time.Duration
+	// Solved is how it was solved, "" when it was left unsolved.
+	Solved    game.SolveKind
+	Editorial bool  // the editorial was read in the game
+	Recovered int64 // core dump bytes the solve banked
+
+	Verdicts []VerdictRow // its full-test verdicts, in order
+}
+
+// VerdictRow is one full-test verdict in an upsolve.
+type VerdictRow struct {
+	Verdict       string
+	Passed, Total int
+	At            time.Duration // since the upsolve opened
+	Editorial     bool          // the editorial was read before it
+}
+
 // Stats is what top shows.
 type Stats struct {
 	Rating        float64

@@ -3,8 +3,11 @@ package meta
 import (
 	"cmp"
 	"fmt"
+	"hash/fnv"
 	"slices"
+	"strconv"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -17,34 +20,59 @@ import (
 	"katharsis/internal/units"
 )
 
-// Log is git log: one line per boot, newest first, in the shape of
-// `git log --graph --oneline`. Enter expands the highlighted boot into its
-// attempts; f cycles an outcome filter. Its calendar, when it has one,
-// heads the list (calendar.go); c moves the keys into it.
+// Log is git log: one line per boot and per upsolve, newest first, in the
+// shape of `git log --graph --oneline`. Enter expands the highlighted line
+// into a boot's attempts or an upsolve's verdicts; f cycles a filter. Its
+// calendar, when it has one, heads the list (calendar.go); c moves the keys
+// into it.
 type Log struct {
-	all    []BootRow // newest first
-	filter int       // index into logFilters
-	shown  []int     // indexes into all that pass the filter
-	sel    int       // index into shown
-	open   int       // Boot number expanded, 0 for none
-	top    int       // first visible line
-	cal    *calendar // nil without one
+	all    []BootRow    // newest first
+	ups    []UpsolveRow // newest first
+	rows   []logRow     // all and ups by time, newest first
+	filter int          // index into logFilters
+	shown  []int        // indexes into rows that pass the filter
+	sel    int          // index into shown
+	open   *logRow      // the expanded line, nil for none
+	top    int          // first visible line
+	cal    *calendar    // nil without one
 	nameOf func(int) string
 	h      int // list rows at the last View, for paging
 }
 
+// logRow is one line of git log: a boot or an upsolve.
+type logRow struct {
+	boot *BootRow
+	up   *UpsolveRow
+}
+
+// at is when the line's boot started or its upsolve opened.
+func (r logRow) at() time.Time {
+	if r.boot != nil {
+		return r.boot.Started
+	}
+	return r.up.Opened
+}
+
 type logFilter struct {
 	name string
-	keep func(BootRow) bool
+	keep func(logRow) bool
+}
+
+// bootsWhere keeps the boots keep does, and no upsolve.
+func bootsWhere(keep func(BootRow) bool) func(logRow) bool {
+	return func(r logRow) bool { return r.boot != nil && keep(*r.boot) }
 }
 
 var logFilters = []logFilter{
-	{"all", func(BootRow) bool { return true }},
-	{"cleared", func(b BootRow) bool { return b.Cleared }},
-	{"crashed", func(b BootRow) bool { return !b.Cleared && b.Cause != "" }},
-	{"timer", func(b BootRow) bool { return !b.Cleared && b.Cause == game.TimedOut }},
-	{"out of cycles", func(b BootRow) bool { return !b.Cleared && b.Cause == game.OutOfLives }},
-	{":q!", func(b BootRow) bool { return !b.Cleared && b.Cause == game.GaveUp }},
+	{"all", func(logRow) bool { return true }},
+	{"cleared", bootsWhere(func(b BootRow) bool { return b.Cleared })},
+	{"crashed", bootsWhere(func(b BootRow) bool { return !b.Cleared && b.Cause != "" })},
+	{"timer", bootsWhere(func(b BootRow) bool { return !b.Cleared && b.Cause == game.TimedOut })},
+	{"out of cycles", bootsWhere(func(b BootRow) bool { return !b.Cleared && b.Cause == game.OutOfLives })},
+	{":q!", bootsWhere(func(b BootRow) bool { return !b.Cleared && b.Cause == game.GaveUp })},
+	// Last, so F from all is one key from either.
+	{"boots", bootsWhere(func(BootRow) bool { return true })},
+	{"upsolves", func(r logRow) bool { return r.up != nil }},
 }
 
 // NewLog builds git log over boots in any order. prestigeName labels
@@ -57,6 +85,16 @@ func NewLog(boots []BootRow, prestigeName func(int) string) *Log {
 	slices.SortStableFunc(all, func(a, b BootRow) int { return b.Boot - a.Boot })
 	markNightlies(all)
 	l := &Log{all: all, nameOf: prestigeName}
+	l.merge()
+	l.apply()
+	return l
+}
+
+// WithUpsolves lists ups, in any order, among the boots by time.
+func (l *Log) WithUpsolves(ups []UpsolveRow) *Log {
+	l.ups = slices.Clone(ups)
+	slices.SortStableFunc(l.ups, func(a, b UpsolveRow) int { return b.Opened.Compare(a.Opened) })
+	l.merge()
 	l.apply()
 	return l
 }
@@ -67,21 +105,38 @@ func (l *Log) WithCalendar(c Calendar) *Log {
 	return l
 }
 
+// merge lays the boots and upsolves out by time, newest first. Boots keep
+// their order by number whatever their clocks say; an upsolve goes above
+// the newest boot that started before it opened.
+func (l *Log) merge() {
+	l.rows, l.open = l.rows[:0], nil
+	i, j := 0, 0
+	for i < len(l.all) || j < len(l.ups) {
+		if j == len(l.ups) || i < len(l.all) && !l.ups[j].Opened.After(l.all[i].Started) {
+			l.rows = append(l.rows, logRow{boot: &l.all[i]})
+			i++
+		} else {
+			l.rows = append(l.rows, logRow{up: &l.ups[j]})
+			j++
+		}
+	}
+}
+
 func (l *Log) apply() {
 	l.shown = l.shown[:0]
-	for i, b := range l.all {
-		if logFilters[l.filter].keep(b) {
+	for i, r := range l.rows {
+		if logFilters[l.filter].keep(r) {
 			l.shown = append(l.shown, i)
 		}
 	}
 	l.sel, l.top = 0, 0
 }
 
-func (l *Log) selected() *BootRow {
+func (l *Log) selected() *logRow {
 	if len(l.shown) == 0 {
 		return nil
 	}
-	return &l.all[l.shown[l.sel]]
+	return &l.rows[l.shown[l.sel]]
 }
 
 func (l *Log) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
@@ -118,17 +173,18 @@ func (l *Log) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	case "end", "G":
 		l.sel = last
 	case "enter", "tab", "o":
-		if b := l.selected(); b != nil {
-			if l.open == b.Boot {
-				l.open = 0
+		if r := l.selected(); r != nil {
+			if l.open == r {
+				l.open = nil
 			} else {
-				l.open = b.Boot
+				l.open = r
 			}
 		}
 	case "r":
 		// Any boot's seed plays again, a past nightly's too: nothing
-		// here expires (retention RT15).
-		if b := l.selected(); b != nil {
+		// here expires (retention RT15). An upsolve has no seed.
+		if r := l.selected(); r != nil && r.boot != nil {
+			b := r.boot
 			return l, screens.Emit(screens.StartBoot{Prestige: b.Prestige, Preset: cmp.Or(b.Preset, standardPreset), Seed: b.Seed})
 		}
 	case "f":
@@ -139,7 +195,11 @@ func (l *Log) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		l.apply()
 	case "c":
 		if l.cal != nil {
-			l.cal.enter(l.selected())
+			var at time.Time
+			if r := l.selected(); r != nil {
+				at = r.at()
+			}
+			l.cal.enter(at)
 		}
 	}
 	return l, nil
@@ -156,18 +216,22 @@ func (l *Log) View(width, height int) string {
 			crashed++
 		}
 	}
-	head := ui.Spread(
-		ui.Strong.Render("git log --graph --oneline")+
-			ui.Muted.Render(fmt.Sprintf("  %s%s%d cleared%s%d crashed", units.Plural(len(l.all), "boot"), ui.G.Sep, cleared, ui.G.Sep, crashed)),
-		"filter: "+ui.Focus.Render(logFilters[l.filter].name),
-		w)
+	title := ui.Strong.Render("git log --graph --oneline")
+	counts := fmt.Sprintf("  %s%s%d cleared%s%d crashed", units.Plural(len(l.all), "boot"), ui.G.Sep, cleared, ui.G.Sep, crashed)
+	filter := "filter: " + ui.Focus.Render(logFilters[l.filter].name)
+	// The upsolves' count goes first when the filter would not fit.
+	if more := counts + ui.G.Sep + units.Plural(len(l.ups), "upsolve"); len(l.ups) > 0 &&
+		ansi.StringWidth(title+more)+2+ansi.StringWidth(filter) <= w {
+		counts = more
+	}
+	head := ui.Spread(title+ui.Muted.Render(counts), filter, w)
 	keys := ui.Footer(w, "j/k", "move", "enter", "expand", "r", "replay seed", "f", "filter", "g/G", "ends", "q", "back")
 	var cal []string
 	if l.cal != nil {
 		cal = l.cal.lines(w, h-2)
 		keys = ui.Footer(w, "j/k", "move", "enter", "expand", "r", "replay seed", "f", "filter", "c", "days", "g/G", "ends", "q", "back")
 		if l.cal.focus {
-			keys = ui.Footer(w, "h/l", "week", "j/k", "day", "g/G", "ends", "enter", "its boots", "c", "list", "q", "back")
+			keys = ui.Footer(w, "h/l", "week", "j/k", "day", "g/G", "ends", "enter", "that day", "c", "list", "q", "back")
 		}
 	}
 
@@ -175,8 +239,10 @@ func (l *Log) View(width, height int) string {
 	l.h = rows
 	var body []string
 	switch {
-	case len(l.all) == 0:
+	case len(l.rows) == 0:
 		body = []string{"fatal: your current branch 'main' does not have any commits yet"}
+	case len(l.shown) == 0 && logFilters[l.filter].name == "upsolves":
+		body = []string{ui.Muted.Render("no upsolves yet")}
 	case len(l.shown) == 0:
 		body = []string{ui.Muted.Render("no boots match filter: " + logFilters[l.filter].name)}
 	default:
@@ -197,34 +263,46 @@ func (l *Log) View(width, height int) string {
 	return ui.Layout(w, h, out, keys)
 }
 
-// showDay gives the keys back to the list on the newest boot shown that
-// started on the calendar cursor's day; with none, the cursor stays.
+// showDay gives the keys back to the list on the newest line shown from
+// the calendar cursor's day; with none, the cursor stays.
 func (l *Log) showDay() {
 	for i, idx := range l.shown {
-		if dateKey(l.all[idx].Started.In(l.cal.Today.Location())) == dateKey(l.cal.at) {
+		if dateKey(l.rows[idx].at().In(l.cal.Today.Location())) == dateKey(l.cal.at) {
 			l.sel, l.cal.focus = i, false
 			return
 		}
 	}
 }
 
-// lines renders every shown boot, with the expansion under the open one.
-// selAt and selEnd are the first and last line of the selected boot.
+// lines renders every shown line, with the expansion under the open one.
+// selAt and selEnd are the first and last line of the selected one.
 func (l *Log) lines(w int) (out []string, selAt, selEnd int) {
-	numW := len(fmt.Sprint(l.all[0].Boot)) + 1
+	numW := 2 // "#1", and an upsolve's "up"
+	if len(l.all) > 0 {
+		numW = len(fmt.Sprint(l.all[0].Boot)) + 1
+	}
 	wide := w >= 100
 	for i, idx := range l.shown {
-		b := l.all[idx]
+		r := &l.rows[idx]
 		if i == l.sel {
 			selAt = len(out)
 		}
-		line := l.bootLine(b, w, numW, wide)
+		var line string
+		if r.boot != nil {
+			line = l.bootLine(*r.boot, w, numW, wide)
+		} else {
+			line = upsolveLine(*r.up, w, numW, wide)
+		}
 		if i == l.sel {
 			line = ui.Select.Render(ui.Fit(ansi.Strip(line), w))
 		}
 		out = append(out, line)
-		if b.Boot == l.open {
-			out = append(out, l.details(b, w)...)
+		switch {
+		case r != l.open:
+		case r.boot != nil:
+			out = append(out, l.details(*r.boot, w)...)
+		default:
+			out = append(out, upsolveDetails(*r.up, w)...)
 		}
 		if i == l.sel {
 			selEnd = len(out) - 1
@@ -252,7 +330,6 @@ func (l *Log) bootLine(b BootRow, w, numW int, wide bool) string {
 	}
 	left := fmt.Sprintf("%s %s %s %s P%d %7s ", star, hash,
 		ui.Fit(fmt.Sprintf("#%d", b.Boot), numW), ui.Muted.Render(date), b.Prestige, units.Clock(b.Uptime))
-	const bytesW = 8 // "+1.2 KiB", "+312 KiB"; a boot banking 10-99 KiB runs one over
 	bytes := ui.Muted.Render(ui.AlignRight("0 B", bytesW))
 	if b.Banked > 0 {
 		bytes = ui.OK.Render(ui.AlignRight("+"+units.Bytes(b.Banked), bytesW))
@@ -265,12 +342,25 @@ func (l *Log) bootLine(b BootRow, w, numW int, wide bool) string {
 	return left + ui.Fit(outcomeText(b, room), room) + " " + bytes
 }
 
+// bytesW is the bytes column: "+1.2 KiB", "+312 KiB"; a line banking 10-99
+// KiB runs one over.
+const bytesW = 8
+
 // shortHash stands in for a commit hash: 7 hex digits mixed from the seed
-// and boot number (splitmix64's finalizer), so boots with small or similar
-// seeds still get distinct, stable hashes. The full seed is in the
-// expansion.
-func shortHash(b BootRow) string {
-	z := b.Seed ^ uint64(b.Boot)*0x9e3779b97f4a7c15
+// and boot number, so boots with small or similar seeds still get
+// distinct, stable hashes. The full seed is in the expansion.
+func shortHash(b BootRow) string { return hash7(b.Seed ^ uint64(b.Boot)*0x9e3779b97f4a7c15) }
+
+// upsolveHash is an upsolve's commit hash, from its problem and the moment
+// it opened.
+func upsolveHash(u UpsolveRow) string {
+	h := fnv.New64a()
+	h.Write([]byte(u.Problem))
+	return hash7(h.Sum64() ^ uint64(u.Opened.UnixNano()))
+}
+
+// hash7 is 7 hex digits of z mixed by splitmix64's finalizer.
+func hash7(z uint64) string {
 	z = (z ^ z>>30) * 0xbf58476d1ce4e5b9
 	z = (z ^ z>>27) * 0x94d049bb133111eb
 	z ^= z >> 31
@@ -327,6 +417,108 @@ func (l *Log) details(b BootRow, w int) []string {
 	}
 	for _, a := range b.Attempts {
 		out = append(out, gutter+attemptLine(a, lay))
+	}
+	return out
+}
+
+// upsolveLine is one upsolve in at most w cells, in a boot's columns: "up"
+// for its number, no prestige, took for an uptime, and the bytes a core
+// dump it recovered banked. The star is green for a solve, yellow for one
+// left.
+func upsolveLine(u UpsolveRow, w, numW int, wide bool) string {
+	star := ui.Warn.Render("*")
+	if u.Solved != "" {
+		star = ui.OK.Render("*")
+	}
+	date := u.Opened.Format("Jan 02")
+	if wide {
+		date = u.Opened.Format("2006-01-02 15:04")
+	}
+	left := fmt.Sprintf("%s %s %s %s    %7s ", star, ui.Warn.Render(upsolveHash(u)),
+		ui.Fit("up", numW), ui.Muted.Render(date), units.Clock(took(u)))
+	bytes := strings.Repeat(" ", bytesW)
+	if u.Recovered > 0 {
+		bytes = ui.OK.Render(ui.AlignRight("+"+units.Bytes(u.Recovered), bytesW))
+	}
+	room := w - ansi.StringWidth(left) - bytesW - 1
+	return left + ui.Fit(upsolveText(u, room), room) + " " + bytes
+}
+
+// took is an upsolve's time on its line: to its first AC, which a solved
+// upsolve left open after does not stretch, else the time it was open.
+func took(u UpsolveRow) time.Duration {
+	for _, v := range u.Verdicts {
+		if v.Verdict == "AC" {
+			return v.At
+		}
+	}
+	return u.Elapsed
+}
+
+// upsolveText says how an upsolve ended in at most room cells: solved, an
+// editorial-assisted solve marked, or left at its last verdict. The title
+// gives way first, as a crash's biome does.
+func upsolveText(u UpsolveRow, room int) string {
+	verb, tail := "left ", ""
+	switch {
+	case u.Solved == game.Editorial:
+		verb, tail = "solved ", " (editorial)"
+	case u.Solved != "":
+		verb = "solved "
+	case len(u.Verdicts) > 0:
+		tail = " (" + verdictText(u.Verdicts[len(u.Verdicts)-1]) + ")"
+	}
+	title := u.Title
+	if n := len(verb) + ansi.StringWidth(title) + len(tail); n > room {
+		title = ui.Clip(title, max(ansi.StringWidth(title)-(n-room), 1))
+	}
+	return verb + title + tail
+}
+
+// verdictText is a verdict with the tests it passed, "WA 23/29"; a
+// compile error passes none worth counting.
+func verdictText(v VerdictRow) string {
+	if v.Total == 0 || v.Verdict == "CE" {
+		return v.Verdict
+	}
+	return fmt.Sprintf("%s %d/%d", v.Verdict, v.Passed, v.Total)
+}
+
+// upsolveDetails is an upsolve's expansion: a summary line, then one line
+// per full-test verdict, when it came and whether the editorial had been
+// read by then.
+func upsolveDetails(u UpsolveRow, w int) []string {
+	gutter := ui.Muted.Render("│") + "   "
+	sum := "opened " + u.Opened.Format("2006-01-02 15:04") + " for " + units.Clock(u.Elapsed) + ui.G.Sep + string(u.Problem)
+	if u.Topic != "" {
+		sum += ui.G.Sep + u.Topic
+	}
+	if u.Rating > 0 && catalog.ShowsRating(u.Problem) {
+		sum += ui.G.Sep + ui.G.Rating + strconv.Itoa(u.Rating)
+	}
+	if u.Editorial {
+		sum += ui.G.Sep + "editorial read"
+	}
+	if u.Recovered > 0 {
+		sum += ui.G.Sep + "recovered " + units.Bytes(u.Recovered)
+	}
+	var out []string
+	for _, line := range strings.Split(ansi.Wordwrap(sum, max(w-4, 10), ""), "\n") {
+		out = append(out, gutter+ui.Muted.Render(line))
+	}
+	if len(u.Verdicts) == 0 {
+		return append(out, gutter+ui.Muted.Render("nothing submitted"))
+	}
+	for _, v := range u.Verdicts {
+		mark := ui.Danger.Render(ui.G.Fail)
+		if v.Verdict == "AC" {
+			mark = ui.OK.Render(ui.G.Pass)
+		}
+		line := fmt.Sprintf("%s %s %s", mark, ui.Fit(verdictText(v), 9), ui.AlignRight(units.Clock(v.At), 7))
+		if v.Editorial {
+			line += ui.Muted.Render(" [editorial read]")
+		}
+		out = append(out, gutter+line)
 	}
 	return out
 }

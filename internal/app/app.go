@@ -52,6 +52,9 @@ type Door struct {
 	// Solved marks an upsolve accepted while it stays open: the solve is
 	// counted once, and a submit after it only shows its verdict.
 	Solved bool
+	// Recovered is the core dump bytes the upsolve's solve banked, for
+	// git log (upsolve_close).
+	Recovered int64
 	// Sub, for an upsolve, is its directory under the runner's root; ""
 	// is the shared upsolve directory.
 	Sub string

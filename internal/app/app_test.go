@@ -849,6 +849,42 @@ func TestUnsavedBootStillStarts(t *testing.T) {
 	})
 }
 
+// git log lists an upsolve once it is left: a crash's core dump upsolved,
+// a WA then the AC four minutes in, then an hour more open. Its line shows
+// the four minutes and the solve, its close event the bytes it recovered,
+// and enter its verdicts.
+func TestGitLogListsUpsolves(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.crashWithDump()
+		id := h.m.state.Crash.Door.Problem
+		h.send(screens.Upsolve{Problem: id})
+		h.verdict = "WA"
+		h.send(submitMsg{})
+		h.clock.t = h.clock.t.Add(4 * time.Minute)
+		h.verdict = "AC"
+		h.send(submitMsg{})
+		got := h.m.open.Recovered
+		h.clock.t = h.clock.t.Add(time.Hour)
+		h.send(key("Q"))
+		evs := h.events() // written out of band; git log reads the store
+		if e := evs[len(evs)-1]; e.Kind != store.EventUpsolveClose || got <= 0 || payload(t, e)["recovered"] != float64(got) {
+			t.Errorf("last event %s %v, want the upsolve's close recovering %d", e.Kind, payload(t, e), got)
+		}
+		h.send(screens.OpenLog{})
+		if v := view(h); !strings.Contains(v, "04:00 solved "+h.m.title(id)) {
+			t.Fatalf("git log lacks the upsolve, solved in 04:00:\n%s", v)
+		}
+		h.send(key("enter"))
+		v := view(h)
+		for _, want := range []string{"for 1:04:00", "recovered", "✗ WA", "✓ AC"} {
+			if !strings.Contains(v, want) {
+				t.Errorf("the upsolve's expansion lacks %q:\n%s", want, v)
+			}
+		}
+	})
+}
+
 // An accepted upsolve stays open, solved, saved or not, and a second AC
 // records nothing more. It once closed its door for that: left open, a
 // second AC recorded the solve twice.

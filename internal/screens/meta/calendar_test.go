@@ -203,6 +203,16 @@ func TestCalendarKeys(t *testing.T) {
 }
 
 // selectedLine is the list's reversed row, as text.
+// enter on a day lands on its newest line, an upsolve as well as a boot:
+// Oct 12's upsolve came after boot #40.
+func TestCalendarDayOfAnUpsolve(t *testing.T) {
+	s := playerLog().WithUpsolves(fixture.Upsolves())
+	press(t, s, "j", "j", "j", "j", "c", "enter") // boot #40, then its day
+	if sel := selectedLine(t, s); !strings.Contains(sel, "Haybale Stacking") {
+		t.Errorf("enter on Oct 12 selected %q, want its upsolve", sel)
+	}
+}
+
 func selectedLine(t *testing.T, s screens.Screen) string {
 	t.Helper()
 	for _, l := range strings.Split(s.View(140, 40), "\n") {

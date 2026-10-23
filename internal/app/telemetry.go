@@ -276,7 +276,8 @@ func (m *Model) doorClosed() {
 		return
 	}
 	m.event(store.EventUpsolveClose, d.Door.Problem, kv{"verdict": m.tele.upsolveLast,
-		"editorial": d.ReadEditorial, "elapsed_ms": m.d.Now().Sub(d.Opened).Milliseconds()})
+		"editorial": d.ReadEditorial, "elapsed_ms": m.d.Now().Sub(d.Opened).Milliseconds(),
+		"recovered": d.Recovered})
 	m.tele.upsolveLast = ""
 }
 

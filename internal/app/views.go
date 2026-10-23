@@ -62,6 +62,27 @@ func (m *Model) lastBiome(preset string, atts []store.AttemptRecord) string {
 	return cmp.Or(rb.Name, flavor.BiomeName(topic))
 }
 
+// upsolveRow maps a stored upsolve onto its git log row, its title, topic
+// and rating from the catalog.
+func (m *Model) upsolveRow(u store.UpsolveRecord) meta.UpsolveRow {
+	row := meta.UpsolveRow{
+		Problem:   u.Problem,
+		Title:     string(u.Problem),
+		Opened:    u.Opened.Local(),
+		Elapsed:   u.Elapsed,
+		Solved:    u.Kind,
+		Editorial: u.Editorial,
+		Recovered: u.Recovered,
+	}
+	if p, ok := m.d.Catalog.Get(u.Problem); ok {
+		row.Title, row.Topic, row.Rating = p.Title, p.Topic, p.Rating
+	}
+	for _, v := range u.Verdicts {
+		row.Verdicts = append(row.Verdicts, meta.VerdictRow(v))
+	}
+	return row
+}
+
 func (m *Model) attemptRow(a game.Attempt) meta.AttemptRow {
 	d := a.Door
 	r := meta.AttemptRow{

@@ -40,7 +40,7 @@ const (
 	EventEditorialClose = "editorial_close"
 	EventUpsolveOpen    = "upsolve_open"
 	EventUpsolveJudged  = "upsolve_judged"
-	EventUpsolveClose   = "upsolve_close" // json elapsed_ms: time in the upsolve
+	EventUpsolveClose   = "upsolve_close" // json elapsed_ms: time in the upsolve; recovered: bytes banked
 	EventScreen         = "screen"        // a base screen shown; dwell runs to the next event
 	EventSelfReport     = "self_report"   // json felt: easy | right | hard
 	EventAptInstall     = "apt_install"

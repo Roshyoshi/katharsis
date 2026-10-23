@@ -174,7 +174,15 @@ func (m *Model) openLog() tea.Cmd {
 	for _, b := range boots {
 		rows = append(rows, m.bootRow(b, byBoot[b.Boot]))
 	}
-	l := meta.NewLog(rows, nil)
+	ups, err := m.d.Store.Upsolves()
+	if err != nil {
+		return fail("git log: %v", err)
+	}
+	upRows := make([]meta.UpsolveRow, 0, len(ups))
+	for _, u := range ups {
+		upRows = append(upRows, m.upsolveRow(u))
+	}
+	l := meta.NewLog(rows, nil).WithUpsolves(upRows)
 	if c, ok := m.calendar(); ok {
 		l.WithCalendar(c)
 	}
@@ -410,6 +418,7 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 	}
 	id := m.open.Door.Problem
 	got, fixed := m.upsolveOf(id, kind) // game.Upsolve, and whether a due regression was fixed (debrief.go)
+	m.open.Recovered = got
 	// The solve is recorded either way: unsaved, it goes with the next
 	// save, and Solved keeps the open door from counting it twice.
 	bits := m.setuidOutside() // a dump recovered, a regression retired (setuid.go)

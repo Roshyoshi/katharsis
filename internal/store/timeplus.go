@@ -55,6 +55,7 @@ type spent struct {
 	problem catalog.ID
 	at      time.Time
 	d       time.Duration
+	glance  bool // an upsolve closed with nothing judged inside glance
 }
 
 // timePlus is TIME+ with boot except left out: the boots' uptime and ups.
@@ -73,31 +74,34 @@ func timePlus(q querier, except int, ups []spent) (time.Duration, error) {
 
 // upsolveTimes lists every upsolve's time: the upsolve_close events, then
 // the upsolves among solves (Meta.Solves) from before the events began.
+// A close's verdict is the upsolve's last, "" when nothing was judged.
 func upsolveTimes(q querier, solves []game.Solve) ([]spent, error) {
 	var out []spent
 	if err := eachRow(q, `
-		SELECT problem, at, COALESCE(json_extract(json, '$.elapsed_ms'), 0)
+		SELECT problem, at, COALESCE(json_extract(json, '$.elapsed_ms'), 0),
+			COALESCE(json_extract(json, '$.verdict'), '')
 		FROM events WHERE kind = ?`, []any{EventUpsolveClose},
 		func(rows *sql.Rows) error {
 			var (
-				u      spent
-				at, ms int64
+				u       spent
+				at, ms  int64
+				verdict string
 			)
-			err := rows.Scan(&u.problem, &at, &ms)
+			err := rows.Scan(&u.problem, &at, &ms, &verdict)
 			u.at, u.d = fromUnixNano(at), time.Duration(ms)*time.Millisecond
+			u.glance = verdict == "" && u.d < glance
 			out = append(out, u)
 			return err
 		}); err != nil {
 		return nil, err
 	}
-	var first sql.NullInt64
-	if err := q.QueryRow(`SELECT MIN(at) FROM events WHERE kind = ?`, EventAppStart).
-		Scan(&first); err != nil {
+	began, ok, err := eventsBegan(q)
+	if err != nil {
 		return nil, err
 	}
 	for _, sv := range solves {
-		if sv.Upsolve && (!first.Valid || sv.At.Before(fromUnixNano(first.Int64))) {
-			out = append(out, spent{sv.Problem, sv.At, sv.Elapsed})
+		if sv.Upsolve && (!ok || sv.At.Before(began)) {
+			out = append(out, spent{problem: sv.Problem, at: sv.At, d: sv.Elapsed})
 		}
 	}
 	return out, nil
@@ -175,7 +179,8 @@ type Day struct {
 	Door time.Duration
 	// What happened this day, each counted on the day it happened: boots
 	// started; boots cleared (a wake among them) and crashed, on the day
-	// they ended; upsolves, on the day they closed.
+	// they ended; upsolves, on the day they closed, glances aside (their
+	// time is in Door).
 	Boots, Clears, Crashes, Upsolves int
 }
 
@@ -196,8 +201,8 @@ func (s *Store) Days(from, to time.Time) ([]Day, error) {
 		}
 		for _, u := range ups {
 			cal.spread(u.at.Add(-u.d), u.at)
-			if d := cal.day(u.at); d != nil {
-				d.Upsolves++
+			if d := cal.day(u.at); d != nil && !u.glance {
+				d.Upsolves++ // as git log lists them (Upsolves)
 			}
 		}
 

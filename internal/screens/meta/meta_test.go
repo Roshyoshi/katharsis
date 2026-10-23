@@ -143,6 +143,10 @@ func TestGoldens(t *testing.T) {
 		{"log", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, nil},
 		{"log_expanded", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, []string{"enter"}},
 		{"log_crashed", func() screens.Screen { return meta.NewLog(fixture.Boots(), fixture.PrestigeName) }, []string{"f", "f", "j", "enter"}},
+		// Upsolves among the boots by time, boot #40's solved one open;
+		// the upsolves alone (F from all), boot #42's left one open.
+		{"log_upsolves", func() screens.Screen { return upsolveLog() }, []string{"j", "j", "j", "enter"}},
+		{"log_upsolves_left", func() screens.Screen { return upsolveLog() }, []string{"F", "enter"}},
 		{"top", func() screens.Screen { return meta.NewTop(fixture.Stats()) }, nil},
 		{"top_sorted", func() screens.Screen { return meta.NewTop(fixture.Stats()) }, []string{"s", "j", "j"}},
 		{"top_timeplus", func() screens.Screen { return meta.NewTop(fixture.Stats()) }, []string{"s", "s", "s", "s"}},
@@ -195,8 +199,17 @@ func TestFits(t *testing.T) {
 			return s
 		},
 		"empty log": func() screens.Screen { return meta.NewLog(nil, nil) },
-		"top":       func() screens.Screen { return meta.NewTop(fixture.Stats()) },
-		"empty top": func() screens.Screen { return meta.NewTop(meta.Stats{}) },
+		"log upsolve expanded": func() screens.Screen {
+			s := upsolveLog()
+			s.Update(key("j"))
+			s.Update(key("j"))
+			s.Update(key("j"))
+			s.Update(key("enter"))
+			return s
+		},
+		"upsolves only": func() screens.Screen { return meta.NewLog(nil, nil).WithUpsolves(fixture.Upsolves()) },
+		"top":           func() screens.Screen { return meta.NewTop(fixture.Stats()) },
+		"empty top":     func() screens.Screen { return meta.NewTop(meta.Stats{}) },
 	}
 	for name, mk := range screensUnder {
 		for _, sz := range [][2]int{{1, 1}, {20, 6}, {40, 12}, {60, 15}, {80, 24}, {100, 30}, {140, 40}, {220, 60}} {
@@ -473,9 +486,62 @@ func TestLogKeys(t *testing.T) {
 	if !strings.Contains(v, "filter: cleared") || strings.Contains(v, "crashed in") {
 		t.Errorf("cleared filter shows crashes:\n%s", v)
 	}
-	press(t, s, "F", "F") // back past all to :q!
+	press(t, s, "F", "F", "F", "F") // back past all, upsolves and boots to :q!
 	if v := plain(s.View(80, 24)); !strings.Contains(v, "filter: :q!") || strings.Contains(v, "(timer)") {
 		t.Errorf(":q! filter:\n%s", v)
+	}
+}
+
+func upsolveLog() *meta.Log {
+	return meta.NewLog(fixture.Boots(), fixture.PrestigeName).WithUpsolves(fixture.Upsolves())
+}
+
+// Upsolves sit among the boots by time: boot #42's above it, boot #40's
+// between #41 and #40. r replays a boot's seed and does nothing on an
+// upsolve; enter opens its verdicts; the upsolves and boots filters keep
+// one kind each, and the outcome filters only boots. A solve's line shows
+// its time to the AC, not the time it was open.
+func TestLogUpsolves(t *testing.T) {
+	s := upsolveLog()
+	var order []string
+	for _, l := range strings.Split(plain(s.View(140, 40)), "\n")[1:6] {
+		order = append(order, strings.Fields(l)[2])
+	}
+	if got := strings.Join(order, " "); got != "up #42 #41 up #40" {
+		t.Errorf("lines in the order %s, want up #42 #41 up #40", got)
+	}
+	if msg := press(t, s, "r"); msg != nil {
+		t.Errorf("r on an upsolve emitted %#v", msg)
+	}
+	if _, ok := press(t, s, "j", "r").(screens.StartBoot); !ok {
+		t.Error("r on boot #42 started nothing")
+	}
+	press(t, s, "j", "j", "enter")
+	v := plain(s.View(140, 40))
+	for _, want := range []string{"12:55 solved Haybale Stacking (editorial)", "+70 B",
+		"opened 2026-10-12 22:20 for 14:30 · usaco:740 · prefix-sums · ◆1480 · editorial read · recovered 70 B",
+		"✗ WA 6/10     04:10", "✓ AC 10/10    12:55 [editorial read]"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("boot #40's upsolve, open, lacks %q:\n%s", want, v)
+		}
+	}
+	press(t, s, "F") // upsolves
+	if v := plain(s.View(140, 40)); strings.Contains(v, "#4") || !strings.Contains(v, "22:05 left Bovine Shuffle (WA 8/10)") {
+		t.Errorf("upsolves filter:\n%s", v)
+	}
+	press(t, s, "F") // boots
+	if v := plain(s.View(140, 40)); strings.Contains(v, " up ") || !strings.Contains(v, "#42") {
+		t.Errorf("boots filter:\n%s", v)
+	}
+	press(t, s, "f", "f", "f") // upsolves, all, cleared
+	if v := plain(s.View(140, 40)); !strings.Contains(v, "filter: cleared") || strings.Contains(v, "Haybale") {
+		t.Errorf("cleared filter shows an upsolve:\n%s", v)
+	}
+
+	s = meta.NewLog(fixture.Boots(), nil)
+	press(t, s, "F")
+	if v := plain(s.View(80, 24)); !strings.Contains(v, "no upsolves yet") {
+		t.Errorf("upsolves filter without any:\n%s", v)
 	}
 }
 
