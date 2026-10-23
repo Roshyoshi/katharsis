@@ -27,6 +27,25 @@ func paneHarness(t *testing.T) *harness {
 
 func view(h *harness) string { return ansi.Strip(h.m.View().Content) }
 
+// An upsolve with no boot in flight, as RTFM practice from GRUB is, shows
+// its statement too: the screens' refresh, which loads it in a boot, has
+// no state to hand them here.
+func TestPaneStatementWithoutBoot(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarnessWith(t, func(f *fakeRunner) Runner {
+			return &hudFakeRunner{fakeRunner: f, opt: hud.Options{Dir: t.TempDir(), Embedded: true}}
+		})
+		if h.m.state != nil {
+			t.Fatal("a boot is in flight")
+		}
+		h.send(screens.Upsolve{Problem: h.m.d.Catalog.All()[0].ID})
+		h.send(tea.WindowSizeMsg{Width: 44, Height: 32})
+		if v := view(h); h.m.open == nil || !strings.Contains(v, "Bessie names this problem") {
+			t.Fatalf("open %v; no statement in the upsolve's pane:\n%s", h.m.open != nil, v)
+		}
+	})
+}
+
 // The pane opens on the statement under the pinned judgement; enter swaps
 // it for the tests and back, and h lists every key until the next one
 // (J8, J17).

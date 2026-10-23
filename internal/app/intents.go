@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -297,6 +298,27 @@ func (m *Model) readEditorial(id catalog.ID) {
 	m.editorials[id] = m.d.Now()
 	if m.open != nil && m.open.Door.Problem == id {
 		m.open.ReadEditorial = true
+		m.keepEditorial()
+	}
+}
+
+// keepEditorial copies the open door's editorial beside its source, as
+// editorial.md, once that changes nothing: the door is solved, or the game
+// has shown the editorial (readEditorial; an upsolve opened after a read
+// gets it from materialize). Before then it stays out of the folder: a read
+// the game cannot see would pay an upsolve as unassisted (sawEditorial).
+// A mystery door in a boot keeps its secret, as its statement does.
+func (m *Model) keepEditorial() {
+	o := m.open
+	if o == nil || o.Assets.Editorial == "" || o.Door.Mystery && !o.Upsolve {
+		return
+	}
+	r, ok := m.d.Runner.(sourceRunner)
+	if !ok || r.Source() == "" {
+		return
+	}
+	if err := copyTo(o.Assets.Editorial, filepath.Join(filepath.Dir(r.Source()), "editorial.md")); err != nil {
+		m.logErr("editorial beside the source", err)
 	}
 }
 

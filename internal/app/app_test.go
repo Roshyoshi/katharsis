@@ -1114,6 +1114,81 @@ func TestUpsolveSources(t *testing.T) {
 	})
 }
 
+// A door's folder holds its statement under a link to the problem's page,
+// and its editorial once reading it changes nothing: after an AC, or as
+// the game shows it in an upsolve, or from the start of an upsolve whose
+// editorial the player already read. A door still open has none, so the
+// game sees every read that pays an upsolve as assisted (sawEditorial).
+func TestDoorFolderNotes(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var r *srcRunner
+		h := newHarnessWith(t, func(f *fakeRunner) Runner {
+			r = &srcRunner{fakeRunner: f, dir: t.TempDir()}
+			return r
+		})
+		h.m.d.Catalog = editorialCatalog{h.m.d.Catalog.(*fakeCatalog)}
+		ed := filepath.Join(r.dir, "editorial.md")
+		kept := func() bool {
+			b, err := os.ReadFile(ed)
+			return err == nil && strings.Contains(string(b), "Sort, then sweep.")
+		}
+
+		h.send(screens.StartBoot{Preset: "standard"})
+		h.enterDoor()
+		if kept() {
+			t.Fatal("an open boot door's folder has its editorial")
+		}
+		h.send(submitMsg{}) // the fake judge accepts
+		if !kept() {
+			t.Fatal("no editorial beside the source after the AC")
+		}
+
+		if err := os.Remove(ed); err != nil {
+			t.Fatal(err)
+		}
+		var id catalog.ID
+		for _, p := range h.m.d.Catalog.All() {
+			if !h.m.onOffer(p.ID) {
+				id = p.ID
+				break
+			}
+		}
+		h.send(screens.Upsolve{Problem: id})
+		if h.m.open == nil || kept() {
+			t.Fatalf("upsolve open %v, editorial there %v before it was read", h.m.open != nil, kept())
+		}
+		h.send(screens.OpenEditorial{Problem: id})
+		if !kept() {
+			t.Fatal("the editorial read in the upsolve is not beside its source")
+		}
+
+		// The tmux runner's layout: the statement under its page's link,
+		// and the editorial for an upsolve already read.
+		a, err := h.m.d.Catalog.Fetch(context.Background(), id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		p, _ := h.m.d.Catalog.Get(id)
+		p.URL = "https://usaco.org/index.php?page=viewproblem2&cpid=736"
+		tr := &TmuxRunner{Root: t.TempDir()}
+		for _, read := range []bool{false, true} {
+			dir, _, err := tr.materialize(Door{Door: game.Door{Problem: id}, Problem: p, Assets: a, Upsolve: true,
+				Sub: fmt.Sprint("read-", read), ReadEditorial: read})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if b, _ := os.ReadFile(filepath.Join(dir, "statement.md")); !strings.HasPrefix(string(b), "Problem page: <"+p.URL+">\n\n# ") {
+				t.Errorf("statement.md starts %q, want the page's link above the statement", firstN(string(b), 80))
+			}
+			if _, err := os.Stat(filepath.Join(dir, "editorial.md")); (err == nil) != read {
+				t.Errorf("read %v: editorial.md there %v", read, err == nil)
+			}
+		}
+	})
+}
+
+func firstN(s string, n int) string { return s[:min(len(s), n)] }
+
 // git log names the biome a boot crashed in. Userland's doors keep their
 // own topics, so naming it by the last door's topic called a Userland
 // crash "The Scheduler" (or whatever that topic's biome is).

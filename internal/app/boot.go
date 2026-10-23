@@ -318,6 +318,13 @@ func (m *Model) onFetched(f fetchedMsg) tea.Cmd {
 	m.open = d
 	m.upsolveOpened()
 	m.refresh()
+	// The pane's statement, boot or none: refresh skips the screens when no
+	// boot is in flight, as for RTFM practice from GRUB.
+	for _, s := range m.stack {
+		if p, ok := s.(*problemScreen); ok {
+			p.loadStatement()
+		}
+	}
 	var cmds []tea.Cmd
 	if h := m.hud(); h != nil {
 		cmds = append(cmds, guard(h.Init()))
@@ -640,6 +647,7 @@ func (m *Model) onJudged(j judgedMsg) tea.Cmd {
 	var harvest tea.Cmd
 	if j.verdict == "AC" {
 		harvest = m.harvestLibs()
+		m.keepEditorial() // solved: the editorial joins the solution
 	}
 	if m.open != nil && m.open.Upsolve {
 		return tea.Batch(harvest, m.onUpsolveJudged(j))

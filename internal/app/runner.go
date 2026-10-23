@@ -366,9 +366,14 @@ func (r *TmuxRunner) materialize(d Door) (dir, src string, err error) {
 		}
 	}
 	if d.Assets.Statement != "" && !d.Door.Mystery {
-		// A copy for reading beside the source; the game's own reader (t)
-		// reads the cache.
-		_ = copyTo(d.Assets.Statement, filepath.Join(dir, "statement.md"))
+		// A copy for reading beside the source, under a link to its page;
+		// the game's own reader (t) reads the cache.
+		_ = copyStatement(d.Assets.Statement, d.Problem.URL, filepath.Join(dir, "statement.md"))
+	}
+	if d.Upsolve && d.ReadEditorial && d.Assets.Editorial != "" {
+		// Read in the game already (sawEditorial), so beside the source too
+		// (keepEditorial).
+		_ = copyTo(d.Assets.Editorial, filepath.Join(dir, "editorial.md"))
 	}
 	if _, err := problem.Load(dir); err != nil {
 		return "", "", err
@@ -472,6 +477,19 @@ func copyTo(src, dst string) error {
 	b, err := os.ReadFile(src)
 	if err != nil {
 		return err
+	}
+	return os.WriteFile(dst, b, 0o644)
+}
+
+// copyStatement is copyTo for a statement, with a first line linking the
+// problem's page (its figures, its layout, the judge) when it has one.
+func copyStatement(src, url, dst string) error {
+	b, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	if url != "" {
+		b = append([]byte("Problem page: <"+url+">\n\n"), b...)
 	}
 	return os.WriteFile(dst, b, 0o644)
 }
