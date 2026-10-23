@@ -100,8 +100,9 @@ func TestEventsFromADoorSession(t *testing.T) {
 		h.clock.t = h.clock.t.Add(10 * time.Minute)
 		h.verdict = "AC"
 		h.send(submitMsg{})
+		h.send(key("Q")) // solved, the upsolve stays open until left
 		if h.m.open != nil {
-			t.Fatal("upsolve still open after AC")
+			t.Fatal("upsolve still open after AC and Q")
 		}
 		h.send(screens.Quit{})
 

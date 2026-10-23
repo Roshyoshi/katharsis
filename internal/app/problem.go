@@ -170,6 +170,9 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 		}
 		return s, screens.Emit(game.Retreat{})
 	case "Q":
+		if s.upsolve && s.solved() {
+			return s, screens.Emit(leaveSolvedMsg{})
+		}
 		if s.upsolve {
 			s.m.closeDoor()
 			return s, screens.Emit(screens.Back{})
@@ -199,6 +202,9 @@ func (s *problemScreen) View(w, h int) string {
 	var top []string
 	p, _ := s.m.d.Catalog.Get(s.door.Problem)
 	switch {
+	case s.upsolve && s.solved():
+		top = append(top, ui.Strong.Render("upsolve · "+p.Title)+"  "+ui.OK.Render(ui.G.Pass+" solved")+
+			ui.Muted.Render(" · s submits again · Q leaves"))
 	case s.upsolve:
 		top = append(top, ui.Strong.Render("upsolve · "+p.Title)+ui.Muted.Render("  untimed, editorial allowed"))
 	case s.m.state != nil:
@@ -351,6 +357,13 @@ func (s *problemScreen) openPage() tea.Cmd {
 		return note("%s has no page online", s.door.Problem)
 	}
 	return screens.Emit(reader.OpenURL{URL: p.URL})
+}
+
+// solved reports whether the upsolve on screen is accepted and still open
+// (Door.Solved).
+func (s *problemScreen) solved() bool {
+	o := s.m.open
+	return s.upsolve && o != nil && o.Upsolve && o.Door.Problem == s.door.Problem && o.Solved
 }
 
 // online reports whether o opens a page here.

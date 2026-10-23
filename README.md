@@ -94,7 +94,7 @@ for two more picks. The full roster and its numbers:
 
 | Screen | Keys |
 |---|---|
-| GRUB | `↑/↓` select · `enter` boot · `e` edit prestige, preset, seed · `upsolve…`: the core dump, regressions due, and the doors your boots lost, untimed · paused from a map: `continue boot #N` first (or `esc`), and a new boot asks before it ends the paused one |
+| GRUB | `↑/↓` select · `enter` boot · `e` edit prestige, preset, seed · `upsolve…`: the core dump, regressions due, and the doors your boots lost, untimed; solved, an upsolve (RTFM practice too) stays open to submit again or read the editorial, until `Q` · paused from a map: `continue boot #N` first (or `esc`), and a new boot asks before it ends the paused one |
 | Map (the hub) | `enter` resume · `n` new boot (ends the one in flight as a crash) · `g` pause into GRUB · `t` RTFM · `q` quit |
 | Exits | `←/→` or `1-4` select · `enter` take · `t` RTFM on a locked one · `m` map |
 | Doors | `←/→` or `1-3` select · `enter` open · `m` map · `q` quit (the boot waits on the map) |
@@ -131,7 +131,7 @@ In a tmux session the game starts, `g++` and `clang++` on PATH are these.
 
 | | |
 |---|---|
-| `~/cp/runs/boot-N/<problem>/` | your solutions; `statement.md`, its first line a link to the problem's page; `editorial.md` once you solve the problem or read its editorial in the game (not before, so the game sees every read that makes an upsolve editorial-assisted); the samples and your own cases (`:Case`) in `tests/` |
+| `~/cp/runs/boot-N/<problem>/` | your solutions; `statement.md`, opening with the problem's page and where its editorial is; `editorial.md`, for a boot door once you solve it, for an upsolve (`~/cp/runs/upsolve/`) from the start. Read in the folder it is not counted; `e` in the game shows it and marks the solve editorial-assisted. The samples and your own cases (`:Case`) are in `tests/` |
 | `~/.local/share/katharsis/katharsis.db` | saves: boots, attempts, rating, bank |
 | `~/Library/Caches/katharsis/` | problems, tests, editorials, builds |
 | `~/.config/katharsis/presets/*.toml` | custom rules: each lists only what it changes from the standard rules ([rules.go](internal/rules/rules.go)), a `[[biome]]` list replaces them all, and an unknown key is an error; `standard`, `short` and `patch` are built-in names |

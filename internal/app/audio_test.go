@@ -260,8 +260,8 @@ func TestAudioLeavesAPausedBoot(t *testing.T) {
 	})
 }
 
-// A practice problem opened from RTFM shuffles every track, and solving it
-// takes the music home with the map.
+// A practice problem opened from RTFM shuffles every track, solved or
+// not, and leaving it takes the music home with the map.
 func TestAudioRTFMPractice(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
@@ -287,8 +287,12 @@ func TestAudioRTFMPractice(t *testing.T) {
 		}
 		h.verdict = "AC"
 		h.send(submitMsg{})
+		if music() != audio.PoolAll {
+			t.Fatalf("solved, still open: music %q, want %q", music(), audio.PoolAll)
+		}
+		h.send(key("Q"))
 		if _, ok := h.m.top().(*rtfm.Map); !ok || music() != audio.PoolGrub {
-			t.Fatalf("after the solve: top %T, music %q, want %q", h.m.top(), music(), audio.PoolGrub)
+			t.Fatalf("after the solve and Q: top %T, music %q, want %q", h.m.top(), music(), audio.PoolGrub)
 		}
 	})
 }

@@ -102,6 +102,8 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 		return m.push(s), true
 	case submitMsg:
 		return m.submit(), true
+	case leaveSolvedMsg:
+		return m.leaveSolved(), true
 	case bootui.CancelWait:
 		return m.cancelWait(), true
 	case story.Done: // story.go
@@ -298,16 +300,13 @@ func (m *Model) readEditorial(id catalog.ID) {
 	m.editorials[id] = m.d.Now()
 	if m.open != nil && m.open.Door.Problem == id {
 		m.open.ReadEditorial = true
-		m.keepEditorial()
 	}
 }
 
 // keepEditorial copies the open door's editorial beside its source, as
-// editorial.md, once that changes nothing: the door is solved, or the game
-// has shown the editorial (readEditorial; an upsolve opened after a read
-// gets it from materialize). Before then it stays out of the folder: a read
-// the game cannot see would pay an upsolve as unassisted (sawEditorial).
-// A mystery door in a boot keeps its secret, as its statement does.
+// editorial.md, on its AC: a boot door allows no editorial until then. An
+// upsolve has had it from the start (materialize). A mystery door in a
+// boot keeps its secret, as its statement does.
 func (m *Model) keepEditorial() {
 	o := m.open
 	if o == nil || o.Assets.Editorial == "" || o.Door.Mystery && !o.Upsolve {
@@ -317,7 +316,7 @@ func (m *Model) keepEditorial() {
 	if !ok || r.Source() == "" {
 		return
 	}
-	if err := copyTo(o.Assets.Editorial, filepath.Join(filepath.Dir(r.Source()), "editorial.md")); err != nil {
+	if err := copyEditorial(o.Assets.Editorial, filepath.Join(filepath.Dir(r.Source()), "editorial.md")); err != nil {
 		m.logErr("editorial beside the source", err)
 	}
 }
@@ -390,7 +389,9 @@ func (m *Model) upsolveFiles(id catalog.ID) (sub string, seedBoot int) {
 	return "", 0
 }
 
-// onUpsolveJudged records an accepted upsolve; anything else just shows.
+// onUpsolveJudged records an accepted upsolve, once; anything else just
+// shows. The door stays open after the AC, its editor with it, to read
+// the editorial, ask about it, or submit again; Q leaves (leaveSolved).
 func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 	m.upsolveJudged(j)
 	if s, ok := m.top().(*problemScreen); ok {
@@ -399,6 +400,10 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 	if j.verdict != "AC" {
 		return nil
 	}
+	if m.open.Solved {
+		return note("AC again · the solve counted the first time")
+	}
+	m.open.Solved = true
 	kind := game.Independent
 	if m.open.ReadEditorial {
 		kind = game.Editorial
@@ -406,16 +411,25 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 	id := m.open.Door.Problem
 	got, fixed := m.upsolveOf(id, kind) // game.Upsolve, and whether a due regression was fixed (debrief.go)
 	// The solve is recorded either way: unsaved, it goes with the next
-	// save, and a door left open would let it count twice.
-	m.closeDoor()
+	// save, and Solved keeps the open door from counting it twice.
 	bits := m.setuidOutside() // a dump recovered, a regression retired (setuid.go)
-	m.afterUpsolve()
 	if !m.saved(m.d.Store.SaveMeta(m.meta)) {
 		return nil // the banner says so
 	}
 	if s := upsolveNote(got, fixed) + bits; s != "" { // coredump.recovered, regression.cleared (debrief.go)
 		return note("%s", strings.TrimPrefix(s, ui.G.Sep))
 	}
+	return nil
+}
+
+// leaveSolvedMsg is Q on a solved upsolve: close it and go back to where
+// it was picked (afterUpsolve), which the stack may have to rebuild.
+type leaveSolvedMsg struct{}
+
+// leaveSolved closes a solved upsolve and takes it back (afterUpsolve).
+func (m *Model) leaveSolved() tea.Cmd {
+	m.closeDoor()
+	m.afterUpsolve()
 	return nil
 }
 

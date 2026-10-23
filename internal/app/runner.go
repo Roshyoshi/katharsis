@@ -366,14 +366,15 @@ func (r *TmuxRunner) materialize(d Door) (dir, src string, err error) {
 		}
 	}
 	if d.Assets.Statement != "" && !d.Door.Mystery {
-		// A copy for reading beside the source, under a link to its page;
-		// the game's own reader (t) reads the cache.
-		_ = copyStatement(d.Assets.Statement, d.Problem.URL, filepath.Join(dir, "statement.md"))
+		// A copy for reading beside the source, under a link to its page
+		// and where its editorial is; the game's own reader (t) reads the
+		// cache.
+		_ = copyStatement(d.Assets.Statement, filepath.Join(dir, "statement.md"), d.Problem.URL, editorialWhere(d))
 	}
-	if d.Upsolve && d.ReadEditorial && d.Assets.Editorial != "" {
-		// Read in the game already (sawEditorial), so beside the source too
-		// (keepEditorial).
-		_ = copyTo(d.Assets.Editorial, filepath.Join(dir, "editorial.md"))
+	if d.Upsolve && d.Assets.Editorial != "" {
+		// An upsolve allows the editorial: beside the source from the start,
+		// to ask about once solved. A boot door gets it on its AC.
+		_ = copyEditorial(d.Assets.Editorial, filepath.Join(dir, "editorial.md"))
 	}
 	if _, err := problem.Load(dir); err != nil {
 		return "", "", err
@@ -481,17 +482,51 @@ func copyTo(src, dst string) error {
 	return os.WriteFile(dst, b, 0o644)
 }
 
-// copyStatement is copyTo for a statement, with a first line linking the
-// problem's page (its figures, its layout, the judge) when it has one.
-func copyStatement(src, url, dst string) error {
+// copyStatement is copyTo for a statement, under a list of where the
+// rest is: the problem's page (its figures, its layout, the judge) when it
+// has one, then the editorial (editorialWhere).
+//
+//   - Problem page: <https://usaco.org/index.php?page=viewproblem2&cpid=736>
+//   - Editorial: editorial.md, beside this file. Reading it there is not
+//     counted; e in the game shows it and marks the solve editorial-assisted.
+func copyStatement(src, dst, url, editorial string) error {
 	b, err := os.ReadFile(src)
 	if err != nil {
 		return err
 	}
+	var head string
 	if url != "" {
-		b = append([]byte("Problem page: <"+url+">\n\n"), b...)
+		head += "- Problem page: <" + url + ">\n"
 	}
-	return os.WriteFile(dst, b, 0o644)
+	head += "- Editorial: " + editorial + "\n\n"
+	return os.WriteFile(dst, append([]byte(head), b...), 0o644)
+}
+
+// editorialWhere says, for door d's statement.md, where its editorial is
+// and what reading it there counts for.
+func editorialWhere(d Door) string {
+	switch {
+	case d.Assets.Editorial == "":
+		return "none for this problem."
+	case d.Upsolve:
+		return "editorial.md, beside this file. Reading it there is not counted; " +
+			"e in the game shows it and marks the solve editorial-assisted."
+	}
+	return "editorial.md joins this file once you solve the door."
+}
+
+// editorialHead opens every editorial.md, saying what the file is for.
+const editorialHead = "> Beside your solution to ask about once you have solved it. Read here " +
+	"before that, it is not counted: e in the game shows it and marks the solve " +
+	"editorial-assisted.\n\n"
+
+// copyEditorial is copyTo for an editorial, under editorialHead.
+func copyEditorial(src, dst string) error {
+	b, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, append([]byte(editorialHead), b...), 0o644)
 }
 
 // Source is the open door's source file, "" between doors.

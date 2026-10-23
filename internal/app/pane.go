@@ -88,7 +88,8 @@ func (s *problemScreen) helpLines(w int) []string {
 		pairs = append(pairs, [2]string{"o", "the page on the web: figures, layout"})
 	}
 	if s.upsolve {
-		pairs = append(pairs, [2]string{"e", "the editorial"}, [2]string{"Q", "leave the upsolve"})
+		pairs = append(pairs, [2]string{"e", "the editorial: marks the solve editorial-assisted"},
+			[2]string{"Q", "leave the upsolve (solved, it stays open until then)"})
 	} else {
 		pairs = append(pairs,
 			[2]string{"?", "duck: tags, then technique"},
@@ -103,6 +104,16 @@ func (s *problemScreen) helpLines(w int) []string {
 	out = append(out, "", ui.Strong.Render("vim"))
 	for _, l := range ui.WrapN(":w samples · :Case adds your own · :Submit judges, :Submit! over failing samples · "+
 		":Debug n · :Quack · :Retreat · :q! gives up", max(w-2, 10), 0) {
+		out = append(out, "  "+ui.Muted.Render(l))
+	}
+	// Where the notes beside the source are, and when (editorialWhere).
+	folder := "statement.md, under the problem's page · editorial.md once you solve the door"
+	if s.upsolve {
+		folder = "statement.md, under the problem's page · editorial.md, from the start: " +
+			"read there it is not counted, e here marks the solve editorial-assisted"
+	}
+	out = append(out, "", ui.Strong.Render("folder"))
+	for _, l := range ui.WrapN(folder, max(w-2, 10), 0) {
 		out = append(out, "  "+ui.Muted.Render(l))
 	}
 	return out

@@ -49,6 +49,9 @@ type Door struct {
 	// ReadEditorial marks an upsolve whose editorial was opened, so the
 	// solve is recorded as editorial-assisted.
 	ReadEditorial bool
+	// Solved marks an upsolve accepted while it stays open: the solve is
+	// counted once, and a submit after it only shows its verdict.
+	Solved bool
 	// Sub, for an upsolve, is its directory under the runner's root; ""
 	// is the shared upsolve directory.
 	Sub string

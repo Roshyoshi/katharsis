@@ -525,8 +525,12 @@ func TestCrashThenUpsolveRecoversCoreDump(t *testing.T) {
 		if got := dump.Recovers(game.Independent); h.m.meta.Bank != bank+got { // RT4: 1.5x, no editorial
 			t.Errorf("bank %d, want %d + %d recovered", h.m.meta.Bank, bank, got)
 		}
+		if h.m.open == nil || !h.m.open.Solved {
+			t.Fatal("the solved upsolve did not stay open")
+		}
+		h.send(key("Q"))
 		if h.m.open != nil {
-			t.Error("upsolve door still open")
+			t.Error("upsolve door still open after Q")
 		}
 	})
 }
@@ -845,9 +849,10 @@ func TestUnsavedBootStillStarts(t *testing.T) {
 	})
 }
 
-// An accepted upsolve that could not be saved still closes its door; left
-// open, a second AC recorded the solve twice.
-func TestUnsavedUpsolveClosesTheDoor(t *testing.T) {
+// An accepted upsolve stays open, solved, saved or not, and a second AC
+// records nothing more. It once closed its door for that: left open, a
+// second AC recorded the solve twice.
+func TestUpsolveCountsOnce(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
 		h.send(screens.StartBoot{Preset: "standard"})
@@ -858,8 +863,14 @@ func TestUnsavedUpsolveClosesTheDoor(t *testing.T) {
 			t.Fatal(err)
 		}
 		h.send(submitMsg{})
-		if h.m.open != nil || !strings.Contains(h.m.View().Content, "save failed") {
-			t.Fatalf("open %+v, want the door closed and the save error", h.m.open)
+		if h.m.open == nil || !h.m.open.Solved || !strings.Contains(h.m.View().Content, "save failed") {
+			t.Fatalf("open %v, want the door open, solved, and the save error", h.m.open != nil)
+		}
+		solves, bank := len(h.m.meta.Solves), h.m.meta.Bank
+		h.send(submitMsg{})
+		if len(h.m.meta.Solves) != solves || h.m.meta.Bank != bank || !strings.Contains(view(h), "solved") {
+			t.Fatalf("a second AC: %d solves (was %d), bank %d (was %d):\n%s",
+				len(h.m.meta.Solves), solves, h.m.meta.Bank, bank, view(h))
 		}
 	})
 }
@@ -990,12 +1001,17 @@ func TestPracticeUpsolveBanksNothing(t *testing.T) {
 			t.Errorf("bank %d lifetime %d dump %+v, want %d and %d unchanged, no dump",
 				h.m.meta.Bank, h.m.meta.LifetimeBytes, h.m.meta.CoreDump, bank, lifetime)
 		}
-		if h.m.open != nil {
-			t.Error("upsolve door still open")
+		// Solved, it stays open until Q; practice then comes back to the
+		// map it was started from, not GRUB.
+		if _, ok := h.m.top().(*problemScreen); !ok || h.m.open == nil {
+			t.Fatalf("after the AC %T is on top, open %v; want the solved problem", h.m.top(), h.m.open != nil)
 		}
-		// Practice comes back to the map it was started from, not GRUB.
+		h.send(key("Q"))
+		if h.m.open != nil {
+			t.Error("upsolve door still open after Q")
+		}
 		if _, ok := h.m.top().(*rtfm.Map); !ok {
-			t.Errorf("after the AC %T is on top, want RTFM's map", h.m.top())
+			t.Errorf("after Q %T is on top, want RTFM's map", h.m.top())
 		}
 	})
 }
@@ -1114,11 +1130,11 @@ func TestUpsolveSources(t *testing.T) {
 	})
 }
 
-// A door's folder holds its statement under a link to the problem's page,
-// and its editorial once reading it changes nothing: after an AC, or as
-// the game shows it in an upsolve, or from the start of an upsolve whose
-// editorial the player already read. A door still open has none, so the
-// game sees every read that pays an upsolve as assisted (sawEditorial).
+// A door's folder holds its statement under a list of where the rest is:
+// the problem's page, then its editorial and what reading it there counts
+// for. A boot door's editorial joins it on the AC, as a timed door allows
+// none; an upsolve has it from the start, to ask about once solved, under
+// a line saying a read there is not counted.
 func TestDoorFolderNotes(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		var r *srcRunner
@@ -1127,43 +1143,23 @@ func TestDoorFolderNotes(t *testing.T) {
 			return r
 		})
 		h.m.d.Catalog = editorialCatalog{h.m.d.Catalog.(*fakeCatalog)}
-		ed := filepath.Join(r.dir, "editorial.md")
-		kept := func() bool {
-			b, err := os.ReadFile(ed)
-			return err == nil && strings.Contains(string(b), "Sort, then sweep.")
+		kept := func(dir string) bool {
+			b, err := os.ReadFile(filepath.Join(dir, "editorial.md"))
+			return err == nil && strings.HasPrefix(string(b), editorialHead) && strings.Contains(string(b), "Sort, then sweep.")
 		}
 
 		h.send(screens.StartBoot{Preset: "standard"})
-		h.enterDoor()
-		if kept() {
+		cur := h.enterDoor()
+		if kept(r.dir) {
 			t.Fatal("an open boot door's folder has its editorial")
 		}
 		h.send(submitMsg{}) // the fake judge accepts
-		if !kept() {
+		if !kept(r.dir) {
 			t.Fatal("no editorial beside the source after the AC")
 		}
 
-		if err := os.Remove(ed); err != nil {
-			t.Fatal(err)
-		}
-		var id catalog.ID
-		for _, p := range h.m.d.Catalog.All() {
-			if !h.m.onOffer(p.ID) {
-				id = p.ID
-				break
-			}
-		}
-		h.send(screens.Upsolve{Problem: id})
-		if h.m.open == nil || kept() {
-			t.Fatalf("upsolve open %v, editorial there %v before it was read", h.m.open != nil, kept())
-		}
-		h.send(screens.OpenEditorial{Problem: id})
-		if !kept() {
-			t.Fatal("the editorial read in the upsolve is not beside its source")
-		}
-
-		// The tmux runner's layout: the statement under its page's link,
-		// and the editorial for an upsolve already read.
+		// The tmux runner's layout, for a boot door and an upsolve.
+		id := cur.Door.Problem
 		a, err := h.m.d.Catalog.Fetch(context.Background(), id)
 		if err != nil {
 			t.Fatal(err)
@@ -1171,18 +1167,22 @@ func TestDoorFolderNotes(t *testing.T) {
 		p, _ := h.m.d.Catalog.Get(id)
 		p.URL = "https://usaco.org/index.php?page=viewproblem2&cpid=736"
 		tr := &TmuxRunner{Root: t.TempDir()}
-		for _, read := range []bool{false, true} {
-			dir, _, err := tr.materialize(Door{Door: game.Door{Problem: id}, Problem: p, Assets: a, Upsolve: true,
-				Sub: fmt.Sprint("read-", read), ReadEditorial: read})
+		for _, up := range []bool{false, true} {
+			d := Door{Door: game.Door{Problem: id}, Problem: p, Assets: a, Boot: 1, Upsolve: up}
+			dir, _, err := tr.materialize(d)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if b, _ := os.ReadFile(filepath.Join(dir, "statement.md")); !strings.HasPrefix(string(b), "Problem page: <"+p.URL+">\n\n# ") {
-				t.Errorf("statement.md starts %q, want the page's link above the statement", firstN(string(b), 80))
+			want := "- Problem page: <" + p.URL + ">\n- Editorial: " + editorialWhere(d) + "\n\n# "
+			if b, _ := os.ReadFile(filepath.Join(dir, "statement.md")); !strings.HasPrefix(string(b), want) {
+				t.Errorf("upsolve %v: statement.md starts %q, want %q", up, firstN(string(b), len(want)), want)
 			}
-			if _, err := os.Stat(filepath.Join(dir, "editorial.md")); (err == nil) != read {
-				t.Errorf("read %v: editorial.md there %v", read, err == nil)
+			if kept(dir) != up {
+				t.Errorf("upsolve %v: editorial.md there %v", up, kept(dir))
 			}
+		}
+		if w := editorialWhere(Door{Upsolve: true, Assets: a}); !strings.Contains(w, "not counted") {
+			t.Errorf("an upsolve's statement.md says %q of its editorial, want that a read there is not counted", w)
 		}
 	})
 }
@@ -1940,8 +1940,9 @@ func TestUpsolveBackToPausedGrub(t *testing.T) {
 			t.Fatal("upsolve did not open the problem")
 		}
 		h.send(submitMsg{})
+		h.send(key("Q")) // solved, it stays open until left
 		if _, ok := h.m.top().(*meta.Menu); !ok || !h.m.suspended() || !strings.Contains(view(h), "continue boot") {
-			t.Fatalf("after the solve: top %T, suspended %v:\n%s", h.m.top(), h.m.suspended(), view(h))
+			t.Fatalf("after the solve and Q: top %T, suspended %v:\n%s", h.m.top(), h.m.suspended(), view(h))
 		}
 	})
 }
