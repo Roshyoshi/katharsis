@@ -1,0 +1,12 @@
+# Combinatorics (Gold › Math)
+# Three lanes: binomials, stars and bars, expected value. The first two join
+# at Moo Route; expected value ends at Cow Camp.
+core  cses-1079 > cf-1462E2 > usaco-1283  # nCr from factorials, then products
+core  cses-1716 > usaco-1283             # stars and bars: spare units into gaps
+core  cses-1727 > usaco-1210             # expected max via P(max <= x)
+
+side  cses-1079 > cses-1715            # multinomial: divide out repeats
+side  cses-1079 > cf-888D > usaco-862  # derangements by PIE, then PIE on sets
+side  cf-1462E2 > cses-2419            # nCr parity from the 2s in factorials
+side  cf-1462E2 > usaco-1018           # count each group at its leftmost item
+side  cses-1716 > cf-1929F             # stars and bars, huge n and small k

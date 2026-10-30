@@ -1,0 +1,6 @@
+# Binary Search on a Sorted Array (Silver › Sorting & Searching)
+# One lane: lower/upper bound to count a range, then to find the neighbour on
+# each side of a query.
+core  usaco-666 > cf-702C > usaco-1303  # count by bounds, then both neighbours
+
+side  usaco-1303 > usaco-1377  # bound lookups per query on streets

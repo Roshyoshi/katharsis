@@ -1,24 +1,24 @@
 RTFM › Bronze › Conclusion › Additional Practice for USACO Bronze
 ────────────────────────────────────────────────────────────────────────────────
- ⚔ Additional Practice for USACO Bronze · ◆1000–1300 · Userland
- ▸ READ      the module, in the reader
-   PRACTICE  1/4 solved · near you ◆1432–1732
-                 It's All About the Base  Old Br…  Medium
-                 Drought                  Bronze   Hard
-                 Just Stalling            Bronze   Hard
-             ✓   Field Reduction          Silver   Medium
-                 Election                 CF       Very Easy   link
-                 Who's Opposite?          CF       Very Easy   link
-                 Reading Books            CSES     Easy        link
-                 Quests                   CF       Easy        link
-                 MIN-MEX Cut              CF       Easy        link  +7 more
-   TRIAL     1  Field Reduction  Medium
-             2  Drought          Hard
-             +  1 blind integration door · Userland · ◆1000–1300
-             ○  pass → ✓ only: grants no capability, Userland is open to every …
- SEE ALSO    needs nothing
+ ⚔ Additional Practice for USACO Bronze · core 1/4
+ Final tips for Bronze and additional practice problems.
+
+ ▪ READ ┬ ✓ It's All About… ─▸● Field Reduction ─ ○ Drought ────────┬ ⚔ TRIAL
+        ╰ ● Just Stalling ──────────────────────────────────────────╯
+
+ ● Field Reduction                                               Silver · Medium
+   core · open: enter starts it, untimed · leads to Drought
+   enumerate one free choice
+
+
+
+
+
+
+
+ SEE ALSO  needs nothing
 “Additional Practice for USACO Bronze” by Nathan Wang, USACO Guide
 (https://usaco.guide/bronze/bronze-conclusion), CC BY-NC-SA 4.0
 (https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
 Markdown.
- bronze-conclusion(7)         j/k move · enter go · r read · p practice · q map
+ bronze-conclusion(7)  hjkl move · enter go · n next · r read · t trial · q map

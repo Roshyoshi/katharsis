@@ -1,0 +1,13 @@
+# Greedy Algorithms with Sorting (Silver › Sorting & Searching)
+# Sort by the right key and take greedily, and match two sorted lists. They
+# join at Closest Cow Wins.
+core  cses-1629 > cses-1630 > usaco-835 > usaco-1158  # sort by the right key
+core  cses-1084 > cses-1090 > usaco-571 > usaco-1158  # pair up sorted lists
+
+side  cses-1629 > usaco-810            # stop where nothing ahead is better
+side  cses-1630 > cses-1074            # the median minimizes total moves
+side  usaco-835 > cf-762B > cf-1783C   # cheapest first, then one swap
+side  cses-1084 > usaco-1350           # stack onto towers with a gap K
+side  cses-1090 > cf-1158A             # the extremes cover everyone else
+side  usaco-571 > usaco-573 > cf-321B  # card duels: split halves, two plans
+side  usaco-1158 > usaco-990           # fix one size, take the top values

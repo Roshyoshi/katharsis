@@ -1,0 +1,9 @@
+# Custom Comparators and Coordinate Compression (Silver › Sorting & Searching)
+# Comparators in the text's order (pairs, descending, two keys), and sorted
+# events toward compression. They join at Rectangular Pasture.
+core  usaco-834 > usaco-787 > usaco-896 > usaco-1063  # pairs, desc, two keys
+core  cses-1619 > usaco-786 > cf-1000C > usaco-1063   # events, then coverage
+
+side  usaco-787 > cf-1478C                 # sort descending, peel the largest
+side  usaco-896 > usaco-1064 > usaco-967   # collisions in sorted order
+side  usaco-1063 > usaco-1015 > usaco-645  # points sorted on each axis

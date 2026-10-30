@@ -277,6 +277,7 @@ func TestTrialGiveUpAsks(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
 		loadGuide(h)
+		readyTrial(h, "prefix-sums")
 		h.send(screens.StartTrial{Module: "prefix-sums"})
 		ask := func() string {
 			req, reply := session.NewRequest(session.Command{Cmd: session.CmdGiveUp, Args: []string{session.ArgAsk}})

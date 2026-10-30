@@ -1,0 +1,17 @@
+# Simulation (Bronze › Getting Started)
+# Lanes: replay the moves, a grid kept cell by cell, events on a timeline.
+# Moves and grid meet at Mowing; it meets the timeline at Milk Measurement.
+core  usaco-891 > usaco-855 > usaco-735  # replay the moves as written
+core  usaco-735 > usaco-593              # walk a line, then a grid
+core  usaco-1491 > usaco-593             # one cell per step, answer kept
+core  usaco-593 > usaco-761              # replay, compare before and after
+core  usaco-568 > usaco-856 > usaco-761  # unroll intervals onto a timeline
+
+side  usaco-891 > usaco-760   # positions under a shuffle, undone
+side  usaco-855 > usaco-616   # wrap-around index, every door
+side  usaco-735 > usaco-526   # loop a rule until it stops
+side  usaco-1491 > usaco-831  # cell groups that must agree
+side  usaco-1491 > usaco-665  # map each cell to its source
+side  usaco-568 > usaco-917   # road segments, a range both ways
+side  usaco-856 > usaco-664   # tally into a per-letter array
+side  usaco-761 > usaco-1061  # events in time order: collisions

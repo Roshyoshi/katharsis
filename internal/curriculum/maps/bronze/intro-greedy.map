@@ -1,0 +1,10 @@
+# Introduction to Greedy Algorithms (Bronze › Additional)
+# Forced flips (runs, prefixes, grid scans) join at Cow Tipping; a second
+# lane takes the cheapest option each step, the coin problem last.
+core  usaco-1012 > usaco-1227 > usaco-689  # flip runs from the far end, 1D to 2D
+core  usaco-1467 > usaco-689              # grid scan: earlier cells force later
+core  usaco-1084 > usaco-1301 > usaco-1565  # cheapest valid option every step
+
+side  usaco-1012 > usaco-785              # diff against the target, count it
+side  usaco-1301 > usaco-1323             # each gap on its own, then F-runs
+side  usaco-1565 > usaco-832 > usaco-989  # biggest step now, if the rest fits

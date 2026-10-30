@@ -1,0 +1,3 @@
+# Offline Deletion (Advanced › Graphs)
+# One lane: DSU rollback per query, then over a segment tree on time.
+core  cf-891C > cf-1140F  # rollback per query, then per segment

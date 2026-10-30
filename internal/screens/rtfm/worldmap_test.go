@@ -346,33 +346,31 @@ func TestMapNothingHeld(t *testing.T) {
 }
 
 // Back from a practice AC (Meta refreshed under the open level), the cursor
-// keeps its row: the solved problem moves down among the solved ones, so
-// the row holds the next problem to try, and the solve shows.
+// stays on the problem, now ticked, and its card says so. Prefix Sums is
+// passed, so the path has reached Two Pointers.
 func TestMapRefreshKeepsTheLevel(t *testing.T) {
 	c := loadCurriculum(t)
-	m := rtfm.NewMap(c, fixture.Meta(), fixture.Judgeable, fixture.Lookup)
-	m.Open("two-pointers")
-	press(t, m, "enter", "p", "j")
-	lines := func() []string { return strings.Split(ansi.Strip(m.View(80, 24)), "\n") }
-	cursor := func(ls []string) int {
-		return slices.IndexFunc(ls, func(l string) bool { return strings.Contains(l, ui.G.Cursor) })
-	}
-	norm := func(s string) string { return strings.Join(strings.Fields(s), " ") }
-	ls := lines()
-	at := cursor(ls)
-	if at < 0 || at+1 >= len(ls) || !strings.Contains(ls[at], "Paired Up") {
-		t.Fatalf("p j put the cursor on %q, want Paired Up (usaco:738)", ls[max(at, 0)])
-	}
-	next := norm(ls[at+1])
 	meta := fixture.Meta()
+	meta.TrialsPassed = []string{"prefix-sums"}
+	m := rtfm.NewMap(c, meta, fixture.Judgeable, fixture.Lookup)
+	m.Open("two-pointers")
+	press(t, m, "enter", "p")
+	lines := func() []string { return strings.Split(ansi.Strip(m.View(80, 24)), "\n") }
+	cursor := func(ls []string) string {
+		i := slices.IndexFunc(ls, func(l string) bool { return strings.Contains(l, ui.G.Cursor) })
+		return ls[max(i, 0)]
+	}
+	if l := cursor(lines()); !strings.Contains(l, ui.G.Cursor+ui.G.Here+" Paired Up") {
+		t.Fatalf("p put the cursor on %q, want Paired Up (usaco:738), open", l)
+	}
 	meta.Solves = []game.Solve{{Problem: "usaco:738", Upsolve: true}}
 	m.Refresh(meta)
-	ls = lines()
-	if got := strings.TrimPrefix(norm(ls[cursor(ls)]), ui.G.Cursor+" "); got != next {
-		t.Errorf("after the solve the cursor is on %q, want the next problem %q", got, next)
+	ls := lines()
+	if l := cursor(ls); !strings.Contains(l, ui.G.Cursor+ui.G.Pass+" Paired Up") {
+		t.Errorf("after the solve the cursor is on %q, want Paired Up ticked", l)
 	}
-	if i := slices.IndexFunc(ls, func(l string) bool { return strings.Contains(l, "Paired Up") }); i < 0 || !strings.Contains(ls[i], ui.G.Pass) {
-		t.Errorf("Paired Up is not ticked:\n%s", strings.Join(ls, "\n"))
+	if v := strings.Join(ls, "\n"); !strings.Contains(v, ui.G.Pass+" solved") {
+		t.Errorf("the solve does not show:\n%s", v)
 	}
 }
 

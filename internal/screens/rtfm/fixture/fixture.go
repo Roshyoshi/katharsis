@@ -36,8 +36,8 @@ func Meta() game.Meta {
 }
 
 // Judgeable accepts USACO problems only, as the catalog does until CSES
-// test data is available (DESIGN.md "Content"); modules that lean on CSES
-// get short units, which the screens show as topped up.
+// test data is available (DESIGN.md "Content"); a map that leans on CSES
+// or Codeforces plays only its USACO problems (curriculum.Map.Playable).
 func Judgeable(id catalog.ID) bool { return id.Source() == catalog.USACO }
 
 // problems are the fixture catalog. Titles and contests are USACO's;

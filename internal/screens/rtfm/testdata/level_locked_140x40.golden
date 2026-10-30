@@ -1,0 +1,40 @@
+RTFM › Silver › Sorting & Searching › Two Pointers                                                                              ■ CAP_TWOPTR
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Two Pointers  ★★☆☆ not frequent · core 0/3 · ★ 0/1
+ □ locked: pass Prefix Sums first; nothing here plays until then
+ Iterating two monotonic pointers across an array to search for a pair of indices satisfying some condition in linear time.
+
+ ▪ READ ┬▸○ Paired Up ────────────┬ ○ Diamond Collector ───── ⚔ TRIAL
+        │                         ├ ☆ Cow Checkups
+        ╰ ○ Sleepy Cow Herding ───╯
+
+ ○ Paired Up                                                                                                             Silver · Easy ◆1350
+   core · locked: pass Prefix Sums first · leads to Diamond Collector, Cow Checkups
+   pair from both ends, sorted
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ↑ also opens: Matrix Exponentiation (Platinum) · Counting Minimums with Segment Tree (Advanced)
+ SEE ALSO  needs Introduction to Prefix Sums (Silver) ✓ · Casework (Bronze)
+“Two Pointers” by Darren Yao, Qi Wang, Ryan Chou, David Zhou, USACO Guide
+(https://usaco.guide/silver/two-pointers), CC BY-NC-SA 4.0
+(https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
+Markdown.
+ two-pointers(7)                                                  hjkl move · enter go · n next · r read · t trial · o open problem · q map

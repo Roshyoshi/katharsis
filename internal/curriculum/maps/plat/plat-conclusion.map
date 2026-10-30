@@ -1,0 +1,9 @@
+# Additional Practice for USACO Platinum (Platinum › Conclusion)
+# Two lanes, segment trees and interval DP; the tree lane ends in a DP
+# driven by a lazy tree, the interval-DP lane is its own capstone.
+core  cf-1217E > usaco-231 > cf-1304F2  # merged summaries, lazy, then a DP
+core  usaco-698                         # interval DP that also bounds values
+
+side  usaco-231 > cf-793F    # range updates past lazy tags
+side  cf-1304F2 > cf-932F    # DP sped up by a structure, on a tree
+side  usaco-698 > usaco-602  # DP over pairs of string positions

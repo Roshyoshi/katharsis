@@ -1,0 +1,11 @@
+# Bitmask DP (Gold › Dynamic Programming)
+# Two lanes, walks over a visited set and orders built one item at a time,
+# joining at Redistributing Gifts; masks over primes are stretch.
+core  cses-1690 > usaco-1209              # dp[mask][last]: paths, then cycles
+core  cses-1653 > usaco-1089 > usaco-494  # dp[mask]: add the next item
+core  usaco-494 > usaco-1209              # assign in order, every subset
+
+side  cses-1653 > usaco-515                    # dp[mask] keeps the latest time
+side  cses-1690 > usaco-1282                   # masks as light states, per move
+side  usaco-1209 > cf-1316E                    # assign in order; mask of slots
+side  usaco-1209 > cf-1043F > cf-1103D > cf-1292F  # masks over primes

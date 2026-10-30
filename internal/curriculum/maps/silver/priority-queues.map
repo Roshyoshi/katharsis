@@ -1,0 +1,9 @@
+# Priority Queues (Silver › Sorting & Searching)
+# Event simulation with a heap, and greedy sweeps where the heap hands out
+# the tightest choice. They join at Deforestation.
+core  usaco-859 > usaco-763 > usaco-1447  # heap over events; stale tops popped
+core  usaco-714 > usaco-1447              # sweep, heap gives earliest expiry
+
+side  usaco-714 > cses-1161 > cf-1805F1  # merge the smallest, then pair sums
+side  usaco-859 > cses-3152              # k rounds as a heap of k+1
+side  usaco-1447 > usaco-1451            # keep jobs, heap evicts the longest

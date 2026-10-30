@@ -3,22 +3,22 @@ RTFM › Advanced › Data Structures › Counting Minimums with Segment Tree
  Counting Minimums with Segment Tree  ☆☆☆☆ has not appeared
  Querying for the minimum and number of occurrences of minimum in a range
 
-   READ      the module, in the reader
-   PRACTICE  none the game can judge: o opens one
- ▸               Area of Rectangles     CSES     Medium      link
-                 Culture Code           CF       Easy        link
-                 Zookeepers' Gathering  mBIT     Medium      link
-                 2008 - Pyramid Base    IOI      Hard        link
-                 Strange Tree           HR       Hard        link
-                 Good Subsegments       CF       Very Hard   link
-   TRIAL     ·  no trial of its own: no problem here the game can judge; CAP_DS…
+▸▪ READ
+
+ ▪ READ  the module, in the reader
+   ·  no trial of its own: no problem here the game can judge; CAP_DS is earned…
 
 
 
 
- SEE ALSO    needs nothing
+
+
+
+
+
+ SEE ALSO  needs nothing
 “Counting Minimums with Segment Tree” by Benjamin Qi, Dustin Miao, USACO Guide
 (https://usaco.guide/adv/count-min), CC BY-NC-SA 4.0
 (https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
 Markdown.
- count-min(7)                 j/k move · enter go · r read · p practice · q map
+ count-min(7)    hjkl move · enter go · n next · r read · o usaco.guide · q map

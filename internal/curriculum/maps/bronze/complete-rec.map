@@ -1,0 +1,11 @@
+# Complete Search with Recursion (Bronze › Complete Search)
+# Three lanes in text order: subsets, permutations, backtracking. Subsets and
+# backtracking meet at Back and Forth; it and permutations end at Lineup.
+core  cses-1623 > usaco-1276  # every subset of a small set
+core  usaco-1276 > usaco-857  # branch on a choice each day
+core  cses-1624 > usaco-857   # move, recurse, undo
+core  cses-1622 > usaco-965   # permutations in lex order
+core  usaco-857 > usaco-965   # place one by one, prune bad ones
+
+side  usaco-965 > cses-3175   # lex-first order, now n = 10^6
+side  usaco-857 > usaco-1493  # bounded recursion over programs

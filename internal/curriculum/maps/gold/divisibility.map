@@ -1,0 +1,8 @@
+# Divisibility (Gold › Math)
+# Two lanes, divisors by sieve and gcd/lcm down to prime exponents, joining
+# at The Number of Pairs.
+core  cses-1713 > cses-1081 > cf-1499D           # divisors of n, multiples of d
+core  cf-1536C > cf-1349A > cses-3398 > cf-1499D  # gcd/lcm as min/max exponents
+
+side  cses-1081 > cses-1082  # d counted n/d times, blocked
+side  cf-1349A > cf-1225D    # exponents mod k, hashed

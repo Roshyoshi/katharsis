@@ -436,7 +436,7 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 			fail("trial with daemons %v offers %v doors %d", s.Daemons, s.DaemonOffers, len(s.Doors))
 		}
 		for _, d := range s.Doors {
-			if d.Problem != s.Trial.Plan[s.Biome][s.Room] || d.Blind != (s.Biome > 0) || d.Cursed || d.Mystery || d.Tier != "" {
+			if d.Problem != s.Trial.Plan[s.Biome][s.Room] || !d.Blind || d.Cursed || d.Mystery || d.Tier != "" {
 				fail("trial door %+v in biome %d room %d of plan %v", d, s.Biome, s.Room, s.Trial.Plan)
 			}
 		}
@@ -727,7 +727,7 @@ func startBoot(t testing.TB, r rules.Rules, m *game.Meta, ps []catalog.Problem, 
 // startTrial starts a learn-mode trial on a spec drawn from ps.
 func startTrial(t testing.TB, m *game.Meta, ps []catalog.Problem, f *fuzzer) *game.State {
 	t.Helper()
-	spec := fuzzSpec(f.rng, ps)
+	spec := fuzzSpec(f.rng)
 	s, _, err := game.NewTrial(rules.Trial(), m, ps, spec, f.rng.Uint64(), f.now)
 	if err != nil {
 		t.Fatalf("NewTrial(%+v): %v", spec, err)
@@ -749,18 +749,14 @@ func fuzzTrial(t testing.TB, m *game.Meta, ps []catalog.Problem, f *fuzzer, veri
 	return s, newChecker(t, s, m).play(s, m, ps, f, verify)
 }
 
-// fuzzSpec is a trial on a random topic and band, with a unit of 0 to 5 of
-// that topic's problems and sometimes an id the pool lacks.
-func fuzzSpec(rng *rand.Rand, ps []catalog.Problem) game.TrialSpec {
+// fuzzSpec is a trial on a random topic and band, aimed at 0 to 4
+// ratings around the band: fewer than the rooms spreads the rest over it.
+func fuzzSpec(rng *rand.Rand) game.TrialSpec {
 	topic := catalog.Topics[rng.IntN(len(catalog.Topics))]
 	lo := 800 + 100*rng.IntN(16)
-	spec := game.TrialSpec{Module: "m-" + topic, IntegTopic: topic, IntegBand: [2]int{lo, lo + 300}, Capability: game.CapabilityFor(topic)}
-	for range rng.IntN(6) {
-		p := ps[rng.IntN(len(ps))]
-		spec.Unit = append(spec.Unit, p.ID)
-	}
-	if rng.IntN(4) == 0 {
-		spec.Unit = append(spec.Unit, "gone:1")
+	spec := game.TrialSpec{Module: "m-" + topic, Topic: topic, Band: [2]int{lo, lo + 300}, Capability: game.CapabilityFor(topic)}
+	for range rng.IntN(5) {
+		spec.Targets = append(spec.Targets, lo-200+100*rng.IntN(8))
 	}
 	return spec
 }

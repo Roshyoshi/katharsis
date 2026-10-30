@@ -65,7 +65,7 @@ func trialClearedEnv(granted string) Env {
 	}
 	st.Unlocked = 0
 	st.Trial = &game.TrialState{
-		TrialSpec: game.TrialSpec{Module: "dp-intro", Title: "Introduction to DP", IntegTopic: "dp", Capability: "CAP_DP"},
+		TrialSpec: game.TrialSpec{Module: "dp-intro", Title: "Introduction to DP", Topic: "dp", Capability: "CAP_DP"},
 		Passed:    true, Granted: granted,
 	}
 	return e
@@ -75,7 +75,7 @@ func trialClearedEnv(granted string) Env {
 func trialCrashEnv(cause game.Outcome) Env {
 	e := crashEnv(cause)
 	e.Meta.CoreDump = nil
-	e.State.Trial = &game.TrialState{TrialSpec: game.TrialSpec{Module: "dp-intro", IntegTopic: "dp", Capability: "CAP_DP"}}
+	e.State.Trial = &game.TrialState{TrialSpec: game.TrialSpec{Module: "dp-intro", Topic: "dp", Capability: "CAP_DP"}}
 	return e
 }
 

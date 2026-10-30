@@ -1,0 +1,8 @@
+# Hashing (Gold › Additional Topics)
+# One lane from substring hashes to sets of them, ending at Lights Out; the
+# stack, all-lengths and DP variants hang off as side.
+core  cses-1733 > usaco-741 > usaco-599  # substring hashes, then sets of them
+
+side  cses-1733 > usaco-529  # the same hash on a shrinking stack
+side  cses-1733 > cf-1056E   # try each length, verify by hash
+side  usaco-741 > cf-822E    # binary-search a length: hashed LCP

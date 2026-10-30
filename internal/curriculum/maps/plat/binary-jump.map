@@ -1,0 +1,14 @@
+# Binary Jumping (Platinum › Trees)
+# Two lanes, jump tables and LCA, joining at Running Away From the Barn;
+# side chains carry path aggregates, cycles, and extra edges as paths.
+core  cses-1687 > cses-1750 > cses-1191 > usaco-213  # jumps, then farthest reach
+core  cses-1688 > cses-1135 > usaco-576 > usaco-213  # LCA, then diff path adds
+
+side  cses-1750 > cses-1160                # distances through graph cycles
+side  cses-1191 > cf-1142B                 # built next pointers, jump n-1
+side  cses-1191 > usaco-648                # segment ends composed by doubling
+side  cses-1135 > cf-609E > cf-1843F2 > cf-1140G  # path aggregates per jump
+side  cses-1135 > usaco-817                # diameter ends, distances by LCA
+side  cses-1135 > cf-1051F > cf-1000G      # LCA path sums plus a precomputation
+side  usaco-576 > usaco-842 > usaco-901    # extra edges as paths: min, overlap
+side  usaco-213 > usaco-866                # jump to a child, mark subtrees

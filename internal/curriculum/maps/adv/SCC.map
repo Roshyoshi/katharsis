@@ -1,0 +1,5 @@
+# Strongly Connected Components (Advanced › Graphs)
+# Two lanes as the text orders them: DP on the condensation, then 2-SAT.
+core  cses-1686 > cf-894E  # condense; DP with SCC weights
+core  cf-894E > usaco-516  # DP both ways across one reversal
+core  cf-1475F > cf-776D   # XOR constraints as 2-SAT

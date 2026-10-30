@@ -66,13 +66,13 @@ func TestTrial(t *testing.T) {
 		t.Errorf("WithDefaults changed Trial():\n%+v\n%+v", got, r)
 	}
 	if r.Name != "trial" || r.OnExpire != rules.ExpireOvertime || !r.ShowFailingInput || r.DoorsPerRoom != 1 ||
-		len(r.Biomes) != 2 || r.Biomes[0].Rooms != 2 || r.Biomes[1].Rooms != 1 || r.TrialLostRooms != 1 ||
+		len(r.Biomes) != 1 || r.Biomes[0].Rooms != 3 || !r.BlindAll || r.TrialLostRooms != 1 ||
 		r.BlindChance != 0 || r.MysteryChance != 0 || r.CursedChance != 0 || r.Ascensions != nil {
 		t.Errorf("Trial() = %+v", r)
 	}
 	// Trial() is a copy: changing it leaves Standard() alone.
 	r.Biomes[0].Rooms = 9
-	if rules.Trial().Biomes[0].Rooms != 2 || len(rules.Legacy().Biomes) != 3 {
+	if rules.Trial().Biomes[0].Rooms != 3 || len(rules.Legacy().Biomes) != 3 {
 		t.Error("Trial() shares its biomes")
 	}
 }

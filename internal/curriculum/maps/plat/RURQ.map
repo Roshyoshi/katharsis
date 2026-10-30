@@ -1,0 +1,7 @@
+# Range Update Range Query (Platinum › Range Queries)
+# Two lanes, range add with sums (BITs, then Euler-tour subtrees) and lazy
+# add with maxima, joining at Counting Haybales (add, min and sum).
+core  cses-1736 > usaco-973 > usaco-578              # BIT add/sum; subtrees
+core  cses-1735 > cses-2166 > usaco-418 > usaco-578  # lazy tags; add with max
+
+side  usaco-973 > cf-838B  # Euler-tour lazy add, queried for min

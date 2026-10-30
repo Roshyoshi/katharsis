@@ -1,0 +1,6 @@
+# Longest Increasing Subsequence (Gold › Dynamic Programming)
+# One lane, LIS and then covering by monotone chains; Cow Jog, the same
+# cover over band, is stretch.
+core  cses-1145 > cses-1073  # LIS, then fewest towers by patience piles
+
+side  cses-1073 > usaco-496  # fewest lanes: Dilworth on end positions

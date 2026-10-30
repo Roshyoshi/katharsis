@@ -32,6 +32,30 @@ func TestCatalogID(t *testing.T) {
 	}
 }
 
+// TestRefID takes a Codeforces entry's problem from its URL, which the
+// guide gets right where its uniqueIds do not.
+func TestRefID(t *testing.T) {
+	for _, tc := range []struct {
+		id, url string
+		want    catalog.ID
+	}{
+		{"cf-1398C", "https://codeforces.com/contest/1398/problem/C", "cf:1398C"},
+		{"cf-1741F2", "https://codeforces.com/problemset/problem/1741/F2", "cf:1741F2"},
+		{"cf-1520D", "https://codeforces.com/contest/1520/problem/D/", "cf:1520D"},
+		{"cf-949D", "https://codeforces.com/contest/1981/problem/D", "cf:1981D"},
+		{"cf-ThreeOccurrences", "https://codeforces.com/contest/1418/problem/G", "cf:1418G"},
+		{"cf-104520H", "https://codeforces.com/gym/104520/problem/H", ""},
+		{"cf-2A", "https://codeforces.com/edu/course/2/lesson/2/2/practice/contest/269103/problem/A", ""},
+		{"cf-2R", "https://codeforces.com/group/R2SERIff4f/contest/213171/problem/R", ""},
+		{"usaco-615", "http://www.usaco.org/index.php?page=viewproblem2&cpid=615", "usaco:615"},
+		{"cses-1094", "https://cses.fi/problemset/task/1094", "cses:1094"},
+	} {
+		if got := refID(tc.id, tc.url); got != tc.want {
+			t.Errorf("refID(%q, %q) = %q, want %q", tc.id, tc.url, got, tc.want)
+		}
+	}
+}
+
 func TestParseProblems(t *testing.T) {
 	src := `{
   "MODULE_ID": "prefix-sums",

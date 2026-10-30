@@ -1,0 +1,6 @@
+# Counting Minimums with Segment Tree (Advanced › Data Structures)
+# One short lane from the swept rectangles to a (min, count) DP; the Very
+# Hard history-sum variant hangs off the sample.
+core  cses-1741 > cf-1197E  # lazy (min, cnt) sweep, then in a DP
+
+side  cses-1741 > cf-997E  # count zeros of max-min-len, summed

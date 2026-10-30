@@ -17,7 +17,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "choosing-lang",
@@ -31,7 +37,13 @@
 								"intro-cp"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "resources-learning-to-code",
@@ -45,7 +57,13 @@
 								"choosing-lang"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "running-code-online",
@@ -59,7 +77,13 @@
 								"resources-learning-to-code"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "data-types",
@@ -73,7 +97,13 @@
 								"running-code-online"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "input-output",
@@ -90,7 +120,13 @@
 							"Playable": [
 								"cses:1068",
 								"usaco:567"
-							]
+							],
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "expected-knowledge",
@@ -110,7 +146,13 @@
 								"usaco:987",
 								"usaco:939",
 								"usaco:591"
-							]
+							],
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -127,7 +169,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "practicing",
@@ -139,7 +187,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "contest-strategy",
@@ -151,7 +205,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "resources-cp",
@@ -163,7 +223,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "contests",
@@ -175,7 +241,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "olympiads",
@@ -187,7 +259,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -206,7 +284,13 @@
 								"running-code-online"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "cpp-command",
@@ -220,7 +304,13 @@
 								"running-code-locally"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "fast-io",
@@ -236,7 +326,13 @@
 							"Warps": null,
 							"Playable": [
 								"usaco:674"
-							]
+							],
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "basic-debugging",
@@ -250,7 +346,13 @@
 								"debugging-checklist"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "debugging-cpp",
@@ -264,7 +366,13 @@
 								"basic-debugging"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "generic-code",
@@ -278,7 +386,13 @@
 								"running-code-locally"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "lambda-funcs",
@@ -290,7 +404,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -309,7 +429,13 @@
 							"Warps": null,
 							"Playable": [
 								"usaco:591"
-							]
+							],
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "usaco-monthlies",
@@ -321,7 +447,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "usaco-camp",
@@ -333,7 +465,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "resources-usa",
@@ -345,7 +483,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						}
 					]
 				}
@@ -368,7 +512,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "intro-ds",
@@ -380,7 +530,13 @@
 							"Frequency": -1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "simulation",
@@ -409,7 +565,176 @@
 								"usaco:526",
 								"usaco:761",
 								"usaco:1061"
-							]
+							],
+							"Map": {
+								"Module": "simulation",
+								"Nodes": [
+									{
+										"Problem": "usaco-891",
+										"ID": "usaco:891",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "replay the moves as written"
+									},
+									{
+										"Problem": "usaco-855",
+										"ID": "usaco:855",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "replay the moves as written"
+									},
+									{
+										"Problem": "usaco-735",
+										"ID": "usaco:735",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "replay the moves as written"
+									},
+									{
+										"Problem": "usaco-1491",
+										"ID": "usaco:1491",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "one cell per step, answer kept"
+									},
+									{
+										"Problem": "usaco-593",
+										"ID": "usaco:593",
+										"Core": true,
+										"Parents": [
+											2,
+											3
+										],
+										"Lane": 1,
+										"Note": "walk a line, then a grid"
+									},
+									{
+										"Problem": "usaco-568",
+										"ID": "usaco:568",
+										"Core": true,
+										"Parents": null,
+										"Lane": 4,
+										"Note": "unroll intervals onto a timeline"
+									},
+									{
+										"Problem": "usaco-856",
+										"ID": "usaco:856",
+										"Core": true,
+										"Parents": [
+											5
+										],
+										"Lane": 4,
+										"Note": "unroll intervals onto a timeline"
+									},
+									{
+										"Problem": "usaco-761",
+										"ID": "usaco:761",
+										"Core": true,
+										"Parents": [
+											4,
+											6
+										],
+										"Lane": 3,
+										"Note": "replay, compare before and after"
+									},
+									{
+										"Problem": "usaco-760",
+										"ID": "usaco:760",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "positions under a shuffle, undone"
+									},
+									{
+										"Problem": "usaco-616",
+										"ID": "usaco:616",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "wrap-around index, every door"
+									},
+									{
+										"Problem": "usaco-526",
+										"ID": "usaco:526",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 0,
+										"Note": "loop a rule until it stops"
+									},
+									{
+										"Problem": "usaco-831",
+										"ID": "usaco:831",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 2,
+										"Note": "cell groups that must agree"
+									},
+									{
+										"Problem": "usaco-665",
+										"ID": "usaco:665",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 2,
+										"Note": "map each cell to its source"
+									},
+									{
+										"Problem": "usaco-917",
+										"ID": "usaco:917",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 4,
+										"Note": "road segments, a range both ways"
+									},
+									{
+										"Problem": "usaco-664",
+										"ID": "usaco:664",
+										"Core": false,
+										"Parents": [
+											6
+										],
+										"Lane": 4,
+										"Note": "tally into a per-letter array"
+									},
+									{
+										"Problem": "usaco-1061",
+										"ID": "usaco:1061",
+										"Core": false,
+										"Parents": [
+											7
+										],
+										"Lane": 3,
+										"Note": "events in time order: collisions"
+									}
+								],
+								"Lanes": [
+									"replay the moves as written",
+									"walk a line, then a grid",
+									"one cell per step, answer kept",
+									"replay, compare before and after",
+									"unroll intervals onto a timeline"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -446,7 +771,196 @@
 								"usaco:640",
 								"usaco:619",
 								"usaco:1324"
-							]
+							],
+							"Map": {
+								"Module": "intro-complete",
+								"Nodes": [
+									{
+										"Problem": "usaco-615",
+										"ID": "usaco:615",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "try every value the answer can take"
+									},
+									{
+										"Problem": "usaco-1203",
+										"ID": "usaco:1203",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "try every value the answer can take"
+									},
+									{
+										"Problem": "usaco-1228",
+										"ID": "usaco:1228",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "try every value the answer can take"
+									},
+									{
+										"Problem": "usaco-639",
+										"ID": "usaco:639",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "every pair of items, checked"
+									},
+									{
+										"Problem": "usaco-963",
+										"ID": "usaco:963",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 2,
+										"Note": "every pair of items, checked"
+									},
+									{
+										"Problem": "usaco-712",
+										"ID": "usaco:712",
+										"Core": true,
+										"Parents": [
+											4
+										],
+										"Lane": 2,
+										"Note": "every pair of items, checked"
+									},
+									{
+										"Problem": "usaco-617",
+										"ID": "usaco:617",
+										"Core": true,
+										"Parents": [
+											2,
+											5
+										],
+										"Lane": 1,
+										"Note": "candidates come from the input"
+									},
+									{
+										"Problem": "usaco-784",
+										"ID": "usaco:784",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 2,
+										"Note": "assume each one is the culprit"
+									},
+									{
+										"Problem": "usaco-569",
+										"ID": "usaco:569",
+										"Core": false,
+										"Parents": [
+											7
+										],
+										"Lane": 2,
+										"Note": "the bad milk, then patient zero"
+									},
+									{
+										"Problem": "usaco-1037",
+										"ID": "usaco:1037",
+										"Core": false,
+										"Parents": [
+											8
+										],
+										"Lane": 2,
+										"Note": "the bad milk, then patient zero"
+									},
+									{
+										"Problem": "usaco-1060",
+										"ID": "usaco:1060",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 2,
+										"Note": "index pairs as ranges, reversed"
+									},
+									{
+										"Problem": "usaco-1469",
+										"ID": "usaco:1469",
+										"Core": false,
+										"Parents": [
+											10
+										],
+										"Lane": 2,
+										"Note": "index pairs as ranges, reversed"
+									},
+									{
+										"Problem": "usaco-1011",
+										"ID": "usaco:1011",
+										"Core": false,
+										"Parents": [
+											4
+										],
+										"Lane": 2,
+										"Note": "pairs grow to triples"
+									},
+									{
+										"Problem": "usaco-736",
+										"ID": "usaco:736",
+										"Core": false,
+										"Parents": [
+											4
+										],
+										"Lane": 2,
+										"Note": "a column must split every row"
+									},
+									{
+										"Problem": "usaco-739",
+										"ID": "usaco:739",
+										"Core": false,
+										"Parents": [
+											13
+										],
+										"Lane": 2,
+										"Note": "a column must split every row"
+									},
+									{
+										"Problem": "usaco-893",
+										"ID": "usaco:893",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 2,
+										"Note": "every pair, test their overlap"
+									},
+									{
+										"Problem": "usaco-640",
+										"ID": "usaco:640",
+										"Core": false,
+										"Parents": [
+											15
+										],
+										"Lane": 2,
+										"Note": "every pair, test their overlap"
+									},
+									{
+										"Problem": "usaco-619",
+										"ID": "usaco:619",
+										"Core": false,
+										"Parents": [
+											6
+										],
+										"Lane": 1,
+										"Note": "same fences, N = 1000, a sweep"
+									}
+								],
+								"Lanes": [
+									"try every value the answer can take",
+									"candidates come from the input",
+									"every pair of items, checked",
+									"every pair of fence lines"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "complete-rec",
@@ -469,7 +983,96 @@
 								"usaco:857",
 								"cses:3175",
 								"usaco:1493"
-							]
+							],
+							"Map": {
+								"Module": "complete-rec",
+								"Nodes": [
+									{
+										"Problem": "cses-1623",
+										"ID": "cses:1623",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "every subset of a small set"
+									},
+									{
+										"Problem": "usaco-1276",
+										"ID": "usaco:1276",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "every subset of a small set"
+									},
+									{
+										"Problem": "cses-1624",
+										"ID": "cses:1624",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "move, recurse, undo"
+									},
+									{
+										"Problem": "usaco-857",
+										"ID": "usaco:857",
+										"Core": true,
+										"Parents": [
+											1,
+											2
+										],
+										"Lane": 1,
+										"Note": "branch on a choice each day"
+									},
+									{
+										"Problem": "cses-1622",
+										"ID": "cses:1622",
+										"Core": true,
+										"Parents": null,
+										"Lane": 3,
+										"Note": "permutations in lex order"
+									},
+									{
+										"Problem": "usaco-965",
+										"ID": "usaco:965",
+										"Core": true,
+										"Parents": [
+											3,
+											4
+										],
+										"Lane": 3,
+										"Note": "permutations in lex order"
+									},
+									{
+										"Problem": "cses-3175",
+										"ID": "cses:3175",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 3,
+										"Note": "lex-first order, now n = 10^6"
+									},
+									{
+										"Problem": "usaco-1493",
+										"ID": "usaco:1493",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "bounded recursion over programs"
+									}
+								],
+								"Lanes": [
+									"every subset of a small set",
+									"branch on a choice each day",
+									"move, recurse, undo",
+									"permutations in lex order",
+									"place one by one, prune bad ones"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -493,7 +1096,55 @@
 								"usaco:713",
 								"usaco:1251",
 								"usaco:592"
-							]
+							],
+							"Map": {
+								"Module": "intro-sorting",
+								"Nodes": [
+									{
+										"Problem": "cses-1621",
+										"ID": "cses:1621",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "after sorting, neighbours touch"
+									},
+									{
+										"Problem": "usaco-1251",
+										"ID": "usaco:1251",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "sort, then try each element"
+									},
+									{
+										"Problem": "usaco-592",
+										"ID": "usaco:592",
+										"Core": true,
+										"Parents": [
+											0,
+											1
+										],
+										"Lane": 0,
+										"Note": "after sorting, neighbours touch"
+									},
+									{
+										"Problem": "usaco-713",
+										"ID": "usaco:713",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 2,
+										"Note": "sort pairs, replay in that order"
+									}
+								],
+								"Lanes": [
+									"after sorting, neighbours touch",
+									"sort, then try each element",
+									"sort pairs, replay in that order"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "intro-sets",
@@ -517,7 +1168,95 @@
 								"usaco:1468",
 								"usaco:667",
 								"usaco:1445"
-							]
+							],
+							"Map": {
+								"Module": "intro-sets",
+								"Nodes": [
+									{
+										"Problem": "cses-1621",
+										"ID": "cses:1621",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "a set keeps one of each key"
+									},
+									{
+										"Problem": "usaco-831",
+										"ID": "usaco:831",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "a set keeps one of each key"
+									},
+									{
+										"Problem": "usaco-964",
+										"ID": "usaco:964",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "a set keeps one of each key"
+									},
+									{
+										"Problem": "usaco-1107",
+										"ID": "usaco:1107",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "a map holds a value per name"
+									},
+									{
+										"Problem": "usaco-687",
+										"ID": "usaco:687",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 2,
+										"Note": "a map holds a value per name"
+									},
+									{
+										"Problem": "usaco-1445",
+										"ID": "usaco:1445",
+										"Core": true,
+										"Parents": [
+											2,
+											4
+										],
+										"Lane": 1,
+										"Note": "every window becomes a key"
+									},
+									{
+										"Problem": "usaco-1468",
+										"ID": "usaco:1468",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "first and last sight of a value"
+									},
+									{
+										"Problem": "usaco-667",
+										"ID": "usaco:667",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 1,
+										"Note": "tally string keys, find mirror"
+									}
+								],
+								"Lanes": [
+									"a set keeps one of each key",
+									"every window becomes a key",
+									"a map holds a value per name"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -541,7 +1280,74 @@
 								"usaco:1515",
 								"usaco:1275",
 								"usaco:1088"
-							]
+							],
+							"Map": {
+								"Module": "casework",
+								"Nodes": [
+									{
+										"Problem": "usaco-915",
+										"ID": "usaco:915",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "gaps, then the line's extremes"
+									},
+									{
+										"Problem": "usaco-567",
+										"ID": "usaco:567",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "segment lengths, case by placement"
+									},
+									{
+										"Problem": "usaco-1035",
+										"ID": "usaco:1035",
+										"Core": true,
+										"Parents": [
+											0,
+											1
+										],
+										"Lane": 0,
+										"Note": "gaps, then the line's extremes"
+									},
+									{
+										"Problem": "usaco-1515",
+										"ID": "usaco:1515",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "count pairs as A-or-B, once each"
+									},
+									{
+										"Problem": "usaco-1275",
+										"ID": "usaco:1275",
+										"Core": true,
+										"Parents": [
+											2,
+											3
+										],
+										"Lane": 0,
+										"Note": "gaps, then the line's extremes"
+									},
+									{
+										"Problem": "usaco-1088",
+										"ID": "usaco:1088",
+										"Core": false,
+										"Parents": [
+											4
+										],
+										"Lane": 0,
+										"Note": "one of two global cases must hold"
+									}
+								],
+								"Lanes": [
+									"gaps, then the line's extremes",
+									"segment lengths, case by placement",
+									"count pairs as A-or-B, once each"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "intro-greedy",
@@ -565,7 +1371,123 @@
 								"usaco:1227",
 								"usaco:1323",
 								"usaco:989"
-							]
+							],
+							"Map": {
+								"Module": "intro-greedy",
+								"Nodes": [
+									{
+										"Problem": "usaco-1012",
+										"ID": "usaco:1012",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "flip runs from the far end, 1D to 2D"
+									},
+									{
+										"Problem": "usaco-1227",
+										"ID": "usaco:1227",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "flip runs from the far end, 1D to 2D"
+									},
+									{
+										"Problem": "usaco-1467",
+										"ID": "usaco:1467",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "grid scan: earlier cells force later"
+									},
+									{
+										"Problem": "usaco-689",
+										"ID": "usaco:689",
+										"Core": true,
+										"Parents": [
+											1,
+											2
+										],
+										"Lane": 0,
+										"Note": "flip runs from the far end, 1D to 2D"
+									},
+									{
+										"Problem": "usaco-1084",
+										"ID": "usaco:1084",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "cheapest valid option every step"
+									},
+									{
+										"Problem": "usaco-1301",
+										"ID": "usaco:1301",
+										"Core": true,
+										"Parents": [
+											4
+										],
+										"Lane": 2,
+										"Note": "cheapest valid option every step"
+									},
+									{
+										"Problem": "usaco-1565",
+										"ID": "usaco:1565",
+										"Core": true,
+										"Parents": [
+											5
+										],
+										"Lane": 2,
+										"Note": "cheapest valid option every step"
+									},
+									{
+										"Problem": "usaco-785",
+										"ID": "usaco:785",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "diff against the target, count it"
+									},
+									{
+										"Problem": "usaco-1323",
+										"ID": "usaco:1323",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 2,
+										"Note": "each gap on its own, then F-runs"
+									},
+									{
+										"Problem": "usaco-832",
+										"ID": "usaco:832",
+										"Core": false,
+										"Parents": [
+											6
+										],
+										"Lane": 2,
+										"Note": "biggest step now, if the rest fits"
+									},
+									{
+										"Problem": "usaco-989",
+										"ID": "usaco:989",
+										"Core": false,
+										"Parents": [
+											9
+										],
+										"Lane": 2,
+										"Note": "biggest step now, if the rest fits"
+									}
+								],
+								"Lanes": [
+									"flip runs from the far end, 1D to 2D",
+									"grid scan: earlier cells force later",
+									"cheapest valid option every step"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "intro-graphs",
@@ -587,7 +1509,84 @@
 								"usaco:1013",
 								"usaco:941",
 								"usaco:833"
-							]
+							],
+							"Map": {
+								"Module": "intro-graphs",
+								"Nodes": [
+									{
+										"Problem": "usaco-940",
+										"ID": "usaco:940",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "degrees pick out the special nodes"
+									},
+									{
+										"Problem": "usaco-808",
+										"ID": "usaco:808",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "degrees pick out the special nodes"
+									},
+									{
+										"Problem": "usaco-916",
+										"ID": "usaco:916",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "pair constraints, smallest answer"
+									},
+									{
+										"Problem": "usaco-965",
+										"ID": "usaco:965",
+										"Core": true,
+										"Parents": [
+											1,
+											2
+										],
+										"Lane": 0,
+										"Note": "degrees pick out the special nodes"
+									},
+									{
+										"Problem": "usaco-1013",
+										"ID": "usaco:1013",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "functional graph to permutation"
+									},
+									{
+										"Problem": "usaco-833",
+										"ID": "usaco:833",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "parent pointers, then is it a tree"
+									},
+									{
+										"Problem": "usaco-941",
+										"ID": "usaco:941",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 0,
+										"Note": "parent pointers, then is it a tree"
+									}
+								],
+								"Lanes": [
+									"degrees pick out the special nodes",
+									"pair constraints, smallest answer"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "rect-geo",
@@ -607,7 +1606,64 @@
 								"usaco:663",
 								"usaco:783",
 								"usaco:737"
-							]
+							],
+							"Map": {
+								"Module": "rect-geo",
+								"Nodes": [
+									{
+										"Problem": "usaco-567",
+										"ID": "usaco:567",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "overlap in 1D, in 2D, what is left"
+									},
+									{
+										"Problem": "usaco-759",
+										"ID": "usaco:759",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "overlap in 1D, in 2D, what is left"
+									},
+									{
+										"Problem": "usaco-663",
+										"ID": "usaco:663",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "bounding box of the visible part"
+									},
+									{
+										"Problem": "usaco-783",
+										"ID": "usaco:783",
+										"Core": true,
+										"Parents": [
+											1,
+											2
+										],
+										"Lane": 0,
+										"Note": "overlap in 1D, in 2D, what is left"
+									},
+									{
+										"Problem": "usaco-737",
+										"ID": "usaco:737",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "one bounding box per colour"
+									}
+								],
+								"Lanes": [
+									"overlap in 1D, in 2D, what is left",
+									"bounding box of the visible part"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "ad-hoc",
@@ -626,7 +1682,64 @@
 								"usaco:892",
 								"usaco:809",
 								"usaco:1540"
-							]
+							],
+							"Map": {
+								"Module": "ad-hoc",
+								"Nodes": [
+									{
+										"Problem": "usaco-1204",
+										"ID": "usaco:1204",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "who must move, read from the end"
+									},
+									{
+										"Problem": "usaco-892",
+										"ID": "usaco:892",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "who must move, read from the end"
+									},
+									{
+										"Problem": "usaco-1539",
+										"ID": "usaco:1539",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "unknowns filled worst and best"
+									},
+									{
+										"Problem": "usaco-809",
+										"ID": "usaco:809",
+										"Core": true,
+										"Parents": [
+											1,
+											2
+										],
+										"Lane": 0,
+										"Note": "who must move, read from the end"
+									},
+									{
+										"Problem": "usaco-1541",
+										"ID": "usaco:1541",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "one-way changes: keep a running max"
+									}
+								],
+								"Lanes": [
+									"who must move, read from the end",
+									"unknowns filled worst and best"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -651,7 +1764,75 @@
 								"cses:3399",
 								"usaco:1181",
 								"usaco:1085"
-							]
+							],
+							"Map": {
+								"Module": "bronze-conclusion",
+								"Nodes": [
+									{
+										"Problem": "usaco-509",
+										"ID": "usaco:509",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "enumerate one free choice"
+									},
+									{
+										"Problem": "usaco-642",
+										"ID": "usaco:642",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "enumerate one free choice"
+									},
+									{
+										"Problem": "cses-1631",
+										"ID": "cses:1631",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "the max binds; even it out"
+									},
+									{
+										"Problem": "usaco-1181",
+										"ID": "usaco:1181",
+										"Core": true,
+										"Parents": [
+											1,
+											2
+										],
+										"Lane": 0,
+										"Note": "enumerate one free choice"
+									},
+									{
+										"Problem": "cses-2431",
+										"ID": "cses:2431",
+										"Core": true,
+										"Parents": null,
+										"Lane": 3,
+										"Note": "count choices, don't list"
+									},
+									{
+										"Problem": "usaco-1085",
+										"ID": "usaco:1085",
+										"Core": true,
+										"Parents": [
+											2,
+											4
+										],
+										"Lane": 2,
+										"Note": "sort; biggest picks first"
+									}
+								],
+								"Lanes": [
+									"enumerate one free choice",
+									"the max binds; even it out",
+									"sort; biggest picks first",
+									"count choices, don't list"
+								],
+								"Skip": null
+							}
 						}
 					]
 				}
@@ -681,7 +1862,73 @@
 								"cses:1661",
 								"usaco:595",
 								"usaco:1471"
-							]
+							],
+							"Map": {
+								"Module": "prefix-sums",
+								"Nodes": [
+									{
+										"Problem": "usaco-572",
+										"ID": "usaco:572",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "range sums, then splits"
+									},
+									{
+										"Problem": "usaco-691",
+										"ID": "usaco:691",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "range sums, then splits"
+									},
+									{
+										"Problem": "usaco-1471",
+										"ID": "usaco:1471",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "range sums, then splits"
+									},
+									{
+										"Problem": "cses-1661",
+										"ID": "cses:1661",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "match an earlier prefix"
+									},
+									{
+										"Problem": "usaco-595",
+										"ID": "usaco:595",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "match an earlier prefix"
+									},
+									{
+										"Problem": "cses-1662",
+										"ID": "cses:1662",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "same count, prefixes mod n"
+									}
+								],
+								"Lanes": [
+									"range sums, then splits",
+									"match an earlier prefix"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "more-prefix-sums",
@@ -703,7 +1950,84 @@
 								"usaco:744",
 								"usaco:416",
 								"usaco:1063"
-							]
+							],
+							"Map": {
+								"Module": "more-prefix-sums",
+								"Nodes": [
+									{
+										"Problem": "cses-1643",
+										"ID": "cses:1643",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "prefix minus running minimum"
+									},
+									{
+										"Problem": "cses-1652",
+										"ID": "cses:1652",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "2D prefix over a full grid"
+									},
+									{
+										"Problem": "usaco-919",
+										"ID": "usaco:919",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "2D prefix over a full grid"
+									},
+									{
+										"Problem": "usaco-416",
+										"ID": "usaco:416",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "rotate 45°, diamonds become squares"
+									},
+									{
+										"Problem": "usaco-1063",
+										"ID": "usaco:1063",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "2D prefix on compressed points"
+									},
+									{
+										"Problem": "usaco-923",
+										"ID": "usaco:923",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "same barn, best two rectangles"
+									},
+									{
+										"Problem": "usaco-744",
+										"ID": "usaco:744",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "2D coverage counts, which came last"
+									}
+								],
+								"Lanes": [
+									"prefix minus running minimum",
+									"2D prefix over a full grid",
+									"coverage counts, then in 2D"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -730,7 +2054,63 @@
 								"usaco:643",
 								"usaco:918",
 								"usaco:1470"
-							]
+							],
+							"Map": {
+								"Module": "two-pointers",
+								"Nodes": [
+									{
+										"Problem": "usaco-738",
+										"ID": "usaco:738",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "pair from both ends, sorted"
+									},
+									{
+										"Problem": "usaco-918",
+										"ID": "usaco:918",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "windows on sorted positions"
+									},
+									{
+										"Problem": "usaco-643",
+										"ID": "usaco:643",
+										"Core": true,
+										"Parents": [
+											0,
+											1
+										],
+										"Lane": 0,
+										"Note": "pair from both ends, sorted"
+									},
+									{
+										"Problem": "cses-1660",
+										"ID": "cses:1660",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "window sums, then type counts"
+									},
+									{
+										"Problem": "usaco-1470",
+										"ID": "usaco:1470",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "a pointer per sorted list, then counts"
+									}
+								],
+								"Lanes": [
+									"pair from both ends, sorted",
+									"windows on sorted positions",
+									"window sums, then type counts"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "binary-search-sorted-array",
@@ -748,7 +2128,44 @@
 								"usaco:666",
 								"usaco:1303",
 								"usaco:1377"
-							]
+							],
+							"Map": {
+								"Module": "binary-search-sorted-array",
+								"Nodes": [
+									{
+										"Problem": "usaco-666",
+										"ID": "usaco:666",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "count by bounds, then both neighbours"
+									},
+									{
+										"Problem": "usaco-1303",
+										"ID": "usaco:1303",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "count by bounds, then both neighbours"
+									},
+									{
+										"Problem": "usaco-1377",
+										"ID": "usaco:1377",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "bound lookups per query on streets"
+									}
+								],
+								"Lanes": [
+									"count by bounds, then both neighbours"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "binary-search",
@@ -773,7 +2190,114 @@
 								"cses:1620",
 								"cses:1085",
 								"cses:2422"
-							]
+							],
+							"Map": {
+								"Module": "binary-search",
+								"Nodes": [
+									{
+										"Problem": "cses-1620",
+										"ID": "cses:1620",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "check by count; floor sums"
+									},
+									{
+										"Problem": "cses-2422",
+										"ID": "cses:2422",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "check by count; floor sums"
+									},
+									{
+										"Problem": "usaco-594",
+										"ID": "usaco:594",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "greedy cover, then batched"
+									},
+									{
+										"Problem": "cses-1085",
+										"ID": "cses:1085",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "greedy cut into \u003c= K groups"
+									},
+									{
+										"Problem": "usaco-858",
+										"ID": "usaco:858",
+										"Core": true,
+										"Parents": [
+											2,
+											3
+										],
+										"Lane": 1,
+										"Note": "greedy cover, then batched"
+									},
+									{
+										"Problem": "usaco-991",
+										"ID": "usaco:991",
+										"Core": true,
+										"Parents": [
+											1,
+											4
+										],
+										"Lane": 0,
+										"Note": "check by count; floor sums"
+									},
+									{
+										"Problem": "usaco-1302",
+										"ID": "usaco:1302",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "check intersects per-friend ranges"
+									},
+									{
+										"Problem": "usaco-1038",
+										"ID": "usaco:1038",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "spread out: maximize the min gap"
+									},
+									{
+										"Problem": "usaco-597",
+										"ID": "usaco:597",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "same cows, real radius, chains"
+									},
+									{
+										"Problem": "usaco-690",
+										"ID": "usaco:690",
+										"Core": false,
+										"Parents": [
+											4
+										],
+										"Lane": 1,
+										"Note": "check simulated with a heap"
+									}
+								],
+								"Lanes": [
+									"check by count; floor sums",
+									"greedy cover, then batched",
+									"greedy cut into \u003c= K groups"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "sorting-custom",
@@ -799,7 +2323,114 @@
 								"usaco:1015",
 								"usaco:834",
 								"usaco:967"
-							]
+							],
+							"Map": {
+								"Module": "sorting-custom",
+								"Nodes": [
+									{
+										"Problem": "usaco-834",
+										"ID": "usaco:834",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "pairs, desc, two keys"
+									},
+									{
+										"Problem": "usaco-787",
+										"ID": "usaco:787",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "pairs, desc, two keys"
+									},
+									{
+										"Problem": "usaco-896",
+										"ID": "usaco:896",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "pairs, desc, two keys"
+									},
+									{
+										"Problem": "cses-1619",
+										"ID": "cses:1619",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "events, then coverage"
+									},
+									{
+										"Problem": "usaco-786",
+										"ID": "usaco:786",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "events, then coverage"
+									},
+									{
+										"Problem": "usaco-1063",
+										"ID": "usaco:1063",
+										"Core": true,
+										"Parents": [
+											2,
+											4
+										],
+										"Lane": 0,
+										"Note": "pairs, desc, two keys"
+									},
+									{
+										"Problem": "usaco-1064",
+										"ID": "usaco:1064",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 0,
+										"Note": "collisions in sorted order"
+									},
+									{
+										"Problem": "usaco-967",
+										"ID": "usaco:967",
+										"Core": false,
+										"Parents": [
+											6
+										],
+										"Lane": 0,
+										"Note": "collisions in sorted order"
+									},
+									{
+										"Problem": "usaco-1015",
+										"ID": "usaco:1015",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 0,
+										"Note": "points sorted on each axis"
+									},
+									{
+										"Problem": "usaco-645",
+										"ID": "usaco:645",
+										"Core": false,
+										"Parents": [
+											8
+										],
+										"Lane": 0,
+										"Note": "points sorted on each axis"
+									}
+								],
+								"Lanes": [
+									"pairs, desc, two keys",
+									"events, then coverage"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "greedy-sorting",
@@ -827,7 +2458,134 @@
 								"usaco:1350",
 								"usaco:990",
 								"usaco:1158"
-							]
+							],
+							"Map": {
+								"Module": "greedy-sorting",
+								"Nodes": [
+									{
+										"Problem": "cses-1629",
+										"ID": "cses:1629",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "sort by the right key"
+									},
+									{
+										"Problem": "cses-1630",
+										"ID": "cses:1630",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "sort by the right key"
+									},
+									{
+										"Problem": "usaco-835",
+										"ID": "usaco:835",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "sort by the right key"
+									},
+									{
+										"Problem": "cses-1084",
+										"ID": "cses:1084",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "pair up sorted lists"
+									},
+									{
+										"Problem": "cses-1090",
+										"ID": "cses:1090",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "pair up sorted lists"
+									},
+									{
+										"Problem": "usaco-571",
+										"ID": "usaco:571",
+										"Core": true,
+										"Parents": [
+											4
+										],
+										"Lane": 1,
+										"Note": "pair up sorted lists"
+									},
+									{
+										"Problem": "usaco-1158",
+										"ID": "usaco:1158",
+										"Core": true,
+										"Parents": [
+											2,
+											5
+										],
+										"Lane": 0,
+										"Note": "sort by the right key"
+									},
+									{
+										"Problem": "usaco-810",
+										"ID": "usaco:810",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "stop where nothing ahead is better"
+									},
+									{
+										"Problem": "cses-1074",
+										"ID": "cses:1074",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "the median minimizes total moves"
+									},
+									{
+										"Problem": "usaco-1350",
+										"ID": "usaco:1350",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "stack onto towers with a gap K"
+									},
+									{
+										"Problem": "usaco-573",
+										"ID": "usaco:573",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 1,
+										"Note": "card duels: split halves, two plans"
+									},
+									{
+										"Problem": "usaco-990",
+										"ID": "usaco:990",
+										"Core": false,
+										"Parents": [
+											6
+										],
+										"Lane": 0,
+										"Note": "fix one size, take the top values"
+									}
+								],
+								"Lanes": [
+									"sort by the right key",
+									"pair up sorted lists"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "priority-queues",
@@ -851,7 +2609,84 @@
 								"cses:1161",
 								"usaco:1447",
 								"usaco:1451"
-							]
+							],
+							"Map": {
+								"Module": "priority-queues",
+								"Nodes": [
+									{
+										"Problem": "usaco-859",
+										"ID": "usaco:859",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "heap over events; stale tops popped"
+									},
+									{
+										"Problem": "usaco-763",
+										"ID": "usaco:763",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "heap over events; stale tops popped"
+									},
+									{
+										"Problem": "usaco-714",
+										"ID": "usaco:714",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "sweep, heap gives earliest expiry"
+									},
+									{
+										"Problem": "usaco-1447",
+										"ID": "usaco:1447",
+										"Core": true,
+										"Parents": [
+											1,
+											2
+										],
+										"Lane": 0,
+										"Note": "heap over events; stale tops popped"
+									},
+									{
+										"Problem": "cses-1161",
+										"ID": "cses:1161",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "merge the smallest, then pair sums"
+									},
+									{
+										"Problem": "cses-3152",
+										"ID": "cses:3152",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "k rounds as a heap of k+1"
+									},
+									{
+										"Problem": "usaco-1451",
+										"ID": "usaco:1451",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 0,
+										"Note": "keep jobs, heap evicts the longest"
+									}
+								],
+								"Lanes": [
+									"heap over events; stale tops popped",
+									"sweep, heap gives earliest expiry"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -889,7 +2724,106 @@
 								"usaco:1184",
 								"cses:1668",
 								"usaco:920"
-							]
+							],
+							"Map": {
+								"Module": "graph-traversal",
+								"Nodes": [
+									{
+										"Problem": "usaco-944",
+										"ID": "usaco:944",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "label components, then as a check"
+									},
+									{
+										"Problem": "usaco-644",
+										"ID": "usaco:644",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "label components, then as a check"
+									},
+									{
+										"Problem": "usaco-668",
+										"ID": "usaco:668",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "edges by a threshold; search it"
+									},
+									{
+										"Problem": "usaco-669",
+										"ID": "usaco:669",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "edges by a threshold; search it"
+									},
+									{
+										"Problem": "usaco-992",
+										"ID": "usaco:992",
+										"Core": true,
+										"Parents": [
+											1,
+											3
+										],
+										"Lane": 0,
+										"Note": "label components, then as a check"
+									},
+									{
+										"Problem": "usaco-920",
+										"ID": "usaco:920",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 2,
+										"Note": "two-colour, then every component"
+									},
+									{
+										"Problem": "usaco-1206",
+										"ID": "usaco:1206",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "DFS from every vertex, now mutual"
+									},
+									{
+										"Problem": "usaco-1304",
+										"ID": "usaco:1304",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "directed search, each flight once"
+									},
+									{
+										"Problem": "usaco-1159",
+										"ID": "usaco:1159",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "components plus a sorted structure"
+									}
+								],
+								"Lanes": [
+									"label components, then as a check",
+									"edges by a threshold; search it",
+									"two-colour, then every component",
+									"count components, two ways each"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "flood-fill",
@@ -918,7 +2852,156 @@
 								"usaco:1448",
 								"usaco:1134",
 								"usaco:836"
-							]
+							],
+							"Map": {
+								"Module": "flood-fill",
+								"Nodes": [
+									{
+										"Problem": "cses-1192",
+										"ID": "cses:1192",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "count, measure, wall"
+									},
+									{
+										"Problem": "usaco-895",
+										"ID": "usaco:895",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "count, measure, wall"
+									},
+									{
+										"Problem": "usaco-716",
+										"ID": "usaco:716",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "count, measure, wall"
+									},
+									{
+										"Problem": "usaco-380",
+										"ID": "usaco:380",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 1,
+										"Note": "fill in an outer search"
+									},
+									{
+										"Problem": "usaco-740",
+										"ID": "usaco:740",
+										"Core": true,
+										"Parents": [
+											2,
+											3
+										],
+										"Lane": 0,
+										"Note": "count, measure, wall"
+									},
+									{
+										"Problem": "usaco-860",
+										"ID": "usaco:860",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "component sizes, remove, repeat"
+									},
+									{
+										"Problem": "usaco-596",
+										"ID": "usaco:596",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 0,
+										"Note": "fences cut the grid into regions"
+									},
+									{
+										"Problem": "usaco-836",
+										"ID": "usaco:836",
+										"Core": false,
+										"Parents": [
+											4
+										],
+										"Lane": 0,
+										"Note": "regions of two colours at once"
+									},
+									{
+										"Problem": "usaco-570",
+										"ID": "usaco:570",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "the fill grows over time"
+									},
+									{
+										"Problem": "usaco-1110",
+										"ID": "usaco:1110",
+										"Core": false,
+										"Parents": [
+											8
+										],
+										"Lane": 0,
+										"Note": "the fill grows over time"
+									},
+									{
+										"Problem": "usaco-1448",
+										"ID": "usaco:1448",
+										"Core": false,
+										"Parents": [
+											9
+										],
+										"Lane": 0,
+										"Note": "the fill grows over time"
+									},
+									{
+										"Problem": "usaco-620",
+										"ID": "usaco:620",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "fill states, not cells"
+									},
+									{
+										"Problem": "usaco-811",
+										"ID": "usaco:811",
+										"Core": false,
+										"Parents": [
+											11
+										],
+										"Lane": 0,
+										"Note": "fill states, not cells"
+									},
+									{
+										"Problem": "usaco-1134",
+										"ID": "usaco:1134",
+										"Core": false,
+										"Parents": [
+											12
+										],
+										"Lane": 0,
+										"Note": "fill states, not cells"
+									}
+								],
+								"Lanes": [
+									"count, measure, wall",
+									"fill in an outer search"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "intro-tree",
@@ -947,7 +3030,124 @@
 								"usaco:1520",
 								"usaco:1016",
 								"cses:2179"
-							]
+							],
+							"Map": {
+								"Module": "intro-tree",
+								"Nodes": [
+									{
+										"Problem": "cses-1674",
+										"ID": "cses:1674",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "sizes up, then push answers down"
+									},
+									{
+										"Problem": "cses-1131",
+										"ID": "cses:1131",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "diameter, farthest, sum of all"
+									},
+									{
+										"Problem": "cses-1132",
+										"ID": "cses:1132",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "diameter, farthest, sum of all"
+									},
+									{
+										"Problem": "cses-1133",
+										"ID": "cses:1133",
+										"Core": true,
+										"Parents": [
+											0,
+											2
+										],
+										"Lane": 0,
+										"Note": "sizes up, then push answers down"
+									},
+									{
+										"Problem": "usaco-968",
+										"ID": "usaco:968",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "walk only allowed edges, per query"
+									},
+									{
+										"Problem": "usaco-788",
+										"ID": "usaco:788",
+										"Core": true,
+										"Parents": [
+											4
+										],
+										"Lane": 2,
+										"Note": "walk only allowed edges, per query"
+									},
+									{
+										"Problem": "usaco-1520",
+										"ID": "usaco:1520",
+										"Core": true,
+										"Parents": [
+											3,
+											5
+										],
+										"Lane": 0,
+										"Note": "sizes up, then push answers down"
+									},
+									{
+										"Problem": "usaco-1062",
+										"ID": "usaco:1062",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "answer from each node's degree"
+									},
+									{
+										"Problem": "usaco-894",
+										"ID": "usaco:894",
+										"Core": false,
+										"Parents": [
+											7
+										],
+										"Lane": 0,
+										"Note": "answer from each node's degree"
+									},
+									{
+										"Problem": "usaco-833",
+										"ID": "usaco:833",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "walk the parent chain to the LCA"
+									},
+									{
+										"Problem": "usaco-1016",
+										"ID": "usaco:1016",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "depth parity splits the tree"
+									}
+								],
+								"Lanes": [
+									"sizes up, then push answers down",
+									"diameter, farthest, sum of all",
+									"walk only allowed edges, per query"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "func-graphs",
@@ -966,7 +3166,54 @@
 								"cses:1751",
 								"usaco:1230",
 								"usaco:284"
-							]
+							],
+							"Map": {
+								"Module": "func-graphs",
+								"Nodes": [
+									{
+										"Problem": "usaco-1230",
+										"ID": "usaco:1230",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "find each component's cycle"
+									},
+									{
+										"Problem": "usaco-764",
+										"ID": "usaco:764",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "which nodes lie on a cycle"
+									},
+									{
+										"Problem": "cses-1751",
+										"ID": "cses:1751",
+										"Core": true,
+										"Parents": [
+											0,
+											1
+										],
+										"Lane": 0,
+										"Note": "find each component's cycle"
+									},
+									{
+										"Problem": "usaco-284",
+										"ID": "usaco:284",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 0,
+										"Note": "k steps: tail, then mod the cycle"
+									}
+								],
+								"Lanes": [
+									"find each component's cycle",
+									"which nodes lie on a cycle"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -989,7 +3236,62 @@
 								"cses:2185",
 								"usaco:1518",
 								"usaco:1544"
-							]
+							],
+							"Map": {
+								"Module": "intro-bitwise",
+								"Nodes": [
+									{
+										"Problem": "usaco-1182",
+										"ID": "usaco:1182",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "binary digits, bits independent"
+									},
+									{
+										"Problem": "usaco-1518",
+										"ID": "usaco:1518",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "XOR cancels: pairs, prefix, window"
+									},
+									{
+										"Problem": "usaco-1544",
+										"ID": "usaco:1544",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "XOR cancels: pairs, prefix, window"
+									},
+									{
+										"Problem": "usaco-1327",
+										"ID": "usaco:1327",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "a team as a mask, XOR to flip"
+									},
+									{
+										"Problem": "cses-2185",
+										"ID": "cses:2185",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 2,
+										"Note": "every subset a mask, PIE by parity"
+									}
+								],
+								"Lanes": [
+									"binary digits, bits independent",
+									"XOR cancels: pairs, prefix, window",
+									"a team as a mask, XOR to flip"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -1014,7 +3316,83 @@
 								"usaco:419",
 								"usaco:1112",
 								"usaco:624"
-							]
+							],
+							"Map": {
+								"Module": "silver-conclusion",
+								"Nodes": [
+									{
+										"Problem": "cses-1650",
+										"ID": "cses:1650",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "prefix sums: 1D, 2D, sorted"
+									},
+									{
+										"Problem": "usaco-1112",
+										"ID": "usaco:1112",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "prefix sums: 1D, 2D, sorted"
+									},
+									{
+										"Problem": "usaco-1255",
+										"ID": "usaco:1255",
+										"Core": false,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "monotone formulas, by parity"
+									},
+									{
+										"Problem": "usaco-419",
+										"ID": "usaco:419",
+										"Core": false,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "binary search, harder checks"
+									},
+									{
+										"Problem": "usaco-624",
+										"ID": "usaco:624",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "binary search, harder checks"
+									},
+									{
+										"Problem": "cses-3411",
+										"ID": "cses:3411",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "Manhattan via prefix sums"
+									},
+									{
+										"Problem": "cses-3410",
+										"ID": "cses:3410",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 0,
+										"Note": "Manhattan via prefix sums"
+									}
+								],
+								"Lanes": [
+									"prefix sums: 1D, 2D, sorted",
+									"binary search the answer",
+									"sorted order vs. positions",
+									"count forced cuts and joins"
+								],
+								"Skip": null
+							}
 						}
 					]
 				}
@@ -1042,7 +3420,53 @@
 								"cses:3398",
 								"cses:1081",
 								"cses:1082"
-							]
+							],
+							"Map": {
+								"Module": "divisibility",
+								"Nodes": [
+									{
+										"Problem": "cses-1713",
+										"ID": "cses:1713",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "divisors of n, multiples of d"
+									},
+									{
+										"Problem": "cses-1081",
+										"ID": "cses:1081",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "divisors of n, multiples of d"
+									},
+									{
+										"Problem": "cses-3398",
+										"ID": "cses:3398",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "gcd/lcm as min/max exponents"
+									},
+									{
+										"Problem": "cses-1082",
+										"ID": "cses:1082",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "d counted n/d times, blocked"
+									}
+								],
+								"Lanes": [
+									"divisors of n, multiples of d",
+									"gcd/lcm as min/max exponents"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "modular",
@@ -1061,7 +3485,56 @@
 								"cses:1712",
 								"cses:2182",
 								"usaco:1498"
-							]
+							],
+							"Map": {
+								"Module": "modular",
+								"Nodes": [
+									{
+										"Problem": "cses-1095",
+										"ID": "cses:1095",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "fast power; exponents reduce mod p-1"
+									},
+									{
+										"Problem": "cses-1712",
+										"ID": "cses:1712",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "fast power; exponents reduce mod p-1"
+									},
+									{
+										"Problem": "cses-2182",
+										"ID": "cses:2182",
+										"Core": true,
+										"Parents": [
+											0,
+											1
+										],
+										"Lane": 0,
+										"Note": "fast power; exponents reduce mod p-1"
+									},
+									{
+										"Problem": "usaco-1498",
+										"ID": "usaco:1498",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 0,
+										"Note": "geometric sums of powers, on bit runs"
+									}
+								],
+								"Lanes": [
+									"fast power; exponents reduce mod p-1",
+									"inverse as a^(p-2): fractions mod p"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "combo",
@@ -1086,7 +3559,103 @@
 								"usaco:862",
 								"usaco:1018",
 								"usaco:1210"
-							]
+							],
+							"Map": {
+								"Module": "combo",
+								"Nodes": [
+									{
+										"Problem": "cses-1079",
+										"ID": "cses:1079",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "nCr from factorials, then products"
+									},
+									{
+										"Problem": "cses-1716",
+										"ID": "cses:1716",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "stars and bars: spare units into gaps"
+									},
+									{
+										"Problem": "usaco-1283",
+										"ID": "usaco:1283",
+										"Core": true,
+										"Parents": [
+											0,
+											1
+										],
+										"Lane": 0,
+										"Note": "nCr from factorials, then products"
+									},
+									{
+										"Problem": "cses-1727",
+										"ID": "cses:1727",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "expected max via P(max \u003c= x)"
+									},
+									{
+										"Problem": "usaco-1210",
+										"ID": "usaco:1210",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 2,
+										"Note": "expected max via P(max \u003c= x)"
+									},
+									{
+										"Problem": "cses-1715",
+										"ID": "cses:1715",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "multinomial: divide out repeats"
+									},
+									{
+										"Problem": "usaco-862",
+										"ID": "usaco:862",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "derangements by PIE, then PIE on sets"
+									},
+									{
+										"Problem": "cses-2419",
+										"ID": "cses:2419",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "nCr parity from the 2s in factorials"
+									},
+									{
+										"Problem": "usaco-1018",
+										"ID": "usaco:1018",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "count each group at its leftmost item"
+									}
+								],
+								"Lanes": [
+									"nCr from factorials, then products",
+									"stars and bars: spare units into gaps",
+									"expected max via P(max \u003c= x)"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -1119,7 +3688,136 @@
 								"usaco:791",
 								"usaco:1066",
 								"usaco:1450"
-							]
+							],
+							"Map": {
+								"Module": "intro-dp",
+								"Nodes": [
+									{
+										"Problem": "usaco-993",
+										"ID": "usaco:993",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "state remembers turn, city, switches"
+									},
+									{
+										"Problem": "usaco-694",
+										"ID": "usaco:694",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "state remembers turn, city, switches"
+									},
+									{
+										"Problem": "usaco-945",
+										"ID": "usaco:945",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "pick the last segment; k of them"
+									},
+									{
+										"Problem": "usaco-863",
+										"ID": "usaco:863",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 2,
+										"Note": "pick the last segment; k of them"
+									},
+									{
+										"Problem": "usaco-622",
+										"ID": "usaco:622",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 2,
+										"Note": "pick the last segment; k of them"
+									},
+									{
+										"Problem": "usaco-815",
+										"ID": "usaco:815",
+										"Core": true,
+										"Parents": [
+											1,
+											4
+										],
+										"Lane": 1,
+										"Note": "a budget of changes in the state"
+									},
+									{
+										"Problem": "usaco-1185",
+										"ID": "usaco:1185",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "count states; prefix-sum the moves"
+									},
+									{
+										"Problem": "usaco-673",
+										"ID": "usaco:673",
+										"Core": false,
+										"Parents": [
+											6
+										],
+										"Lane": 0,
+										"Note": "count states; prefix-sum the moves"
+									},
+									{
+										"Problem": "usaco-1450",
+										"ID": "usaco:1450",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 2,
+										"Note": "count by last segment"
+									},
+									{
+										"Problem": "usaco-1066",
+										"ID": "usaco:1066",
+										"Core": false,
+										"Parents": [
+											8
+										],
+										"Lane": 2,
+										"Note": "count by last segment"
+									},
+									{
+										"Problem": "usaco-791",
+										"ID": "usaco:791",
+										"Core": false,
+										"Parents": [
+											9
+										],
+										"Lane": 2,
+										"Note": "count by last segment"
+									},
+									{
+										"Problem": "usaco-971",
+										"ID": "usaco:971",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 1,
+										"Note": "streaks of K or more; costs from APSP"
+									}
+								],
+								"Lanes": [
+									"state remembers turn, city, switches",
+									"a budget of changes in the state",
+									"pick the last segment; k of them",
+									"last segment plus a change budget"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "knapsack",
@@ -1149,7 +3847,166 @@
 								"usaco:897",
 								"usaco:1043",
 								"usaco:1045"
-							]
+							],
+							"Map": {
+								"Module": "knapsack",
+								"Nodes": [
+									{
+										"Problem": "cses-1633",
+										"ID": "cses:1633",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "count fills: ordered, then unordered"
+									},
+									{
+										"Problem": "cses-1635",
+										"ID": "cses:1635",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "count fills: ordered, then unordered"
+									},
+									{
+										"Problem": "cses-1636",
+										"ID": "cses:1636",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "count fills: ordered, then unordered"
+									},
+									{
+										"Problem": "cses-1093",
+										"ID": "cses:1093",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "each item once; hit a weight target"
+									},
+									{
+										"Problem": "cses-1634",
+										"ID": "cses:1634",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "best fill, 0/1 items, reachable sums"
+									},
+									{
+										"Problem": "cses-1158",
+										"ID": "cses:1158",
+										"Core": true,
+										"Parents": [
+											4
+										],
+										"Lane": 2,
+										"Note": "best fill, 0/1 items, reachable sums"
+									},
+									{
+										"Problem": "cses-1745",
+										"ID": "cses:1745",
+										"Core": true,
+										"Parents": [
+											5
+										],
+										"Lane": 2,
+										"Note": "best fill, 0/1 items, reachable sums"
+									},
+									{
+										"Problem": "usaco-839",
+										"ID": "usaco:839",
+										"Core": true,
+										"Parents": [
+											3,
+											6
+										],
+										"Lane": 1,
+										"Note": "each item once; hit a weight target"
+									},
+									{
+										"Problem": "usaco-1257",
+										"ID": "usaco:1257",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 2,
+										"Note": "0/1 with two currencies, sorted"
+									},
+									{
+										"Problem": "usaco-574",
+										"ID": "usaco:574",
+										"Core": false,
+										"Parents": [
+											6
+										],
+										"Lane": 2,
+										"Note": "reachable sums with an extra dimension"
+									},
+									{
+										"Problem": "usaco-897",
+										"ID": "usaco:897",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "ordered fills per rhyme class, powered"
+									},
+									{
+										"Problem": "usaco-1043",
+										"ID": "usaco:1043",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "each prime once; sum the LCMs"
+									},
+									{
+										"Problem": "usaco-1045",
+										"ID": "usaco:1045",
+										"Core": false,
+										"Parents": [
+											11
+										],
+										"Lane": 1,
+										"Note": "each prime once; sum the LCMs"
+									},
+									{
+										"Problem": "cses-1665",
+										"ID": "cses:1665",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "count splits; open teams in the state"
+									},
+									{
+										"Problem": "usaco-925",
+										"ID": "usaco:925",
+										"Core": false,
+										"Parents": [
+											7
+										],
+										"Lane": 1,
+										"Note": "capped capacity, counted per tree"
+									}
+								],
+								"Lanes": [
+									"count fills: ordered, then unordered",
+									"each item once; hit a weight target",
+									"best fill, 0/1 items, reachable sums",
+									"0/1 weights capped at W, best ratio"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "paths-grids",
@@ -1174,7 +4031,115 @@
 								"usaco:265",
 								"usaco:553",
 								"usaco:1234"
-							]
+							],
+							"Map": {
+								"Module": "paths-grids",
+								"Nodes": [
+									{
+										"Problem": "cses-1638",
+										"ID": "cses:1638",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "count paths through a grid"
+									},
+									{
+										"Problem": "cses-1746",
+										"ID": "cses:1746",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "count paths through a grid"
+									},
+									{
+										"Problem": "cses-1639",
+										"ID": "cses:1639",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "dp over prefixes of two sequences"
+									},
+									{
+										"Problem": "usaco-718",
+										"ID": "usaco:718",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "dp over prefixes of two sequences"
+									},
+									{
+										"Problem": "usaco-598",
+										"ID": "usaco:598",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "dp over prefixes of two sequences"
+									},
+									{
+										"Problem": "usaco-670",
+										"ID": "usaco:670",
+										"Core": true,
+										"Parents": [
+											4
+										],
+										"Lane": 2,
+										"Note": "interleave two lists; who moved last"
+									},
+									{
+										"Problem": "usaco-1234",
+										"ID": "usaco:1234",
+										"Core": true,
+										"Parents": [
+											1,
+											5
+										],
+										"Lane": 0,
+										"Note": "count paths through a grid"
+									},
+									{
+										"Problem": "cses-3359",
+										"ID": "cses:3359",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "sweep the grid by anti-diagonals"
+									},
+									{
+										"Problem": "usaco-553",
+										"ID": "usaco:553",
+										"Core": false,
+										"Parents": [
+											7
+										],
+										"Lane": 0,
+										"Note": "sweep the grid by anti-diagonals"
+									},
+									{
+										"Problem": "usaco-265",
+										"ID": "usaco:265",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 2,
+										"Note": "progress each way, and which end"
+									}
+								],
+								"Lanes": [
+									"count paths through a grid",
+									"dp over prefixes of two sequences",
+									"interleave two lists; who moved last"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "lis",
@@ -1192,7 +4157,44 @@
 								"cses:1145",
 								"cses:1073",
 								"usaco:496"
-							]
+							],
+							"Map": {
+								"Module": "lis",
+								"Nodes": [
+									{
+										"Problem": "cses-1145",
+										"ID": "cses:1145",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "LIS, then fewest towers by patience piles"
+									},
+									{
+										"Problem": "cses-1073",
+										"ID": "cses:1073",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "LIS, then fewest towers by patience piles"
+									},
+									{
+										"Problem": "usaco-496",
+										"ID": "usaco:496",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "fewest lanes: Dilworth on end positions"
+									}
+								],
+								"Lanes": [
+									"LIS, then fewest towers by patience piles"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "dp-bitmasks",
@@ -1215,7 +4217,85 @@
 								"cses:1653",
 								"usaco:1282",
 								"usaco:1209"
-							]
+							],
+							"Map": {
+								"Module": "dp-bitmasks",
+								"Nodes": [
+									{
+										"Problem": "cses-1690",
+										"ID": "cses:1690",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "dp[mask][last]: paths, then cycles"
+									},
+									{
+										"Problem": "cses-1653",
+										"ID": "cses:1653",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "dp[mask]: add the next item"
+									},
+									{
+										"Problem": "usaco-1089",
+										"ID": "usaco:1089",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "dp[mask]: add the next item"
+									},
+									{
+										"Problem": "usaco-494",
+										"ID": "usaco:494",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "dp[mask]: add the next item"
+									},
+									{
+										"Problem": "usaco-1209",
+										"ID": "usaco:1209",
+										"Core": true,
+										"Parents": [
+											0,
+											3
+										],
+										"Lane": 0,
+										"Note": "dp[mask][last]: paths, then cycles"
+									},
+									{
+										"Problem": "usaco-515",
+										"ID": "usaco:515",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "dp[mask] keeps the latest time"
+									},
+									{
+										"Problem": "usaco-1282",
+										"ID": "usaco:1282",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "masks as light states, per move"
+									}
+								],
+								"Lanes": [
+									"dp[mask][last]: paths, then cycles",
+									"dp[mask]: add the next item",
+									"assign in order, every subset"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "dp-ranges",
@@ -1234,7 +4314,54 @@
 								"usaco:647",
 								"cses:1080",
 								"usaco:972"
-							]
+							],
+							"Map": {
+								"Module": "dp-ranges",
+								"Nodes": [
+									{
+										"Problem": "usaco-1114",
+										"ID": "usaco:1114",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "equal ends act together; pivot on k"
+									},
+									{
+										"Problem": "usaco-647",
+										"ID": "usaco:647",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "split [l,r] at k, merge the halves"
+									},
+									{
+										"Problem": "usaco-972",
+										"ID": "usaco:972",
+										"Core": true,
+										"Parents": [
+											0,
+											1
+										],
+										"Lane": 0,
+										"Note": "equal ends act together; pivot on k"
+									},
+									{
+										"Problem": "cses-1080",
+										"ID": "cses:1080",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "pair the ends; count removal orders"
+									}
+								],
+								"Lanes": [
+									"equal ends act together; pivot on k",
+									"split [l,r] at k, merge the halves"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "digit-dp",
@@ -1253,7 +4380,54 @@
 								"cses:2220",
 								"usaco:1307",
 								"usaco:1115"
-							]
+							],
+							"Map": {
+								"Module": "digit-dp",
+								"Nodes": [
+									{
+										"Problem": "usaco-435",
+										"ID": "usaco:435",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "tally digits under a tight prefix"
+									},
+									{
+										"Problem": "cses-2220",
+										"ID": "cses:2220",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "last digit in the state, tight prefix"
+									},
+									{
+										"Problem": "usaco-1307",
+										"ID": "usaco:1307",
+										"Core": true,
+										"Parents": [
+											0,
+											1
+										],
+										"Lane": 0,
+										"Note": "tally digits under a tight prefix"
+									},
+									{
+										"Problem": "usaco-1115",
+										"ID": "usaco:1115",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 0,
+										"Note": "two numbers' digits in step, with carries"
+									}
+								],
+								"Lanes": [
+									"tally digits under a tight prefix",
+									"last digit in the state, tight prefix"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -1285,7 +4459,94 @@
 								"cses:1670",
 								"usaco:1065",
 								"usaco:765"
-							]
+							],
+							"Map": {
+								"Module": "unweighted-shortest-paths",
+								"Nodes": [
+									{
+										"Problem": "usaco-491",
+										"ID": "usaco:491",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "BFS from several sources at once"
+									},
+									{
+										"Problem": "usaco-790",
+										"ID": "usaco:790",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "BFS from several sources at once"
+									},
+									{
+										"Problem": "usaco-620",
+										"ID": "usaco:620",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "build the graph; visit groups once"
+									},
+									{
+										"Problem": "usaco-671",
+										"ID": "usaco:671",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "build the graph; visit groups once"
+									},
+									{
+										"Problem": "usaco-765",
+										"ID": "usaco:765",
+										"Core": true,
+										"Parents": [
+											1,
+											3
+										],
+										"Lane": 0,
+										"Note": "BFS from several sources at once"
+									},
+									{
+										"Problem": "cses-1707",
+										"ID": "cses:1707",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "BFS from every node; close cycles"
+									},
+									{
+										"Problem": "cses-1670",
+										"ID": "cses:1670",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "states are grids; encode them"
+									},
+									{
+										"Problem": "usaco-1065",
+										"ID": "usaco:1065",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "distance to rocks, then BFS in time"
+									}
+								],
+								"Lanes": [
+									"BFS from several sources at once",
+									"build the graph; visit groups once"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "dsu",
@@ -1312,7 +4573,136 @@
 								"usaco:384",
 								"usaco:1042",
 								"usaco:950"
-							]
+							],
+							"Map": {
+								"Module": "dsu",
+								"Nodes": [
+									{
+										"Problem": "cses-1676",
+										"ID": "cses:1676",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "unions in weight order"
+									},
+									{
+										"Problem": "usaco-992",
+										"ID": "usaco:992",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "unions in weight order"
+									},
+									{
+										"Problem": "usaco-789",
+										"ID": "usaco:789",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "unions in weight order"
+									},
+									{
+										"Problem": "usaco-646",
+										"ID": "usaco:646",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 1,
+										"Note": "deletions run backwards"
+									},
+									{
+										"Problem": "usaco-1474",
+										"ID": "usaco:1474",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "deletions run backwards"
+									},
+									{
+										"Problem": "usaco-1259",
+										"ID": "usaco:1259",
+										"Core": true,
+										"Parents": [
+											2,
+											4
+										],
+										"Lane": 0,
+										"Note": "unions in weight order"
+									},
+									{
+										"Problem": "usaco-669",
+										"ID": "usaco:669",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "stop at size N, N²/2, T"
+									},
+									{
+										"Problem": "usaco-245",
+										"ID": "usaco:245",
+										"Core": false,
+										"Parents": [
+											6
+										],
+										"Lane": 0,
+										"Note": "stop at size N, N²/2, T"
+									},
+									{
+										"Problem": "usaco-384",
+										"ID": "usaco:384",
+										"Core": false,
+										"Parents": [
+											7
+										],
+										"Lane": 0,
+										"Note": "stop at size N, N²/2, T"
+									},
+									{
+										"Problem": "usaco-950",
+										"ID": "usaco:950",
+										"Core": false,
+										"Parents": [
+											7
+										],
+										"Lane": 0,
+										"Note": "rising cells; count holes"
+									},
+									{
+										"Problem": "cses-2101",
+										"ID": "cses:2101",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 0,
+										"Note": "merge small into large"
+									},
+									{
+										"Problem": "usaco-1042",
+										"ID": "usaco:1042",
+										"Core": false,
+										"Parents": [
+											10
+										],
+										"Lane": 0,
+										"Note": "merge small into large"
+									}
+								],
+								"Lanes": [
+									"unions in weight order",
+									"deletions run backwards"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "toposort",
@@ -1335,7 +4725,55 @@
 								"usaco:1017",
 								"usaco:838",
 								"cses:1757"
-							]
+							],
+							"Map": {
+								"Module": "toposort",
+								"Nodes": [
+									{
+										"Problem": "cses-1681",
+										"ID": "cses:1681",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "DP in topological order: count, max"
+									},
+									{
+										"Problem": "usaco-1017",
+										"ID": "usaco:1017",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "DP in topological order: count, max"
+									},
+									{
+										"Problem": "usaco-838",
+										"ID": "usaco:838",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "detect cycles; pick the order by heap"
+									},
+									{
+										"Problem": "cses-1757",
+										"ID": "cses:1757",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "detect cycles; pick the order by heap"
+									}
+								],
+								"Lanes": [
+									"DP in topological order: count, max",
+									"detect cycles; pick the order by heap"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "shortest-paths",
@@ -1361,7 +4799,125 @@
 								"cses:1196",
 								"cses:1672",
 								"usaco:971"
-							]
+							],
+							"Map": {
+								"Module": "shortest-paths",
+								"Nodes": [
+									{
+										"Problem": "cses-1672",
+										"ID": "cses:1672",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "Floyd on letters, then DP"
+									},
+									{
+										"Problem": "usaco-971",
+										"ID": "usaco:971",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "Floyd on letters, then DP"
+									},
+									{
+										"Problem": "cses-1671",
+										"ID": "cses:1671",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "price an edit from the ends"
+									},
+									{
+										"Problem": "cses-1195",
+										"ID": "cses:1195",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "price an edit from the ends"
+									},
+									{
+										"Problem": "usaco-861",
+										"ID": "usaco:861",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "price an edit from the ends"
+									},
+									{
+										"Problem": "cses-1202",
+										"ID": "cses:1202",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 2,
+										"Note": "counts along shortest paths"
+									},
+									{
+										"Problem": "usaco-899",
+										"ID": "usaco:899",
+										"Core": true,
+										"Parents": [
+											4,
+											5
+										],
+										"Lane": 1,
+										"Note": "price an edit from the ends"
+									},
+									{
+										"Problem": "usaco-969",
+										"ID": "usaco:969",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "fix the min flow; rerun"
+									},
+									{
+										"Problem": "cses-1196",
+										"ID": "cses:1196",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 2,
+										"Note": "keep k best distances"
+									},
+									{
+										"Problem": "usaco-717",
+										"ID": "usaco:717",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "(node, state); then rows"
+									},
+									{
+										"Problem": "usaco-1090",
+										"ID": "usaco:1090",
+										"Core": false,
+										"Parents": [
+											9
+										],
+										"Lane": 1,
+										"Note": "(node, state); then rows"
+									}
+								],
+								"Lanes": [
+									"Floyd on letters, then DP",
+									"price an edit from the ends",
+									"counts along shortest paths"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "mst",
@@ -1384,7 +4940,86 @@
 								"usaco:1211",
 								"usaco:1138",
 								"usaco:625"
-							]
+							],
+							"Map": {
+								"Module": "mst",
+								"Nodes": [
+									{
+										"Problem": "cses-1675",
+										"ID": "cses:1675",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "Kruskal; vertices as edges"
+									},
+									{
+										"Problem": "usaco-1138",
+										"ID": "usaco:1138",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "Kruskal; vertices as edges"
+									},
+									{
+										"Problem": "usaco-531",
+										"ID": "usaco:531",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 1,
+										"Note": "complete graphs, by Prim"
+									},
+									{
+										"Problem": "usaco-946",
+										"ID": "usaco:946",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "complete graphs, by Prim"
+									},
+									{
+										"Problem": "usaco-1211",
+										"ID": "usaco:1211",
+										"Core": true,
+										"Parents": [
+											1,
+											3
+										],
+										"Lane": 0,
+										"Note": "Kruskal; vertices as edges"
+									},
+									{
+										"Problem": "usaco-623",
+										"ID": "usaco:623",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "grid; rows of equal edges"
+									},
+									{
+										"Problem": "usaco-625",
+										"ID": "usaco:625",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 0,
+										"Note": "grid; rows of equal edges"
+									}
+								],
+								"Lanes": [
+									"Kruskal; vertices as edges",
+									"complete graphs, by Prim"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -1416,7 +5051,105 @@
 								"usaco:813",
 								"usaco:1475",
 								"usaco:1233"
-							]
+							],
+							"Map": {
+								"Module": "intro-sorted-sets",
+								"Nodes": [
+									{
+										"Problem": "cses-1091",
+										"ID": "cses:1091",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "a bound picks the partner"
+									},
+									{
+										"Problem": "cses-1073",
+										"ID": "cses:1073",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "a bound picks the partner"
+									},
+									{
+										"Problem": "cses-1632",
+										"ID": "cses:1632",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "a bound picks the partner"
+									},
+									{
+										"Problem": "usaco-1233",
+										"ID": "usaco:1233",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 0,
+										"Note": "a bound picks the partner"
+									},
+									{
+										"Problem": "cses-1163",
+										"ID": "cses:1163",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "cut set, gap multiset"
+									},
+									{
+										"Problem": "usaco-813",
+										"ID": "usaco:813",
+										"Core": true,
+										"Parents": [
+											4
+										],
+										"Lane": 1,
+										"Note": "cut set, gap multiset"
+									},
+									{
+										"Problem": "cses-1188",
+										"ID": "cses:1188",
+										"Core": true,
+										"Parents": [
+											5
+										],
+										"Lane": 1,
+										"Note": "cut set, gap multiset"
+									},
+									{
+										"Problem": "usaco-1475",
+										"ID": "usaco:1475",
+										"Core": true,
+										"Parents": [
+											3,
+											6
+										],
+										"Lane": 1,
+										"Note": "cut set, gap multiset"
+									},
+									{
+										"Problem": "usaco-763",
+										"ID": "usaco:763",
+										"Core": false,
+										"Parents": [
+											4
+										],
+										"Lane": 1,
+										"Note": "erase one copy, watch the max"
+									}
+								],
+								"Lanes": [
+									"a bound picks the partner",
+									"cut set, gap multiset",
+									"erase what a bound sweeps"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "custom-cpp-stl",
@@ -1431,7 +5164,13 @@
 								"intro-sorted-sets"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "stacks",
@@ -1454,7 +5193,95 @@
 								"usaco:1162",
 								"cses:2416",
 								"cses:1148"
-							]
+							],
+							"Map": {
+								"Module": "stacks",
+								"Nodes": [
+									{
+										"Problem": "cses-1645",
+										"ID": "cses:1645",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "pops give each bar's min span"
+									},
+									{
+										"Problem": "cses-1142",
+										"ID": "cses:1142",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "pops give each bar's min span"
+									},
+									{
+										"Problem": "cses-1147",
+										"ID": "cses:1147",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "pops give each bar's min span"
+									},
+									{
+										"Problem": "usaco-922",
+										"ID": "usaco:922",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 1,
+										"Note": "LIFO order of plates, paints"
+									},
+									{
+										"Problem": "usaco-743",
+										"ID": "usaco:743",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "LIFO order of plates, paints"
+									},
+									{
+										"Problem": "cses-1148",
+										"ID": "cses:1148",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 0,
+										"Note": "count all rectangles, not the max"
+									},
+									{
+										"Problem": "cses-2416",
+										"ID": "cses:2416",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "next-greater chains, summed by BIT"
+									},
+									{
+										"Problem": "usaco-1162",
+										"ID": "usaco:1162",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "a monotone stack drops stale guesses"
+									}
+								],
+								"Lanes": [
+									"pops give each bar's min span",
+									"LIFO order of plates, paints"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "sliding-window",
@@ -1478,7 +5305,94 @@
 								"cses:2428",
 								"usaco:923",
 								"usaco:600"
-							]
+							],
+							"Map": {
+								"Module": "sliding-window",
+								"Nodes": [
+									{
+										"Problem": "cses-1644",
+										"ID": "cses:1644",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "the window in multisets"
+									},
+									{
+										"Problem": "cses-1076",
+										"ID": "cses:1076",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "the window in multisets"
+									},
+									{
+										"Problem": "cses-1077",
+										"ID": "cses:1077",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "the window in multisets"
+									},
+									{
+										"Problem": "cses-1141",
+										"ID": "cses:1141",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "pointers grow and shrink it"
+									},
+									{
+										"Problem": "cses-2428",
+										"ID": "cses:2428",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "pointers grow and shrink it"
+									},
+									{
+										"Problem": "usaco-767",
+										"ID": "usaco:767",
+										"Core": true,
+										"Parents": [
+											2,
+											4
+										],
+										"Lane": 0,
+										"Note": "the window in multisets"
+									},
+									{
+										"Problem": "usaco-923",
+										"ID": "usaco:923",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "best subarray sum, then rectangles"
+									},
+									{
+										"Problem": "usaco-600",
+										"ID": "usaco:600",
+										"Core": false,
+										"Parents": [
+											4
+										],
+										"Lane": 1,
+										"Note": "pointers over rows per column pair"
+									}
+								],
+								"Lanes": [
+									"the window in multisets",
+									"pointers grow and shrink it"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "PURS",
@@ -1508,7 +5422,145 @@
 								"usaco:898",
 								"usaco:720",
 								"usaco:532"
-							]
+							],
+							"Map": {
+								"Module": "PURS",
+								"Nodes": [
+									{
+										"Problem": "cses-1649",
+										"ID": "cses:1649",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "k-th by walk, then rank"
+									},
+									{
+										"Problem": "cses-1749",
+										"ID": "cses:1749",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "k-th by walk, then rank"
+									},
+									{
+										"Problem": "cses-1144",
+										"ID": "cses:1144",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "k-th by walk, then rank"
+									},
+									{
+										"Problem": "usaco-693",
+										"ID": "usaco:693",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "count larger: inversions"
+									},
+									{
+										"Problem": "usaco-1041",
+										"ID": "usaco:1041",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "count larger: inversions"
+									},
+									{
+										"Problem": "cses-1648",
+										"ID": "cses:1648",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "offline marks by position"
+									},
+									{
+										"Problem": "cses-1734",
+										"ID": "cses:1734",
+										"Core": true,
+										"Parents": [
+											5
+										],
+										"Lane": 2,
+										"Note": "offline marks by position"
+									},
+									{
+										"Problem": "usaco-719",
+										"ID": "usaco:719",
+										"Core": true,
+										"Parents": [
+											4,
+											6
+										],
+										"Lane": 1,
+										"Note": "count larger: inversions"
+									},
+									{
+										"Problem": "cses-1651",
+										"ID": "cses:1651",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 2,
+										"Note": "differences: range add, point read"
+									},
+									{
+										"Problem": "cses-1748",
+										"ID": "cses:1748",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 0,
+										"Note": "a BIT over keys sums DP values"
+									},
+									{
+										"Problem": "usaco-532",
+										"ID": "usaco:532",
+										"Core": false,
+										"Parents": [
+											9
+										],
+										"Lane": 0,
+										"Note": "a BIT over keys sums DP values"
+									},
+									{
+										"Problem": "cses-1747",
+										"ID": "cses:1747",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "larger-on-each-side picks a side"
+									},
+									{
+										"Problem": "usaco-720",
+										"ID": "usaco:720",
+										"Core": false,
+										"Parents": [
+											4
+										],
+										"Lane": 1,
+										"Note": "inversions under every rotation"
+									}
+								],
+								"Lanes": [
+									"k-th by walk, then rank",
+									"count larger: inversions",
+									"offline marks by position"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -1536,7 +5588,67 @@
 								"usaco:1497",
 								"usaco:1020",
 								"cses:1752"
-							]
+							],
+							"Map": {
+								"Module": "dp-trees",
+								"Nodes": [
+									{
+										"Problem": "cses-1130",
+										"ID": "cses:1130",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "few states per node, scored per edge"
+									},
+									{
+										"Problem": "usaco-1497",
+										"ID": "usaco:1497",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 1,
+										"Note": "take or skip, on a functional graph"
+									},
+									{
+										"Problem": "usaco-766",
+										"ID": "usaco:766",
+										"Core": true,
+										"Parents": [
+											0,
+											1
+										],
+										"Lane": 0,
+										"Note": "few states per node, scored per edge"
+									},
+									{
+										"Problem": "usaco-1019",
+										"ID": "usaco:1019",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 2,
+										"Note": "state = depth; pair child paths to K"
+									},
+									{
+										"Problem": "usaco-1020",
+										"ID": "usaco:1020",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 2,
+										"Note": "binary search the length, same pairs"
+									}
+								],
+								"Lanes": [
+									"few states per node, scored per edge",
+									"take or skip, on a functional graph",
+									"state = depth; pair child paths to K"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "all-roots",
@@ -1554,7 +5666,36 @@
 								"cses:1132",
 								"usaco:814",
 								"usaco:793"
-							]
+							],
+							"Map": {
+								"Module": "all-roots",
+								"Nodes": [
+									{
+										"Problem": "cses-1132",
+										"ID": "cses:1132",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "out-of-subtree DP, then reroot sums"
+									},
+									{
+										"Problem": "usaco-814",
+										"ID": "usaco:814",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "out-of-subtree DP, then reroot sums"
+									}
+								],
+								"Lanes": [
+									"out-of-subtree DP, then reroot sums"
+								],
+								"Skip": [
+									"usaco-793"
+								]
+							}
 						},
 						{
 							"Module": "tree-euler",
@@ -1575,7 +5716,66 @@
 								"cses:1138",
 								"usaco:696",
 								"usaco:973"
-							]
+							],
+							"Map": {
+								"Module": "tree-euler",
+								"Nodes": [
+									{
+										"Problem": "cses-1137",
+										"ID": "cses:1137",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "subtree ranges, swept in an order"
+									},
+									{
+										"Problem": "cses-1139",
+										"ID": "cses:1139",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "subtree ranges, swept in an order"
+									},
+									{
+										"Problem": "cses-1138",
+										"ID": "cses:1138",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 1,
+										"Note": "root paths as subtree range adds"
+									},
+									{
+										"Problem": "usaco-696",
+										"ID": "usaco:696",
+										"Core": true,
+										"Parents": [
+											1,
+											2
+										],
+										"Lane": 0,
+										"Note": "subtree ranges, swept in an order"
+									},
+									{
+										"Problem": "usaco-973",
+										"ID": "usaco:973",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "subtree range adds, deduped by colour"
+									}
+								],
+								"Lanes": [
+									"subtree ranges, swept in an order",
+									"root paths as subtree range adds"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "lca-euler",
@@ -1594,7 +5794,55 @@
 								"cses:1135",
 								"usaco:921",
 								"usaco:970"
-							]
+							],
+							"Map": {
+								"Module": "lca-euler",
+								"Nodes": [
+									{
+										"Problem": "cses-1688",
+										"ID": "cses:1688",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "root prefixes, combined at the LCA"
+									},
+									{
+										"Problem": "cses-1135",
+										"ID": "cses:1135",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "root prefixes, combined at the LCA"
+									},
+									{
+										"Problem": "usaco-921",
+										"ID": "usaco:921",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "root prefixes, combined at the LCA"
+									},
+									{
+										"Problem": "usaco-970",
+										"ID": "usaco:970",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "root-path facts by tour index"
+									}
+								],
+								"Lanes": [
+									"root prefixes, combined at the LCA",
+									"root-path facts by tour index"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -1615,7 +5863,24 @@
 							"Warps": null,
 							"Playable": [
 								"usaco:1355"
-							]
+							],
+							"Map": {
+								"Module": "ternary-search",
+								"Nodes": [
+									{
+										"Problem": "usaco-1355",
+										"ID": "usaco:1355",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "convex sums of distance costs"
+									}
+								],
+								"Lanes": [
+									"convex sums of distance costs"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "hashing",
@@ -1635,7 +5900,54 @@
 								"usaco:529",
 								"usaco:741",
 								"usaco:599"
-							]
+							],
+							"Map": {
+								"Module": "hashing",
+								"Nodes": [
+									{
+										"Problem": "cses-1733",
+										"ID": "cses:1733",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "substring hashes, then sets of them"
+									},
+									{
+										"Problem": "usaco-741",
+										"ID": "usaco:741",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "substring hashes, then sets of them"
+									},
+									{
+										"Problem": "usaco-599",
+										"ID": "usaco:599",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "substring hashes, then sets of them"
+									},
+									{
+										"Problem": "usaco-529",
+										"ID": "usaco:529",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "the same hash on a shrinking stack"
+									}
+								],
+								"Lanes": [
+									"substring hashes, then sets of them"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "hashmaps",
@@ -1653,7 +5965,24 @@
 							"Playable": [
 								"usaco:994",
 								"cses:1642"
-							]
+							],
+							"Map": {
+								"Module": "hashmaps",
+								"Nodes": [
+									{
+										"Problem": "usaco-994",
+										"ID": "usaco:994",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "count complements in a table"
+									}
+								],
+								"Lanes": [
+									"count complements in a table"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "meet-in-the-middle",
@@ -1668,7 +5997,34 @@
 							"Playable": [
 								"cses:1628",
 								"usaco:1207"
-							]
+							],
+							"Map": {
+								"Module": "meet-in-the-middle",
+								"Nodes": [
+									{
+										"Problem": "cses-1628",
+										"ID": "cses:1628",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "count matching halves by key"
+									},
+									{
+										"Problem": "usaco-1207",
+										"ID": "usaco:1207",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "count matching halves by key"
+									}
+								],
+								"Lanes": [
+									"count matching halves by key"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -1694,7 +6050,95 @@
 								"usaco:1499",
 								"usaco:1523",
 								"usaco:1449"
-							]
+							],
+							"Map": {
+								"Module": "gold-conclusion",
+								"Nodes": [
+									{
+										"Problem": "usaco-282",
+										"ID": "usaco:282",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "grid BFS, then subset DP"
+									},
+									{
+										"Problem": "usaco-575",
+										"ID": "usaco:575",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "grid BFS, then subset DP"
+									},
+									{
+										"Problem": "usaco-401",
+										"ID": "usaco:401",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "masks: assign, then tour"
+									},
+									{
+										"Problem": "usaco-230",
+										"ID": "usaco:230",
+										"Core": true,
+										"Parents": [
+											1,
+											2
+										],
+										"Lane": 0,
+										"Note": "grid BFS, then subset DP"
+									},
+									{
+										"Problem": "usaco-1499",
+										"ID": "usaco:1499",
+										"Core": true,
+										"Parents": [
+											2,
+											3
+										],
+										"Lane": 0,
+										"Note": "grid BFS, then subset DP"
+									},
+									{
+										"Problem": "usaco-1523",
+										"ID": "usaco:1523",
+										"Core": false,
+										"Parents": null,
+										"Lane": 3,
+										"Note": "search over prefix sums"
+									},
+									{
+										"Problem": "usaco-1449",
+										"ID": "usaco:1449",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 3,
+										"Note": "search over prefix sums"
+									},
+									{
+										"Problem": "usaco-695",
+										"ID": "usaco:695",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "many bodies moving at once"
+									}
+								],
+								"Lanes": [
+									"grid BFS, then subset DP",
+									"masks: assign, then tour",
+									"used-masks, then submasks",
+									"best earlier DP state"
+								],
+								"Skip": null
+							}
 						}
 					]
 				}
@@ -1728,7 +6172,93 @@
 								"usaco:577",
 								"usaco:365",
 								"usaco:1332"
-							]
+							],
+							"Map": {
+								"Module": "segtree-ext",
+								"Nodes": [
+									{
+										"Problem": "cses-1143",
+										"ID": "cses:1143",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "walk: descend to the first fit"
+									},
+									{
+										"Problem": "cses-1190",
+										"ID": "cses:1190",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "merge pairs left's tail, right's head"
+									},
+									{
+										"Problem": "usaco-577",
+										"ID": "usaco:577",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "merge pairs left's tail, right's head"
+									},
+									{
+										"Problem": "cses-2206",
+										"ID": "cses:2206",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "plain trees over derived keys"
+									},
+									{
+										"Problem": "usaco-495",
+										"ID": "usaco:495",
+										"Core": false,
+										"Parents": [
+											3
+										],
+										"Lane": 0,
+										"Note": "plain trees over derived keys"
+									},
+									{
+										"Problem": "cses-1188",
+										"ID": "cses:1188",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "pref/suf/best again, on bit runs"
+									},
+									{
+										"Problem": "usaco-365",
+										"ID": "usaco:365",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "node = DP over end states, automaton"
+									},
+									{
+										"Problem": "usaco-1332",
+										"ID": "usaco:1332",
+										"Core": false,
+										"Parents": [
+											6
+										],
+										"Lane": 1,
+										"Note": "node = DP over end states, automaton"
+									}
+								],
+								"Lanes": [
+									"walk: descend to the first fit",
+									"merge pairs left's tail, right's head"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "range-sweep",
@@ -1750,7 +6280,74 @@
 								"usaco:624",
 								"cses:1742",
 								"usaco:865"
-							]
+							],
+							"Map": {
+								"Module": "range-sweep",
+								"Nodes": [
+									{
+										"Problem": "cses-1740",
+										"ID": "cses:1740",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "sweep x, BIT on y; four quadrants"
+									},
+									{
+										"Problem": "usaco-624",
+										"ID": "usaco:624",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "sweep x, BIT on y; four quadrants"
+									},
+									{
+										"Problem": "usaco-995",
+										"ID": "usaco:995",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "sweep with prefix min of dp - x - y"
+									},
+									{
+										"Problem": "usaco-816",
+										"ID": "usaco:816",
+										"Core": true,
+										"Parents": [
+											1,
+											2
+										],
+										"Lane": 0,
+										"Note": "sweep x, BIT on y; four quadrants"
+									},
+									{
+										"Problem": "cses-1742",
+										"ID": "cses:1742",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "count crossings; binary search time"
+									},
+									{
+										"Problem": "usaco-865",
+										"ID": "usaco:865",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "BIT-keyed DP, now counting LIS"
+									}
+								],
+								"Lanes": [
+									"sweep x, BIT on y; four quadrants",
+									"sweep with prefix min of dp - x - y"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "RURQ",
@@ -1771,7 +6368,74 @@
 								"cses:2166",
 								"usaco:418",
 								"usaco:973"
-							]
+							],
+							"Map": {
+								"Module": "RURQ",
+								"Nodes": [
+									{
+										"Problem": "cses-1736",
+										"ID": "cses:1736",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "BIT add/sum; subtrees"
+									},
+									{
+										"Problem": "usaco-973",
+										"ID": "usaco:973",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "BIT add/sum; subtrees"
+									},
+									{
+										"Problem": "cses-1735",
+										"ID": "cses:1735",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "lazy tags; add with max"
+									},
+									{
+										"Problem": "cses-2166",
+										"ID": "cses:2166",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "lazy tags; add with max"
+									},
+									{
+										"Problem": "usaco-418",
+										"ID": "usaco:418",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "lazy tags; add with max"
+									},
+									{
+										"Problem": "usaco-578",
+										"ID": "usaco:578",
+										"Core": true,
+										"Parents": [
+											1,
+											4
+										],
+										"Lane": 0,
+										"Note": "BIT add/sum; subtrees"
+									}
+								],
+								"Lanes": [
+									"BIT add/sum; subtrees",
+									"lazy tags; add with max"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "sparse-segtree",
@@ -1785,7 +6449,13 @@
 								"RURQ"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "2DRQ",
@@ -1803,7 +6473,44 @@
 								"cses:1739",
 								"usaco:722",
 								"usaco:601"
-							]
+							],
+							"Map": {
+								"Module": "2DRQ",
+								"Nodes": [
+									{
+										"Problem": "cses-1739",
+										"ID": "cses:1739",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "2D BIT, then offline sweep + BIT"
+									},
+									{
+										"Problem": "usaco-601",
+										"ID": "usaco:601",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "2D BIT, then offline sweep + BIT"
+									},
+									{
+										"Problem": "usaco-722",
+										"ID": "usaco:722",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "2D BIT, then offline sweep + BIT"
+									}
+								],
+								"Lanes": [
+									"2D BIT, then offline sweep + BIT"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "DC-SRQ",
@@ -1818,7 +6525,34 @@
 							"Playable": [
 								"cses:1647",
 								"usaco:997"
-							]
+							],
+							"Map": {
+								"Module": "DC-SRQ",
+								"Nodes": [
+									{
+										"Problem": "cses-1647",
+										"ID": "cses:1647",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "answers built outward from midpoints"
+									},
+									{
+										"Problem": "usaco-997",
+										"ID": "usaco:997",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "answers built outward from midpoints"
+									}
+								],
+								"Lanes": [
+									"answers built outward from midpoints"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "sqrt",
@@ -1837,7 +6571,55 @@
 								"usaco:817",
 								"usaco:534",
 								"usaco:793"
-							]
+							],
+							"Map": {
+								"Module": "sqrt",
+								"Nodes": [
+									{
+										"Problem": "cses-1648",
+										"ID": "cses:1648",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "blocks keep min/max; split when big"
+									},
+									{
+										"Problem": "usaco-1188",
+										"ID": "usaco:1188",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "blocks keep min/max; split when big"
+									},
+									{
+										"Problem": "usaco-534",
+										"ID": "usaco:534",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "buffer sqrt(Q) updates; rebuild"
+									},
+									{
+										"Problem": "usaco-793",
+										"ID": "usaco:793",
+										"Core": false,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "few heavy things on a tree"
+									}
+								],
+								"Lanes": [
+									"blocks keep min/max; split when big",
+									"Mo's order; then on Euler-tour ranges"
+								],
+								"Skip": [
+									"usaco-817"
+								]
+							}
 						}
 					]
 				},
@@ -1869,7 +6651,144 @@
 								"usaco:817",
 								"usaco:866",
 								"usaco:901"
-							]
+							],
+							"Map": {
+								"Module": "binary-jump",
+								"Nodes": [
+									{
+										"Problem": "cses-1687",
+										"ID": "cses:1687",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "jumps, then farthest reach"
+									},
+									{
+										"Problem": "cses-1750",
+										"ID": "cses:1750",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "jumps, then farthest reach"
+									},
+									{
+										"Problem": "cses-1191",
+										"ID": "cses:1191",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "jumps, then farthest reach"
+									},
+									{
+										"Problem": "cses-1688",
+										"ID": "cses:1688",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "LCA, then diff path adds"
+									},
+									{
+										"Problem": "cses-1135",
+										"ID": "cses:1135",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 1,
+										"Note": "LCA, then diff path adds"
+									},
+									{
+										"Problem": "usaco-576",
+										"ID": "usaco:576",
+										"Core": true,
+										"Parents": [
+											4
+										],
+										"Lane": 1,
+										"Note": "LCA, then diff path adds"
+									},
+									{
+										"Problem": "usaco-213",
+										"ID": "usaco:213",
+										"Core": true,
+										"Parents": [
+											2,
+											5
+										],
+										"Lane": 0,
+										"Note": "jumps, then farthest reach"
+									},
+									{
+										"Problem": "cses-1160",
+										"ID": "cses:1160",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "distances through graph cycles"
+									},
+									{
+										"Problem": "usaco-648",
+										"ID": "usaco:648",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 0,
+										"Note": "segment ends composed by doubling"
+									},
+									{
+										"Problem": "usaco-817",
+										"ID": "usaco:817",
+										"Core": false,
+										"Parents": [
+											4
+										],
+										"Lane": 1,
+										"Note": "diameter ends, distances by LCA"
+									},
+									{
+										"Problem": "usaco-842",
+										"ID": "usaco:842",
+										"Core": false,
+										"Parents": [
+											5
+										],
+										"Lane": 1,
+										"Note": "extra edges as paths: min, overlap"
+									},
+									{
+										"Problem": "usaco-901",
+										"ID": "usaco:901",
+										"Core": false,
+										"Parents": [
+											10
+										],
+										"Lane": 1,
+										"Note": "extra edges as paths: min, overlap"
+									},
+									{
+										"Problem": "usaco-866",
+										"ID": "usaco:866",
+										"Core": false,
+										"Parents": [
+											6
+										],
+										"Lane": 0,
+										"Note": "jump to a child, mark subtrees"
+									}
+								],
+								"Lanes": [
+									"jumps, then farthest reach",
+									"LCA, then diff path adds"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "merging",
@@ -1888,7 +6807,46 @@
 								"cses:1139",
 								"usaco:696",
 								"usaco:842"
-							]
+							],
+							"Map": {
+								"Module": "merging",
+								"Nodes": [
+									{
+										"Problem": "cses-1139",
+										"ID": "cses:1139",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "entries that meet cancel out"
+									},
+									{
+										"Problem": "usaco-696",
+										"ID": "usaco:696",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 1,
+										"Note": "ordered sets: rank, then min key"
+									},
+									{
+										"Problem": "usaco-842",
+										"ID": "usaco:842",
+										"Core": true,
+										"Parents": [
+											0,
+											1
+										],
+										"Lane": 0,
+										"Note": "entries that meet cancel out"
+									}
+								],
+								"Lanes": [
+									"entries that meet cancel out",
+									"ordered sets: rank, then min key"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "hld",
@@ -1910,7 +6868,76 @@
 								"usaco:970",
 								"usaco:842",
 								"usaco:102"
-							]
+							],
+							"Map": {
+								"Module": "hld",
+								"Nodes": [
+									{
+										"Problem": "cses-1688",
+										"ID": "cses:1688",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "chain queries, offline"
+									},
+									{
+										"Problem": "cses-2134",
+										"ID": "cses:2134",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "chain queries, offline"
+									},
+									{
+										"Problem": "usaco-970",
+										"ID": "usaco:970",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "chain queries, offline"
+									},
+									{
+										"Problem": "usaco-102",
+										"ID": "usaco:102",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "values on edges, path updates"
+									},
+									{
+										"Problem": "usaco-842",
+										"ID": "usaco:842",
+										"Core": true,
+										"Parents": [
+											2,
+											3
+										],
+										"Lane": 0,
+										"Note": "chain queries, offline"
+									},
+									{
+										"Problem": "usaco-921",
+										"ID": "usaco:921",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "the same path query, with XOR"
+									}
+								],
+								"Lanes": [
+									"chain queries, offline",
+									"values on edges, path updates"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "centroid",
@@ -1931,7 +6958,65 @@
 								"usaco:286",
 								"usaco:817",
 								"usaco:793"
-							]
+							],
+							"Map": {
+								"Module": "centroid",
+								"Nodes": [
+									{
+										"Problem": "cses-2080",
+										"ID": "cses:2080",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "half-paths across subtrees"
+									},
+									{
+										"Problem": "cses-2081",
+										"ID": "cses:2081",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "half-paths across subtrees"
+									},
+									{
+										"Problem": "usaco-286",
+										"ID": "usaco:286",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "half-paths across subtrees"
+									},
+									{
+										"Problem": "usaco-817",
+										"ID": "usaco:817",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 0,
+										"Note": "half-paths across subtrees"
+									},
+									{
+										"Problem": "usaco-793",
+										"ID": "usaco:793",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "threshold counts by prefix sums"
+									}
+								],
+								"Lanes": [
+									"half-paths across subtrees",
+									"queries over centroid ancestors"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "VT",
@@ -1945,7 +7030,15 @@
 								"tree-euler"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "VT",
+								"Nodes": null,
+								"Lanes": [
+									"per-color virtual tree, DP on it"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "kruskal-tree",
@@ -1960,7 +7053,15 @@
 								"tree-euler"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "kruskal-tree",
+								"Nodes": null,
+								"Lanes": [
+									"KRT by edge index, LCA of a range"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -1977,7 +7078,13 @@
 							"Frequency": 1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "sweep-line",
@@ -1996,7 +7103,56 @@
 								"usaco:943",
 								"usaco:227",
 								"usaco:266"
-							]
+							],
+							"Map": {
+								"Module": "sweep-line",
+								"Nodes": [
+									{
+										"Problem": "cses-1619",
+										"ID": "cses:1619",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "active segments kept ordered by y"
+									},
+									{
+										"Problem": "usaco-943",
+										"ID": "usaco:943",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "active segments kept ordered by y"
+									},
+									{
+										"Problem": "usaco-227",
+										"ID": "usaco:227",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 1,
+										"Note": "x-window; neighbours in a y-set"
+									},
+									{
+										"Problem": "usaco-266",
+										"ID": "usaco:266",
+										"Core": true,
+										"Parents": [
+											1,
+											2
+										],
+										"Lane": 0,
+										"Note": "active segments kept ordered by y"
+									}
+								],
+								"Lanes": [
+									"active segments kept ordered by y",
+									"x-window; neighbours in a y-set"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "convex-hull",
@@ -2013,7 +7169,34 @@
 							"Playable": [
 								"usaco:864",
 								"usaco:382"
-							]
+							],
+							"Map": {
+								"Module": "convex-hull",
+								"Nodes": [
+									{
+										"Problem": "usaco-382",
+										"ID": "usaco:382",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "hull + point-in-hull; upper hull"
+									},
+									{
+										"Problem": "usaco-864",
+										"ID": "usaco:864",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "hull + point-in-hull; upper hull"
+									}
+								],
+								"Lanes": [
+									"hull + point-in-hull; upper hull"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "convex-hull-trick",
@@ -2033,7 +7216,54 @@
 								"usaco:626",
 								"usaco:998",
 								"usaco:1285"
-							]
+							],
+							"Map": {
+								"Module": "convex-hull-trick",
+								"Nodes": [
+									{
+										"Problem": "cses-2087",
+										"ID": "cses:2087",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "deque hull; any-order x; DP lines"
+									},
+									{
+										"Problem": "usaco-1285",
+										"ID": "usaco:1285",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "deque hull; any-order x; DP lines"
+									},
+									{
+										"Problem": "usaco-626",
+										"ID": "usaco:626",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "the same layered DP around a circle"
+									},
+									{
+										"Problem": "usaco-998",
+										"ID": "usaco:998",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "binary search on a hull of points"
+									}
+								],
+								"Lanes": [
+									"deque hull; any-order x; DP lines"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -2057,7 +7287,55 @@
 								"cses:2421",
 								"cses:2417",
 								"cses:2429"
-							]
+							],
+							"Map": {
+								"Module": "PIE",
+								"Nodes": [
+									{
+										"Problem": "cses-2417",
+										"ID": "cses:2417",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "shared primes by mobius, then flavors"
+									},
+									{
+										"Problem": "usaco-862",
+										"ID": "usaco:862",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "shared primes by mobius, then flavors"
+									},
+									{
+										"Problem": "cses-2421",
+										"ID": "cses:2421",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "sign by number of forced violations"
+									},
+									{
+										"Problem": "cses-2429",
+										"ID": "cses:2429",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "sign by number of forced violations"
+									}
+								],
+								"Lanes": [
+									"shared primes by mobius, then flavors",
+									"sign by number of forced violations"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "matrix-expo",
@@ -2076,7 +7354,55 @@
 								"cses:1723",
 								"cses:1724",
 								"usaco:746"
-							]
+							],
+							"Map": {
+								"Module": "matrix-expo",
+								"Nodes": [
+									{
+										"Problem": "cses-1722",
+										"ID": "cses:1722",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "walks of length k: power the adjacency"
+									},
+									{
+										"Problem": "cses-1723",
+										"ID": "cses:1723",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "walks of length k: power the adjacency"
+									},
+									{
+										"Problem": "cses-1724",
+										"ID": "cses:1724",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "the same powers over (min, +)"
+									},
+									{
+										"Problem": "usaco-746",
+										"ID": "usaco:746",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 1,
+										"Note": "a matrix per statement; loops are powers"
+									}
+								],
+								"Lanes": [
+									"walks of length k: power the adjacency",
+									"shift by x: lazy tags are matrix powers"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "bitsets",
@@ -2094,7 +7420,63 @@
 								"usaco:672",
 								"cses:2138",
 								"usaco:1021"
-							]
+							],
+							"Map": {
+								"Module": "bitsets",
+								"Nodes": [
+									{
+										"Problem": "cses-1706",
+										"ID": "cses:1706",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "a DP whose state is a set; OR transitions"
+									},
+									{
+										"Problem": "usaco-862",
+										"ID": "usaco:862",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "one bitset row per node, popcount per row"
+									},
+									{
+										"Problem": "cses-2138",
+										"ID": "cses:2138",
+										"Core": true,
+										"Parents": [
+											0,
+											1
+										],
+										"Lane": 0,
+										"Note": "a DP whose state is a set; OR transitions"
+									},
+									{
+										"Problem": "usaco-672",
+										"ID": "usaco:672",
+										"Core": true,
+										"Parents": null,
+										"Lane": 2,
+										"Note": "count points in a region: AND, then popcount"
+									},
+									{
+										"Problem": "usaco-1021",
+										"ID": "usaco:1021",
+										"Core": true,
+										"Parents": [
+											3
+										],
+										"Lane": 2,
+										"Note": "count points in a region: AND, then popcount"
+									}
+								],
+								"Lanes": [
+									"a DP whose state is a set; OR transitions",
+									"one bitset row per node, popcount per row",
+									"count points in a region: AND, then popcount"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "DC-DP",
@@ -2111,7 +7493,35 @@
 							"Playable": [
 								"usaco:626",
 								"usaco:926"
-							]
+							],
+							"Map": {
+								"Module": "DC-DP",
+								"Nodes": [
+									{
+										"Problem": "usaco-626",
+										"ID": "usaco:626",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "monotone opt; cost from 2D prefix sums"
+									},
+									{
+										"Problem": "usaco-926",
+										"ID": "usaco:926",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "opt monotone only within ranges of a layer"
+									}
+								],
+								"Lanes": [
+									"monotone opt; cost from 2D prefix sums",
+									"same DP; cost kept by moving two pointers"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "dp-sos",
@@ -2129,7 +7539,46 @@
 								"cses:1654",
 								"usaco:1309",
 								"usaco:1213"
-							]
+							],
+							"Map": {
+								"Module": "dp-sos",
+								"Nodes": [
+									{
+										"Problem": "cses-1654",
+										"ID": "cses:1654",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "superset counts, then PIE over supersets"
+									},
+									{
+										"Problem": "usaco-1213",
+										"ID": "usaco:1213",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 1,
+										"Note": "the same sweep over prime-exponent axes"
+									},
+									{
+										"Problem": "usaco-1309",
+										"ID": "usaco:1309",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 2,
+										"Note": "submask sums of the dp being built"
+									}
+								],
+								"Lanes": [
+									"superset counts, then PIE over supersets",
+									"the same sweep over prime-exponent axes",
+									"submask sums of the dp being built"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -2150,7 +7599,43 @@
 								"usaco:231",
 								"usaco:698",
 								"usaco:602"
-							]
+							],
+							"Map": {
+								"Module": "plat-conclusion",
+								"Nodes": [
+									{
+										"Problem": "usaco-231",
+										"ID": "usaco:231",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "merged summaries, lazy, then a DP"
+									},
+									{
+										"Problem": "usaco-698",
+										"ID": "usaco:698",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "interval DP that also bounds values"
+									},
+									{
+										"Problem": "usaco-602",
+										"ID": "usaco:602",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "DP over pairs of string positions"
+									}
+								],
+								"Lanes": [
+									"merged summaries, lazy, then a DP",
+									"interval DP that also bounds values"
+								],
+								"Skip": null
+							}
 						}
 					]
 				}
@@ -2178,7 +7663,34 @@
 							"Playable": [
 								"usaco:995",
 								"usaco:721"
-							]
+							],
+							"Map": {
+								"Module": "springboards",
+								"Nodes": [
+									{
+										"Problem": "usaco-995",
+										"ID": "usaco:995",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "staircase max, then it drives a DP"
+									},
+									{
+										"Problem": "usaco-721",
+										"ID": "usaco:721",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "staircase max, then it drives a DP"
+									}
+								],
+								"Lanes": [
+									"staircase max, then it drives a DP"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "wavelet",
@@ -2193,7 +7705,13 @@
 								"RURQ"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "count-min",
@@ -2209,7 +7727,24 @@
 							"Warps": null,
 							"Playable": [
 								"cses:1741"
-							]
+							],
+							"Map": {
+								"Module": "count-min",
+								"Nodes": [
+									{
+										"Problem": "cses-1741",
+										"ID": "cses:1741",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "lazy (min, cnt) sweep, then in a DP"
+									}
+								],
+								"Lanes": [
+									"lazy (min, cnt) sweep, then in a DP"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "segtree-beats",
@@ -2223,7 +7758,16 @@
 								"RURQ"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "segtree-beats",
+								"Nodes": null,
+								"Lanes": [
+									"descend only where a value crosses",
+									"beats on max; then chmin on two"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "persistent",
@@ -2239,7 +7783,24 @@
 							"Warps": null,
 							"Playable": [
 								"cses:1737"
-							]
+							],
+							"Map": {
+								"Module": "persistent",
+								"Nodes": [
+									{
+										"Problem": "cses-1737",
+										"ID": "cses:1737",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "path-copied versions, one per prefix"
+									}
+								],
+								"Lanes": [
+									"path-copied versions, one per prefix"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "treaps",
@@ -2259,7 +7820,56 @@
 								"cses:2073",
 								"cses:2074",
 								"usaco:402"
-							]
+							],
+							"Map": {
+								"Module": "treaps",
+								"Nodes": [
+									{
+										"Problem": "cses-2072",
+										"ID": "cses:2072",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "split and merge, then a lazy reverse"
+									},
+									{
+										"Problem": "cses-2073",
+										"ID": "cses:2073",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "split and merge, then a lazy reverse"
+									},
+									{
+										"Problem": "cses-2074",
+										"ID": "cses:2074",
+										"Core": true,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "reverse flag plus a sum aggregate"
+									},
+									{
+										"Problem": "usaco-402",
+										"ID": "usaco:402",
+										"Core": true,
+										"Parents": [
+											2
+										],
+										"Lane": 2,
+										"Note": "lazy shifts on a keyed treap"
+									}
+								],
+								"Lanes": [
+									"split and merge, then a lazy reverse",
+									"reverse flag plus a sum aggregate",
+									"lazy shifts on a keyed treap"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -2281,7 +7891,24 @@
 							"Warps": null,
 							"Playable": [
 								"usaco:534"
-							]
+							],
+							"Map": {
+								"Module": "line-container",
+								"Nodes": [
+									{
+										"Problem": "usaco-534",
+										"ID": "usaco:534",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "min/max of Ax+By over inserted points"
+									}
+								],
+								"Lanes": [
+									"min/max of Ax+By over inserted points"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "lagrange",
@@ -2297,7 +7924,25 @@
 							"Warps": null,
 							"Playable": [
 								"usaco:697"
-							]
+							],
+							"Map": {
+								"Module": "lagrange",
+								"Nodes": [
+									{
+										"Problem": "usaco-697",
+										"ID": "usaco:697",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "price per unit; greedy per part"
+									}
+								],
+								"Lanes": [
+									"price per unit; greedy per part",
+									"the same price on a DP's operations"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "slope-trick",
@@ -2316,7 +7961,34 @@
 							"Playable": [
 								"cses:2132",
 								"usaco:650"
-							]
+							],
+							"Map": {
+								"Module": "slope-trick",
+								"Nodes": [
+									{
+										"Problem": "cses-2132",
+										"ID": "cses:2132",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "breakpoints in a heap, two-sided"
+									},
+									{
+										"Problem": "usaco-650",
+										"ID": "usaco:650",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "breakpoints in a heap, two-sided"
+									}
+								],
+								"Lanes": [
+									"breakpoints in a heap, two-sided"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -2326,7 +7998,7 @@
 						{
 							"Module": "sp-neg",
 							"Title": "Shortest Paths with Negative Edge Weights",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": true,
 							"Capability": "CAP_SSSP",
 							"Topic": "shortest-paths",
@@ -2337,12 +8009,18 @@
 							"Warps": null,
 							"Playable": [
 								"cses:1197"
-							]
+							],
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "eulerian-tours",
 							"Title": "Eulerian Tours",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": true,
 							"Capability": "CAP_GRAPH",
 							"Topic": "graphs",
@@ -2355,7 +8033,13 @@
 								"cses:1692",
 								"cses:1691",
 								"cses:1693"
-							]
+							],
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "BCC-2CC",
@@ -2375,7 +8059,43 @@
 								"cses:1705",
 								"cses:2177",
 								"usaco:769"
-							]
+							],
+							"Map": {
+								"Module": "BCC-2CC",
+								"Nodes": [
+									{
+										"Problem": "usaco-842",
+										"ID": "usaco:842",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "2CC-style DSU: union paths by weight"
+									},
+									{
+										"Problem": "cses-1705",
+										"ID": "cses:1705",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "cut vertices via the block-cut tree"
+									},
+									{
+										"Problem": "usaco-769",
+										"ID": "usaco:769",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 1,
+										"Note": "same-block test on a grid"
+									}
+								],
+								"Lanes": [
+									"2CC-style DSU: union paths by weight",
+									"cut vertices via the block-cut tree"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "SCC",
@@ -2396,7 +8116,36 @@
 								"usaco:516",
 								"cses:1685",
 								"cses:1684"
-							]
+							],
+							"Map": {
+								"Module": "SCC",
+								"Nodes": [
+									{
+										"Problem": "cses-1686",
+										"ID": "cses:1686",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "condense; DP with SCC weights"
+									},
+									{
+										"Problem": "usaco-516",
+										"ID": "usaco:516",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 1,
+										"Note": "DP both ways across one reversal"
+									}
+								],
+								"Lanes": [
+									"condense; DP with SCC weights",
+									"DP both ways across one reversal",
+									"XOR constraints as 2-SAT"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "offline-del",
@@ -2410,7 +8159,15 @@
 								"dsu"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "offline-del",
+								"Nodes": null,
+								"Lanes": [
+									"rollback per query, then per segment"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "eulers-formula",
@@ -2429,7 +8186,44 @@
 								"usaco:596",
 								"usaco:950",
 								"usaco:1094"
-							]
+							],
+							"Map": {
+								"Module": "eulers-formula",
+								"Nodes": [
+									{
+										"Problem": "usaco-596",
+										"ID": "usaco:596",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "regions of a fence walk by V-E+F"
+									},
+									{
+										"Problem": "usaco-950",
+										"ID": "usaco:950",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "holes as faces, DSU as cells rise"
+									},
+									{
+										"Problem": "usaco-1094",
+										"ID": "usaco:1094",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "V-E+F per rectangle, then by FFT"
+									}
+								],
+								"Lanes": [
+									"regions of a fence walk by V-E+F"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "critical",
@@ -2441,7 +8235,13 @@
 							"Frequency": 1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "link-cut-tree",
@@ -2456,7 +8256,15 @@
 								"treaps"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "link-cut-tree",
+								"Nodes": null,
+								"Lanes": [
+									"access paths; then subtree sizes"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -2475,7 +8283,16 @@
 								"dp-trees"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "comb-sub",
+								"Nodes": null,
+								"Lanes": [
+									"size-bounded merge of (count, sum)",
+									"merge children over distance \u003c= k"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "dp-broken-profile",
@@ -2492,7 +8309,34 @@
 							"Playable": [
 								"cses:2181",
 								"usaco:949"
-							]
+							],
+							"Map": {
+								"Module": "dp-broken-profile",
+								"Nodes": [
+									{
+										"Problem": "cses-2181",
+										"ID": "cses:2181",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "cell-by-cell mask, then extra flags"
+									},
+									{
+										"Problem": "usaco-949",
+										"ID": "usaco:949",
+										"Core": false,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "profile holds connectivity classes"
+									}
+								],
+								"Lanes": [
+									"cell-by-cell mask, then extra flags"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "dp-more",
@@ -2510,7 +8354,25 @@
 							"Warps": null,
 							"Playable": [
 								"cses:1075"
-							]
+							],
+							"Map": {
+								"Module": "dp-more",
+								"Nodes": [
+									{
+										"Problem": "cses-1075",
+										"ID": "cses:1075",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "new, joined, or extended component"
+									}
+								],
+								"Lanes": [
+									"new, joined, or extended component",
+									"the same, pricing each component end"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -2533,7 +8395,24 @@
 								"cses:1694",
 								"cses:1711",
 								"cses:1696"
-							]
+							],
+							"Map": {
+								"Module": "max-flow",
+								"Nodes": [
+									{
+										"Problem": "cses-1694",
+										"ID": "cses:1694",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "plain max flow from 1 to n"
+									}
+								],
+								"Lanes": [
+									"plain max flow from 1 to n"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "min-cut",
@@ -2551,7 +8430,24 @@
 								"cses:1709",
 								"cses:1695",
 								"usaco:93"
-							]
+							],
+							"Map": {
+								"Module": "min-cut",
+								"Nodes": [
+									{
+										"Problem": "usaco-93",
+										"ID": "usaco:93",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "MIS by König, weighted, cut by DP"
+									}
+								],
+								"Lanes": [
+									"MIS by König, weighted, cut by DP"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "flow-lb",
@@ -2565,12 +8461,20 @@
 								"max-flow"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "flow-lb",
+								"Nodes": null,
+								"Lanes": [
+									"repair a flow: lower-bounded edges"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "min-cost-flow",
 							"Title": "Minimum Cost Flow",
-							"Kind": 0,
+							"Kind": 1,
 							"Optional": false,
 							"Capability": "CAP_GRAPH",
 							"Topic": "graphs",
@@ -2581,7 +8485,16 @@
 							"Warps": null,
 							"Playable": [
 								"cses:2129"
-							]
+							],
+							"Map": {
+								"Module": "min-cost-flow",
+								"Nodes": null,
+								"Lanes": [
+									"supplies, a timeline, disjoint paths",
+									"assignment: credits to month slots"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -2598,7 +8511,13 @@
 							"Frequency": 0,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "fft-ext",
@@ -2612,7 +8531,24 @@
 							"Warps": null,
 							"Playable": [
 								"usaco:974"
-							]
+							],
+							"Map": {
+								"Module": "fft-ext",
+								"Nodes": [
+									{
+										"Problem": "usaco-974",
+										"ID": "usaco:974",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "inversion GF: multiply, divide a factor"
+									}
+								],
+								"Lanes": [
+									"inversion GF: multiply, divide a factor"
+								],
+								"Skip": null
+							}
 						}
 					]
 				},
@@ -2640,7 +8576,84 @@
 								"cses:1732",
 								"cses:1110",
 								"cses:1655"
-							]
+							],
+							"Map": {
+								"Module": "string-search",
+								"Nodes": [
+									{
+										"Problem": "cses-1753",
+										"ID": "cses:1753",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "KMP, borders, AC states"
+									},
+									{
+										"Problem": "cses-1732",
+										"ID": "cses:1732",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "KMP, borders, AC states"
+									},
+									{
+										"Problem": "cses-1731",
+										"ID": "cses:1731",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "a trie, then its failure links"
+									},
+									{
+										"Problem": "usaco-533",
+										"ID": "usaco:533",
+										"Core": true,
+										"Parents": [
+											1,
+											2
+										],
+										"Lane": 0,
+										"Note": "KMP, borders, AC states"
+									},
+									{
+										"Problem": "cses-1110",
+										"ID": "cses:1110",
+										"Core": false,
+										"Parents": [
+											1
+										],
+										"Lane": 0,
+										"Note": "rotations compared by hashed LCP"
+									},
+									{
+										"Problem": "cses-1655",
+										"ID": "cses:1655",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "binary trie: max, count, k-th"
+									},
+									{
+										"Problem": "usaco-1281",
+										"ID": "usaco:1281",
+										"Core": false,
+										"Parents": [
+											2
+										],
+										"Lane": 1,
+										"Note": "a string tree with shared subtrees"
+									}
+								],
+								"Lanes": [
+									"KMP, borders, AC states",
+									"a trie, then its failure links"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "suffix-array",
@@ -2657,7 +8670,34 @@
 							"Playable": [
 								"usaco:768",
 								"cses:1113"
-							]
+							],
+							"Map": {
+								"Module": "suffix-array",
+								"Nodes": [
+									{
+										"Problem": "cses-1113",
+										"ID": "cses:1113",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "invert BWT, then LCPs across strings"
+									},
+									{
+										"Problem": "usaco-768",
+										"ID": "usaco:768",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "invert BWT, then LCPs across strings"
+									}
+								],
+								"Lanes": [
+									"invert BWT, then LCPs across strings"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "string-suffix",
@@ -2673,7 +8713,27 @@
 							"Warps": null,
 							"Playable": [
 								"usaco:768"
-							]
+							],
+							"Map": {
+								"Module": "string-suffix",
+								"Nodes": [
+									{
+										"Problem": "usaco-768",
+										"ID": "usaco:768",
+										"Core": true,
+										"Parents": null,
+										"Lane": 1,
+										"Note": "SAM classes, endpos, link-tree counts"
+									}
+								],
+								"Lanes": [
+									"SA + LCP: distinct, sums, blocks",
+									"SAM classes, endpos, link-tree counts"
+								],
+								"Skip": [
+									"cf-2A"
+								]
+							}
 						}
 					]
 				},
@@ -2692,7 +8752,13 @@
 								"divisibility"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "catalan",
@@ -2709,7 +8775,34 @@
 							"Playable": [
 								"cses:2064",
 								"cses:2187"
-							]
+							],
+							"Map": {
+								"Module": "catalan",
+								"Nodes": [
+									{
+										"Problem": "cses-2064",
+										"ID": "cses:2064",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "Catalan, prefix, subsequence counts"
+									},
+									{
+										"Problem": "cses-2187",
+										"ID": "cses:2187",
+										"Core": true,
+										"Parents": [
+											0
+										],
+										"Lane": 0,
+										"Note": "Catalan, prefix, subsequence counts"
+									}
+								],
+								"Lanes": [
+									"Catalan, prefix, subsequence counts"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "xor-basis",
@@ -2721,7 +8814,15 @@
 							"Frequency": 1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "xor-basis",
+								"Nodes": null,
+								"Lanes": [
+									"rank, newest kept, on trees"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "fracturing-search",
@@ -2737,7 +8838,24 @@
 							"Warps": null,
 							"Playable": [
 								"usaco:674"
-							]
+							],
+							"Map": {
+								"Module": "fracturing-search",
+								"Nodes": [
+									{
+										"Problem": "usaco-674",
+										"ID": "usaco:674",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "k cheapest picks via a heap of splits"
+									}
+								],
+								"Lanes": [
+									"k cheapest picks via a heap of splits"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "game-theory",
@@ -2751,7 +8869,24 @@
 							"Warps": null,
 							"Playable": [
 								"cses:1730"
-							]
+							],
+							"Map": {
+								"Module": "game-theory",
+								"Nodes": [
+									{
+										"Problem": "cses-1730",
+										"ID": "cses:1730",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "Nim: xor of the piles"
+									}
+								],
+								"Lanes": [
+									"Nim: xor of the piles"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "prefix-sums-nt-1",
@@ -2765,7 +8900,24 @@
 							"Warps": null,
 							"Playable": [
 								"cses:1082"
-							]
+							],
+							"Map": {
+								"Module": "prefix-sums-nt-1",
+								"Nodes": [
+									{
+										"Problem": "cses-1082",
+										"ID": "cses:1082",
+										"Core": true,
+										"Parents": null,
+										"Lane": 0,
+										"Note": "sum of sigma over floor(n/i) blocks"
+									}
+								],
+								"Lanes": [
+									"sum of sigma over floor(n/i) blocks"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "prefix-sums-nt-2",
@@ -2779,7 +8931,13 @@
 								"prefix-sums-nt-1"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "matroid",
@@ -2795,7 +8953,13 @@
 								"max-flow"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "matroid-isect",
@@ -2810,7 +8974,13 @@
 								"max-flow"
 							],
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "random",
@@ -2822,7 +8992,15 @@
 							"Frequency": 0,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "random",
+								"Nodes": null,
+								"Lanes": [
+									"few random tries, failure odds shrink"
+								],
+								"Skip": null
+							}
 						},
 						{
 							"Module": "interactive",
@@ -2834,7 +9012,13 @@
 							"Frequency": 1,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						},
 						{
 							"Module": "vectorization",
@@ -2846,7 +9030,13 @@
 							"Frequency": 0,
 							"Prereqs": null,
 							"Warps": null,
-							"Playable": null
+							"Playable": null,
+							"Map": {
+								"Module": "",
+								"Nodes": null,
+								"Lanes": null,
+								"Skip": null
+							}
 						}
 					]
 				}

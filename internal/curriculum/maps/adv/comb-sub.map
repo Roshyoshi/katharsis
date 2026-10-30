@@ -1,0 +1,5 @@
+# DP on Trees - Combining Subtrees (Advanced › Dynamic Programming)
+# The sample forks: size-bounded knapsack merges, and merges over a distance
+# state bounded by k.
+core  cf-815C > cf-1280D  # size-bounded merge of (count, sum)
+core  cf-815C > cf-735E   # merge children over distance <= k

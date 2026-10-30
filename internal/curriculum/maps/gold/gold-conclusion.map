@@ -1,0 +1,15 @@
+# Additional Practice for USACO Gold (Gold › Conclusion)
+# Three lanes, graph search, subset DP and sequence DP; graphs and subsets
+# join at Friendship Editing, sequence DP ends at Blocking Elements.
+core  usaco-282 > usaco-575 > usaco-230 > usaco-1499  # grid BFS, then subset DP
+core  usaco-401 > usaco-230                          # masks: assign, then tour
+core  usaco-401 > cf-2041C > usaco-1499              # used-masks, then submasks
+core  cf-1842C > cf-1918D                            # best earlier DP state
+
+side  cf-1842C > cf-1582F1 > cf-1637D > cf-1783D    # DP over reachable values
+side  cf-1783D > cf-1606E > cf-1886D                # count mod p; nCk, inverses
+side  cf-1842C > cf-1114D > cf-1509C > cf-835D      # interval DP, grown at ends
+side  usaco-282 > cf-1810E > cf-1108F               # cheapest first; Kruskal
+side  cf-1918D > cf-2027D2 > usaco-1523 > usaco-1449  # search over prefix sums
+side  usaco-575 > usaco-695 > cf-1525C > cf-1945G   # many bodies moving at once
+side  usaco-695 > cf-2040E                          # moves under uncertainty

@@ -1,0 +1,5 @@
+# Inclusion-Exclusion Principle (Platinum › Misc. Topics)
+# One lane in the text's order: pairs sharing an element, counted by signed
+# subsets; then forced violations counted by size, in a string and a grid.
+core  cses-2417 > usaco-862              # shared primes by mobius, then flavors
+core  usaco-862 > cses-2421 > cses-2429  # sign by number of forced violations

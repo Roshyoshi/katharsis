@@ -35,22 +35,24 @@ func (m *Model) bootRow(b store.BootSummary, atts []store.AttemptRecord) meta.Bo
 		row.Attempts = append(row.Attempts, m.attemptRow(atts[i].Attempt))
 	}
 	if len(atts) > 0 && !row.Cleared {
-		row.Biome = m.lastBiome(b.Rules, atts)
+		row.Biome = m.lastBiome(b.Rules, b.Topic, atts)
 	}
 	return row
 }
 
 // lastBiome names the biome a boot ended in, from its last attempt (atts
 // come newest first): the boss of a boss room, else the preset's name for
-// the biome the door opened in, else the flavor name of its topic. A door's
+// the biome the door opened in, else the flavor name of its topic, the
+// biome's own as the boot stored it (topic) when it has one. A door's
 // topic names a topic biome, but not Userland, whose doors each keep their
-// own topic, so the engine's first fixed biome is named as mixed.
-func (m *Model) lastBiome(preset string, atts []store.AttemptRecord) string {
+// own topic: a route to it is mixed, and the engine's first fixed biome
+// is named as mixed.
+func (m *Model) lastBiome(preset, topic string, atts []store.AttemptRecord) string {
 	last := atts[0]
 	if last.Door.Boss != "" {
 		return flavor.BossName(last.Door.Boss)
 	}
-	topic := last.Door.Topic
+	topic = cmp.Or(topic, last.Door.Topic)
 	r, ok := m.d.Presets[preset]
 	if !ok || last.Biome >= len(r.Biomes) {
 		return flavor.BiomeName(topic)

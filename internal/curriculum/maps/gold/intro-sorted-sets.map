@@ -1,0 +1,9 @@
+# More Operations on Sorted Sets (Gold › Data Structures)
+# Two lanes, bounds that pick a greedy partner and neighbours that bound gaps,
+# joining at Photo Op, which sweeps from a bound while merging gaps.
+core  cses-1091 > cses-1073 > cses-1632 > usaco-1233  # a bound picks the partner
+core  cses-1163 > usaco-813 > cses-1188 > usaco-1475  # cut set, gap multiset
+core  usaco-1233 > usaco-1475                        # erase what a bound sweeps
+
+side  cses-1163 > usaco-763  # erase one copy, watch the max
+side  usaco-1475 > cf-878C   # merge every block a newcomer spans

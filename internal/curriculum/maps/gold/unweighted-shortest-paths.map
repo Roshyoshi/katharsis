@@ -1,0 +1,9 @@
+# Shortest Paths with Unweighted Edges (Gold › Graphs)
+# Two lanes, BFS from several sources and BFS on a graph you build, joining
+# at A Pie for a Pie: multi-source BFS over an implicit graph.
+core  usaco-491 > usaco-790 > usaco-765  # BFS from several sources at once
+core  usaco-620 > usaco-671 > usaco-765  # build the graph; visit groups once
+
+side  usaco-491 > cses-1707   # BFS from every node; close cycles
+side  usaco-620 > cses-1670   # states are grids; encode them
+side  usaco-790 > usaco-1065  # distance to rocks, then BFS in time

@@ -1,0 +1,6 @@
+# Convex Hull (Platinum › Geometry)
+# One short lane, build the hull then use it as the answer; Minkowski sums
+# hang off as a stretch.
+core  usaco-382 > usaco-864  # hull + point-in-hull; upper hull
+
+side  usaco-382 > cf-1195F  # hull edges by angle; Minkowski sums

@@ -1,0 +1,7 @@
+# Range DP (Gold › Dynamic Programming)
+# Two lanes, equal ends acting together and splitting at a point, joining at
+# Greedy Pie Eaters; Empty String's counting is stretch.
+core  usaco-1114 > cf-607B > usaco-972  # equal ends act together; pivot on k
+core  usaco-647 > usaco-972             # split [l,r] at k, merge the halves
+
+side  cf-607B > cses-1080  # pair the ends; count removal orders

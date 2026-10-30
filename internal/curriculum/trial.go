@@ -1,38 +1,36 @@
 package curriculum
 
 import (
-	"maps"
 	"slices"
-	"sort"
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
 )
 
-// DefaultUnitSize is the number of unit doors in a module trial: the rooms
-// of rules.Trial's unit biome, its first (DESIGN.md "Learn mode": 2 doors
-// from the module list, easiest first). A shorter unit is the engine's to
-// top up, so this is also the size the RTFM screens promise.
-var DefaultUnitSize = rules.Trial().Biomes[0].Rooms
-
-// Trial is the learn-mode challenge for one module: a unit of problems from
-// the module's own lists, then a blind integration door the engine draws
-// from the catalog by topic and rating band.
+// Trial is the learn-mode challenge for one module (DESIGN.md "Learn
+// mode"): three unseen doors on its topic, drawn by the engine from the
+// trials' pool (Split), which no module map shows and no boot draws. The
+// module's map aims them: they climb from the middle of its core problems
+// to past its hardest, so passing says the player can do on problems they
+// have not seen what the map taught.
 //
 // Every level of the atlas but a page has one (Kind.HasTrial). Most grant
 // the capability of the module's topic. One whose topic is ungated (Bronze
 // material, "mixed") grants nothing: passing it records the module in
-// Meta.TrialsPassed, the level's ✓, and no more. A castle, a division's
-// conclusion, is its gauntlet and grants nothing either; see TrialForN.
+// Meta.TrialsPassed, the level's ✓, and opens the next level. A castle, a
+// division's conclusion, draws on every topic at its division's band and
+// grants nothing either.
 type Trial struct {
 	Module Module
-	// Unit is playable problems from the module, sorted Very Easy ->
-	// Insane. It can be shorter than requested (or empty) when the module
-	// lists few judgeable problems.
-	Unit       []catalog.ID
-	IntegTopic string // catalog topic for the blind integration doors
-	IntegBand  [2]int // CF-scale rating band, from the module's division
+	// Map is the module's map as the catalog can play it.
+	Map   Map
+	Topic string // catalog topic of the doors, catalog.Mixed for any
+	Band  [2]int // CF-scale ratings, from the module's division
+	// Targets are the doors' ratings, easiest first; none when the map's
+	// core holds no rated problem, and the engine spreads the doors over
+	// Band.
+	Targets []int
 	// Capability is what passing grants: CapabilityFor(Module.Topic), ""
 	// when the module teaches no gated topic.
 	Capability string
@@ -42,152 +40,85 @@ type Trial struct {
 	Kind LevelKind
 }
 
-// Spec is the trial as game.NewTrial plays it. A unit shorter than
-// DefaultUnitSize is fine: the engine tops it up from the catalog by
-// IntegTopic and IntegBand (rules.Trial sets the size).
+// Spec is the trial as game.NewTrial plays it.
 func (t Trial) Spec() game.TrialSpec {
 	return game.TrialSpec{
 		Module:     t.Module.ID,
 		Title:      t.Module.Title,
-		Unit:       slices.Clone(t.Unit),
-		IntegTopic: t.IntegTopic,
-		IntegBand:  t.IntegBand,
+		Topic:      t.Topic,
+		Band:       t.Band,
+		Targets:    slices.Clone(t.Targets),
 		Capability: t.Capability,
 	}
 }
 
-// TrialFor builds the trial for m with DefaultUnitSize unit doors.
-// judgeable reports whether the catalog can serve and judge an ID; nil
-// accepts every reference CatalogID maps. lookup gives the catalog's
-// problem, for its rating; nil knows none.
-func TrialFor(m Module, judgeable func(catalog.ID) bool, lookup func(catalog.ID) (catalog.Problem, bool)) Trial {
-	return TrialForN(m, judgeable, lookup, DefaultUnitSize)
-}
-
-type candidate struct {
-	ref   ProblemRef
-	order int // position in the module's lists
-}
-
-// rankWithin orders problems sharing a difficulty label: starred first,
-// then problems whose solution is not already walked through in the module
-// text (a focus problem is solved in the reading, so it tests little), then
-// guide order.
-func rankWithin(a, b candidate) bool {
-	if a.ref.Starred != b.ref.Starred {
-		return a.ref.Starred
+// Doors is how many doors a trial plays: rules.Trial's rooms.
+var Doors = func() int {
+	n := 0
+	for _, b := range rules.Trial().Biomes {
+		n += b.Rooms
 	}
-	ai, bi := a.ref.SolutionKind == "in-module", b.ref.SolutionKind == "in-module"
-	if ai != bi {
-		return !ai
-	}
-	return a.order < b.order
-}
+	return n
+}()
 
-// TrialForN picks up to n unit doors. Picking the n easiest would often
-// give two "Easy" problems; the unit should ramp like the module does, so
-// selection goes round-robin over difficulty labels from easiest up,
-// taking the best-ranked remaining problem of each label per round, and the
-// result is sorted by label.
+// TrialFor builds m's trial. judgeable reports whether the catalog can
+// serve and judge an ID, for the map (Map.Playable); nil accepts every
+// node with a catalog ID. lookup gives the catalog's problem, for its
+// rating; nil knows none.
 //
-// A castle's trial is built the same way, and that is already a division
-// gauntlet: a conclusion has no topic (TopicFor), so its unit is the
-// conclusion's own problems, the guide's uncategorised practice for the
-// division, ramped as above; the engine tops a short unit up and draws the
-// integration doors from every topic (Mixed) at the division's band; and
-// no capability is granted. Nothing new is asked of the engine, so a castle
-// trial plays and replays as any other.
-func TrialForN(m Module, judgeable func(catalog.ID) bool, lookup func(catalog.ID) (catalog.Problem, bool), n int) Trial {
+// The doors aim at the median of the core's ratings, its hardest, and
+// 100 past that (one of the rules' rating windows): the first is what
+// the map's middle asked, the last a step past its capstone. CSES ratings
+// come from solver counts (catalog.ShowsRating), too rough to aim by, so
+// they count only when nothing else on the core is rated.
+func TrialFor(m Module, judgeable func(catalog.ID) bool, lookup func(catalog.ID) (catalog.Problem, bool)) Trial {
+	mp, _ := MapFor(m)
 	t := Trial{
 		Module:     m,
-		IntegTopic: m.Topic,
-		IntegBand:  DivisionBand(m.Division),
+		Map:        mp.Playable(judgeable),
+		Topic:      m.Topic,
+		Band:       DivisionBand(m.Division),
 		Capability: CapabilityFor(m.Topic),
 	}
-	if t.IntegTopic == "" {
-		t.IntegTopic = catalog.Mixed
+	if t.Topic == "" {
+		t.Topic = catalog.Mixed
 	}
-
-	seen := map[catalog.ID]int{}
-	var cands []candidate
-	for _, l := range m.Problems {
-		for _, p := range l.Problems {
-			if p.ID == "" || judgeable != nil && !judgeable(p.ID) {
-				continue
-			}
-			if i, dup := seen[p.ID]; dup {
-				// Listed twice (focus list and main list): starred
-				// anywhere counts.
-				cands[i].ref.Starred = cands[i].ref.Starred || p.Starred
-				continue
-			}
-			seen[p.ID] = len(cands)
-			cands = append(cands, candidate{ref: p, order: len(cands)})
-		}
-	}
-
-	t.Kind = levelKind(m.ID, m.Division, len(cands) > 0)
-
-	// The unit ramps Easy → Hard (DESIGN.md "Learn mode"). Its stretch
-	// fills a unit only when the module has too few others, as the
-	// module's own problems still beat the catalog's filler: the guide's
-	// Very Hard and Insane problems, and those the catalog rates past the
-	// division's band by more than the trial draw's narrowest rating
-	// window (a Gold problem on a Silver module's list). Over the full
-	// guide 11 of 105 units held one, which spent the trial's room to
-	// lose (rules.TrialLostRooms) before it began; 5 still do, for want of
-	// others. CSES ratings come from solver counts (catalog.ShowsRating),
-	// so they do not count against a problem.
-	over := t.IntegBand[1] + rules.Trial().RatingWindows[0]
-	past := func(id catalog.ID) bool {
-		if lookup == nil || !catalog.ShowsRating(id) {
-			return false
-		}
-		p, ok := lookup(id)
-		return ok && p.Rating > over
-	}
-	ramp, stretch := map[int][]candidate{}, map[int][]candidate{}
-	for _, c := range cands {
-		r := DifficultyRank(c.ref.Difficulty)
-		if r == difficultyRank["Very Hard"] || r == difficultyRank["Insane"] || past(c.ref.ID) {
-			stretch[r] = append(stretch[r], c)
-		} else {
-			ramp[r] = append(ramp[r], c)
-		}
-	}
-	var picked []candidate
-	for _, byLabel := range []map[int][]candidate{ramp, stretch} {
-		labels := slices.Sorted(maps.Keys(byLabel))
-		for _, r := range labels {
-			g := byLabel[r]
-			sort.SliceStable(g, func(i, j int) bool { return rankWithin(g[i], g[j]) })
-		}
-		for len(picked) < n {
-			progress := false
-			for _, r := range labels {
-				if len(picked) == n {
-					break
-				}
-				if g := byLabel[r]; len(g) > 0 {
-					picked = append(picked, g[0])
-					byLabel[r] = g[1:]
-					progress = true
-				}
-			}
-			if !progress {
-				break
-			}
-		}
-	}
-	sort.SliceStable(picked, func(i, j int) bool {
-		ri, rj := DifficultyRank(picked[i].ref.Difficulty), DifficultyRank(picked[j].ref.Difficulty)
-		if ri != rj {
-			return ri < rj
-		}
-		return rankWithin(picked[i], picked[j])
-	})
-	for _, c := range picked {
-		t.Unit = append(t.Unit, c.ref.ID)
-	}
+	t.Kind = levelKind(m.ID, m.Division, len(t.Map.Nodes) > 0)
+	t.Targets = aim(t.Map, lookup)
 	return t
+}
+
+// aim is the trial's door ratings for map mp (see TrialFor), nil for none.
+func aim(mp Map, lookup func(catalog.ID) (catalog.Problem, bool)) []int {
+	if lookup == nil {
+		return nil
+	}
+	var shown, rough []int
+	for _, n := range mp.Nodes {
+		if !n.Core {
+			continue
+		}
+		if p, ok := lookup(n.ID); ok && p.Rating > 0 {
+			if catalog.ShowsRating(n.ID) {
+				shown = append(shown, p.Rating)
+			} else {
+				rough = append(rough, p.Rating)
+			}
+		}
+	}
+	rs := shown
+	if len(rs) == 0 {
+		rs = rough
+	}
+	if len(rs) == 0 {
+		return nil
+	}
+	slices.Sort(rs)
+	mid, top := rs[(len(rs)-1)/2], rs[len(rs)-1]
+	step := rules.Trial().WithDefaults().RatingWindows[0]
+	out := []int{mid, top, top + step}
+	for len(out) < Doors {
+		out = append(out, top+step)
+	}
+	return out[:Doors]
 }

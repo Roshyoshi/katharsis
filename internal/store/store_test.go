@@ -232,7 +232,7 @@ func TestCheckpointRoundTrip(t *testing.T) {
 		// The clock's first reading: 9 + 14 min of closed doors, 5m1s into
 		// the open one.
 		Uptime:   28*time.Minute + time.Second,
-		LastDoor: "usaco:1060",
+		LastDoor: "usaco:1060", Topic: "prefix-sums",
 	}}
 	same(t, "boots", boots, wantBoots)
 }
@@ -476,12 +476,12 @@ func TestBootSummaryEnds(t *testing.T) {
 			Boot: 2, Seed: cleared.Seed, Prestige: 1, Rules: "standard",
 			Started: cleared.Started, Outcome: store.BootCleared,
 			Uptime:    48 * time.Minute, // 9 + 14 + 25 min of doors
-			Committed: 120, LastDoor: "usaco:1060",
+			Committed: 120, LastDoor: "usaco:1060", Topic: "prefix-sums",
 		},
 		{
 			Boot: 1, Seed: crashed.Seed, Prestige: 1, Rules: "standard",
 			Started: t0, Outcome: store.BootCrashed, Cause: game.OutOfLives,
-			Uptime: crashed.Crash.Uptime, Dumped: 120, LastDoor: "usaco:1060",
+			Uptime: crashed.Crash.Uptime, Dumped: 120, LastDoor: "usaco:1060", Topic: "prefix-sums",
 		},
 	}
 	same(t, "boots", boots, want)

@@ -1,0 +1,7 @@
+# Introduction to Functional Graphs (Silver › Graphs)
+# From Badge, per-component cycles and cycle membership join at Planets
+# Cycles; k-th successor hangs off it.
+core  cf-1020B > usaco-1230 > cses-1751  # find each component's cycle
+core  cf-1020B > usaco-764 > cses-1751   # which nodes lie on a cycle
+
+side  cses-1751 > usaco-284  # k steps: tail, then mod the cycle

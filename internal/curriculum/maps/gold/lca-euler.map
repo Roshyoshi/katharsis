@@ -1,0 +1,4 @@
+# (Optional) LCA with Euler Tour (Gold › Trees)
+# One lane: LCA, distances through it, then root-path data cut at the LCA.
+core  cses-1688 > cses-1135 > usaco-921  # root prefixes, combined at the LCA
+core  usaco-921 > usaco-970              # root-path facts by tour index

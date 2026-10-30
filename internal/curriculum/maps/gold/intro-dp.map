@@ -1,0 +1,13 @@
+# Introduction to DP (Gold › Dynamic Programming)
+# Two lanes, what the state remembers and transitions over the last segment,
+# joining at Taming the Herd; counting DPs hang off as stretch.
+core  cf-1418C > usaco-993 > usaco-694   # state remembers turn, city, switches
+core  usaco-694 > usaco-815              # a budget of changes in the state
+core  usaco-945 > usaco-863 > usaco-622  # pick the last segment; k of them
+core  usaco-622 > usaco-815              # last segment plus a change budget
+
+side  usaco-694 > cf-1082E               # switch modes twice: c, then v, then c
+side  usaco-993 > cf-1472G               # DP down a graph in BFS-distance order
+side  usaco-694 > usaco-1185 > usaco-673  # count states; prefix-sum the moves
+side  usaco-863 > usaco-1450 > usaco-1066 > usaco-791  # count by last segment
+side  usaco-815 > usaco-971              # streaks of K or more; costs from APSP

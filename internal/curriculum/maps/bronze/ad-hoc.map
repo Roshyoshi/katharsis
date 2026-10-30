@@ -1,0 +1,7 @@
+# Ad Hoc Problems (Bronze › Additional)
+# Counting who must move, and filling unknowns best and worst, join at
+# Taming the Herd; Photoshoot's one-way updates are a tangent.
+core  usaco-1204 > usaco-892 > usaco-809  # who must move, read from the end
+core  usaco-1539 > usaco-809              # unknowns filled worst and best
+
+side  usaco-1539 > usaco-1541  # one-way changes: keep a running max

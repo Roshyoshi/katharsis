@@ -1,0 +1,7 @@
+# Kruskal Reconstruction Tree (Platinum › Trees)
+# The walkthrough alone is core; two stretch problems hang off it, one per
+# way of reading the KRT.
+core  cf-1706E  # KRT by edge index, LCA of a range
+
+side  cf-1706E > cf-1416D  # a KRT subtree is a component
+side  cf-1706E > cf-1628E  # set LCA from DFS-order extremes

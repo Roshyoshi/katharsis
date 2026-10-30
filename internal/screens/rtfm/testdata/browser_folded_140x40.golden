@@ -1,19 +1,19 @@
 RTFM(7)                                                USACO Guide · CC BY-NC-SA 4.0                                                 RTFM(7)
-       MODULE                                BIOME               CAPABILITY    TRIAL          FREQ
-▾ GENERAL                                                                                 1 module
+       MODULE                                BIOME               CAPABILITY    MAP                FREQ
+▾ GENERAL                                                                                     1 module
    ▹ Language-Specific  · 1 module
-▾ BRONZE                                                                                 2 modules
+▾ BRONZE                                                                                     2 modules
    ▾ Additional
-       Casework                              Userland                          2 doors        ★★☆☆
+       Casework                              Userland                          5 core +1 stretch  ★★☆☆
    ▹ Conclusion  · 1 module
-▾ SILVER                                                                         2 modules · ■ 1/2
+▾ SILVER                                                                             2 modules · ■ 1/2
    ▹ Prefix Sums  · 1 module
    ▹ Sorting & Searching  · 1 module
-▾ GOLD                                                                            1 module · ■ 0/1
+▾ GOLD                                                                                1 module · ■ 0/1
    ▹ Additional Topics  · 1 module
-▾ PLATINUM                                                                                1 module
+▾ PLATINUM                                                                                    1 module
    ▹ Misc. Topics  · 1 module
-▾ ADVANCED                                                                        1 module · ■ 0/1
+▾ ADVANCED                                                                            1 module · ■ 0/1
    ▹ Data Structures  · 1 module
 
 COLOPHON
@@ -30,7 +30,7 @@ COLOPHON
        CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
        Music, licenses and sources: press c in the GRUB menu.
 
-katharsis                                                                                  RTFM(7)
+katharsis                                                                                      RTFM(7)
 
 
 

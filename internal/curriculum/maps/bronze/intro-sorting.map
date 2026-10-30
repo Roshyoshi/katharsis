@@ -1,0 +1,9 @@
+# Introduction to Sorting (Bronze › Sorting & Sets)
+# Two lanes, sorted neighbours and each sorted element tried, join at Angry
+# Cows; sorting pairs and replaying them in order caps it.
+core  cses-1621 > usaco-592   # after sorting, neighbours touch
+core  usaco-1251 > usaco-592  # sort, then try each element
+core  usaco-592 > usaco-713   # sort pairs, replay in that order
+
+side  usaco-1251 > cf-1808B  # a sorted rank counts the rest
+side  usaco-592 > cf-863B    # try each choice, pair neighbours

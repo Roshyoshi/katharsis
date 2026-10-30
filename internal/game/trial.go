@@ -13,21 +13,19 @@ import (
 
 // NewTrial starts a learn-mode trial (DESIGN.md "Learn mode") as boot
 // meta.Boots+1, so the store saves and resumes it like any boot; State.Trial
-// marks it. r is normally rules.Trial(): two fixed biomes, the unit then the
-// integration, whose Rooms are the minimum unit size and the number of
-// integration doors. Every room has one door.
+// marks it. r is normally rules.Trial(): fixed biomes whose rooms hold one
+// door each, every door blind.
 //
-// The unit plays t.Unit in order, with tags shown, skipping problems the
-// pool cannot judge. A unit shorter than the minimum is topped up from the
-// pool (9 of the guide's 105 trials list fewer than 2 playable problems);
-// top-ups are merged in by rating so the unit still ramps, and the module's
-// own order is never changed. The integration draws blind doors the same
-// way (see trialDraw).
+// pool is the trials' own (curriculum.Split): problems no module map shows
+// and no boot draws, so every door is one the player has not met in RTFM.
+// Room k's door aims at t.Target(k) and is drawn by trialDraw, which also
+// passes over what the player has solved. The whole plan is drawn up
+// front, so the map can show it, and anew on every try.
 //
 // Clearing grants t.Capability and records t.Module in Meta.TrialsPassed;
 // failing ends the trial like a crash, without a core dump or a regression
 // (see crash). Doors cannot be swapped, merge windows offer no daemons, and
-// trial doors are not aimed, so they teach no calibration.
+// trial doors are not aimed at the player, so they teach no calibration.
 func NewTrial(r rules.Rules, meta *Meta, pool []catalog.Problem, t TrialSpec, seed uint64, now time.Time) (*State, []Effect, error) {
 	if meta == nil {
 		return nil, nil, errors.New("game: nil meta")
@@ -36,16 +34,16 @@ func NewTrial(r rules.Rules, meta *Meta, pool []catalog.Problem, t TrialSpec, se
 	if err := r.Validate(); err != nil {
 		return nil, nil, err
 	}
-	if len(r.Biomes) != 2 || r.Biomes[0].Kind != rules.Fixed || r.Biomes[1].Kind != rules.Fixed {
-		return nil, nil, fmt.Errorf("game: trial rules %q need two fixed biomes, unit and integration (see rules.Trial)", r.Name)
+	if len(r.Biomes) == 0 || slices.ContainsFunc(r.Biomes, func(b rules.Biome) bool { return b.Kind != rules.Fixed }) {
+		return nil, nil, fmt.Errorf("game: trial rules %q need fixed biomes only (see rules.Trial)", r.Name)
 	}
-	if b := t.IntegBand; b[0] > b[1] {
+	if b := t.Band; b[0] > b[1] {
 		return nil, nil, fmt.Errorf("game: trial %q band %v is empty", t.Module, b)
 	}
-	// The snapshot records the trial as played: its rooms come from the
-	// plan, and Biomes must not alias the caller's slice.
+	// The snapshot records the trial as played: Biomes must not alias the
+	// caller's slice.
 	r.Biomes = slices.Clone(r.Biomes)
-	t.Unit = slices.Clone(t.Unit)
+	t.Targets = slices.Clone(t.Targets)
 	s := &State{Seed: seed, RNG: seed, Rules: r, Started: now, Trial: &TrialState{TrialSpec: t}}
 	e := newEngine(s, meta, pool, now)
 	if err := e.planTrial(); err != nil {
@@ -53,92 +51,93 @@ func NewTrial(r rules.Rules, meta *Meta, pool []catalog.Problem, t TrialSpec, se
 	}
 
 	e.begin()
-	topic := t.IntegTopic
-	if topic == "" {
-		topic = Mixed
+	topic := cmp.Or(t.Topic, Mixed)
+	for _, b := range r.Biomes {
+		s.Biomes = append(s.Biomes, BiomeState{Name: b.Name, Topic: topic, Kind: rules.Fixed, Rooms: b.Rooms})
 	}
-	tr := s.Trial
-	for i, ids := range tr.Plan {
-		s.Rules.Biomes[i].Rooms = len(ids)
-		s.Biomes = append(s.Biomes, BiomeState{Name: r.Biomes[i].Name, Topic: topic, Kind: rules.Fixed, Rooms: len(ids)})
+	n := s.trialRooms()
+	aims := make([]int, n)
+	for k := range aims {
+		aims[k] = t.Target(k, n)
 	}
-	e.logf("trial #%d: %s (%s), unit %d (%d topped up), integration %d, rules %s, seed %#x, rating %.0f",
-		s.Boot, t.Module, t.Title, len(tr.Plan[0]), len(tr.TopUp), len(tr.Plan[1]), r.Name, seed, meta.Rating)
-	e.emit(Prefetch{Problems: slices.Concat(tr.Plan...)})
+	e.logf("trial #%d: %s (%s), doors %v aimed at %v on %s, rules %s, seed %#x, rating %.0f",
+		s.Boot, t.Module, t.Title, slices.Concat(s.Trial.Plan...), aims, topic, r.Name, seed, meta.Rating)
+	e.emit(Prefetch{Problems: slices.Concat(s.Trial.Plan...)})
 	e.enterBiome(0)
 	return s, e.fx, nil
 }
 
-// planTrial fills s.Trial's Plan and TopUp, or fails when the pool cannot
-// give both biomes a door.
+// planTrial draws every room's door into s.Trial.Plan, or fails when the
+// pool runs out first.
 func (e *engine) planTrial() error {
 	tr := e.s.Trial
+	n := e.s.trialRooms()
 	used := map[catalog.ID]bool{}
-	var unit []*catalog.Problem
-	for _, id := range tr.Unit {
-		i := slices.IndexFunc(e.pool, func(p catalog.Problem) bool { return p.ID == id && p.Judgeable })
-		if i < 0 || used[id] {
-			continue
+	k := 0
+	for _, b := range e.s.Rules.Biomes {
+		var ids []catalog.ID
+		for range b.Rooms {
+			p := e.trialDraw(used, tr.Target(k, n))
+			if p == nil {
+				return fmt.Errorf("game: the pool has too few judgeable problems for trial %q", tr.Module)
+			}
+			ids = append(ids, p.ID)
+			k++
 		}
-		used[id] = true
-		unit = append(unit, &e.pool[i])
+		tr.Plan = append(tr.Plan, ids)
 	}
-	var top []*catalog.Problem
-	if n := e.s.Rules.Biomes[0].Rooms - len(unit); n > 0 {
-		top = e.trialDraw(n, used)
-		slices.SortStableFunc(top, func(a, b *catalog.Problem) int { return cmp.Compare(a.Rating, b.Rating) })
-	}
-	integ := e.trialDraw(e.s.Rules.Biomes[1].Rooms, used)
-	if len(unit)+len(top) == 0 || len(integ) == 0 {
-		return fmt.Errorf("game: the pool has too few judgeable problems for trial %q", tr.Module)
-	}
-
-	// Merge the top-ups (sorted) into the unit (module order) by rating.
-	var plan []catalog.ID
-	for len(unit) > 0 || len(top) > 0 {
-		if len(top) > 0 && (len(unit) == 0 || top[0].Rating < unit[0].Rating) {
-			tr.TopUp = append(tr.TopUp, top[0].ID)
-			plan, top = append(plan, top[0].ID), top[1:]
-		} else {
-			plan, unit = append(plan, unit[0].ID), unit[1:]
-		}
-	}
-	tr.Plan = [][]catalog.ID{plan, problemIDs(integ)}
 	return nil
 }
 
-func problemIDs(ps []*catalog.Problem) []catalog.ID {
-	out := make([]catalog.ID, len(ps))
-	for i, p := range ps {
-		out[i] = p.ID
+// trialRooms is how many rooms the trial's biomes hold; trialRoom is the
+// current room's index among them.
+func (s *State) trialRooms() int {
+	n := 0
+	for _, b := range s.Rules.Biomes {
+		n += b.Rooms
 	}
-	return out
+	return n
 }
 
-// trialDraw picks up to n judgeable problems outside used for the trial and
-// adds them to used. Preference, most important first: on the integration
-// topic; rating inside the band, else within the narrowest of the rules'
-// rating windows around it; not solved independently. Equals are drawn
-// uniformly at random.
+func (s *State) trialRoom() int {
+	k := s.Room
+	for _, b := range s.Rules.Biomes[:s.Biome] {
+		k += b.Rooms
+	}
+	return k
+}
+
+// Solved is every problem m has solved: in a boot, an upsolve or a trial,
+// with help or without. A trial's doors pass over them (see trialDraw); a
+// boot's let an assisted solve come back (see excluded).
+func Solved(m *Meta) map[catalog.ID]bool {
+	s := make(map[catalog.ID]bool, len(m.Solves))
+	for _, sv := range m.Solves {
+		s[sv.Problem] = true
+	}
+	return s
+}
+
+// trialDraw picks a judgeable problem outside used for a trial door aimed
+// at target (0: any rating) and adds it to used; nil when none is left.
+// Preference, most important first: within the rules' widest rating
+// window of target; on the trial's topic; not solved (Solved); in the
+// narrowest window. Equals are drawn uniformly at random.
 //
-// Topic comes before rating, the reverse of boot doors (see pick): a trial
-// tests a topic, and a door on another topic tests nothing about it, while
-// a door 100 points outside the band still does.
-func (e *engine) trialDraw(n int, used map[catalog.ID]bool) []*catalog.Problem {
+// Topic comes before closeness, the reverse of boot doors (see pick): a
+// trial tests a topic, and a door on another topic tests nothing about it
+// while one 250 off the aim still does. Past every window the topic gives
+// way: a prefix-sums problem 900 over a Silver trial tests the player's
+// ceiling, not the module. A solved door tests nothing either, so it waits
+// behind every unsolved one in the windows.
+func (e *engine) trialDraw(used map[catalog.ID]bool, target int) *catalog.Problem {
 	t := e.s.Trial
 	windows := e.s.Rules.RatingWindows
-	band := t.IntegBand
-	solved := map[catalog.ID]bool{}
-	for _, s := range e.meta.Solves {
-		if s.Kind == Independent {
-			solved[s.Problem] = true
-		}
-	}
+	solved := Solved(e.meta)
 	type cand struct {
-		p      *catalog.Problem
-		off    bool // off the integration topic
-		tier   int  // 0 inside the band, i+1 within windows[i] of it
-		solved bool
+		p                *catalog.Problem
+		far, off, solved bool
+		tier             int // the narrowest window holding it
 	}
 	var cs []cand
 	seen := map[catalog.ID]bool{}
@@ -149,24 +148,24 @@ func (e *engine) trialDraw(n int, used map[catalog.ID]bool) []*catalog.Problem {
 		}
 		seen[p.ID] = true
 		dist := 0
-		if band != [2]int{} {
-			dist = max(band[0]-p.Rating, p.Rating-band[1], 0)
+		if target > 0 {
+			dist = max(p.Rating-target, target-p.Rating)
 		}
-		tier := 0
-		if dist > 0 {
-			tier = len(windows) + 1
-			for j, w := range windows {
-				if dist <= w {
-					tier = j + 1
-					break
-				}
+		tier := len(windows)
+		for j, w := range windows {
+			if dist <= w {
+				tier = j
+				break
 			}
 		}
-		off := t.IntegTopic != "" && t.IntegTopic != Mixed && topicOf(p) != t.IntegTopic
-		cs = append(cs, cand{p, off, tier, solved[p.ID]})
+		off := t.Topic != "" && t.Topic != Mixed && topicOf(p) != t.Topic
+		cs = append(cs, cand{p, tier == len(windows), off, solved[p.ID], tier})
+	}
+	if len(cs) == 0 {
+		return nil
 	}
 	// Sorted by ID, then shuffled from the seed, then ordered by
-	// preference: the draw depends on the seed, not on the catalog's order.
+	// preference: the draw depends on the seed, not on the pool's order.
 	slices.SortFunc(cs, func(a, b cand) int { return cmp.Compare(a.p.ID, b.p.ID) })
 	e.rng.Shuffle(len(cs), func(i, j int) { cs[i], cs[j] = cs[j], cs[i] })
 	bit := func(b bool) int {
@@ -175,15 +174,12 @@ func (e *engine) trialDraw(n int, used map[catalog.ID]bool) []*catalog.Problem {
 		}
 		return 0
 	}
-	slices.SortStableFunc(cs, func(a, b cand) int {
-		return cmp.Or(cmp.Compare(bit(a.off), bit(b.off)), cmp.Compare(a.tier, b.tier), cmp.Compare(bit(a.solved), bit(b.solved)))
+	best := slices.MinFunc(cs, func(a, b cand) int {
+		return cmp.Or(cmp.Compare(bit(a.far), bit(b.far)), cmp.Compare(bit(a.off), bit(b.off)),
+			cmp.Compare(bit(a.solved), bit(b.solved)), cmp.Compare(a.tier, b.tier))
 	})
-	var out []*catalog.Problem
-	for _, c := range cs[:min(n, len(cs))] {
-		used[c.p.ID] = true
-		out = append(out, c.p)
-	}
-	return out
+	used[best.p.ID] = true
+	return best.p
 }
 
 // trialProblem is the current room's planned problem. If the pool lost it
@@ -203,29 +199,30 @@ func (e *engine) trialProblem() *catalog.Problem {
 			used[id] = true
 		}
 	}
-	if ps := e.trialDraw(1, used); len(ps) > 0 {
-		e.logf("trial: %s left the pool, %s instead", id, ps[0].ID)
-		tr.Plan[s.Biome][s.Room] = ps[0].ID
-		return ps[0]
+	target := tr.Target(s.trialRoom(), s.trialRooms())
+	if p := e.trialDraw(used, target); p != nil {
+		e.logf("trial: %s left the pool, %s instead", id, p.ID)
+		tr.Plan[s.Biome][s.Room] = p.ID
+		return p
 	}
-	return &catalog.Problem{ID: id, Topic: s.Biomes[s.Biome].Topic, Rating: (tr.IntegBand[0] + tr.IntegBand[1]) / 2, Judgeable: true}
+	return &catalog.Problem{ID: id, Topic: s.Biomes[s.Biome].Topic, Rating: target, Judgeable: true}
 }
 
 // LostRoomsLeft is how many more rooms the trial may lose to :q! and still
-// pass (rules.TrialLostRooms). Only unit rooms can go, so it is 0 on a
-// blind door, as outside a trial.
+// pass (rules.TrialLostRooms); 0 outside a trial.
 func (s *State) LostRoomsLeft() int {
-	if s.Trial == nil || s.Biome != 0 {
+	if s.Trial == nil {
 		return 0
 	}
 	return max(s.Rules.TrialLostRooms-s.Trial.Lost, 0)
 }
 
-// loseTrialRoom is a trial's :q! while it has a unit room to lose: the
-// door closes, rated as failed, and the trial goes on as after a clear,
-// with no pay and no upgrade pick, to the blind doors once the unit is
-// done. Like a failed trial, it schedules no regression (see crash). It
-// reports false where the :q! ends the trial.
+// loseTrialRoom is a trial's :q! while it has a room to lose: the door
+// closes, rated as failed, and the trial goes on as after a clear, with no
+// pay and no upgrade pick: to the next room, the merge window after a
+// biome's last, or the pass after the trial's last. Like a failed trial,
+// it schedules no regression (see crash). It reports false where the :q!
+// ends the trial.
 func (e *engine) loseTrialRoom(o Outcome) bool {
 	s := e.s
 	if o != GaveUp || s.LostRoomsLeft() == 0 {
@@ -236,10 +233,14 @@ func (e *engine) loseTrialRoom(o Outcome) bool {
 	s.Trial.Lost++
 	e.logf("%s: :q!, room lost, %d more may go", name, s.LostRoomsLeft())
 	e.emit(CloseProblem{Door: a.Door}, Sound{Name: "wa"})
-	if s.Room++; s.Room < s.Biomes[s.Biome].Rooms {
+	s.Room++
+	switch {
+	case s.Room < s.Biomes[s.Biome].Rooms:
 		s.Phase = PhaseDoors
 		e.rollRoom(true, "fresh")
-	} else {
+	case s.Biome == len(s.Biomes)-1:
+		e.finish()
+	default:
 		e.enterMerge()
 	}
 	return true

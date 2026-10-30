@@ -1,0 +1,18 @@
+# Additional Practice for USACO Silver (Silver › Conclusion)
+# Three lanes, prefix sums, binary search on the answer and sorted
+# positions; prefix sums and search join at Set Or Decrease, while sorted
+# positions branch into graphs and end at Graph Composition.
+core  cses-1650 > usaco-1112 > cf-1622C          # prefix sums: 1D, 2D, sorted
+core  cf-1873E > cf-1792C > cf-1856C > cf-1622C  # binary search the answer
+core  cf-1557B > cf-1792C                        # sorted order vs. positions
+core  cf-1557B > cf-2060E                        # count forced cuts and joins
+
+side  cses-1650 > cf-1902D                        # prefix positions, by point
+side  cf-1873E > cf-1359C > usaco-1255            # monotone formulas, by parity
+side  cf-1792C > cf-847B > cf-1690G               # record heads, kept sorted
+side  cf-1856C > cf-1251D > usaco-419 > usaco-624  # binary search, harder checks
+side  cf-1622C > cses-3411 > cses-3410            # Manhattan via prefix sums
+side  cf-1622C > cf-1244E > cf-1428E              # each op where it gains most
+side  cf-2060E > cf-653E                          # components of the complement
+side  cf-2060E > cf-1620E                         # merge classes, replayed back
+side  cf-2060E > cf-700B                          # subtree sizes bound an edge

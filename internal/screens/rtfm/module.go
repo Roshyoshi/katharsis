@@ -8,12 +8,11 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 
-	"katharsis/internal/catalog"
 	"katharsis/internal/curriculum"
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
+	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/ui"
@@ -21,17 +20,16 @@ import (
 )
 
 // Module is one module's page, set as a man page: NAME (id, title, what it
-// is about, a faint story line), TRIAL (the unit doors in the order a trial
-// boot plays them, any the catalog tops up, the blind integration doors, and
-// what passing grants, or why a page has no trial), SEE ALSO (prerequisites,
-// authors), then the module's CC BY-NC-SA attribution. r reads the module, t
-// starts its trial (any level but a page), o opens it on usaco.guide.
+// is about, a faint story line), TRIAL (what opens it, its unseen doors and
+// their aims, what passing takes and grants, or why a page has no trial),
+// SEE ALSO (prerequisites, authors), then the module's CC BY-NC-SA
+// attribution. r reads the module, t starts its trial (any level but a
+// page), o opens it on usaco.guide.
 type Module struct {
 	e      entry
 	prereq []string // prerequisites as display names
 	caps   map[string]bool
 	passed bool // its trial is passed (Meta.TrialsPassed)
-	lookup screens.Lookup
 
 	top int // first body line shown, when the body does not fit
 	h   int // body rows at the last View
@@ -40,11 +38,11 @@ type Module struct {
 // NewModule builds the page for mod. c resolves prerequisite ids to titles
 // and may be nil; judgeable and lookup are as for NewBrowser.
 func NewModule(c *curriculum.Curriculum, mod curriculum.Module, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Module {
-	return newModule(c, newEntry(mod, judgeable, lookup), capSet(m), slices.Contains(m.TrialsPassed, mod.ID), lookup)
+	return newModule(c, newEntry(mod, judgeable, lookup), capSet(m), slices.Contains(m.TrialsPassed, mod.ID))
 }
 
-func newModule(c *curriculum.Curriculum, e entry, caps map[string]bool, passed bool, lookup screens.Lookup) *Module {
-	p := &Module{e: e, caps: caps, passed: passed, lookup: lookup}
+func newModule(c *curriculum.Curriculum, e entry, caps map[string]bool, passed bool) *Module {
+	p := &Module{e: e, caps: caps, passed: passed}
 	for _, id := range e.mod.Prerequisites {
 		name := id
 		if c != nil {
@@ -135,16 +133,26 @@ func (p *Module) body(w int) []string {
 		return append(out, p.seeAlso(text)...)
 	}
 	out = append(out, "", ui.Spread(ui.Strong.Render("TRIAL"),
-		ui.Muted.Render(fmt.Sprintf("unit: tags shown · integration: blind · pass: %d of %d + blind",
-			unitPass, curriculum.DefaultUnitSize)), text))
-	out = append(out, p.unitLines(w)...)
-	where := p.e.biome + ui.G.Sep + ui.RatingBand(t.IntegBand[0], t.IntegBand[1])
-	if n := p.e.short(); n > 0 {
-		out = append(out, ind+fmt.Sprintf("+  %d topped up from the catalog · %s", n, where))
+		ui.Muted.Render("opens once the map's core is solved: "+units.Plural(t.Map.Core(), "problem")), text))
+	for _, l := range p.trialFacts() {
+		out = append(out, wrap(l, modIndent, w)...)
 	}
-	out = append(out, ind+"+  "+units.Plural(integrationDoors, "blind integration door")+" · "+where)
-	out = append(out, ind+p.passLine())
 	return append(out, p.seeAlso(text)...)
+}
+
+// trialFacts is the trial, a line each: its doors, what they aim at, what
+// passing takes, what it grants.
+func (p *Module) trialFacts() []string {
+	t := p.e.trial
+	out := []string{ui.G.Blind + "  " + units.Plural(curriculum.Doors, "unseen door") + " on " + p.e.biome +
+		ui.G.Sep + ui.RatingBand(t.Band[0], t.Band[1]) + ui.Muted.Render(ui.G.Sep+"every door blind")}
+	if a := aims(t); a != "" {
+		out = append(out, ui.G.Rating+"  aimed "+a+ui.Muted.Render(": the core's middle, its hardest, a step past"))
+	}
+	lose := rules.Trial().TrialLostRooms
+	out = append(out, fmt.Sprintf("%s  pass %d of %d", ui.G.Pass, trialPass, curriculum.Doors)+
+		ui.Muted.Render(": "+units.Plural(lose, "door")+" may go to :q!"))
+	return append(out, p.passLine())
 }
 
 // seeAlso is the page's tail: SEE ALSO, then the module's attribution,
@@ -189,67 +197,6 @@ func facts(label, value string, w int) []string {
 	lines := wrap(value, modIndent+labelW, w)
 	lines[0] = strings.Repeat(" ", modIndent) + ui.Fit(label, labelW) + strings.TrimLeft(lines[0], " ")
 	return lines
-}
-
-// unitLines lists the unit doors: number, title, the guide's difficulty
-// label (relative to the module), the catalog rating when known, and the
-// contest.
-func (p *Module) unitLines(w int) []string {
-	type door struct {
-		title, label, contest string
-		rating                int
-	}
-	var ds []door
-	titleW := 0
-	for _, id := range p.e.trial.Unit {
-		d := door{title: string(id)}
-		if ref, ok := p.ref(id); ok {
-			d.title, d.label = ref.Name, ref.Difficulty
-		}
-		if p.lookup != nil {
-			if pr, ok := p.lookup(id); ok {
-				if pr.Title != "" {
-					d.title = pr.Title
-				}
-				d.contest = pr.Contest
-				if catalog.ShowsRating(id) {
-					d.rating = pr.Rating
-				}
-			}
-		}
-		ds = append(ds, d)
-		titleW = max(titleW, ansi.StringWidth(d.title))
-	}
-	const labelW, ratingW = 9, 5 // ratingW fits "◆3500"
-	fixed := modIndent + 3 + colGap + labelW + colGap + ratingW
-	titleW = max(min(titleW, w-fixed-colGap), 8)
-	var out []string
-	for i, d := range ds {
-		rating := ""
-		if d.rating > 0 {
-			rating = ui.Rating(d.rating)
-		}
-		line := strings.Repeat(" ", modIndent) + ui.Fit(fmt.Sprint(i+1), 3) + ui.Fit(d.title, titleW) +
-			strings.Repeat(" ", colGap) + ui.Fit(d.label, labelW) +
-			strings.Repeat(" ", colGap) + ui.AlignRight(rating, ratingW)
-		if d.contest != "" {
-			line += strings.Repeat(" ", colGap) + ui.Muted.Render(d.contest)
-		}
-		out = append(out, strings.TrimRight(line, " "))
-	}
-	return out
-}
-
-// ref finds a unit problem's entry in the module's lists.
-func (p *Module) ref(id catalog.ID) (curriculum.ProblemRef, bool) {
-	for _, l := range p.e.mod.Problems {
-		for _, r := range l.Problems {
-			if r.ID == id {
-				return r, true
-			}
-		}
-	}
-	return curriculum.ProblemRef{}, false
 }
 
 // passLine says what passing the trial grants, or for a page why it has no

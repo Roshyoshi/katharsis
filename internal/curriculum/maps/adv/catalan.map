@@ -1,0 +1,3 @@
+# Catalan Numbers (Advanced › Misc. Topics)
+# One lane, all by reflection: brackets, a fixed prefix, then subsequences.
+core  cses-2064 > cses-2187 > cf-1924D  # Catalan, prefix, subsequence counts

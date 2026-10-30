@@ -1,0 +1,5 @@
+# Lagrangian Relaxation (Advanced › Convexity)
+# One lane: price a unit with lambda and binary-search the price, first over
+# independent convex parts, then inside a DP.
+core  usaco-697 > cf-1661F  # price per unit; greedy per part
+core  cf-1661F > cf-1279F   # the same price on a DP's operations

@@ -1,0 +1,8 @@
+# Centroid Decomposition (Platinum › Trees)
+# Two lanes, counting paths through each centroid and queries over centroid
+# ancestors, joining at New Barns.
+core  cses-2080 > cses-2081 > usaco-286 > usaco-817  # half-paths across subtrees
+core  cf-342E > usaco-817                      # queries over centroid ancestors
+
+side  cses-2081 > usaco-793  # threshold counts by prefix sums
+side  cf-342E > cf-1140G     # distances through a common centroid

@@ -1,13 +1,13 @@
-RTFM / Advanced                              trials 0/25 | [x] 2/7 | solved 0/55
+RTFM / Advanced                              trials 0/22 | [x] 2/7 | solved 0/41
 --------------------------------------------------------------------------------
      Data Structures                           Convexity            Graphs
-     . :::  = :::  . ---  = ---  . ---  . ---  . ---  . ---  . :::  . ::::+
+     . :::  = :::  . ---  = ---  . ---  . ---  . ---  . ---  . :::  = ::::+
      [x]    [x]    [x]    [x]    [x]    [x]    [x]           [ ]    [ ]   :
      Dynamic Programming  Graphs                                          :
- +-  . ---  . ---  = ---  = ---  = ---  . ---  = :::  . ---  . --- >. ::::+
+ +-  . ---  . ---  = ---  = ---  = ---  . ---  = :::  . ---  . --- >= ::::+
  |   [ ]    [ ]    [ ]    [ ]    [x]    [x]    [ ]    [x]    [x]    [x]
  |   Flows                       Polynomials   Strings              Misc. To...
- +-  . ---  . :::  = ---  . :::  = :::  . ---  . ---  . :::  . ---  = ----+
+ +-  . ---  . :::  = ---  = :::  = :::  . ---  . ---  . :::  . ---  = ----+
      [x]    [x]    [x]    [x]                  [ ]    [ ]    [ ]          |
      Misc. Topics                                                         |
  +:  = ---  = :::  = :::  = :::  = :::  . :::  . :::  . ---  = ---  . ----+
@@ -18,7 +18,7 @@ RTFM / Advanced                              trials 0/25 | [x] 2/7 | solved 0/55
 +- Eulerian Tours ----------------------------------------- Advanced / Graphs -+
 | [x] CAP_GRAPH -> Routing Table | .... has not appeared                       |
 | needs Graph Traversal (Silver)                                               |
-| read -> practice 0/3 -> trial 1 of 2 doors + 1 blind                         |
+| read | 3 examples from the guide | trial in BCCs and 2CCs: t goes there      |
 | ^ from Graph Traversal (Silver)                                              |
 +------------------------------------------------------------------------------+
  next > Ad Hoc Problems       h/l path | j/k row | n next | enter level | q map

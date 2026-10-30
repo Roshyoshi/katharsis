@@ -18,8 +18,8 @@ type ProblemList struct {
 }
 
 // ProblemRef is one guide problem entry. ID is the catalog ID for sources
-// the game can serve (USACO, CSES); everything else keeps ID == "" and is
-// shown as an external link only.
+// the game can serve (USACO, CSES, Codeforces; refID); everything else
+// keeps ID == "" and is shown as an external link only.
 type ProblemRef struct {
 	UniqueID string     // guide id, e.g. "usaco-615", "cf-1398C"
 	ID       catalog.ID // "usaco:615", "cses:1094", or "" when external
@@ -59,6 +59,25 @@ func CatalogID(uniqueID string) catalog.ID {
 		return catalog.NewID(catalog.CF, num)
 	}
 	return ""
+}
+
+// cfURL is a Codeforces problem link: a contest's problem or the
+// problemset's, its contest and index.
+var cfURL = regexp.MustCompile(`^https?://(?:www\.)?codeforces\.com/(?:contest/([0-9]+)/problem|problemset/problem/([0-9]+))/([A-Z][0-9]?)/?$`)
+
+// refID is the catalog ID of a guide entry. A Codeforces entry is the
+// problem its URL links: the guide's uniqueIds misname some ("cf-949D"
+// links 1981D, "cf-2A" an EDU lesson), and an entry the URL puts in a
+// gym, group or course is external.
+func refID(uniqueID, url string) catalog.ID {
+	if !strings.HasPrefix(uniqueID, "cf-") {
+		return CatalogID(uniqueID)
+	}
+	m := cfURL.FindStringSubmatch(url)
+	if m == nil {
+		return ""
+	}
+	return catalog.NewID(catalog.CF, m[1]+m[2]+m[3])
 }
 
 type rawProblem struct {
@@ -114,7 +133,7 @@ func parseProblems(file string, data []byte) (string, []ProblemList, error) {
 			}
 			p := ProblemRef{
 				UniqueID:   *r.UniqueID,
-				ID:         CatalogID(*r.UniqueID),
+				ID:         refID(*r.UniqueID, r.URL),
 				Name:       r.Name,
 				URL:        r.URL,
 				Source:     r.Source,

@@ -1,0 +1,7 @@
+# BCCs and 2CCs (Advanced › Graphs)
+# Two lanes as the text orders them, edge then vertex connectivity; Push a
+# Box extends the block-cut tree.
+core  usaco-842  # 2CC-style DSU: union paths by weight
+core  cses-1705  # cut vertices via the block-cut tree
+
+side  cses-1705 > usaco-769  # same-block test on a grid

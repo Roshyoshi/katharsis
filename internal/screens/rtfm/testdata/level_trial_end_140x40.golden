@@ -1,0 +1,40 @@
+RTFM › Silver › Sorting & Searching › Two Pointers                                                                              ■ CAP_TWOPTR
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Two Pointers  ★★☆☆ not frequent · core 1/3 · ★ 0/1
+ Iterating two monotonic pointers across an array to search for a pair of indices satisfying some condition in linear time.
+
+ ▪ READ ┬ ✓ Paired Up ────────────┬ ○ Diamond Collector ─────▸⚔ TRIAL
+        │                         ├ ☆ Cow Checkups
+        ╰ ● Sleepy Cow Herding ───╯
+
+ ⚔ TRIAL  3 unseen doors on The Sliding Window · blind · pass 2 of 3
+   aimed ◆1350 → ◆1500 → ◆1600: the core's middle, its hardest, a step past
+   opens once the core is solved: 1 of 3 so far
+   ■  CAP_TWOPTR held: The Sliding Window is already on your routes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ↑ also opens: Matrix Exponentiation (Platinum) · Counting Minimums with Segment Tree (Advanced)
+ SEE ALSO  needs Introduction to Prefix Sums (Silver) ✓ · Casework (Bronze)
+“Two Pointers” by Darren Yao, Qi Wang, Ryan Chou, David Zhou, USACO Guide
+(https://usaco.guide/silver/two-pointers), CC BY-NC-SA 4.0
+(https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
+Markdown.
+ two-pointers(7)                                                   hjkl move · enter go · n next · r read · t trial · o usaco.guide · q map

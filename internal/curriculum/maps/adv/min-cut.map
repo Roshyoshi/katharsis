@@ -1,0 +1,6 @@
+# Minimum Cut (Advanced › Flows)
+# One lane: independent sets as cuts, weighted, then a cut minimized by DP.
+# Bricks hangs off Steeplechase as more König practice.
+core  usaco-93 > cf-808F > cf-724E  # MIS by König, weighted, cut by DP
+
+side  usaco-93 > cf-1404E  # König on conflicting brick joints

@@ -1,8 +1,8 @@
 RTFM(7)                  USACO Guide · CC BY-NC-SA 4.0                   RTFM(7)
-       MODULE                            BIOME               CAPABILITY    TRIAL
+       MODULE                              BIOME               CAPABILITY    MAP
 ▾ SILVER                                                       2 modules · ■ 1/2
    ▾ Prefix Sums
-       Introduction to Prefix Sums       The Accumulator     □ CAP_PREFIX  2
+       Introduction to Prefix Sums         The Accumulator     □ CAP_PREFIX  4
 
 COLOPHON
        Learn mode content is adapted from the USACO Guide (https://usaco.guide,

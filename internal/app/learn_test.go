@@ -114,6 +114,25 @@ func loadGuide(h *harness) *curriculum.Curriculum {
 	return cur
 }
 
+// readyTrial puts module id's trial in reach, as playing up to it would:
+// the trial before it on the path passed, and its map's core solved.
+func readyTrial(h *harness, id string) {
+	h.t.Helper()
+	a := h.m.cur.Atlas(h.m.judgeable)
+	l, _, ok := a.Level(id)
+	if !ok {
+		h.t.Fatalf("no level %q", id)
+	}
+	if b, ok := a.Before(id); ok {
+		h.m.meta.TrialsPassed = append(h.m.meta.TrialsPassed, b.Module)
+	}
+	for _, n := range l.Map.Nodes {
+		if n.Core {
+			h.m.meta.Solves = append(h.m.meta.Solves, game.Solve{Problem: n.ID, Kind: game.Independent, Upsolve: true})
+		}
+	}
+}
+
 func TestTrialGrantsItsCapability(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
@@ -127,6 +146,7 @@ func TestTrialGrantsItsCapability(t *testing.T) {
 			t.Fatal("prefix-sums grants no capability")
 		}
 
+		readyTrial(h, "prefix-sums")
 		h.send(screens.StartTrial{Module: "prefix-sums"})
 		if h.m.state == nil || h.m.state.Trial == nil {
 			t.Fatalf("no trial running: %+v", h.m.state)
@@ -168,6 +188,7 @@ func TestResumedTrialInOvertimeReopens(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
 		loadGuide(h)
+		readyTrial(h, "prefix-sums")
 		h.send(screens.StartTrial{Module: "prefix-sums"})
 		h.clock.t = h.enterDoor().Deadline.Add(time.Minute)
 		h.restart()
@@ -177,27 +198,39 @@ func TestResumedTrialInOvertimeReopens(t *testing.T) {
 	})
 }
 
-// r on a trial's end screen runs the same trial again: the trial rules
-// are no boot preset, and the reboot fell back to a standard boot.
+// TestRebootAfterATrialRetriesIt: r on a failed trial's end screen runs it
+// again, the trial rules being no boot preset, with doors drawn anew: one
+// solved since is passed over. It needs no guide (a trial resumed after
+// a restart has none loaded): the spec is the last try's.
 func TestRebootAfterATrialRetriesIt(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		h := newHarness(t)
-		loadGuide(h)
-		h.send(screens.StartTrial{Module: "prefix-sums"})
-		h.verdict = "WA"
-		if got := h.play(); got != game.PhaseCrashed || h.m.state.Trial == nil {
-			t.Fatalf("trial ended %q (trial %v), want crashed", got, h.m.state.Trial != nil)
-		}
-		if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "r retry the prefix-sums trial") {
-			t.Fatalf("the end screen does not say r retries the trial:\n%s", v)
-		}
-		first := h.m.state.Boot
-		h.m.cur = nil // the curriculum is not needed again
-		h.send(key("r"))
-		if s := h.m.state; s.Boot == first || s.Trial == nil || s.Trial.Module != "prefix-sums" || s.Phase == game.PhaseCrashed {
-			t.Fatalf("after r: boot %d (was %d), trial %+v, phase %s; want prefix-sums again", s.Boot, first, s.Trial, s.Phase)
-		}
-	})
+	for _, loaded := range []bool{true, false} {
+		synctest.Test(t, func(t *testing.T) {
+			h := newHarness(t)
+			loadGuide(h)
+			readyTrial(h, "prefix-sums")
+			h.send(screens.StartTrial{Module: "prefix-sums"})
+			h.verdict = "WA"
+			if got := h.play(); got != game.PhaseCrashed || h.m.state.Trial == nil {
+				t.Fatalf("trial ended %q (trial %v), want crashed", got, h.m.state.Trial != nil)
+			}
+			if v := ansi.Strip(h.m.View().Content); !strings.Contains(v, "r retry the prefix-sums trial") {
+				t.Fatalf("the end screen does not say r retries the trial:\n%s", v)
+			}
+			first, doors := h.m.state.Boot, slices.Concat(h.m.state.Trial.Plan...)
+			// Solved somewhere before the retry.
+			h.m.meta.Solves = append(h.m.meta.Solves, game.Solve{Problem: doors[0], Kind: game.Independent, Upsolve: true})
+			if !loaded {
+				h.m.cur = nil
+			}
+			h.send(key("r"))
+			if s := h.m.state; s.Boot == first || s.Trial == nil || s.Trial.Module != "prefix-sums" || s.Phase == game.PhaseCrashed {
+				t.Fatalf("loaded %v, after r: boot %d (was %d), trial %+v, phase %s; want prefix-sums again", loaded, s.Boot, first, s.Trial, s.Phase)
+			}
+			if got := slices.Concat(h.m.state.Trial.Plan...); slices.Contains(got, doors[0]) || len(got) != len(doors) {
+				t.Errorf("loaded %v: retry's doors %v; want %d, without %s (of %v)", loaded, got, len(doors), doors[0], doors)
+			}
+		})
+	}
 }
 
 // The first visit to RTFM plays the Mock Turtle's school over the browser,
@@ -233,6 +266,7 @@ func TestTrialStartsWithItsLine(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
 		loadGuide(h)
+		readyTrial(h, "prefix-sums")
 		h.send(screens.StartTrial{Module: "prefix-sums"})
 		if want := flavor.Story("rtfm.trial.start", 0); want == "" || h.m.flash != want {
 			t.Errorf("trial start flashed %q, want %q", h.m.flash, want)
@@ -348,6 +382,7 @@ func TestPassedTrialOffersTheNextModule(t *testing.T) {
 					p := catalog.Problem{ID: "usaco:746", Title: "USACO 746", Topic: "mixed", Rating: 2200, Judgeable: true}
 					c.all, c.byID[p.ID] = append(c.all, p), p
 				}
+				readyTrial(h, "prefix-sums")
 				h.send(screens.StartTrial{Module: "prefix-sums"})
 				if got := h.play(); got != game.PhaseCleared {
 					t.Fatalf("trial ended %q, want cleared", got)
@@ -388,6 +423,8 @@ func TestTrialWithoutCapabilityClearsOnly(t *testing.T) {
 				c := h.m.d.Catalog.(*fakeCatalog)
 				p := catalog.Problem{ID: "usaco:915", Title: "Sleepy Cow Herding", Topic: "mixed", Rating: 1100, Judgeable: true}
 				c.all, c.byID[p.ID] = append(c.all, p), p
+				readyTrial(h, id)
+				before := len(h.m.meta.TrialsPassed)
 				h.send(screens.StartTrial{Module: id})
 				if s := h.m.state; s == nil || s.Trial == nil || s.Trial.Module != id || s.Trial.Capability != "" {
 					t.Fatalf("no capability-less trial of %s running: %+v", id, s)
@@ -395,7 +432,7 @@ func TestTrialWithoutCapabilityClearsOnly(t *testing.T) {
 				if got := h.play(); got != game.PhaseCleared {
 					t.Fatalf("trial ended %q, want cleared", got)
 				}
-				if !slices.Equal(h.m.meta.TrialsPassed, []string{id}) || len(h.m.meta.Capabilities) != 0 || h.m.state.Trial.Granted != "" {
+				if !slices.Equal(h.m.meta.TrialsPassed[before:], []string{id}) || len(h.m.meta.Capabilities) != 0 || h.m.state.Trial.Granted != "" {
 					t.Fatalf("passed %v, capabilities %v, granted %q; want %s passed and nothing granted",
 						h.m.meta.TrialsPassed, h.m.meta.Capabilities, h.m.state.Trial.Granted, id)
 				}
@@ -505,7 +542,7 @@ func TestRTFMOpensAModuleWithATrial(t *testing.T) {
 			"content/2_Bronze/Intro_DS.mdx":   mod("intro-ds", "Introduction to Data Structures"),
 			"content/2_Bronze/Intro_Sets.mdx": mod("intro-sets", "Introduction to Sets & Maps"),
 			"content/2_Bronze/Intro_Sets.problems.json": `{"MODULE_ID": "intro-sets", "general": [
-  {"uniqueId": "usaco-915", "name": "Sleepy Cow Herding", "url": "u", "source": "Bronze",
+  {"uniqueId": "usaco-831", "name": "USACO 831", "url": "u", "source": "Bronze",
    "difficulty": "Easy", "isStarred": false, "tags": [], "solutionMetadata": {"kind": "internal"}}]}`,
 		} {
 			p := filepath.Join(dir, name)
@@ -522,7 +559,7 @@ func TestRTFMOpensAModuleWithATrial(t *testing.T) {
 		}
 		h.m.cur = cur
 		c := h.m.d.Catalog.(*fakeCatalog)
-		p := catalog.Problem{ID: "usaco:915", Title: "Sleepy Cow Herding", Topic: "data-structures", Rating: 1100, Judgeable: true}
+		p := catalog.Problem{ID: "usaco:831", Title: "USACO 831", Topic: "data-structures", Rating: 1100, Judgeable: true}
 		c.all, c.byID[p.ID] = append(c.all, p), p
 		h.m.meta.Rating = 1000
 		if got := h.m.learnModule("data-structures"); got != "intro-sets" {
@@ -531,9 +568,8 @@ func TestRTFMOpensAModuleWithATrial(t *testing.T) {
 	})
 }
 
-// CSES is the guide's practice, not a door source: a boot draws none, and
-// a trial's pool holds only the CSES problems of its own unit (it plays
-// them by id), never one drawn by rating.
+// CSES is the guide's practice, reached by id on RTFM's maps, not a door
+// source: neither a boot nor a trial draws one.
 func TestCSESDrawsNoDoors(t *testing.T) {
 	setup := func(t *testing.T) *harness {
 		h := newHarness(t)
@@ -565,21 +601,13 @@ func TestCSESDrawsNoDoors(t *testing.T) {
 	})
 	synctest.Test(t, func(t *testing.T) {
 		h := setup(t)
+		readyTrial(h, "prefix-sums")
 		h.send(screens.StartTrial{Module: "prefix-sums"})
 		if h.m.state == nil || h.m.state.Trial == nil {
 			t.Fatalf("no trial: %s", h.m.flash)
 		}
-		var want []catalog.ID
-		for _, id := range h.m.state.Trial.Unit {
-			if id.Source() == catalog.CSES {
-				want = append(want, id)
-			}
-		}
-		if len(want) == 0 {
-			t.Fatalf("prefix-sums's unit %v has no CSES problem to check", h.m.state.Trial.Unit)
-		}
-		if got := cses(h); !slices.Equal(got, want) {
-			t.Errorf("the trial's pool holds CSES %v, want its unit's %v", got, want)
+		if got := cses(h); len(got) > 0 {
+			t.Errorf("a trial's pool holds CSES problems %v", got)
 		}
 	})
 }
@@ -619,4 +647,60 @@ func TestDuckCopiesAFailedTest(t *testing.T) {
 			t.Errorf("samples %d, flash %q", len(h.m.open.Assets.Samples), h.m.flash)
 		}
 	})
+}
+
+// A trial waits on the path and on its map: one the path has not reached
+// is locked until the trial before it is passed, and one reached opens
+// once its map's core is solved. Each refusal says what is left.
+func TestTrialWaitsOnThePath(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		loadGuide(h)
+		started := func() bool { return h.m.state != nil && h.m.state.Trial != nil }
+		h.send(screens.StartTrial{Module: "prefix-sums"})
+		if started() || !strings.Contains(h.m.flash, "is locked: pass Additional Practice for USACO Bronze first") {
+			t.Fatalf("before Bronze's castle: trial %v, flash %q", started(), h.m.flash)
+		}
+		h.m.meta.TrialsPassed = append(h.m.meta.TrialsPassed, "bronze-conclusion")
+		h.send(screens.StartTrial{Module: "prefix-sums"})
+		if started() || !strings.Contains(h.m.flash, "trial opens once its core is solved: 0 of") {
+			t.Fatalf("with the core unsolved: trial %v, flash %q", started(), h.m.flash)
+		}
+		readyTrial(h, "prefix-sums")
+		h.send(screens.StartTrial{Module: "prefix-sums"})
+		if !started() {
+			t.Fatalf("with the core solved, no trial: %q", h.m.flash)
+		}
+	})
+}
+
+// RTFM and the doors share no problem: neither a boot's pool nor the
+// trials' holds one the guide lists, and no problem is in both.
+func TestPoolsApart(t *testing.T) {
+	c := newFakeCatalog()
+	n := 0
+	for id := range curriculum.Listed() {
+		if n++; n > 200 {
+			break
+		}
+		p := catalog.Problem{ID: id, Topic: "graphs", Rating: 1500, Judgeable: true}
+		c.all, c.byID[id] = append(c.all, p), p
+	}
+	trials := poolFor(c, &game.State{Trial: &game.TrialState{}})
+	boots := poolFor(c, nil)
+	if len(trials) == 0 || len(boots) == 0 {
+		t.Fatalf("%d trial problems, %d boot ones", len(trials), len(boots))
+	}
+	held := map[catalog.ID]bool{}
+	for _, p := range trials {
+		held[p.ID] = true
+		if curriculum.Listed()[p.ID] {
+			t.Errorf("the trials draw %s, on RTFM's maps", p.ID)
+		}
+	}
+	for _, p := range boots {
+		if curriculum.Listed()[p.ID] || held[p.ID] {
+			t.Errorf("boots draw %s, listed %v or a trial's %v", p.ID, curriculum.Listed()[p.ID], held[p.ID])
+		}
+	}
 }

@@ -2,6 +2,7 @@ package curriculum
 
 import (
 	"os"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -131,12 +132,12 @@ func TestFullAtlasTrials(t *testing.T) {
 	}
 	judgeable := func(id catalog.ID) bool { return id.Source() == catalog.USACO || id.Source() == catalog.CSES }
 	kinds := map[LevelKind]int{}
-	free, topped := 0, 0
+	free, coreless := 0, 0
 	for _, w := range c.Atlas(judgeable).Worlds {
 		for _, l := range w.Levels() {
 			kinds[l.Kind]++
-			if l.Kind.HasTrial() && len(l.Playable) == 0 {
-				topped++
+			if l.Kind.HasTrial() && l.Map.Core() == 0 {
+				coreless++
 			}
 			m, _ := c.Module(l.Module)
 			tr := TrialFor(m, judgeable, nil)
@@ -144,8 +145,10 @@ func TestFullAtlasTrials(t *testing.T) {
 			switch {
 			case tr.Kind != l.Kind:
 				t.Errorf("%s: trial kind %v, atlas kind %v", l.Module, tr.Kind, l.Kind)
+			case !reflect.DeepEqual(tr.Map, l.Map):
+				t.Errorf("%s: trial and atlas maps differ", l.Module)
 			case !l.Kind.HasTrial():
-			case spec.Module != l.Module || spec.IntegBand[0] > spec.IntegBand[1] || spec.IntegTopic == "":
+			case spec.Module != l.Module || spec.Band[0] > spec.Band[1] || spec.Topic == "":
 				t.Errorf("%s: spec %+v cannot be planned", l.Module, spec)
 			case spec.Capability != l.Capability || l.Kind == CastleLevel && spec.Capability != "":
 				t.Errorf("%s (%v): grants %q, want %q", l.Module, l.Kind, spec.Capability, l.Capability)
@@ -154,8 +157,8 @@ func TestFullAtlasTrials(t *testing.T) {
 			}
 		}
 	}
-	t.Logf("%d trial levels (%d granting nothing, castles included; %d all topped up), %d castles, %d pages",
-		kinds[TrialLevel], free, topped, kinds[CastleLevel], kinds[PageLevel])
+	t.Logf("%d trial levels (%d granting nothing, castles included; %d with no core to clear), %d castles, %d pages",
+		kinds[TrialLevel], free, coreless, kinds[CastleLevel], kinds[PageLevel])
 }
 
 // A gated module with nothing to judge is a page whose capability is earned
@@ -197,5 +200,67 @@ func TestLibraryCountsNoPractice(t *testing.T) {
 	p := a.Progress(&game.Meta{Solves: []game.Solve{{Problem: io.Playable[0]}}})
 	if s := p.Sum(a.Worlds[wi]); s.Playable != 0 || s.Solved != 0 {
 		t.Errorf("General counts %d/%d practice, want none", s.Solved, s.Playable)
+	}
+}
+
+// TestProgressPath: the path is fixed. Each trial level opens once the one
+// before it is passed, across worlds, past an optional level, which opens
+// in its turn and holds nothing up; pages and General are always open; and
+// a level the player made progress on stays open whatever comes before it.
+// The fixture's path, judging USACO: casework, bronze-conclusion,
+// prefix-sums, two-pointers, (optional) hashmaps, matrix-expo.
+func TestProgressPath(t *testing.T) {
+	a := loadFixture(t).Atlas(func(id catalog.ID) bool { return id.Source() == catalog.USACO })
+	open := func(m *game.Meta) []string {
+		var out []string
+		p := a.Progress(m)
+		for _, w := range a.Worlds {
+			for _, l := range w.Levels() {
+				if p[l.Module].Open {
+					out = append(out, l.Module)
+				}
+			}
+		}
+		return out
+	}
+	coreOf := func(id string) catalog.ID {
+		l, _, _ := a.Level(id)
+		for _, n := range l.Map.Nodes {
+			if n.Core {
+				return n.ID
+			}
+		}
+		t.Fatalf("%s has no core", id)
+		return ""
+	}
+	for _, tc := range []struct {
+		name   string
+		passed []string
+		solved []catalog.ID
+		want   string
+	}{
+		{"new", nil, nil, "fast-io casework count-min"},
+		{"casework passed", []string{"casework"}, nil, "fast-io casework bronze-conclusion count-min"},
+		{"through Silver", []string{"casework", "bronze-conclusion", "prefix-sums", "two-pointers"}, nil,
+			"fast-io casework bronze-conclusion prefix-sums two-pointers hashmaps matrix-expo count-min"},
+		{"progress keeps a level open", nil, []catalog.ID{coreOf("two-pointers")}, "fast-io casework two-pointers count-min"},
+	} {
+		m := &game.Meta{TrialsPassed: tc.passed}
+		for _, id := range tc.solved {
+			m.Solves = append(m.Solves, game.Solve{Problem: id})
+		}
+		if got := strings.Join(open(m), " "); got != tc.want {
+			t.Errorf("%s: open %s, want %s", tc.name, got, tc.want)
+		}
+	}
+	for id, want := range map[string]string{
+		"casework": "", "bronze-conclusion": "casework", "prefix-sums": "bronze-conclusion",
+		"matrix-expo": "two-pointers", // past the optional hashmaps
+		"fast-io":     "", "count-min": "",
+	} {
+		l, ok := a.Before(id)
+		if l.Module != want || ok != (want != "") {
+			t.Errorf("Before(%s) = %q, %v; want %q", id, l.Module, ok, want)
+		}
 	}
 }

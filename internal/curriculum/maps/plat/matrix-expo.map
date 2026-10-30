@@ -1,0 +1,8 @@
+# Matrix Exponentiation (Platinum › Misc. Topics)
+# Fibonacci forks into walks counted by powering an adjacency matrix and
+# Fibonacci matrices applied as lazy segment-tree tags.
+core  cses-1722 > cses-1723 > cf-691E  # walks of length k: power the adjacency
+core  cses-1722 > cf-718C              # shift by x: lazy tags are matrix powers
+
+side  cses-1723 > cses-1724  # the same powers over (min, +)
+side  cf-718C > usaco-746    # a matrix per statement; loops are powers

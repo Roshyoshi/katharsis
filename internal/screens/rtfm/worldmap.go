@@ -23,8 +23,9 @@ import (
 // way a Mario map folds. A card names the level under the cursor. Enter
 // opens the level in place and q there comes back, so the app keeps one
 // screen for the map; i leaves for the man index (screens.OpenIndex),
-// which searches. Nothing is locked: the path lights up behind what is
-// cleared, and the selected level's prerequisites light up with it.
+// which searches. The path is fixed (curriculum.Atlas.Progress): a trial
+// level opens once the trial before it is passed, and lights up behind
+// what is cleared; the selected level's prerequisites light up with it.
 type Map struct {
 	cur       *curriculum.Curriculum
 	atlas     curriculum.Atlas
@@ -100,10 +101,10 @@ func (p *Map) Refresh(m game.Meta) {
 	p.meta, p.prog = m, p.atlas.Progress(&m)
 	if p.level != nil {
 		// The level is built again where its cursor was: back from a
-		// practice problem, on that problem.
-		cur, ptop := p.level.cur, p.level.ptop
+		// problem, on that problem.
+		cur, top, left := p.level.cur, p.level.top, p.level.left
 		p.openLevel()
-		p.level.cur, p.level.ptop = cur, ptop
+		p.level.cur, p.level.top, p.level.left = cur, top, left
 	}
 }
 
@@ -145,7 +146,19 @@ func (p *Map) spot() spot { return p.lv[p.world][p.at[p.world]] }
 func (p *Map) openLevel() {
 	s := p.spot()
 	region := p.atlas.Worlds[p.world].Regions[s.region].Title
-	p.level = NewLevel(p.cur, s.Level, region, p.meta, p.judgeable, p.lookup)
+	p.level = NewLevel(p.cur, s.Level, region, p.lock(s.Module), p.meta, p.judgeable, p.lookup)
+}
+
+// lock is the trial level the path waits on before module id's, by title,
+// "" when the level is open.
+func (p *Map) lock(id string) string {
+	if p.prog[id].Open {
+		return ""
+	}
+	if l, ok := p.atlas.Before(id); ok {
+		return p.titles([]string{l.Module})
+	}
+	return ""
 }
 
 // cleared reports whether l is behind the player: its trial passed, or for
@@ -156,7 +169,8 @@ func (p *Map) cleared(l curriculum.Level) bool {
 }
 
 // Update moves on the map. An open level gets every message but the keys
-// that close it, as the index's module page does.
+// that close it, as the index's module page does; h and ← move on the
+// level's own map.
 func (p *Map) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	if p.flip != nil {
 		if cmd, used := p.flip.Update(msg); used {
@@ -167,7 +181,7 @@ func (p *Map) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	if p.level != nil {
 		if isKey {
 			switch k.String() {
-			case "q", "esc", "h", "left", "backspace":
+			case "q", "esc", "backspace":
 				p.level = nil
 				return p, nil
 			}
@@ -260,9 +274,10 @@ func (p *Map) worldKey(k string) tea.Cmd {
 
 // next is the level to do next: the first trial (or castle) in guide order
 // not passed yet, outside the library (General, whose pages are for any
-// time). Pages are read along the way, not checkpoints: opening one says
-// nothing of reading it, so a skipped one would be "next" for good. ok is
-// false when every trial is passed.
+// time) and past the optional ones, which the path does not wait on.
+// Pages are read along the way, not checkpoints: opening one says nothing
+// of reading it, so a skipped one would be "next" for good. ok is false
+// when every trial is passed.
 func (p *Map) next() (l curriculum.Level, world int, ok bool) {
 	for wi, s := range p.lv {
 		if p.prog.Sum(p.atlas.Worlds[wi]).Trials == 0 {
@@ -270,7 +285,7 @@ func (p *Map) next() (l curriculum.Level, world int, ok bool) {
 		}
 		for _, x := range s {
 			lp := p.prog[x.Module]
-			if x.Kind.HasTrial() && !lp.Passed {
+			if x.Kind.HasTrial() && !lp.Passed && !x.Optional {
 				return x.Level, wi, true
 			}
 		}
@@ -479,11 +494,15 @@ func (p *Map) drawWorld(mw, room int) []string {
 }
 
 // glyph is a level's node: ○ ahead, ✓ passed, ▪ a page (faint until
-// opened, and never ticked: opening is not reading), ⚔ the castle. need
-// marks a prerequisite of the selection, in the focus colour.
+// opened, and never ticked: opening is not reading), ⚔ the castle; faint
+// while the path has not reached it. need marks a prerequisite of the
+// selection, in the focus colour.
 func (p *Map) glyph(l curriculum.Level, need bool) string {
 	lp := p.prog[l.Module]
 	g, tok := ui.G.Ahead, ui.FG
+	if !lp.Open {
+		tok = ui.Muted
+	}
 	switch {
 	case l.Kind == curriculum.PageLevel:
 		g, tok = ui.G.Page, ui.Muted
@@ -492,8 +511,10 @@ func (p *Map) glyph(l curriculum.Level, need bool) string {
 		}
 	case lp.Passed:
 		g, tok = ui.G.Pass, ui.OK
-	case l.Kind == curriculum.CastleLevel:
+	case l.Kind == curriculum.CastleLevel && lp.Open:
 		g, tok = ui.G.Boss, ui.Special
+	case l.Kind == curriculum.CastleLevel:
+		g = ui.G.Boss
 	}
 	if need {
 		tok = ui.Focus
@@ -647,10 +668,14 @@ func (p *Map) card() []string {
 		what += ui.Muted.Render(ui.G.Sep) + stars(f) + " " + ui.Muted.Render(frequencyText(f))
 	}
 	out := []string{what, ui.Muted.Render("needs ") + p.needs(l)}
+	if lock := p.lock(l.Module); lock != "" {
+		out = append(out, ui.Warn.Render(ui.G.CapLocked+" locked")+": pass "+lock+" first")
+	}
 
 	// The level's loop, a step each and ✓ once done: open the page, solve
-	// some practice (two, or all when fewer), pass the trial. It guides;
-	// nothing waits on a step. A page has no loop, only what it holds.
+	// the map's core, pass the trial. The core opens the trial; the page
+	// and the stretch problems guide, and nothing waits on them. A page
+	// has no loop, only what it holds.
 	step := func(done bool, s string) string {
 		if done {
 			return ui.OK.Render(ui.G.Pass + " " + s)
@@ -663,9 +688,13 @@ func (p *Map) card() []string {
 	}
 	did := []string{read}
 	switch n := len(l.Playable); {
-	case n > 0 && l.Kind.HasTrial():
-		did = append(did, step(lp.Solved >= min(2, n), fmt.Sprintf("practice %d/%d", lp.Solved, n)))
-	case n > 0:
+	case lp.Core > 0 && l.Kind.HasTrial():
+		core := step(lp.CoreSolved == lp.Core, fmt.Sprintf("core %d/%d", lp.CoreSolved, lp.Core))
+		if lp.Side > 0 {
+			core += ui.Muted.Render(fmt.Sprintf(" +%s %d/%d", ui.G.Star, lp.SideSolved, lp.Side))
+		}
+		did = append(did, core)
+	case n > 0 && !l.Kind.HasTrial():
 		did = append(did, units.Plural(n, "example")+" from the guide")
 	}
 	earned, _, earn := p.atlas.EarnedIn(l.Module)
@@ -676,7 +705,7 @@ func (p *Map) card() []string {
 	case lp.Passed:
 		did = append(did, step(true, "trial"))
 	default:
-		did = append(did, fmt.Sprintf("trial %d of %s + %d blind", unitPass, units.Plural(curriculum.DefaultUnitSize, "door"), integrationDoors))
+		did = append(did, fmt.Sprintf("trial: pass %d of %d blind", trialPass, curriculum.Doors))
 	}
 	sep := ui.Muted.Render(" " + ui.G.Arrow + " ")
 	if !l.Kind.HasTrial() {

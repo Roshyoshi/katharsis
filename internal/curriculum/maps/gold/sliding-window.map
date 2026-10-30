@@ -1,0 +1,8 @@
+# Sliding Window (Gold › Data Structures)
+# Two lanes, fixed windows held in multisets and two-pointer windows, joining
+# at Haybale Feast, a pointer window whose max comes from a multiset.
+core  cses-1644 > cses-1076 > cses-1077 > usaco-767  # the window in multisets
+core  cses-1141 > cses-2428 > usaco-767            # pointers grow and shrink it
+
+side  cses-1644 > usaco-923  # best subarray sum, then rectangles
+side  cses-2428 > usaco-600  # pointers over rows per column pair

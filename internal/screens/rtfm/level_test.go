@@ -33,37 +33,54 @@ func atlasLevel(t testing.TB, c *curriculum.Curriculum, id string) (curriculum.L
 	return curriculum.Level{}, ""
 }
 
+// The fixture judges USACO only, so Two Pointers's map is Paired Up
+// (usaco:738) and Sleepy Cow Herding (usaco:918) into Diamond Collector
+// (usaco:643), with Cow Checkups (usaco:1470) the stretch off Paired Up.
+const (
+	pairedUp  = catalog.ID("usaco:738")
+	sleepy    = catalog.ID("usaco:918")
+	diamond   = catalog.ID("usaco:643")
+	stretchID = catalog.ID("usaco:1470")
+)
+
 // The fixture's levels have no prerequisite or shortcut inside the
 // guide, so the trial level is given some: Two Pointers needs Prefix Sums
 // (passed) and Casework, and opens Matrix Exponentiation and Counting
-// Minimums. The player solved Paired Up and opened the page.
-func trialLevel(t testing.TB) *rtfm.Level {
+// Minimums. The player opened the page and solved what solved names, and
+// passed the trials passed names besides Prefix Sums's.
+func twoPointers(t testing.TB, lock string, passed []string, solved ...catalog.ID) *rtfm.Level {
 	c := loadCurriculum(t)
 	l, region := atlasLevel(t, c, "two-pointers")
 	l.Prereqs = []string{"prefix-sums", "casework"}
 	l.Warps = []string{"matrix-expo", "count-min"}
 	m := fixture.Meta()
-	m.Solves = []game.Solve{{Problem: "usaco:738"}}
-	m.TrialsPassed = []string{"prefix-sums"}
+	for _, id := range solved {
+		m.Solves = append(m.Solves, game.Solve{Problem: id})
+	}
+	m.TrialsPassed = append([]string{"prefix-sums"}, passed...)
 	m.Opened = []string{"two-pointers"}
-	return rtfm.NewLevel(c, l, region, m, fixture.Judgeable, fixture.Lookup)
+	return rtfm.NewLevel(c, l, region, lock, m, fixture.Judgeable, fixture.Lookup)
 }
 
-// pageLevel is General's Fast I/O: a page, reading only, its problem one
-// to practise with no trial.
+// trialLevel is Two Pointers with Paired Up solved.
+func trialLevel(t testing.TB) *rtfm.Level { return twoPointers(t, "", nil, pairedUp) }
+
+// lockedLevel is Two Pointers before the path reaches it.
+func lockedLevel(t testing.TB) *rtfm.Level { return twoPointers(t, "Prefix Sums", nil) }
+
+// pageLevel is General's Fast I/O: a page, reading only.
 func pageLevel(t testing.TB) *rtfm.Level {
 	c := loadCurriculum(t)
 	l, region := atlasLevel(t, c, "fast-io")
-	return rtfm.NewLevel(c, l, region, fixture.Meta(), fixture.Judgeable, fixture.Lookup)
+	return rtfm.NewLevel(c, l, region, "", fixture.Meta(), fixture.Judgeable, fixture.Lookup)
 }
 
 // toppedLevel is Counting Minimums: a gated topic with nothing the fixture
-// catalog judges, so a page whose capability is earned in another module
-// and whose problems are links.
+// catalog judges, so a page whose capability is earned in another module.
 func toppedLevel(t testing.TB) *rtfm.Level {
 	c := loadCurriculum(t)
 	l, region := atlasLevel(t, c, "count-min")
-	return rtfm.NewLevel(c, l, region, fixture.Meta(), fixture.Judgeable, fixture.Lookup)
+	return rtfm.NewLevel(c, l, region, "", fixture.Meta(), fixture.Judgeable, fixture.Lookup)
 }
 
 // castleLevel is the Bronze conclusion, its first problem upsolved.
@@ -71,8 +88,8 @@ func castleLevel(t testing.TB) *rtfm.Level {
 	c := loadCurriculum(t)
 	l, region := atlasLevel(t, c, "bronze-conclusion")
 	m := fixture.Meta()
-	m.Solves = []game.Solve{{Problem: l.Playable[0], Upsolve: true}}
-	return rtfm.NewLevel(c, l, region, m, fixture.Judgeable, fixture.Lookup)
+	m.Solves = []game.Solve{{Problem: l.Map.Nodes[0].ID, Upsolve: true}}
+	return rtfm.NewLevel(c, l, region, "", m, fixture.Judgeable, fixture.Lookup)
 }
 
 func TestLevelGoldens(t *testing.T) {
@@ -82,10 +99,12 @@ func TestLevelGoldens(t *testing.T) {
 		keys []string
 	}{
 		{"level_trial", trialLevel, nil},
-		{"level_page", pageLevel, []string{"p"}},
-		{"level_topped", toppedLevel, []string{"p"}},
-		{"level_castle", castleLevel, nil},
-		{"level_trial_scrolled", trialLevel, []string{"p", "j", "j", "j", "j", "j", "j", "j", "j"}},
+		{"level_trial_node", trialLevel, []string{"n"}},
+		{"level_trial_end", trialLevel, []string{"G"}},
+		{"level_locked", lockedLevel, []string{"l"}},
+		{"level_page", pageLevel, nil},
+		{"level_topped", toppedLevel, nil},
+		{"level_castle", castleLevel, []string{"n"}},
 	}
 	for _, c := range cases {
 		for _, sz := range sizes {
@@ -105,7 +124,7 @@ func TestLevelGoldens(t *testing.T) {
 		defer ui.SetGlyphs(ui.Unicode)
 		v := plain(trialLevel(t).View(80, 24))
 		// The attribution keeps its curly quotes: they are the guide's.
-		for _, g := range []string{"▸", "✓", "■", "□", "›", "·", "↑", "─", "◆", "★", "☆", "→"} {
+		for _, g := range []string{"▸", "✓", "■", "□", "›", "·", "↑", "─", "│", "╰", "◆", "★", "☆", "→", "●", "○", "⚔"} {
 			if strings.Contains(v, g) {
 				t.Errorf("the ASCII level draws %q", g)
 			}
@@ -118,34 +137,38 @@ func TestLevelGoldens(t *testing.T) {
 // height lines, none wider than width.
 func TestLevelFits(t *testing.T) {
 	states := map[string]func(t testing.TB) *rtfm.Level{
-		"trial": trialLevel, "page": pageLevel, "topped": toppedLevel, "castle": castleLevel,
+		"trial": trialLevel, "locked": lockedLevel, "page": pageLevel, "topped": toppedLevel, "castle": castleLevel,
 		"bare": func(testing.TB) *rtfm.Level {
-			return rtfm.NewLevel(nil, curriculum.Level{Module: "x"}, "", game.Meta{}, nil, nil)
+			return rtfm.NewLevel(nil, curriculum.Level{Module: "x"}, "", "", game.Meta{}, nil, nil)
 		},
 	}
 	for name, mk := range states {
 		for _, sz := range [][2]int{{1, 1}, {20, 6}, {40, 12}, {60, 15}, {80, 24}, {100, 30}, {140, 40}, {220, 60}} {
 			w, h := sz[0], sz[1]
-			v := mk(t)
-			v.Practice()
-			lines := strings.Split(v.View(w, h), "\n")
-			if len(lines) != h {
-				t.Errorf("%s at %dx%d: %d lines, want %d", name, w, h, len(lines), h)
-			}
-			for i, l := range lines {
-				if n := ansi.StringWidth(l); n > w {
-					t.Errorf("%s at %dx%d: line %d is %d wide: %q", name, w, h, i, n, ansi.Strip(l))
+			for _, keys := range [][]string{nil, {"n"}, {"G"}} {
+				v := mk(t)
+				for _, k := range keys {
+					v.Update(key(k))
+				}
+				lines := strings.Split(v.View(w, h), "\n")
+				if len(lines) != h {
+					t.Errorf("%s %v at %dx%d: %d lines, want %d", name, keys, w, h, len(lines), h)
+				}
+				for i, l := range lines {
+					if n := ansi.StringWidth(l); n > w {
+						t.Errorf("%s %v at %dx%d: line %d is %d wide: %q", name, keys, w, h, i, n, ansi.Strip(l))
+					}
 				}
 			}
 		}
 	}
 }
 
-// TestLevelIntents: each panel's key asks the app for its act, and a page
-// has no trial to start.
+// TestLevelIntents: enter acts on the item under the cursor, which the
+// arrows move across the map; a locked problem, or anything on a locked
+// level but READ and the trial, does nothing, and a page has no trial to
+// start.
 func TestLevelIntents(t *testing.T) {
-	c := loadCurriculum(t)
-	cm, _ := c.Module("count-min")
 	tests := []struct {
 		name string
 		make func(t testing.TB) *rtfm.Level
@@ -153,17 +176,31 @@ func TestLevelIntents(t *testing.T) {
 		want any
 	}{
 		{"enter on READ", trialLevel, []string{"enter"}, screens.OpenModule{Module: "two-pointers"}},
-		{"r", trialLevel, []string{"j", "r"}, screens.OpenModule{Module: "two-pointers"}},
-		{"enter on a problem", trialLevel, []string{"j", "enter"}, screens.Upsolve{Problem: "usaco:643"}},
-		{"p then enter", trialLevel, []string{"p", "j", "enter"}, screens.Upsolve{Problem: "usaco:918"}},
+		{"r", trialLevel, []string{"l", "r"}, screens.OpenModule{Module: "two-pointers"}},
+		// READ's first path goes to Paired Up, solved: again, untimed.
+		{"a solved problem", trialLevel, []string{"l", "enter"}, screens.Upsolve{Problem: pairedUp}},
+		{"an open root", trialLevel, []string{"l", "j", "enter"}, screens.Upsolve{Problem: sleepy}},
+		// Diamond Collector waits on Sleepy Cow Herding.
+		{"a locked problem", trialLevel, []string{"l", "l", "enter"}, nil},
+		{"next", trialLevel, []string{"n", "enter"}, screens.Upsolve{Problem: sleepy}},
+		{"next once the core is solved", func(t testing.TB) *rtfm.Level { return twoPointers(t, "", nil, pairedUp, sleepy, diamond) },
+			[]string{"n", "enter"}, screens.StartTrial{Module: "two-pointers"}},
+		{"the stretch once the trial is passed", func(t testing.TB) *rtfm.Level {
+			return twoPointers(t, "", []string{"two-pointers"}, pairedUp, sleepy, diamond)
+		}, []string{"n", "enter"}, screens.Upsolve{Problem: stretchID}},
+		{"READ once nothing is left", func(t testing.TB) *rtfm.Level {
+			return twoPointers(t, "", []string{"two-pointers"}, pairedUp, sleepy, diamond, stretchID)
+		}, []string{"n", "enter"}, screens.OpenModule{Module: "two-pointers"}},
 		{"t", trialLevel, []string{"t"}, screens.StartTrial{Module: "two-pointers"}},
 		{"enter on TRIAL", trialLevel, []string{"G", "enter"}, screens.StartTrial{Module: "two-pointers"}},
+		{"a locked level's root", lockedLevel, []string{"l", "enter"}, nil},
+		{"a locked level's READ", lockedLevel, []string{"enter"}, screens.OpenModule{Module: "two-pointers"}},
 		{"castle t", castleLevel, []string{"t"}, screens.StartTrial{Module: "bronze-conclusion"}},
 		{"o on READ", trialLevel, []string{"o"}, reader.OpenURL{URL: "https://usaco.guide/silver/two-pointers"}},
-		{"o on an external problem", toppedLevel, []string{"p", "o"}, reader.OpenURL{URL: cm.Problems[0].Problems[0].URL}},
+		{"o on a problem", trialLevel, []string{"l", "o"}, reader.OpenURL{URL: "http://www.usaco.org/index.php?page=viewproblem2&cpid=738"}},
 		{"topped t", toppedLevel, []string{"t"}, nil}, // a page: no trial of its own
 		{"page t", pageLevel, []string{"t"}, nil},
-		{"page t on its last row", pageLevel, []string{"G", "j", "t"}, nil},
+		{"page G enter", pageLevel, []string{"G", "enter"}, screens.OpenModule{Module: "fast-io"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -171,80 +208,39 @@ func TestLevelIntents(t *testing.T) {
 		})
 	}
 	// Leaving is the host's: none of its keys ask to go back.
-	for _, k := range []string{"q", "esc", "h", "left", "backspace"} {
+	for _, k := range []string{"q", "esc", "backspace", "h", "left"} {
 		if msg := press(t, trialLevel(t), k); msg != nil {
 			t.Errorf("%s emitted %#v, want nothing", k, msg)
 		}
 	}
 }
 
-// PRACTICE runs in the order to try it: unsolved before solved, the
-// guide's starred (★) first among the unsolved, the stretch (Very Hard,
-// Insane) after the rest, links last.
-func TestPracticeOrder(t *testing.T) {
-	for name, mk := range map[string]func(testing.TB) *rtfm.Level{"trial": trialLevel, "castle": castleLevel, "page": pageLevel} {
-		v := mk(t)
-		v.Practice()
-		lines := strings.Split(plain(v.View(140, 60)), "\n")
-		var rows []string
-		in := false
-		for _, l := range lines {
-			switch {
-			case strings.Contains(l, "PRACTICE") || strings.Contains(l, "EXAMPLES"):
-				in = true
-				continue
-			case strings.Contains(l, "TRIAL") || strings.Contains(l, "SEE ALSO"):
-				in = false
+// The card under the map says why a problem is locked and what it leads
+// to.
+func TestLevelCard(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		make func(t testing.TB) *rtfm.Level
+		keys []string
+		want []string
+	}{
+		{"locked", trialLevel, []string{"l", "l"}, []string{"core", "locked: solve Sleepy Cow Herding first", "leads to the trial"}},
+		{"open", trialLevel, []string{"l", "j"}, []string{"open: enter starts it", "leads to Diamond Collector"}},
+		{"stretch", trialLevel, []string{"l", "l", "j"}, []string{"stretch", "open"}},
+		{"trial", trialLevel, []string{"G"}, []string{"3 unseen doors", "pass 2 of 3", "opens once the core is solved: 1 of 3 so far"}},
+		{"locked level", lockedLevel, []string{"l"}, []string{"locked: pass Prefix Sums first"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v := tc.make(t)
+			for _, k := range tc.keys {
+				v.Update(key(k))
 			}
-			if in && strings.TrimSpace(l) != "" {
-				rows = append(rows, l)
+			got := plain(v.View(140, 40))
+			for _, w := range tc.want {
+				if !strings.Contains(got, w) {
+					t.Errorf("no %q in\n%s", w, got)
+				}
 			}
-		}
-		if len(rows) < 2 {
-			t.Fatalf("%s: %d practice rows, too few to order", name, len(rows))
-		}
-		rank := func(l string) int {
-			switch {
-			case strings.Contains(l, "link"):
-				return 4
-			case strings.Contains(l, "Very Hard") || strings.Contains(l, "Insane"):
-				return 3
-			case strings.Contains(l, ui.G.Pass):
-				return 2
-			case strings.Contains(l, ui.G.Star):
-				return 0
-			}
-			return 1
-		}
-		for i := 1; i < len(rows); i++ {
-			if rank(rows[i]) < rank(rows[i-1]) {
-				t.Errorf("%s: %q comes after %q", name, strings.TrimSpace(rows[i]), strings.TrimSpace(rows[i-1]))
-			}
-		}
-	}
-}
-
-// A CSES problem in PRACTICE shows no rating: CSES's come from solver
-// counts, too rough to show. It still sorts by it.
-func TestPracticeHidesCSESRating(t *testing.T) {
-	c := loadCurriculum(t)
-	_, region := atlasLevel(t, c, "prefix-sums")
-	judge := func(id catalog.ID) bool { return id.Source() == catalog.USACO || id.Source() == catalog.CSES }
-	l, _, ok := c.Atlas(judge).Level("prefix-sums")
-	if !ok {
-		t.Fatal("no prefix-sums level")
-	}
-	lookup := func(id catalog.ID) (catalog.Problem, bool) {
-		if id.Source() == catalog.CSES {
-			return catalog.Problem{ID: id, Title: "CSES " + string(id), Rating: 1777}, true
-		}
-		return fixture.Lookup(id)
-	}
-	v := plain(rtfm.NewLevel(c, l, region, fixture.Meta(), judge, lookup).View(140, 40))
-	if !strings.Contains(v, "CSES cses:1661") {
-		t.Fatalf("no CSES problem in PRACTICE:\n%s", v)
-	}
-	if strings.Contains(v, "1777") {
-		t.Errorf("a CSES rating shows:\n%s", v)
+		})
 	}
 }

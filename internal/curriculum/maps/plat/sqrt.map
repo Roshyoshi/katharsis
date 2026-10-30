@@ -1,0 +1,11 @@
+# Square Root Decomposition (Platinum › Range Queries)
+# Two core lanes, blocking and Mo's algorithm, each with its own capstone;
+# batching and sqrt-bound tree tricks hang off them as stretch.
+core  cses-1648 > usaco-1188  # blocks keep min/max; split when big
+core  cf-877F > cf-375D       # Mo's order; then on Euler-tour ranges
+
+side  cses-1648 > cf-13E > cf-1178G     # per-block structure, rebuilt on edit
+side  cses-1648 > usaco-534 > cf-1017G  # buffer sqrt(Q) updates; rebuild
+side  cf-375D > cf-1254D > usaco-793    # few heavy things on a tree
+
+skip  usaco-817  # diameter + LCA lifting; binary-jump

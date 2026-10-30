@@ -1,0 +1,3 @@
+# LineContainer (Advanced › Convexity)
+# A single node: half-plane queries against a hull that only grows.
+core  usaco-534  # min/max of Ax+By over inserted points

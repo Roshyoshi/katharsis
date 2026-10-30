@@ -1,0 +1,4 @@
+# Additional DP Optimizations and Techniques (Advanced › Dynamic Programming)
+# One lane of connected-component DP; no Knuth problem is judgeable.
+core  cses-1075 > cf-1515E  # new, joined, or extended component
+core  cf-1515E > cf-704B    # the same, pricing each component end

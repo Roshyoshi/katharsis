@@ -1,0 +1,10 @@
+# Two Pointers (Silver › Sorting & Searching)
+# Pointers from both ends of a sorted list, and sliding windows: first on an
+# array, then on sorted values. The window lanes join at Quiz Master.
+core  usaco-738 > usaco-643                      # pair from both ends, sorted
+core  cf-279B > usaco-918 > usaco-643 > cf-1777C  # windows on sorted positions
+core  cf-279B > cses-1660 > cf-701C > cf-1777C   # window sums, then type counts
+
+side  usaco-738 > cf-702C > usaco-1470  # a pointer per sorted list, then counts
+side  cf-279B > cf-814C                 # window with at most m repaints
+side  cf-1777C > cf-1744F               # window covering 0..m-1, then count

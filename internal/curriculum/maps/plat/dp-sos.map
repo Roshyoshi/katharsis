@@ -1,0 +1,9 @@
+# Sum over Subsets DP (Platinum › Misc. Topics)
+# Bit Problem teaches the sweep, then fans out: PIE over supersets, the sweep
+# over divisor exponents, and the sweep inside a DP over masks.
+core  cses-1654 > cf-449D     # superset counts, then PIE over supersets
+core  cses-1654 > usaco-1213  # the same sweep over prime-exponent axes
+core  cses-1654 > usaco-1309  # submask sums of the dp being built
+
+side  cses-1654 > cf-383E  # words meeting a set: n minus disjoint ones
+side  cf-449D > cf-1326F2  # relax to supersets, count, invert by PIE

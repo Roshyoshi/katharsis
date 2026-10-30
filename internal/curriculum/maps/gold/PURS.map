@@ -1,0 +1,12 @@
+# Point Update Range Sum (Gold › Data Structures)
+# Two lanes from the two warm-up trees, order statistics then pair counting,
+# and offline sweeps over positions, joining at Cow Cross the Road III.
+core  cses-1649 > cses-1749 > cses-1144              # k-th by walk, then rank
+core  cses-1144 > usaco-693 > usaco-1041 > usaco-719  # count larger: inversions
+core  cses-1648 > cses-1734 > usaco-719              # offline marks by position
+
+side  cses-1648 > cses-1651              # differences: range add, point read
+side  cses-1749 > cf-1181D               # k-th by tree walk, offline in time
+side  cses-1144 > cses-1748 > usaco-532  # a BIT over keys sums DP values
+side  usaco-693 > cses-1747              # larger-on-each-side picks a side
+side  usaco-1041 > usaco-720             # inversions under every rotation

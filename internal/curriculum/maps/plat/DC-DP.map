@@ -1,0 +1,8 @@
+# Divide & Conquer - DP (Platinum › Misc. Topics)
+# One lane of k-partition DPs with monotone opt; side chains add opt that is
+# monotone only in ranges, and the array-splitting D&C.
+core  usaco-626 > cf-321E  # monotone opt; cost from 2D prefix sums
+core  cf-321E > cf-868F    # same DP; cost kept by moving two pointers
+
+side  cf-321E > usaco-926  # opt monotone only within ranges of a layer
+side  usaco-626 > cf-660F  # split the array; a hull across the middle

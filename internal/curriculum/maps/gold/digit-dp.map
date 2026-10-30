@@ -1,0 +1,8 @@
+# Digit DP (Gold › Dynamic Programming)
+# Two warm-up roots, a digit tally and the adjacent-digit walk, joining at
+# Piling Papers; remainders and base-3 carries are stretch.
+core  usaco-435 > usaco-1307  # tally digits under a tight prefix
+core  cses-2220 > usaco-1307  # last digit in the state, tight prefix
+
+side  cses-2220 > cf-628D      # position parity and remainder in the state
+side  usaco-1307 > usaco-1115  # two numbers' digits in step, with carries

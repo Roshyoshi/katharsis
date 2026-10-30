@@ -6,10 +6,10 @@ NAME
        indices satisfying some condition in linear time.
        Two Pointers. "I only took the regular course."
 
-TRIAL               unit: tags shown · integration: blind · pass: 1 of 2 + blind
-       1  Paired Up          Easy       ◆1350  2017 US Open, Silver P1
-       2  Diamond Collector  Medium     ◆1500  2016 US Open, Silver P2
-       +  1 blind integration door · The Sliding Window · ◆1350–1650
+TRIAL                            opens once the map's core is solved: 3 problems
+       ◌  3 unseen doors on The Sliding Window · ◆1350–1650 · every door blind
+       ◆  aimed ◆1350 → ◆1500 → ◆1600: the core's middle, its hardest, a step past
+       ✓  pass 2 of 3: 1 door may go to :q!
        ■  CAP_TWOPTR held: The Sliding Window is already on your routes
 
 SEE ALSO

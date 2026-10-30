@@ -1,0 +1,15 @@
+# Basic Complete Search (Bronze › Complete Search)
+# Two lanes, every candidate value and every pair of items, joining at Load
+# Balancing: every pair of fence values drawn from the input.
+core  usaco-615 > usaco-1203 > usaco-1228  # try every value the answer can take
+core  usaco-1228 > usaco-617               # candidates come from the input
+core  usaco-639 > usaco-963 > usaco-712    # every pair of items, checked
+core  usaco-712 > usaco-617                # every pair of fence lines
+
+side  usaco-639 > usaco-784                # assume each one is the culprit
+side  usaco-784 > usaco-569 > usaco-1037   # the bad milk, then patient zero
+side  usaco-639 > usaco-1060 > usaco-1469  # index pairs as ranges, reversed
+side  usaco-963 > usaco-1011               # pairs grow to triples
+side  usaco-963 > usaco-736 > usaco-739    # a column must split every row
+side  usaco-712 > usaco-893 > usaco-640    # every pair, test their overlap
+side  usaco-617 > usaco-619                # same fences, N = 1000, a sweep

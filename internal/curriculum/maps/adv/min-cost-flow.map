@@ -1,0 +1,9 @@
+# Minimum Cost Flow (Advanced › Flows)
+# Build String opens two lanes, richer networks and the assignment problem;
+# LP-duality and huge-n problems hang off the node they extend.
+core  cf-237E > cf-802N > cf-818G  # supplies, a timeline, disjoint paths
+core  cf-237E > cf-1107F           # assignment: credits to month slots
+
+side  cf-818G > cf-2046D             # node-split paths that cover every city
+side  cf-802N > cf-1307G > cf-1427G  # cost convex in flow, then LP duality
+side  cf-1107F > cf-1316E            # assignment with p <= 7: bitmask DP

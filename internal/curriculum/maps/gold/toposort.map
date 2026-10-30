@@ -1,0 +1,5 @@
+# Topological Sort (Gold › Graphs)
+# One lane: DP along a topological order, then cycle checks, then choosing
+# the order itself with a heap. Five problems, all core.
+core  cses-1681 > usaco-1017 > cf-919D  # DP in topological order: count, max
+core  cf-919D > usaco-838 > cses-1757   # detect cycles; pick the order by heap

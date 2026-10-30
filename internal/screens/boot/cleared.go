@@ -264,7 +264,7 @@ func (c *Cleared) clearedLine(seed uint64) string {
 func (c *Cleared) trialLine(seed uint64) string {
 	tr := c.env.State.Trial
 	return flavor.Fill(tale.Story("rtfm.trial.pass", seed),
-		"cap", ui.Clip(tr.Granted, 14), "biome", ui.Clip(fl.BiomeName(tr.IntegTopic), 18))
+		"cap", ui.Clip(tr.Granted, 14), "biome", ui.Clip(fl.BiomeName(tr.Topic), 18))
 }
 
 // centerVoice is a story line in the flavor voice, centered, wrapped to

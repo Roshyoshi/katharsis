@@ -32,6 +32,9 @@ type BootSummary struct {
 	// Ending is how a cleared boot ended short of its last boss
 	// (game.State.Ending): "wake" is the Trial, git log's "awake".
 	Ending string
+	// Topic is the topic of the biome the boot was in last, "" for none:
+	// a route's, or game.Mixed for Userland, whose doors keep their own.
+	Topic string
 }
 
 // dumpedSQL reads Dumped out of the stored State. It has no column of its
@@ -40,12 +43,17 @@ type BootSummary struct {
 const dumpedSQL = `CASE WHEN json_extract(state, '$.Trial') IS NULL
 	THEN COALESCE(json_extract(state, '$.Crash.Lost'), 0) ELSE 0 END`
 
+// topicSQL reads BootSummary.Topic out of the stored State, as dumpedSQL
+// does Dumped.
+const topicSQL = `COALESCE(json_extract(state,
+	'$.Biomes[' || COALESCE(json_extract(state, '$.Biome'), 0) || '].Topic'), '')`
+
 // Boots lists boots newest first; limit <= 0 lists all.
 func (s *Store) Boots(limit int) ([]BootSummary, error) {
 	var out []BootSummary
 	err := eachRow(s.db, `
 		SELECT id, seed, prestige, rules, started, outcome, cause, uptime,
-			committed, `+dumpedSQL+`, last_door, ending
+			committed, `+dumpedSQL+`, last_door, ending, `+topicSQL+`
 		FROM boots ORDER BY id DESC LIMIT ?`, []any{sqlLimit(limit)},
 		func(rows *sql.Rows) error {
 			var (
@@ -53,7 +61,7 @@ func (s *Store) Boots(limit int) ([]BootSummary, error) {
 				seed, started, uptime int64
 			)
 			if err := rows.Scan(&b.Boot, &seed, &b.Prestige, &b.Rules, &started,
-				&b.Outcome, &b.Cause, &uptime, &b.Committed, &b.Dumped, &b.LastDoor, &b.Ending); err != nil {
+				&b.Outcome, &b.Cause, &uptime, &b.Committed, &b.Dumped, &b.LastDoor, &b.Ending, &b.Topic); err != nil {
 				return err
 			}
 			b.Seed = uint64(seed)

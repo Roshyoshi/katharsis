@@ -1,0 +1,7 @@
+# (Optional) Euler Tour Technique (Gold › Trees)
+# Subtrees as ranges, then two lanes, offline sweeps and root paths, joining
+# at Promotion Counting.
+core  cses-1137 > cses-1139 > usaco-696  # subtree ranges, swept in an order
+core  cses-1137 > cses-1138 > usaco-696  # root paths as subtree range adds
+
+side  cses-1138 > usaco-973  # subtree range adds, deduped by colour

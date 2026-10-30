@@ -1,0 +1,8 @@
+# Minimum Spanning Trees (Gold › Graphs)
+# Kruskal on built graphs and Prim on complete graphs, joining at Moo
+# Network: a complete graph cut down to a few edges per point, then Kruskal.
+core  cses-1675 > usaco-1138 > usaco-1211           # Kruskal; vertices as edges
+core  cses-1675 > usaco-531 > usaco-946 > usaco-1211  # complete graphs, by Prim
+
+side  cses-1675 > usaco-623 > usaco-625  # grid; rows of equal edges
+side  usaco-1211 > cf-1513D              # only edges Kruskal takes

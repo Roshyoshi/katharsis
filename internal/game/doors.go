@@ -410,8 +410,9 @@ func (e *engine) makeDoor(p *catalog.Problem, i int, boss string, regression boo
 		}
 	}
 	if e.s.Trial != nil {
-		// The unit shows tags; the integration doors are blind.
-		d.Blind, d.Mystery, d.Cursed = e.s.Biome > 0 || r.BlindAll, false, false
+		// rules.Trial hides every tag: the module names the topic, and a
+		// door that named its trick would test nothing.
+		d.Blind, d.Mystery, d.Cursed = r.BlindAll, false, false
 	}
 	d.Timer = e.doorTimer(rb, boss != "", d.Difficulty(r)-R)
 	e.twist(&d)

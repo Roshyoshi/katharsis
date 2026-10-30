@@ -1,0 +1,9 @@
+# Heavy-Light Decomposition (Platinum › Trees)
+# Climb chains, then a segment tree on them; two lanes, path queries and
+# path updates on edges, joining at Disruption.
+core  cses-1688 > cses-2134 > usaco-970 > usaco-842  # chain queries, offline
+core  cses-2134 > usaco-102 > usaco-842          # values on edges, path updates
+
+side  cses-2134 > usaco-921  # the same path query, with XOR
+side  cses-2134 > cf-1017G   # root-path max suffix sum on chains
+side  cses-1688 > cf-1254D   # few light edges: touch them lazily

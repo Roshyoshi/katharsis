@@ -1,0 +1,7 @@
+# Small-To-Large Merging (Platinum › Trees)
+# Two lanes from Distinct Colors, count maps and ordered sets, joining at
+# Disruption.
+core  cses-1139 > cf-1923E > usaco-842   # entries that meet cancel out
+core  cses-1139 > usaco-696 > usaco-842  # ordered sets: rank, then min key
+
+side  cf-1923E > cf-600E  # color counts, keep the max on merge

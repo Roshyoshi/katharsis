@@ -1,0 +1,9 @@
+# Intro to Bitwise Operators (Silver › Additional Topics)
+# Three lanes: numbers as independent bits, XOR as its own inverse, and
+# masks as sets; they share only the operators, so each ends on its own.
+core  usaco-1182 > cf-1338A > cf-1368D    # binary digits, bits independent
+core  usaco-1518 > cf-1872E > usaco-1544  # XOR cancels: pairs, prefix, window
+core  usaco-1327                          # a team as a mask, XOR to flip
+
+side  usaco-1327 > cf-1017D   # XOR of masks, count all pairs
+side  usaco-1327 > cses-2185  # every subset a mask, PIE by parity

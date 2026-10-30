@@ -1,0 +1,5 @@
+# Sweep Line (Platinum › Geometry)
+# One root of sorted events, then two lanes, segments ordered by y and an
+# x-window of squares, meeting at Hill Walk.
+core  cses-1619 > usaco-943 > usaco-266  # active segments kept ordered by y
+core  cses-1619 > usaco-227 > usaco-266  # x-window; neighbours in a y-set

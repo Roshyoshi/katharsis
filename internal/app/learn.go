@@ -192,8 +192,9 @@ func (m *Model) module(id string) (curriculum.Module, bool) {
 }
 
 // startTrial begins a learn-mode trial for a module: any level of the atlas
-// but a page, whether or not passing grants a capability. A castle's is its
-// division's gauntlet (curriculum.TrialForN).
+// but a page, whether or not passing grants a capability, once the path
+// has reached it and its map's core is solved (DESIGN.md "Learn mode"). A
+// castle's is its division's gauntlet.
 func (m *Model) startTrial(id string) tea.Cmd {
 	mod, ok := m.module(id)
 	if !ok {
@@ -212,6 +213,16 @@ func (m *Model) startTrial(id string) tea.Cmd {
 		}
 		return fail("%s has no trial: it grants no capability and lists no problem the game can judge", mod.Title)
 	}
+	a := m.cur.Atlas(m.judgeable)
+	switch p := a.Progress(&m.meta)[id]; {
+	case !p.Open:
+		if l, ok := a.Before(id); ok {
+			return fail("%s is locked: pass %s first", mod.Title, l.Title)
+		}
+		return fail("%s is locked", mod.Title)
+	case p.CoreSolved < p.Core:
+		return fail("%s's trial opens once its core is solved: %d of %d so far", mod.Title, p.CoreSolved, p.Core)
+	}
 	return m.beginTrial(t.Spec())
 }
 
@@ -221,14 +232,9 @@ func (m *Model) beginTrial(t game.TrialSpec) tea.Cmd {
 	if err := m.abandon(); err != nil {
 		return fail("abandon boot %d: %v", m.state.Boot, err)
 	}
-	// The doors drawn by rating come from the boots' pool; the unit's own
-	// CSES problems join it, as the trial plays them by id.
-	m.pool = drawPool(m.d.Catalog)
-	for _, id := range t.Unit {
-		if p, ok := m.d.Catalog.Get(id); ok && p.Source == catalog.CSES {
-			m.pool = append(m.pool, p)
-		}
-	}
+	// The doors come from the trials' own pool: none is on a map or a
+	// boot's (poolFor).
+	m.pool = poolFor(m.d.Catalog, &game.State{Trial: &game.TrialState{TrialSpec: t}})
 	st, effs, err := game.NewTrial(rules.Trial(), &m.meta, m.pool, t, m.d.Seed(), m.d.Now())
 	if err != nil {
 		return fail("trial: %v", err)

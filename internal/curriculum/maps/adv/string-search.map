@@ -1,0 +1,14 @@
+# String Searching (Advanced › Strings)
+# Prefix functions and tries join at Aho-Corasick. Z, Manacher, hashing and
+# binary tries hang off the lane each extends.
+core  cses-1753 > cses-1732 > cf-432D > usaco-533  # KMP, borders, AC states
+core  cses-1731 > usaco-533 > cf-1202E          # a trie, then its failure links
+
+side  cses-1732 > cses-1110                 # rotations compared by hashed LCP
+side  cf-432D > cf-1051E > cf-1313E         # Z as LCP with a pattern, both ends
+side  cf-432D > cf-1080E > cf-17E           # Z's box mirrored: Manacher
+side  cses-1731 > cses-1655 > cf-665E > cf-1055F  # binary trie: max, count, k-th
+side  cses-1655 > cf-888G                   # min xor across trie halves: MST
+side  cses-1731 > usaco-1281                # a string tree with shared subtrees
+side  cses-1731 > cf-965E                   # trie depths merged small-to-large
+side  cf-1202E > cf-963D                    # AC listing every occurrence

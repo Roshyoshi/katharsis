@@ -1,0 +1,5 @@
+# DP on Trees - Solving For All Roots (Gold › Trees)
+# One lane: down and up DP for every root, then totals shifted per edge.
+core  cses-1132 > usaco-814 > cf-1187E  # out-of-subtree DP, then reroot sums
+
+skip  usaco-793  # real solution is centroid or sqrt

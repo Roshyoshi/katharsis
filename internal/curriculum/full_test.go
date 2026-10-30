@@ -28,7 +28,7 @@ func TestFullGuide(t *testing.T) {
 	unknown := map[string]int{}
 	var dropped []string
 	var failures, lostCode int
-	var modsWithUSACO, fullUSACOUnits, fullUnits int
+	var usacoMaps, usacoCore, maps, core int
 	raw := map[catalog.Source]int{}       // entries, counting repeats
 	distinct := map[catalog.ID]bool{}     // across the guide
 	perModule := map[catalog.Source]int{} // distinct within each module, summed
@@ -62,14 +62,13 @@ func TestFullGuide(t *testing.T) {
 				seen[p.ID] = true
 			}
 		}
-		if u := TrialFor(m, isUSACO, nil).Unit; len(u) > 0 {
-			modsWithUSACO++
-			if len(u) == DefaultUnitSize {
-				fullUSACOUnits++
-			}
+		if n := TrialFor(m, isUSACO, nil).Map.Core(); n > 0 {
+			usacoMaps++
+			usacoCore += n
 		}
-		if len(TrialFor(m, nil, nil).Unit) == DefaultUnitSize {
-			fullUnits++
+		if n := TrialFor(m, nil, nil).Map.Core(); n > 0 {
+			maps++
+			core += n
 		}
 	}
 	if lostCode > 0 {
@@ -108,8 +107,8 @@ func TestFullGuide(t *testing.T) {
 	t.Logf("CSES refs: %d entries, %d distinct per module (summed), %d distinct problems",
 		raw[catalog.CSES], perModule[catalog.CSES], count(catalog.CSES))
 	t.Logf("external refs (not playable in v1): %d", external)
-	t.Logf("modules with a playable USACO problem=%d; full %d-door units: USACO only=%d, USACO+CSES=%d",
-		modsWithUSACO, DefaultUnitSize, fullUSACOUnits, fullUnits)
+	t.Logf("maps with a core: USACO only=%d (%d core problems), any catalog problem=%d (%d)",
+		usacoMaps, usacoCore, maps, core)
 	t.Logf("dropped {expressions}: %d %q", len(dropped), dropped)
 }
 

@@ -1,0 +1,9 @@
+# Paths on Grids (Gold › Dynamic Programming)
+# Two lanes, counting paths through a grid and two sequences as one grid,
+# joining at Pair Programming; diagonal sweeps and The Cow Run are stretch.
+core  cses-1638 > cses-1746 > usaco-1234  # count paths through a grid
+core  cses-1639 > usaco-718 > usaco-598   # dp over prefixes of two sequences
+core  usaco-598 > usaco-670 > usaco-1234  # interleave two lists; who moved last
+
+side  cses-1638 > cses-3359 > usaco-553  # sweep the grid by anti-diagonals
+side  usaco-670 > usaco-265              # progress each way, and which end

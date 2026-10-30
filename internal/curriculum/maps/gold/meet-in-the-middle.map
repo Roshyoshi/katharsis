@@ -1,0 +1,6 @@
+# (Optional) Meet In The Middle (Gold › Additional Topics)
+# One lane that counts matching halves through a map, ending at Xor-Paths;
+# sorted halves searched for a best pair as side.
+core  cses-1628 > usaco-1207 > cf-1006F  # count matching halves by key
+
+side  cses-1628 > cf-888E  # sort a half; best complement mod m

@@ -328,6 +328,7 @@ func TestStoryOff(t *testing.T) {
 
 		h = newStoryHarness(t)
 		loadGuide(h)
+		readyTrial(h, "prefix-sums")
 		h.send(screens.StartTrial{Module: "prefix-sums"})
 		if h.m.state == nil || h.m.state.Trial == nil {
 			t.Fatalf("no trial running: %+v", h.m.state)

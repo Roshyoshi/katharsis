@@ -5,9 +5,9 @@ import "maps"
 // moduleTopics maps every module in the pinned ordering.ts to the catalog
 // topic (catalog.Topics) it teaches. It is the one such table: the USACO
 // catalog falls back on it for a problem whose tags name no topic, and
-// learn mode draws a module trial's integration doors from its topic and
-// grants that topic's capability. Modules that teach no algorithmic topic
-// (the General division, the conclusions) are absent.
+// learn mode draws a module trial's doors from its topic and grants that
+// topic's capability. Modules that teach no algorithmic topic (the
+// General division, the conclusions) are absent.
 //
 // The guide's own grouping decides first: the chapter a module sits in
 // (ordering.ts), then what the module text teaches. Judgment calls, so a

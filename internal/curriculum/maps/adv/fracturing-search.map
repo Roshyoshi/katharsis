@@ -1,0 +1,3 @@
+# Fracturing Search (Advanced › Misc. Topics)
+# A single node: the module's worked example.
+core  usaco-674  # k cheapest picks via a heap of splits

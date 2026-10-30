@@ -3,6 +3,7 @@ package curriculum
 import (
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,25 +16,6 @@ func ref(uid, diff string, starred bool, kind string) ProblemRef {
 	return ProblemRef{UniqueID: uid, ID: CatalogID(uid), Difficulty: diff, Starred: starred, SolutionKind: kind}
 }
 
-var trialModule = Module{
-	ID: "prefix-sums", Division: "silver", Topic: "prefix-sums",
-	Problems: []ProblemList{
-		{Key: "sample", Problems: []ProblemRef{ref("usaco-1", "Easy", false, "in-module")}},
-		{Key: "general", Problems: []ProblemRef{
-			ref("usaco-1", "Easy", true, "internal"), // focus problem again, starred here
-			ref("usaco-2", "Easy", false, "internal"),
-			ref("usaco-3", "Easy", true, "internal"),
-			ref("ac-abc100_a", "Very Easy", true, "internal"), // external: never playable
-			ref("cses-10", "Medium", false, "internal"),
-			ref("usaco-4", "Hard", false, "internal"),
-			ref("usaco-5", "Very Easy", false, "internal"),
-			ref("usaco-6", "Insane", false, "internal"),
-			ref("usaco-7", "Hard", true, "internal"),
-			ref("usaco-8", "N/A", true, "internal"),
-		}},
-	},
-}
-
 func ids(s ...string) []catalog.ID {
 	var out []catalog.ID
 	for _, x := range s {
@@ -42,35 +24,36 @@ func ids(s ...string) []catalog.ID {
 	return out
 }
 
-func TestTrialUnit(t *testing.T) {
-	noCSES := func(id catalog.ID) bool { return id.Source() != catalog.CSES }
+// TestTrialAim: the doors climb from the core's median rating to its
+// hardest and a window past it. Side problems are stretch and aim
+// nothing; CSES ratings count only when nothing else on the core is rated.
+func TestTrialAim(t *testing.T) {
 	for _, tc := range []struct {
-		name      string
-		judgeable func(catalog.ID) bool
-		rated     map[catalog.ID]int // the catalog's ratings; nil is no lookup
-		n         int
-		want      []catalog.ID
+		name  string
+		lines []string
+		rated map[catalog.ID]int // the catalog's ratings; nil is no lookup
+		want  []int
 	}{
-		// One per label, easiest labels first; within Easy the starred
-		// non-focus problem beats the focus problem; N/A sorts last.
-		{"default", nil, nil, DefaultUnitSize, ids("usaco:5", "usaco:3")},
-		{"four", nil, nil, 4, ids("usaco:5", "usaco:3", "cses:10", "usaco:7")},
-		// Insane (usaco:6) is stretch: in a unit only once the rest run out.
-		{"second round", nil, nil, 7, ids("usaco:5", "usaco:3", "usaco:1", "cses:10", "usaco:7", "usaco:4", "usaco:8")},
-		{"judgeable filter", noCSES, nil, 4, ids("usaco:5", "usaco:3", "usaco:7", "usaco:8")},
-		{"stretch last", func(id catalog.ID) bool { return id == "usaco:6" || id == "usaco:2" }, nil, 4, ids("usaco:2", "usaco:6")},
-		{"everything, deduplicated", nil, nil, 100, ids("usaco:5", "usaco:3", "usaco:1", "usaco:2", "cses:10", "usaco:7", "usaco:4", "usaco:6", "usaco:8")},
-		{"nothing judgeable", func(catalog.ID) bool { return false }, nil, 4, nil},
-		// Silver's band tops at 1650 and the narrowest window is 100: a Hard
-		// problem rated past 1750 is stretch, and its label's next one
-		// takes its seat; at 1750 it stays.
-		{"rated past the band", nil, map[catalog.ID]int{"usaco:7": 1751}, 4, ids("usaco:5", "usaco:3", "cses:10", "usaco:4")},
-		{"at the window's edge", nil, map[catalog.ID]int{"usaco:7": 1750}, 4, ids("usaco:5", "usaco:3", "cses:10", "usaco:7")},
-		{"past the band, still before Insane", nil, map[catalog.ID]int{"usaco:7": 2400}, 8,
-			ids("usaco:5", "usaco:3", "usaco:1", "usaco:2", "cses:10", "usaco:7", "usaco:4", "usaco:8")},
-		{"CSES ratings are solver counts", nil, map[catalog.ID]int{"cses:10": 3000}, 4, ids("usaco:5", "usaco:3", "cses:10", "usaco:7")},
+		{"median, top, past it", []string{
+			"core usaco-1 > usaco-2 > usaco-3",
+			"core cses-10 > usaco-3",
+			"side usaco-3 > usaco-4",
+		}, map[catalog.ID]int{"usaco:1": 1200, "usaco:2": 1400, "usaco:3": 1600, "cses:10": 3000, "usaco:4": 2400},
+			[]int{1400, 1600, 1700}},
+		{"the lower median", []string{"core usaco-1 > usaco-2"},
+			map[catalog.ID]int{"usaco:1": 1200, "usaco:2": 1400}, []int{1200, 1400, 1500}},
+		{"one rated", []string{"core usaco-1 > usaco-2"},
+			map[catalog.ID]int{"usaco:2": 1500}, []int{1500, 1500, 1600}},
+		{"CSES alone", []string{"core cses-10 > cses-11"},
+			map[catalog.ID]int{"cses:10": 1500, "cses:11": 1900}, []int{1500, 1900, 2000}},
+		{"nothing rated", []string{"core usaco-1"}, map[catalog.ID]int{}, nil},
+		{"no lookup", []string{"core usaco-1"}, nil, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			mp, err := ParseMap("m", strings.Join(tc.lines, "\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
 			var lookup func(catalog.ID) (catalog.Problem, bool)
 			if tc.rated != nil {
 				lookup = func(id catalog.ID) (catalog.Problem, bool) {
@@ -78,22 +61,21 @@ func TestTrialUnit(t *testing.T) {
 					return catalog.Problem{ID: id, Rating: r}, ok
 				}
 			}
-			got := TrialForN(trialModule, tc.judgeable, lookup, tc.n)
-			if !reflect.DeepEqual(got.Unit, tc.want) {
-				t.Errorf("unit = %v, want %v", got.Unit, tc.want)
+			if got := aim(mp, lookup); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("aim = %v, want %v", got, tc.want)
 			}
 		})
 	}
 }
 
-func TestTrialIntegration(t *testing.T) {
+func TestTrialTopic(t *testing.T) {
 	for _, tc := range []struct {
 		m     Module
 		topic string
 		band  [2]int
 		cap   string
 	}{
-		{trialModule, "prefix-sums", [2]int{1350, 1650}, "CAP_PREFIX"},
+		{Module{Division: "silver", Topic: "prefix-sums"}, "prefix-sums", [2]int{1350, 1650}, "CAP_PREFIX"},
 		{Module{Division: "bronze", Topic: "mixed"}, "mixed", [2]int{1000, 1300}, ""},
 		{Module{Division: "general"}, "mixed", [2]int{1000, 1300}, ""},
 		{Module{Division: "gold", Topic: "dp"}, "dp", [2]int{1700, 2000}, "CAP_DP"},
@@ -102,48 +84,69 @@ func TestTrialIntegration(t *testing.T) {
 		{Module{Division: "bronze", Topic: "simulation"}, "simulation", [2]int{1000, 1300}, ""},
 	} {
 		got := TrialFor(tc.m, nil, nil)
-		if got.IntegTopic != tc.topic || got.IntegBand != tc.band || got.Capability != tc.cap {
+		if got.Topic != tc.topic || got.Band != tc.band || got.Capability != tc.cap {
 			t.Errorf("%s/%q: topic=%q band=%v cap=%q, want %q %v %q",
-				tc.m.Division, tc.m.Topic, got.IntegTopic, got.IntegBand, got.Capability, tc.topic, tc.band, tc.cap)
+				tc.m.Division, tc.m.Topic, got.Topic, got.Band, got.Capability, tc.topic, tc.band, tc.cap)
 		}
 	}
 }
 
-// TestTrialSpec: the curriculum's trial is what the engine plays, and a
-// short unit is the engine's to top up.
+// TestTrialSpec: the curriculum's trial is what the engine plays: one
+// door per target, on the topic first, from the pool it is given.
 func TestTrialSpec(t *testing.T) {
-	tr := TrialForN(trialModule, nil, nil, 1)
+	tr := Trial{
+		Module: Module{ID: "prefix-sums", Title: "Prefix Sums"}, Topic: "prefix-sums",
+		Band: DivisionBand("silver"), Targets: []int{1400, 1600, 1700}, Capability: "CAP_PREFIX",
+	}
 	spec := tr.Spec()
-	if spec.Module != "prefix-sums" || spec.IntegTopic != "prefix-sums" || spec.IntegBand != [2]int{1350, 1650} ||
-		spec.Capability != "CAP_PREFIX" || !reflect.DeepEqual(spec.Unit, tr.Unit) {
+	if spec.Module != "prefix-sums" || spec.Topic != "prefix-sums" || spec.Band != [2]int{1350, 1650} ||
+		spec.Capability != "CAP_PREFIX" || !reflect.DeepEqual(spec.Targets, tr.Targets) {
 		t.Fatalf("spec %+v from trial %+v", spec, tr)
 	}
-	spec.Unit[0] = "x"
-	if tr.Unit[0] == "x" {
-		t.Error("Spec shares the trial's unit")
+	spec.Targets[0] = 0
+	if tr.Targets[0] == 0 {
+		t.Error("Spec shares the trial's targets")
 	}
+
+	// On the topic at 1400, 1600 and 1800; off it, right on the aims.
 	var pool []catalog.Problem
-	for i, id := range append(slices.Clone(tr.Unit), ids("usaco:900", "usaco:901", "usaco:902", "usaco:903", "usaco:904")...) {
-		pool = append(pool, catalog.Problem{ID: id, Topic: "prefix-sums", Rating: 1360 + 50*i, Judgeable: true})
+	add := func(id, topic string, rating int) {
+		pool = append(pool, catalog.Problem{ID: catalog.ID(id), Topic: topic, Rating: rating, Judgeable: true})
 	}
-	m := &game.Meta{}
-	s, _, err := game.NewTrial(rules.Trial(), m, pool, tr.Spec(), 1, time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC))
+	add("usaco:900", "prefix-sums", 1400)
+	add("usaco:901", "prefix-sums", 1600)
+	add("usaco:902", "prefix-sums", 1800)
+	add("usaco:903", "graphs", 1400)
+	add("usaco:904", "graphs", 1600)
+	add("usaco:905", "graphs", 1700)
+	s, _, err := game.NewTrial(rules.Trial(), &game.Meta{}, pool, tr.Spec(), 1, time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(s.Trial.Plan[0]) != 2 || len(s.Trial.TopUp) != 1 || len(s.Trial.Plan[1]) != 1 {
-		t.Errorf("plan %v, top-ups %v: want a unit of 2 (1 topped up) and 1 integration door", s.Trial.Plan, s.Trial.TopUp)
+	if got, want := slices.Concat(s.Trial.Plan...), ids("usaco:900", "usaco:901", "usaco:902"); !reflect.DeepEqual(got, want) {
+		t.Errorf("doors %v, want %v", got, want)
 	}
 }
 
+// The fixture's Prefix Sums plays the embedded map, cut to what the
+// fixture lists and the catalog judges.
 func TestTrialForFixture(t *testing.T) {
 	m, _ := loadFixture(t).Module("prefix-sums")
-	got := TrialFor(m, func(id catalog.ID) bool { return id.Source() == catalog.USACO }, nil)
-	// The fixture's USACO problems: 572, 691 (Very Easy), 595 (Easy), 1471
-	// (Medium, starred). One per label from the easiest.
-	want := ids("usaco:572", "usaco:595")
-	if !reflect.DeepEqual(got.Unit, want) {
-		t.Errorf("unit = %v, want %v", got.Unit, want)
+	usaco := func(id catalog.ID) bool { return id.Source() == catalog.USACO }
+	got := TrialFor(m, usaco, nil)
+	if got.Map.Core() == 0 {
+		t.Fatalf("map %+v has no core", got.Map)
+	}
+	listed := map[catalog.ID]bool{}
+	for _, l := range m.Problems {
+		for _, p := range l.Problems {
+			listed[p.ID] = true
+		}
+	}
+	for _, n := range got.Map.Nodes {
+		if !listed[n.ID] || !usaco(n.ID) {
+			t.Errorf("%s (%s): not a USACO problem the fixture lists", n.Problem, n.ID)
+		}
 	}
 }
 
@@ -170,17 +173,17 @@ func TestTrialKinds(t *testing.T) {
 			t.Fatalf("fixture has no %s", tc.id)
 		}
 		got := TrialFor(m, usaco, nil)
-		if got.Kind != tc.kind || got.IntegTopic != tc.topic || got.Capability != tc.cap {
-			t.Errorf("%s: kind %v topic %q cap %q, want %v %q %q", tc.id, got.Kind, got.IntegTopic, got.Capability, tc.kind, tc.topic, tc.cap)
+		if got.Kind != tc.kind || got.Topic != tc.topic || got.Capability != tc.cap {
+			t.Errorf("%s: kind %v topic %q cap %q, want %v %q %q", tc.id, got.Kind, got.Topic, got.Capability, tc.kind, tc.topic, tc.cap)
 		}
 		if l, _, _ := c.Atlas(usaco).Level(tc.id); l.Kind != got.Kind {
 			t.Errorf("%s: trial kind %v, atlas kind %v", tc.id, got.Kind, l.Kind)
 		}
 	}
 	// No judgeable problem: a page, even for a module that grants a
-	// capability (it is earned in another module on the topic: a trial of
-	// catalog filler tests nothing the module taught); a conclusion stays a
-	// castle.
+	// capability (it is earned in another module on the topic: a trial
+	// with nothing to practise before it tests nothing the module taught);
+	// a conclusion stays a castle.
 	none := func(catalog.ID) bool { return false }
 	for id, want := range map[string]LevelKind{"casework": PageLevel, "bronze-conclusion": CastleLevel, "prefix-sums": PageLevel} {
 		m, _ := c.Module(id)
@@ -193,36 +196,25 @@ func TestTrialKinds(t *testing.T) {
 	}
 }
 
-// A castle's trial is the division's gauntlet: the conclusion's own
-// problems ramped, the integration doors on every topic at the division's
-// band, nothing granted, and the engine plays it as it plays any trial.
+// A castle's trial is the division's gauntlet: every topic at the
+// division's band, nothing granted, and the engine plays it as it plays
+// any trial.
 func TestCastleTrialSpec(t *testing.T) {
 	m, _ := loadFixture(t).Module("bronze-conclusion")
-	tr := TrialFor(m, func(id catalog.ID) bool { return id.Source() == catalog.USACO }, nil)
-	spec := tr.Spec()
-	// The conclusion's USACO problems: 642, 509 (Medium), 1181, 1085 (Hard).
-	if want := ids("usaco:642", "usaco:1181"); !reflect.DeepEqual(spec.Unit, want) {
-		t.Errorf("unit %v, want %v", spec.Unit, want)
-	}
-	if spec.Module != "bronze-conclusion" || spec.IntegTopic != catalog.Mixed ||
-		spec.IntegBand != DivisionBand("bronze") || spec.Capability != "" {
+	spec := TrialFor(m, func(id catalog.ID) bool { return id.Source() == catalog.USACO }, nil).Spec()
+	if spec.Module != "bronze-conclusion" || spec.Topic != catalog.Mixed ||
+		spec.Band != DivisionBand("bronze") || spec.Capability != "" {
 		t.Errorf("spec %+v, want bronze-conclusion, mixed at Bronze's band, no capability", spec)
 	}
-
-	// One of the unit judgeable, the rest of the pool on other topics:
-	// the engine tops the unit up and draws integration from any topic.
-	spec.Unit = spec.Unit[:1]
 	var pool []catalog.Problem
-	topics := []string{"graphs", "dp", "simulation", "math", "strings", "trees"}
-	for i, id := range append(slices.Clone(spec.Unit), ids("usaco:900", "usaco:901", "usaco:902", "usaco:903")...) {
-		pool = append(pool, catalog.Problem{ID: id, Topic: topics[i], Rating: 1000 + 50*i, Judgeable: true})
+	for i, topic := range []string{"graphs", "dp", "simulation"} {
+		pool = append(pool, catalog.Problem{ID: catalog.NewID(catalog.USACO, string(rune('1'+i))), Topic: topic, Rating: 1100, Judgeable: true})
 	}
-	meta := &game.Meta{}
-	s, _, err := game.NewTrial(rules.Trial(), meta, pool, spec, 1, time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC))
+	s, _, err := game.NewTrial(rules.Trial(), &game.Meta{}, pool, spec, 1, time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(s.Trial.Plan[0]) != 2 || len(s.Trial.TopUp) != 1 || len(s.Trial.Plan[1]) != 1 {
-		t.Errorf("plan %v, top-ups %v: want a unit of 2 (1 topped up) and 1 integration door", s.Trial.Plan, s.Trial.TopUp)
+	if got := slices.Concat(s.Trial.Plan...); len(got) != Doors {
+		t.Errorf("doors %v, want %d from any topic", got, Doors)
 	}
 }

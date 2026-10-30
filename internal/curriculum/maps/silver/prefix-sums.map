@@ -1,0 +1,8 @@
+# Introduction to Prefix Sums (Silver › Prefix Sums)
+# Two lanes: range sums that split an array into prefix and suffix, and
+# counting subarrays as pairs of equal prefix sums.
+core  usaco-572 > usaco-691 > cf-2008E > usaco-1471  # range sums, then splits
+core  cses-1661 > usaco-595 > cf-1398C               # match an earlier prefix
+
+side  cf-2008E > cf-1826D    # prefix/suffix maxima
+side  cses-1661 > cses-1662  # same count, prefixes mod n

@@ -13,6 +13,7 @@ import (
 
 	"katharsis/internal/catalog"
 	"katharsis/internal/content/web"
+	"katharsis/internal/curriculum"
 	"katharsis/internal/game"
 	"katharsis/internal/hud"
 	"katharsis/internal/screens"
@@ -68,7 +69,7 @@ func (m *Model) env() bootui.Env {
 
 // startBoot begins a new boot. A boot still running is given up first. A
 // trial's end screens reboot on the trial rules, which are no boot
-// preset: that runs the trial again.
+// preset: that runs the trial again, its doors drawn anew (game.NewTrial).
 func (m *Model) startBoot(b screens.StartBoot) tea.Cmd {
 	if st := m.state; st != nil && st.Trial != nil && b.Preset == st.Rules.Name {
 		return m.beginTrial(st.Trial.TrialSpec)
@@ -86,7 +87,7 @@ func (m *Model) startBoot(b screens.StartBoot) tea.Cmd {
 	}
 	// A fetch outside the doors (a statement, say) may have found problems
 	// unjudgeable since the pool was last read.
-	m.pool = drawPool(m.d.Catalog)
+	m.pool = poolFor(m.d.Catalog, nil)
 	st, effs, err := game.NewBoot(r, &m.meta, m.pool, b.Prestige, seed, m.d.Now())
 	if err != nil {
 		return fail("new boot: %v", err)
@@ -353,12 +354,24 @@ func (m *Model) closeDoor() {
 	m.open, m.judging, m.resumed = nil, false, resumedSubmit{}
 }
 
-// drawPool is the catalog the engine draws doors from: every source but
-// CSES. Its tasks are the guide's practice, reached by id (RTFM's
-// PRACTICE, a trial's unit), and its ratings come from solver counts,
-// too rough to draw doors by: Missing Number rated over Codeforces'
-// Rebellion, which needs a greedy idea.
-func drawPool(c catalog.Catalog) []catalog.Problem {
+// poolFor is the catalog the engine draws st's doors from: a trial's from
+// the trials' reserve, a boot's (or, with st nil, the next boot's) from
+// the boots' pool. Neither holds what RTFM's maps show (curriculum.Split),
+// so no problem is met in two places.
+func poolFor(c catalog.Catalog, st *game.State) []catalog.Problem {
+	trials, boots := curriculum.Split(ratedPool(c))
+	if st != nil && st.Trial != nil {
+		return trials
+	}
+	return boots
+}
+
+// ratedPool is every source but CSES, the problems doors are drawn from
+// by rating. CSES tasks are the guide's practice, reached by id on RTFM's
+// maps, and their ratings come from solver counts, too rough to draw doors
+// by: Missing Number rated over Codeforces' Rebellion, which needs a
+// greedy idea.
+func ratedPool(c catalog.Catalog) []catalog.Problem {
 	return slices.DeleteFunc(c.All(), func(p catalog.Problem) bool { return p.Source == catalog.CSES })
 }
 
@@ -379,7 +392,7 @@ func (m *Model) recheck(ids ...catalog.ID) {
 			for _, q := range m.pool {
 				srcs[q.Source] = true
 			}
-			m.pool = slices.DeleteFunc(drawPool(m.d.Catalog), func(q catalog.Problem) bool { return !srcs[q.Source] })
+			m.pool = slices.DeleteFunc(poolFor(m.d.Catalog, m.state), func(q catalog.Problem) bool { return !srcs[q.Source] })
 			return
 		}
 	}

@@ -1,0 +1,12 @@
+# Flood Fill (Silver › Graphs)
+# From Counting Rooms, measuring components and flood fill as a check
+# join at Where's Bessie; growing fills and state graphs hang off the root.
+core  cses-1192 > usaco-895 > usaco-716 > usaco-740  # count, measure, wall
+core  cses-1192 > usaco-380 > usaco-740              # fill in an outer search
+
+side  usaco-895 > usaco-860                 # component sizes, remove, repeat
+side  usaco-716 > usaco-596                 # fences cut the grid into regions
+side  usaco-380 > cf-1365D                  # fill from the exit, check everyone
+side  usaco-740 > usaco-836                 # regions of two colours at once
+side  cses-1192 > usaco-570 > usaco-1110 > usaco-1448  # the fill grows over time
+side  cses-1192 > usaco-620 > usaco-811 > usaco-1134  # fill states, not cells

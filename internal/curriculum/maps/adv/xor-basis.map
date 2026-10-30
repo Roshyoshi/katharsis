@@ -1,0 +1,7 @@
+# XOR Basis (Advanced › Misc. Topics)
+# One lane from basis rank to bases that keep the newest vector, on ranges,
+# tree paths and rerooted subtrees; span counting hangs as stretch.
+core  cf-1101G > cf-1100F > cf-1902F > cf-1778E  # rank, newest kept, on trees
+
+side  cf-1101G > cf-1336E1  # count the span by popcount
+side  cf-1101G > cf-1299D   # independent cycles: DP on subspaces

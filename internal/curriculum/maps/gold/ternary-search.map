@@ -1,0 +1,6 @@
+# Optimizing Unimodal Functions (Gold › Additional Topics)
+# One lane of convex costs summed over a chosen point; the concave split of
+# Game With Triangles hangs off the walked-through example.
+core  usaco-1355 > cf-427E > cf-1355E  # convex sums of distance costs
+
+side  usaco-1355 > cf-2063D  # one search per k, concave split

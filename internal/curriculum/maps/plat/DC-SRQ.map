@@ -1,0 +1,3 @@
+# Divide & Conquer - SRQ (Platinum › Range Queries)
+# One lane: precompute from each midpoint, answer the queries that cross it.
+core  cses-1647 > usaco-997  # answers built outward from midpoints

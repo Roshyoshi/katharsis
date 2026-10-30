@@ -517,14 +517,16 @@ func TestModuleKeys(t *testing.T) {
 	}
 }
 
+// TestModulePlan: TRIAL says what opens the trial, its doors in the
+// module's biome and band, their aims off the map's core (fixture
+// ratings), and what passing takes.
 func TestModulePlan(t *testing.T) {
 	v := plain(module(t, "prefix-sums").View(140, 40))
-	// The unit in trial order, with guide labels, fixture ratings and
-	// contests; then integration doors in the module's biome and band.
 	for _, want := range []string{
-		"1  Breed Counting", "Very Easy", "◆1250", "2015 December, Silver P3",
-		"2  Subsequences Summing to Sevens",
-		"+  1 blind integration door · The Accumulator · ◆1350–1650",
+		"opens once the map's core is solved: 4 problems",
+		"3 unseen doors on The Accumulator · ◆1350–1650 · every door blind",
+		"aimed ◆1300 → ◆1600 → ◆1700",
+		"pass 2 of 3: 1 door may go to :q!",
 		"“Introduction to Prefix Sums” by Darren Yao, Dustin Miao, USACO Guide",
 		"RTFM › Silver › Prefix Sums",
 		"requires  nothing",
@@ -533,15 +535,11 @@ func TestModulePlan(t *testing.T) {
 			t.Errorf("prefix-sums page lacks %q:\n%s", want, v)
 		}
 	}
-	if strings.Contains(v, "topped up") {
-		t.Errorf("prefix-sums has a full unit; nothing is topped up:\n%s", v)
-	}
-
+	// Nothing on Hashing's core is rated: no aims, the doors spread over
+	// the band.
 	v = plain(module(t, "hashmaps").View(140, 40))
-	for _, want := range []string{"1  Farmer John Solves 3SUM", "+  1 topped up from the catalog · The Heap · ◆1700–2000"} {
-		if !strings.Contains(v, want) {
-			t.Errorf("hashmaps page lacks %q:\n%s", want, v)
-		}
+	if !strings.Contains(v, "core is solved: 1 problem") || strings.Contains(v, "aimed") {
+		t.Errorf("hashmaps page:\n%s", v)
 	}
 }
 

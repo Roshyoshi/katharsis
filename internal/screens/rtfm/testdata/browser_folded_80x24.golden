@@ -1,10 +1,10 @@
 RTFM(7)                  USACO Guide · CC BY-NC-SA 4.0                   RTFM(7)
-       MODULE                            BIOME               CAPABILITY    TRIAL
+       MODULE                              BIOME               CAPABILITY    MAP
 ▾ GENERAL                                                               1 module
    ▹ Language-Specific  · 1 module
 ▾ BRONZE                                                               2 modules
    ▾ Additional
-       Casework                          Userland                          2
+       Casework                            Userland                          5+1
    ▹ Conclusion  · 1 module
 ▾ SILVER                                                       2 modules · ■ 1/2
    ▹ Prefix Sums  · 1 module

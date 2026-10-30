@@ -1,24 +1,24 @@
 RTFM(7)                  USACO Guide · CC BY-NC-SA 4.0                   RTFM(7)
-       MODULE                            BIOME               CAPABILITY    TRIAL
+       MODULE                              BIOME               CAPABILITY    MAP
 ▾ GENERAL                                                               1 module
    ▾ Language-Specific
-       Fast Input & Output               Userland                          -
+       Fast Input & Output                 Userland                          -
 ▾ BRONZE                                                               2 modules
    ▾ Additional
-       Casework                          Userland                          2
+       Casework                            Userland                          5+1
    ▾ Conclusion
-       Additional Practice for USACO B…  Userland                          2
+       Additional Practice for USACO Bro…  Userland                          4
 ▾ SILVER                                                       2 modules · ■ 1/2
    ▾ Prefix Sums
-       Introduction to Prefix Sums       The Accumulator     □ CAP_PREFIX  2
+       Introduction to Prefix Sums         The Accumulator     □ CAP_PREFIX  4
    ▾ Sorting & Searching
-       Two Pointers                      The Sliding Window  ■ CAP_TWOPTR  2
+       Two Pointers                        The Sliding Window  ■ CAP_TWOPTR  3+1
 ▾ GOLD                                                          1 module · ■ 0/1
    ▾ Additional Topics
-       (Optional) Hashmaps               The Heap            □ CAP_DS      1+1
+       (Optional) Hashmaps                 The Heap            □ CAP_DS      1
 ▾ PLATINUM                                                              1 module
    ▾ Misc. Topics
-       Matrix Exponentiation             The ALU                           1+1
+       Matrix Exponentiation               The ALU                           0+1
 ▾ ADVANCED                                                      1 module · ■ 0/1
    ▾ Data Structures
  rtfm(7) line 1/38 · ■ 1/3 held       enter open · tab fold · / filter · q quit

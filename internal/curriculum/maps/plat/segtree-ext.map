@@ -1,0 +1,9 @@
+# More Applications of Segment Tree (Platinum › Range Queries)
+# Two lanes, walking down the tree and merges that resolve each half's
+# boundary leftovers, joining at Serge (a walk on a suffix-max tree).
+core  cses-1143 > cf-1179C              # walk: descend to the first fit
+core  cses-1190 > usaco-577 > cf-1179C  # merge pairs left's tail, right's head
+
+side  cses-1143 > cses-2206 > usaco-495   # plain trees over derived keys
+side  cses-1190 > cses-1188               # pref/suf/best again, on bit runs
+side  cses-1190 > usaco-365 > usaco-1332  # node = DP over end states, automaton

@@ -1,0 +1,14 @@
+# Knapsack DP (Gold › Dynamic Programming)
+# Two lanes, counting fills and best or reachable fills, joining at Talent
+# Show; USACO twists and the number-theory knapsacks are stretch.
+core  cses-1633 > cses-1635 > cses-1636  # count fills: ordered, then unordered
+core  cses-1636 > cses-1093 > usaco-839  # each item once; hit a weight target
+core  cses-1634 > cses-1158 > cses-1745  # best fill, 0/1 items, reachable sums
+core  cses-1745 > usaco-839              # 0/1 weights capped at W, best ratio
+
+side  cses-1158 > usaco-1257            # 0/1 with two currencies, sorted
+side  cses-1745 > usaco-574 > cf-687C   # reachable sums with an extra dimension
+side  cses-1635 > usaco-897             # ordered fills per rhyme class, powered
+side  cses-1093 > usaco-1043 > usaco-1045  # each prime once; sum the LCMs
+side  cses-1093 > cses-1665             # count splits; open teams in the state
+side  usaco-839 > usaco-925             # capped capacity, counted per tree

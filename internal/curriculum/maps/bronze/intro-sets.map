@@ -1,0 +1,9 @@
+# Introduction to Sets & Maps (Bronze › Sorting & Sets)
+# Two lanes in text order, sets then maps, joining at Mooin' Time: windows
+# tallied in a map, answers deduped in a set.
+core  cses-1621 > usaco-831 > usaco-964    # a set keeps one of each key
+core  usaco-964 > usaco-1445               # every window becomes a key
+core  usaco-1107 > usaco-687 > usaco-1445  # a map holds a value per name
+
+side  cses-1621 > usaco-1468 > cf-1209G1  # first and last sight of a value
+side  usaco-1445 > usaco-667              # tally string keys, find mirror

@@ -5,10 +5,11 @@ NAME
        Computing range sum queries in constant time over a fixed 1D array.
        "Introduction to Prefix …," sighs the Mock Turtle. "We did it at sea."
 
-TRIAL               unit: tags shown · integration: blind · pass: 1 of 2 + blind
-       1  Breed Counting                  Very Easy  ◆1250  2015 December, Silv…
-       2  Subsequences Summing to Sevens  Easy       ◆1450  2016 January, Silve…
-       +  1 blind integration door · The Accumulator · ◆1350–1650
+TRIAL                            opens once the map's core is solved: 4 problems
+       ◌  3 unseen doors on The Accumulator · ◆1350–1650 · every door blind
+       ◆  aimed ◆1300 → ◆1600 → ◆1700: the core's middle, its hardest, a step
+       past
+       ✓  pass 2 of 3: 1 door may go to :q!
        □  pass → ■ CAP_PREFIX: The Accumulator joins your route choices
 
 SEE ALSO
@@ -20,5 +21,4 @@ SEE ALSO
 (https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
 Markdown.
 
-
- line 1/19 (END)                r read · t start trial · o usaco.guide · q back
+ line 1/20 (END)                r read · t start trial · o usaco.guide · q back

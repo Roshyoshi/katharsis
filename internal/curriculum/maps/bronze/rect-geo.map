@@ -1,0 +1,9 @@
+# Rectangle Geometry (Bronze › Additional)
+# Intersection (1D, then 2D) and bounding boxes join at Blocked Billboard
+# II; per-colour boxes, table fitting and sheet cover are stretch.
+core  usaco-567 > usaco-759 > usaco-783  # overlap in 1D, in 2D, what is left
+core  usaco-663 > usaco-783              # bounding box of the visible part
+
+side  usaco-663 > usaco-737  # one bounding box per colour
+side  usaco-663 > cf-1555B   # each axis alone, take the cheaper
+side  usaco-783 > cf-1216C   # covered by two sheets: overlaps add

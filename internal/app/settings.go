@@ -62,7 +62,7 @@ func (m *Model) accountDone(d meta.AccountDone) tea.Cmd {
 // made.
 func (m *Model) repool() {
 	if m.state == nil {
-		m.pool = drawPool(m.d.Catalog)
+		m.pool = poolFor(m.d.Catalog, nil)
 		return
 	}
 	pool := make([]catalog.Problem, len(m.pool))

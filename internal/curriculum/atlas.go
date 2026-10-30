@@ -21,10 +21,10 @@ const (
 	// TrialLevel has a trial: a capability's, or for a module that grants
 	// none, one that clears the level only.
 	TrialLevel LevelKind = iota
-	// PageLevel is reading only: General's pages, and a module that
-	// grants no capability and lists no problem the game can judge. A
-	// module that grants one keeps its trial with nothing judgeable: the
-	// engine tops the whole unit up.
+	// PageLevel is reading only: General's pages, and a module whose map
+	// holds no problem the game can judge, with nothing to practise
+	// before a trial. One that grants a capability has it earned in
+	// another module on the topic (Atlas.EarnedIn).
 	PageLevel
 	// CastleLevel is a division's conclusion: a mixed trial at the
 	// division's band, the world's gauntlet.
@@ -39,7 +39,8 @@ type Level struct {
 	Module, Title string
 	Kind          LevelKind
 	// Optional marks a module the guide calls optional or says has not
-	// appeared in contests (Frequency 0): its path is drawn muted.
+	// appeared in contests (Frequency 0): its path is drawn dotted, and
+	// the path goes on past it unpassed (Progress).
 	Optional bool
 	// Capability is what the module's trial grants, "" for none.
 	Capability string
@@ -53,8 +54,11 @@ type Level struct {
 	// this one's world or before it (Super Mario World's Star Road).
 	Prereqs, Warps []string
 	// Playable are the distinct problems of the module the game can judge,
-	// for practice's k/n.
+	// for General's examples.
 	Playable []catalog.ID
+	// Map is the module's map as the catalog can play it (MapFor,
+	// Map.Playable): what RTFM practises, and what opens the trial.
+	Map Map
 }
 
 // Region is a chapter.
@@ -93,6 +97,31 @@ func (a Atlas) Level(id string) (Level, int, bool) {
 		}
 	}
 	return Level{}, -1, false
+}
+
+// Before is the trial level whose pass opens module id's (Progress): the
+// last one before it in guide order, across worlds, that is not optional;
+// ok is false for the path's first and for levels off it (pages,
+// General's).
+func (a Atlas) Before(id string) (l Level, ok bool) {
+	for _, w := range a.Worlds {
+		if w.ID == generalID {
+			continue
+		}
+		for _, x := range w.Levels() {
+			switch {
+			case !x.Kind.HasTrial():
+				if x.Module == id {
+					return Level{}, false
+				}
+			case x.Module == id:
+				return l, ok
+			case !x.Optional:
+				l, ok = x, true
+			}
+		}
+	}
+	return Level{}, false
 }
 
 // Conclusion reports whether module id is a division's conclusion, a
@@ -181,17 +210,18 @@ func (c *Curriculum) level(m Module, division string, judgeable func(catalog.ID)
 			}
 		}
 	}
-	l.Kind = levelKind(m.ID, division, len(l.Playable) > 0)
+	mp, _ := MapFor(m)
+	l.Map = mp.Playable(judgeable)
+	l.Kind = levelKind(m.ID, division, len(l.Map.Nodes) > 0)
 	return l
 }
 
 // levelKind is the kind of module id's level in division, given whether
-// it lists a problem of its own the game can judge: a trial needs one,
-// or it would test the catalog's filler, not the module (Bronze's
-// Introduction to Data Structures lists none). A gated module without one
-// is a page, its capability earned in another module on the topic
-// (Atlas.EarnedIn). A conclusion is a castle even with none: its unit is
-// then all topped up, the division's gauntlet.
+// its map holds a problem the game can judge: a trial needs one, or there
+// would be nothing to practise before it (Bronze's Introduction to Data
+// Structures lists none). A gated module without one is a page, its
+// capability earned in another module on the topic (Atlas.EarnedIn). A
+// conclusion is a castle even with none: the division's gauntlet.
 func levelKind(id, division string, trial bool) LevelKind {
 	switch {
 	case Conclusion(id):
@@ -245,19 +275,38 @@ type LevelProgress struct {
 	CapHeld bool // its capability held, from any module's trial
 	Opened  bool // its page opened in the reader (Meta.Opened)
 	Solved  int  // of its Playable, solved anywhere: a boot, an upsolve, a trial
+	// Core and Side count its map's problems of each kind, CoreSolved and
+	// SideSolved those solved anywhere. The trial opens once CoreSolved
+	// reaches Core.
+	Core, CoreSolved int
+	Side, SideSolved int
+	// Open is whether the player may play it (Atlas.Progress, the path).
+	Open bool
 }
+
+// started reports whether the player made progress on the level that a
+// locked path must not take away: a solve on its map, or its trial passed.
+func (p LevelProgress) started() bool { return p.Passed || p.CoreSolved+p.SideSolved > 0 }
 
 // Progress is the atlas against what the player has done; it is derived,
 // never stored.
 type Progress map[string]LevelProgress
 
 // Progress reads m.
+//
+// The path is fixed, as the USACO training pages are (DESIGN.md "Learn
+// mode"): a trial level opens once the trial before it in guide order is
+// passed, a world's first once the world before it is, through its
+// castle. An optional level (Level.Optional) opens in its turn but holds
+// nothing up: the guide says it can wait. Pages and General, the library,
+// are open and gate nothing: opening a page says nothing of reading it
+// (plan Q4), so it is no checkpoint. A level the player already made
+// progress on stays open whatever comes before it, so a save from before
+// the path was fixed loses nothing.
 func (a Atlas) Progress(m *game.Meta) Progress {
-	solved := map[catalog.ID]bool{}
-	for _, s := range m.Solves {
-		solved[s.Problem] = true
-	}
+	solved := game.Solved(m)
 	p := Progress{}
+	prev := true // the first level of the path is open
 	for _, w := range a.Worlds {
 		for _, l := range w.Levels() {
 			lp := LevelProgress{
@@ -270,6 +319,29 @@ func (a Atlas) Progress(m *game.Meta) Progress {
 					lp.Solved++
 				}
 			}
+			for _, n := range l.Map.Nodes {
+				switch {
+				case n.Core:
+					lp.Core++
+					if solved[n.ID] {
+						lp.CoreSolved++
+					}
+				default:
+					lp.Side++
+					if solved[n.ID] {
+						lp.SideSolved++
+					}
+				}
+			}
+			switch {
+			case w.ID == generalID || !l.Kind.HasTrial():
+				lp.Open = true
+			case l.Optional:
+				lp.Open = prev || lp.started()
+			default:
+				lp.Open = prev || lp.started()
+				prev = lp.Passed
+			}
 			p[l.Module] = lp
 		}
 	}
@@ -278,8 +350,8 @@ func (a Atlas) Progress(m *game.Meta) Progress {
 
 // WorldSum is a world's counts, each with its real denominator: trials
 // passed of the levels that have one, capabilities held of those it
-// teaches, practice problems solved of those its trial levels list
-// playable, pages opened of all its levels.
+// teaches, problems solved of those on its trial levels' maps, pages
+// opened of all its levels.
 type WorldSum struct {
 	Passed, Trials   int
 	CapsHeld, Caps   int
@@ -314,8 +386,8 @@ func (p Progress) Sum(w World) WorldSum {
 		// (Fast I/O cites a Platinum problem), not practice, and any other
 		// page has none the game judges.
 		if l.Kind.HasTrial() {
-			s.Solved += lp.Solved
-			s.Playable += len(l.Playable)
+			s.Solved += lp.CoreSolved + lp.SideSolved
+			s.Playable += lp.Core + lp.Side
 		}
 	}
 	return s

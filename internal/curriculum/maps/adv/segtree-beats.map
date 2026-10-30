@@ -1,0 +1,7 @@
+# Segment Tree Beats (Advanced › Data Structures)
+# Two lanes, descending until a break condition holds and max/second-max
+# chmin beats, joining at Nagini, which needs both.
+core  cf-679E > cf-855F  # descend only where a value crosses
+core  cf-793F > cf-855F  # beats on max; then chmin on two
+
+side  cf-679E > cf-453E  # resets make runs; price each run

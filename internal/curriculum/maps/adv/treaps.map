@@ -1,0 +1,6 @@
+# Treaps (Advanced › Data Structures)
+# One lane through implicit treaps, split and merge, then lazy tags, ending
+# with lazy shifts on a keyed treap.
+core  cses-2072 > cses-2073  # split and merge, then a lazy reverse
+core  cses-2073 > cses-2074  # reverse flag plus a sum aggregate
+core  cses-2074 > usaco-402  # lazy shifts on a keyed treap

@@ -1,0 +1,6 @@
+# Max Suffix Query with Insertions Only (Advanced › Data Structures)
+# One core lane, the staircase of undominated pairs feeding a DP; the Very
+# Hard staircase sweeps hang off the sample.
+core  usaco-995 > usaco-721  # staircase max, then it drives a DP
+
+side  usaco-995 > cf-815D > cf-1396D  # staircase in a segtree, then deletes

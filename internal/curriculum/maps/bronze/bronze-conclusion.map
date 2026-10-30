@@ -1,0 +1,9 @@
+# Additional Practice for USACO Bronze (Bronze › Conclusion)
+# Three lanes, complete search, bottlenecks and counting, ending in two
+# capstones: Drought (search + balance) and Just Stalling (sort + count).
+core  cf-1914C > usaco-509 > usaco-642 > usaco-1181  # enumerate one free choice
+core  cf-1593A > cses-1631 > cf-1624D > usaco-1181  # the max binds; even it out
+core  cses-1631 > usaco-1085                        # sort; biggest picks first
+core  cses-2431 > usaco-1085                        # count choices, don't list
+
+side  cf-1593A > cf-1566B > cf-1873G  # few cases decide the answer

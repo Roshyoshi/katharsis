@@ -1,0 +1,8 @@
+# Casework (Bronze › Additional)
+# Line positions (gaps, segments, extremes) and pair counting join at
+# Leaders; Spaced Out's two global cases hang off it.
+core  usaco-915 > usaco-1035 > usaco-1275  # gaps, then the line's extremes
+core  usaco-567 > usaco-1035               # segment lengths, case by placement
+core  usaco-1515 > usaco-1275              # count pairs as A-or-B, once each
+
+side  usaco-1275 > usaco-1088  # one of two global cases must hold

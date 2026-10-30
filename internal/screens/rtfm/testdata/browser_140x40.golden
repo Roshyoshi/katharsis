@@ -1,27 +1,27 @@
 RTFM(7)                                                USACO Guide · CC BY-NC-SA 4.0                                                 RTFM(7)
-       MODULE                                BIOME               CAPABILITY    TRIAL          FREQ
-▾ GENERAL                                                                                 1 module
+       MODULE                                BIOME               CAPABILITY    MAP                FREQ
+▾ GENERAL                                                                                     1 module
    ▾ Language-Specific
        Fast Input & Output                   Userland                          -
-▾ BRONZE                                                                                 2 modules
+▾ BRONZE                                                                                     2 modules
    ▾ Additional
-       Casework                              Userland                          2 doors        ★★☆☆
+       Casework                              Userland                          5 core +1 stretch  ★★☆☆
    ▾ Conclusion
-       Additional Practice for USACO Bronze  Userland                          2 doors
-▾ SILVER                                                                         2 modules · ■ 1/2
+       Additional Practice for USACO Bronze  Userland                          4 core
+▾ SILVER                                                                             2 modules · ■ 1/2
    ▾ Prefix Sums
-       Introduction to Prefix Sums           The Accumulator     □ CAP_PREFIX  2 doors        ★★★★
+       Introduction to Prefix Sums           The Accumulator     □ CAP_PREFIX  4 core             ★★★★
    ▾ Sorting & Searching
-       Two Pointers                          The Sliding Window  ■ CAP_TWOPTR  2 doors        ★★☆☆
-▾ GOLD                                                                            1 module · ■ 0/1
+       Two Pointers                          The Sliding Window  ■ CAP_TWOPTR  3 core +1 stretch  ★★☆☆
+▾ GOLD                                                                                1 module · ■ 0/1
    ▾ Additional Topics
-       (Optional) Hashmaps                   The Heap            □ CAP_DS      1+1 topped up  ★☆☆☆
-▾ PLATINUM                                                                                1 module
+       (Optional) Hashmaps                   The Heap            □ CAP_DS      1 core             ★☆☆☆
+▾ PLATINUM                                                                                    1 module
    ▾ Misc. Topics
-       Matrix Exponentiation                 The ALU                           1+1 topped up  ★☆☆☆
-▾ ADVANCED                                                                        1 module · ■ 0/1
+       Matrix Exponentiation                 The ALU                           0 core +1 stretch  ★☆☆☆
+▾ ADVANCED                                                                            1 module · ■ 0/1
    ▾ Data Structures
-       Counting Minimums with Segment Tree   The Heap            □ CAP_DS      -              ☆☆☆☆
+       Counting Minimums with Segment Tree   The Heap            □ CAP_DS      -                  ☆☆☆☆
 
 COLOPHON
        Learn mode content is adapted from the USACO Guide (https://usaco.guide,

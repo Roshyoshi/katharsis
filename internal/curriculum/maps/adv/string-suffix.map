@@ -1,0 +1,11 @@
+# String Suffix Structures (Advanced › Strings)
+# Suffix arrays with LCP and the suffix automaton join at Mike & Friends;
+# stretch hangs off each lane.
+core  cf-653F > cf-1073G > cf-547E  # SA + LCP: distinct, sums, blocks
+core  usaco-768 > cf-235C > cf-547E  # SAM classes, endpos, link-tree counts
+
+side  cf-547E > cf-1207G   # link-tree counts over a trie of songs
+side  cf-1073G > cf-1063F  # LCP blocks queried inside a DP
+side  cf-235C > cf-932G    # suffix links on palindromes: eertree
+
+skip  cf-2A  # a Codeforces EDU lesson, which the catalog lacks

@@ -1,0 +1,6 @@
+# Randomness (Advanced › Misc. Topics)
+# Two core nodes: luck over random input, then random sampling; a
+# random-order trick hangs as stretch.
+core  cf-444B > cf-364D  # few random tries, failure odds shrink
+
+side  cf-444B > cf-442E  # random order: few improvements

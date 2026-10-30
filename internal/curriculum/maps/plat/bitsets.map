@@ -1,0 +1,6 @@
+# (Optional) Bitsets (Platinum › Misc. Topics)
+# Three roots, the text's walkthroughs: the knapsack and the adjacency rows
+# join at DAG reachability; point sets ANDed carry the geometry lane.
+core  cses-1706 > cses-2138   # a DP whose state is a set; OR transitions
+core  usaco-862 > cses-2138   # one bitset row per node, popcount per row
+core  usaco-672 > usaco-1021  # count points in a region: AND, then popcount

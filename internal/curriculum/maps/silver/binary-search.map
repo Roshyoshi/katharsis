@@ -1,0 +1,14 @@
+# Binary Search (Silver › Sorting & Searching)
+# Binary search on the answer, laned by the check: a closed-form count, or a
+# greedy pass over the input. Both meet at Loan Repayment.
+core  cf-1201C > cses-1620 > cses-2422 > usaco-991  # check by count; floor sums
+core  usaco-594 > usaco-858 > usaco-991            # greedy cover, then batched
+core  cses-1085 > usaco-858                        # greedy cut into <= K groups
+
+side  cf-1201C > cf-1486D               # median >= x as +-1 prefix sums
+side  cses-1620 > cf-1117C              # closed-form check over cycles
+side  cses-2422 > usaco-1302            # check intersects per-friend ranges
+side  usaco-594 > usaco-1038            # spread out: maximize the min gap
+side  usaco-594 > usaco-597             # same cows, real radius, chains
+side  usaco-594 > cf-847E               # cover leftmost first, per packman
+side  usaco-858 > usaco-690 > cf-1866G  # check simulated with a heap

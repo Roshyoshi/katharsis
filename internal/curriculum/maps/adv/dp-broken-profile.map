@@ -1,0 +1,6 @@
+# DP on Broken Profile (Advanced › Dynamic Programming)
+# One core lane, tilings then guards with flags beside the mask; the Very
+# Hard plug DP puts connectivity in the profile.
+core  cses-2181 > cf-845F  # cell-by-cell mask, then extra flags
+
+side  cf-845F > usaco-949  # profile holds connectivity classes

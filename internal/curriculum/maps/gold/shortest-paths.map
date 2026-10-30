@@ -1,0 +1,10 @@
+# Shortest Paths with Non-Negative Edge Weights (Gold › Graphs)
+# A Floyd-Warshall lane, then two Dijkstra lanes (distances from the ends,
+# bookkeeping along shortest paths) joining at Shortcut.
+core  cses-1672 > usaco-971                        # Floyd on letters, then DP
+core  cses-1671 > cses-1195 > usaco-861 > usaco-899  # price an edit from the ends
+core  cses-1671 > cses-1202 > usaco-899            # counts along shortest paths
+
+side  cses-1671 > usaco-969                          # fix the min flow; rerun
+side  cses-1202 > cses-1196                          # keep k best distances
+side  cses-1195 > usaco-717 > usaco-1090 > cf-1627E  # (node, state); then rows

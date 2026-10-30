@@ -27,7 +27,6 @@ type Browser struct {
 	cur    *curriculum.Curriculum
 	caps   map[string]bool
 	passed map[string]bool // the modules whose trial is passed
-	lookup screens.Lookup
 
 	rows     []row // what is visible: folds and the filter applied
 	sel, top int   // sel indexes rows; top is the first visible line
@@ -76,14 +75,13 @@ type row struct {
 }
 
 // NewBrowser builds the index over c, with capability marks from m.
-// judgeable picks each module's trial unit (see curriculum.TrialFor) and
-// lookup resolves problem titles and ratings for module pages, which show
-// the guide's own name for a problem it misses; either may be nil. A nil
-// curriculum shows man's "No manual entry". The guide's pages about
-// itself (curriculum.Module.Meta) are left out, and with them a chapter
-// or division they would leave empty (UX J21).
+// judgeable picks the problems each module's map plays (see
+// curriculum.TrialFor) and lookup resolves the ratings its trial aims by;
+// either may be nil. A nil curriculum shows man's "No manual entry". The
+// guide's pages about itself (curriculum.Module.Meta) are left out, and
+// with them a chapter or division they would leave empty (UX J21).
 func NewBrowser(c *curriculum.Curriculum, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Browser {
-	b := &Browser{cur: c, caps: capSet(m), passed: passedSet(m), lookup: lookup}
+	b := &Browser{cur: c, caps: capSet(m), passed: passedSet(m)}
 	if c != nil {
 		for _, d := range c.Divisions {
 			dv := division{title: d.Title}
@@ -267,7 +265,7 @@ func (b *Browser) refold(r row) {
 
 func (b *Browser) open(r row) {
 	e := b.entry(r)
-	b.page, b.linked = newModule(b.cur, e, b.caps, b.passed[e.mod.ID], b.lookup), false
+	b.page, b.linked = newModule(b.cur, e, b.caps, b.passed[e.mod.ID]), false
 }
 
 func (b *Browser) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
@@ -502,34 +500,35 @@ const (
 )
 
 // columns sizes the module rows. Columns give way, least useful first,
-// until the title has room to be read: the trial's words ("2+2 topped up"
-// becomes "2+2"), then the frequency stars, the biome, the trial size and
-// last the capability, which is the progress the index exists to show.
+// until the title has room to be read: the map's words ("4 core +2
+// stretch" becomes "4+2"), then the frequency stars, the biome, the map
+// size and last the capability, which is the progress the index exists to
+// show.
 type columns struct {
-	title, biome, capw, unit, stars int // cells; 0 drops the column
+	title, biome, capw, size, stars int // cells; 0 drops the column
 	compact                         bool
 }
 
 func (b *Browser) columns(w int) columns {
 	var c columns
-	var titleW, fullUnit, compactUnit int
+	var titleW, fullMap, compactMap int
 	for _, e := range b.all {
 		titleW = max(titleW, ansi.StringWidth(e.mod.Title))
 		c.biome = max(c.biome, ansi.StringWidth(e.biome))
 		if e.trial.Capability != "" {
 			c.capw = max(c.capw, ansi.StringWidth(capCell(e.trial.Capability, false)))
 		}
-		fullUnit = max(fullUnit, ansi.StringWidth(unitLabel(len(e.trial.Unit), e.short(), false)))
-		compactUnit = max(compactUnit, ansi.StringWidth(unitLabel(len(e.trial.Unit), e.short(), true)))
+		fullMap = max(fullMap, ansi.StringWidth(mapLabel(e.trial.Map, false)))
+		compactMap = max(compactMap, ansi.StringWidth(mapLabel(e.trial.Map, true)))
 		if e.mod.Frequency >= 0 {
 			c.stars = 4
 		}
 	}
-	c.unit = fullUnit
+	c.size = fullMap
 	want := min(titleW, maxTitle)
 	room := func() int {
 		n := w - modIndent
-		for _, x := range []int{c.biome, c.capw, c.unit, c.stars} {
+		for _, x := range []int{c.biome, c.capw, c.size, c.stars} {
 			if x > 0 {
 				n -= x + colGap
 			}
@@ -537,10 +536,10 @@ func (b *Browser) columns(w int) columns {
 		return n
 	}
 	steps := []func(){
-		func() { c.unit, c.compact = max(compactUnit, len("TRIAL")), true },
+		func() { c.size, c.compact = max(compactMap, len("MAP")), true },
 		func() { c.stars = 0 },
 		func() { c.biome = 0 },
-		func() { c.unit = 0 },
+		func() { c.size = 0 },
 		func() { c.capw = 0 },
 	}
 	for _, step := range steps {
@@ -556,7 +555,7 @@ func (b *Browser) columns(w int) columns {
 // width is the table's full width, for right-aligned heading notes.
 func (c columns) width() int {
 	n := modIndent + c.title
-	for _, x := range []int{c.biome, c.capw, c.unit, c.stars} {
+	for _, x := range []int{c.biome, c.capw, c.size, c.stars} {
 		if x > 0 {
 			n += colGap + x
 		}
@@ -566,14 +565,14 @@ func (c columns) width() int {
 
 // cells joins a row's cells at the column widths, dropping the cells of
 // dropped columns.
-func (c columns) cells(title, biome, capc, unit, freq string) string {
+func (c columns) cells(title, biome, capc, size, freq string) string {
 	var s strings.Builder
 	s.WriteString(strings.Repeat(" ", modIndent))
 	s.WriteString(ui.Fit(title, c.title))
 	for _, col := range []struct {
 		w    int
 		text string
-	}{{c.biome, biome}, {c.capw, capc}, {c.unit, unit}, {c.stars, freq}} {
+	}{{c.biome, biome}, {c.capw, capc}, {c.size, size}, {c.stars, freq}} {
 		if col.w > 0 {
 			s.WriteString(strings.Repeat(" ", colGap) + ui.Fit(col.text, col.w))
 		}
@@ -589,7 +588,7 @@ func (c columns) header() string {
 		return short
 	}
 	return ui.Muted.Render(c.cells("MODULE", "BIOME", label("CAPABILITY", "CAP", c.capw),
-		"TRIAL", "FREQ"))
+		"MAP", "FREQ"))
 }
 
 func (b *Browser) View(width, height int) string {
@@ -653,13 +652,13 @@ func (b *Browser) lines(cols columns, w int) []string {
 			if i != b.sel && ansi.StringWidth(title) <= cols.title {
 				title = highlight(title, q)
 			}
-			unit := unitLabel(len(e.trial.Unit), e.short(), cols.compact)
+			size := mapLabel(e.trial.Map, cols.compact)
 			if !e.trial.Kind.HasTrial() {
-				// A page has no trial to start (see Module.Update).
-				unit = ui.Muted.Render("-")
+				// A page has no map to play (see Module.Update).
+				size = ui.Muted.Render("-")
 			}
 			line = cols.cells(title, e.biome, capCell(e.trial.Capability, b.caps[e.trial.Capability]),
-				unit, stars(e.mod.Frequency))
+				size, stars(e.mod.Frequency))
 		}
 		if i == b.sel {
 			line = ui.Select.Render(ui.Fit(ansi.Strip(line), w))

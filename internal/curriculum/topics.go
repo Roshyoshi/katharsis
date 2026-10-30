@@ -57,11 +57,12 @@ func TopicFor(moduleID, title, division string) string {
 func CapabilityFor(topic string) string { return game.CapabilityFor(topic) }
 
 // DivisionBand returns the CF-scale rating band of a guide division's
-// integration doors: the band the USACO source rates that division's
-// problems in (usaco.DivisionBand), so a trial's blind doors sit where its
-// own unit does. General modules sit with Bronze. Advanced has no USACO
-// division: it starts where Platinum ends and spans one division step, the
-// gap from Gold to Platinum. Unknown divisions get the Bronze band.
+// trials: the band the USACO source rates that division's problems in
+// (usaco.DivisionBand), which a trial's doors spread over when its map
+// aims none (Trial.Targets). General modules sit with Bronze. Advanced has
+// no USACO division: it starts where Platinum ends and spans one division
+// step, the gap from Gold to Platinum. Unknown divisions get the Bronze
+// band.
 func DivisionBand(division string) [2]int {
 	switch division {
 	case "general":

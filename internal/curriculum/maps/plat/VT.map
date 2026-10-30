@@ -1,0 +1,6 @@
+# Virtual Tree (Platinum › Trees)
+# One lane: a per-color virtual tree DP, then compressing a huge implicit
+# tree to its key nodes.
+core  cf-1923E  # per-color virtual tree, DP on it
+
+side  cf-1923E > cf-1292D  # tree on key nodes only, then median

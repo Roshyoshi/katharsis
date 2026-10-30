@@ -1,16 +1,16 @@
-RTFM / Silver                                                                                           trials 3/14 | [x] 4/6 | solved 3/119
+RTFM / Silver                                                                                           trials 3/14 | [x] 4/6 | solved 2/110
 --------------------------------------------------------------------------------------------------------------------------------------------
      Prefix Sums 2/2           Sorting & Searching 1/6                                        +- Graph Traversal -------- Silver / Graphs -+
      + ---------  + ---------  + ---------  . ---------  . ---------  . -----------+          | [x] CAP_GRAPH -> Routing Table | **** very |
      [x]          [x]          [x]          [ ]          [ ]                       |          | frequent                                   |
      Introduct... More on P... Two Pointers Binary Se... Binary Se... Custom Co... |          | needs Introduction to Graphs (Bronze) + |  |
                                                                                    |          | Complete Search with Recursion (Bronze) +  |
-     Graphs 0/4                                          Sorting & Searching 1/6   |          | read -> practice 0/14 -> trial 1 of 2      |
- +-  . ---------  . ---------  . --------- >. ---------  . ---------  . -----------+          | doors + 1 blind                            |
- |   [x]          [ ] ^        [x]          [x] ^        [x]                                  | ^ opens Eulerian Tours (Advanced), String  |
- |   Introduct... Introduct... Flood Fill   Graph Tra... Priority ... Greedy Al...            | Searching (Advanced)                       |
- |                                                                                            +--------------------------------------------+
- |   Additiona... Conclusion 0/1
+     Graphs 0/4                                          Sorting & Searching 1/6   |          | [ ] locked: pass Priority Queues first     |
+ +-  . ---------  . ---------  . --------- >. ---------  . ---------  . -----------+          | read -> core 0/6 +* 0/3 -> trial: pass 2   |
+ |   [x]          [ ] ^        [x]          [x] ^        [x]                                  | of 3 blind                                 |
+ |   Introduct... Introduct... Flood Fill   Graph Tra... Priority ... Greedy Al...            | ^ opens Eulerian Tours (Advanced), String  |
+ |                                                                                            | Searching (Advanced)                       |
+ |   Additiona... Conclusion 0/1                                                              +--------------------------------------------+
  +-  . ---------  X
 
      Intro to ... Additiona...

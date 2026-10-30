@@ -1,0 +1,8 @@
+# Range Queries with Sweep Line (Platinum › Range Queries)
+# Two lanes, counting behind a sweep and DP minima behind a sweep, joining
+# at Slingshot's four-quadrant minima.
+core  cses-1740 > usaco-624 > usaco-816  # sweep x, BIT on y; four quadrants
+core  usaco-995 > usaco-816              # sweep with prefix min of dp - x - y
+
+side  cses-1740 > cses-1742  # count crossings; binary search time
+side  usaco-995 > usaco-865  # BIT-keyed DP, now counting LIS

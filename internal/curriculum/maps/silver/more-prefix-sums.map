@@ -1,0 +1,11 @@
+# More on Prefix Sums (Silver › Prefix Sums)
+# Three lanes in text order: max subarray sum on its own, 2D prefix sums,
+# and difference arrays; the last two join at the 2D painted barn.
+core  cses-1643                         # prefix minus running minimum
+core  cses-1652 > cf-1722E > usaco-919  # 2D prefix over a full grid
+core  cf-816B > cf-276C > usaco-919     # coverage counts, then in 2D
+
+side  cses-1652 > usaco-416  # rotate 45°, diamonds become squares
+side  cf-1722E > usaco-1063  # 2D prefix on compressed points
+side  usaco-919 > usaco-923  # same barn, best two rectangles
+side  usaco-919 > usaco-744  # 2D coverage counts, which came last

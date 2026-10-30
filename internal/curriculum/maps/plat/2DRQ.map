@@ -1,0 +1,3 @@
+# 2D Range Queries (Platinum › Range Queries)
+# One lane: a 2D BIT, then offline 2D counting with a 1D BIT over a sweep.
+core  cses-1739 > usaco-601 > usaco-722  # 2D BIT, then offline sweep + BIT

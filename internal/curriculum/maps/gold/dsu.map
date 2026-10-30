@@ -1,0 +1,9 @@
+# Disjoint Set Union (Gold › Graphs)
+# One root, two lanes, unions in weight order and deletions run backwards,
+# joining at Strongest Friendship Group; size-stop and merging chains as side.
+core  cses-1676 > usaco-992 > usaco-789 > usaco-1259   # unions in weight order
+core  cses-1676 > usaco-646 > usaco-1474 > usaco-1259  # deletions run backwards
+
+side  usaco-992 > usaco-669 > usaco-245 > usaco-384  # stop at size N, N²/2, T
+side  usaco-245 > usaco-950                          # rising cells; count holes
+side  usaco-789 > cses-2101 > usaco-1042             # merge small into large

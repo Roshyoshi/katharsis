@@ -1,0 +1,7 @@
+# Euler's Formula (Advanced › Graphs)
+# One core node, the text's example; the rest are Very Hard and hang off it
+# as V - E + F counted on grids.
+core  usaco-596  # regions of a fence walk by V-E+F
+
+side  usaco-596 > usaco-950              # holes as faces, DSU as cells rise
+side  usaco-596 > usaco-1094 > cf-1392I  # V-E+F per rectangle, then by FFT

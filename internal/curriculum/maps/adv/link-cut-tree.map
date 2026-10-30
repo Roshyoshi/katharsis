@@ -1,0 +1,3 @@
+# Link Cut Tree (Advanced › Graphs)
+# One lane as the text orders it: path access, then subtree aggregates.
+core  cf-1344E > cf-603E  # access paths; then subtree sizes

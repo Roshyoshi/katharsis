@@ -31,23 +31,16 @@ import (
 )
 
 // Judgeable reports whether the catalog can serve and judge a problem; it
-// decides which of a module's problems make its trial unit. nil accepts
-// every reference curriculum.CatalogID maps, as curriculum.TrialFor does.
+// decides which of a module's problems its map plays. nil accepts every
+// problem with a catalog ID, as curriculum.TrialFor does.
 type Judgeable = func(catalog.ID) bool
 
-// integrationDoors is how many blind doors follow a trial's unit: the rooms
-// of rules.Trial's integration biome, its second, which is what a trial
-// boot plays (DESIGN.md "Learn mode": 1 blind door at the same
-// difficulty).
-var integrationDoors = rules.Trial().Biomes[1].Rooms
-
-// unitPass is how many of a full unit's doors passing takes: the rest may
-// be lost to :q! (rules.Trial's TrialLostRooms). Every blind door must
-// clear.
-var unitPass = curriculum.DefaultUnitSize - rules.Trial().TrialLostRooms
+// trialPass is how many of a trial's doors passing takes: the rest may be
+// lost to :q! (rules.Trial's TrialLostRooms).
+var trialPass = curriculum.Doors - rules.Trial().TrialLostRooms
 
 // entry is one module as both screens show it. The trial is built once, up
-// front: its unit size and capability appear on every browser row.
+// front: its map's size and its capability appear on every browser row.
 type entry struct {
 	mod   curriculum.Module
 	trial curriculum.Trial
@@ -56,14 +49,10 @@ type entry struct {
 
 func newEntry(m curriculum.Module, judgeable Judgeable, lookup screens.Lookup) entry {
 	t := curriculum.TrialFor(m, judgeable, lookup)
-	// The integration topic, not the module's own: General modules have
-	// no topic, and their doors are drawn from Userland ("mixed").
-	return entry{mod: m, trial: t, biome: flavor.BiomeName(t.IntegTopic)}
+	// The trial's topic, not the module's own: General modules have no
+	// topic, and their doors are drawn from Userland ("mixed").
+	return entry{mod: m, trial: t, biome: flavor.BiomeName(t.Topic)}
 }
-
-// short is how many unit doors the engine tops up from the catalog, by the
-// integration topic and band.
-func (e entry) short() int { return max(curriculum.DefaultUnitSize-len(e.trial.Unit), 0) }
 
 // capSet is the capabilities the player holds.
 func capSet(m game.Meta) map[string]bool {
@@ -97,20 +86,30 @@ func capCell(c string, held bool) string {
 	return ui.Muted.Render(ui.G.CapLocked + " " + c)
 }
 
-// unitLabel says how big a trial's unit is: "2 doors", or "1+1 topped up"
-// when the module has too few judgeable problems and the catalog fills the
-// rest; the topped-up part is muted, since it is the catalog's and not the
-// module's. compact drops the words for narrow terminals: "2", "1+1".
-func unitLabel(have, short int, compact bool) string {
+// mapLabel says how big a module's map is: "4 core +2 stretch", the
+// stretch muted since nothing waits on it. compact drops the words for
+// narrow terminals: "4+2".
+func mapLabel(m curriculum.Map, compact bool) string {
+	core, side := m.Core(), len(m.Nodes)-m.Core()
 	switch {
-	case short == 0 && compact:
-		return fmt.Sprint(have)
-	case short == 0:
-		return fmt.Sprintf("%d doors", have)
+	case side == 0 && compact:
+		return fmt.Sprint(core)
+	case side == 0:
+		return fmt.Sprintf("%d core", core)
 	case compact:
-		return fmt.Sprint(have) + ui.Muted.Render(fmt.Sprintf("+%d", short))
+		return fmt.Sprint(core) + ui.Muted.Render(fmt.Sprintf("+%d", side))
 	}
-	return fmt.Sprint(have) + ui.Muted.Render(fmt.Sprintf("+%d topped up", short))
+	return fmt.Sprintf("%d core", core) + ui.Muted.Render(fmt.Sprintf(" +%d stretch", side))
+}
+
+// aims is a trial's door ratings: "◆1400 → ◆1600 → ◆1700"; "" when the
+// map aims none and the doors spread over the band.
+func aims(t curriculum.Trial) string {
+	var out []string
+	for _, r := range t.Targets {
+		out = append(out, ui.Rating(r))
+	}
+	return strings.Join(out, " "+ui.G.Arrow+" ")
 }
 
 // stars draws the guide's 0-4 "how often in contests" as four stars; an

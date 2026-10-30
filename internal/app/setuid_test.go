@@ -430,6 +430,7 @@ func TestSetuidWorldOnTrialPass(t *testing.T) {
 			t.Fatalf("the fixture's Silver trials %v: want prefix-sums and another", silver)
 		}
 		h.m.meta.TrialsPassed = slices.DeleteFunc(slices.Clone(silver), func(id string) bool { return id == "prefix-sums" })
+		readyTrial(h, "prefix-sums")
 		h.send(screens.StartTrial{Module: "prefix-sums"})
 		if setuid.IsSet(&h.m.meta, "best-of-educations") {
 			t.Fatal("set before the world's last trial passed")

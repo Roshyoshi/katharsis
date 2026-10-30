@@ -139,33 +139,49 @@ Quotes are matched to the cause of the crash and must have a known source.
 ## Learn mode (RTFM)
 
 ```
-RTFM › Silver › Prefix Sums                         □ CAP_PREFIX
+RTFM › Silver › Sorting & Searching › Two Pointers          ■ CAP_TWOPTR
+ ▪ READ ┬ ✓ Paired Up ─────────┬ ○ Diamond Collector ── ⚔ TRIAL
+        │                      ├ ☆ Cow Checkups
+        ╰ ● Sleepy Cow Herding ╯
   read   USACO Guide module in the TUI (o = open in browser)
-  unit   2 doors from the module list, easiest first, tags shown, soft timer
-  integ  1 blind door at the same difficulty, drawn anew each try
-  pass   the blind door and 1 of 2: a :q! loses a unit room; a second,
-         or one on the blind door, ends the trial
-         ■ CAP_PREFIX → topic biomes join route choices; lib unlocked
+  map    a problem opens once every problem into it is solved; the core
+         (✓ ● ○) opens the trial, the stretch (☆) waits on nothing
+  trial  3 unseen blind doors on the module's topic, aimed at the core's
+         median, its hardest and 100 past; pass 2 of 3, one may go to :q!
+         ■ CAP_TWOPTR → topic biomes join route choices; lib unlocked
 ```
 
 RTFM opens on a world map (D60, `.agents/work/rtfm-map-plan.md`): an
 overworld of the guide's divisions, and in each, its modules as levels on
 one folded path in guide order. A level is a trial (○ → ✓), a page (▪,
-reading only) or the division's conclusion, its castle (⚔). Every module
-with a problem the game can judge has a trial; one on an ungated topic
-grants only its ✓. Nothing is locked: the path lights behind what is
-cleared, and ↑ marks the guide's three world-skipping prerequisite edges.
-Enter opens the level: READ, PRACTICE (untimed upsolves, 0 B) and TRIAL.
-i opens the man index, which searches. n goes to the next trial in guide
-order not passed; a card shows the level's loop (read → practice →
-trial, ✓ as each is done). PRACTICE runs in the order to try it: the
-guide's ★ picks, then easiest by rating, the solved, then the stretch
-(Very Hard, Insane). A trial's unit ramps from the module's easiest
-label; stretch problems, and those the catalog rates over 100 past the
-division's band, fill it only when the module has too few others. Three
-doors, as a module is small: one to three focus problems and a median
-8 (Bronze) to 11 (Silver) playable on its list. General's problems are
-the pages' examples, not practice.
+reading only) or the division's conclusion, its castle (⚔). The path is
+fixed, as the USACO training pages are: a trial level opens once the trial
+before it is passed, across worlds. An optional module (the guide's
+"(Optional)", or frequency 0) opens in its turn and holds nothing up;
+pages and General, the library, are always open. A level with progress on
+it stays open, so older saves lose nothing. ↑ marks the guide's three
+world-skipping prerequisite edges. i opens the man index, which searches;
+n goes to the next trial on the path.
+
+Enter opens the level's own map, designed by hand per module
+(`internal/curriculum/maps/<division>/<module>.map`): its problems on
+paths from READ to the TRIAL, core lanes and the stretch off them. A
+problem opens once every problem with a path into it is solved, and the
+trial once every core problem is; READ opens nothing, as opening a page
+says nothing of reading it. Problems are untimed upsolves (0 B). The card
+under the map says what a problem waits on and leads to; n goes to what
+to do next: an open core problem, then the trial, then the stretch. A
+problem the catalog cannot judge drops out of its map, and what it led to
+waits on what led into it.
+
+Each problem is in one place. The guide's (`listed.txt`) are RTFM's: no
+boot or trial draws them. Of the rest, the trials hold back half of each
+topic's cell in each division's band, at most 30, picked by hash so a
+catalog update moves few; boots draw the remainder. So a trial's doors are
+ones the player has not met on a map, and a retry draws them anew, past
+any solved since. CSES is the guide's practice, played by id on maps and
+never drawn by rating. General's problems are the pages' examples, not
+practice.
 
 ## Content
 

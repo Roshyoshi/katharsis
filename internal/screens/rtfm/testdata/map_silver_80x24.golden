@@ -1,4 +1,4 @@
-RTFM › Silver                                 trials 3/14 · ■ 4/6 · solved 3/119
+RTFM › Silver                                 trials 3/14 · ■ 4/6 · solved 2/110
 ────────────────────────────────────────────────────────────────────────────────
      Prefix Sums   Sorting & Searching                       Graphs
      ✓ ───  ✓ ───  ✓ ───  ○ ───  ○ ───  ○ ───  ○ ───  ○ ─── ▸○ ───  ○ ───  ○ ──╮
@@ -14,11 +14,11 @@ RTFM › Silver                                 trials 3/14 · ■ 4/6 · solved
 
 
 
-
 ╭─ Graph Traversal ────────────────────────────────────────── Silver › Graphs ─╮
 │ ■ CAP_GRAPH → Routing Table · ★★★★ very frequent                             │
 │ needs Introduction to Graphs (Bronze) ✓ · Complete Search with Recursion (B… │
-│ read → practice 0/14 → trial 1 of 2 doors + 1 blind                          │
+│ □ locked: pass Priority Queues first                                         │
+│ read → core 0/6 +★ 0/3 → trial: pass 2 of 3 blind                            │
 │ ↑ opens Eulerian Tours (Advanced), String Searching (Advanced)               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
  next ▸ Ad Hoc Problems       h/l path · j/k row · n next · enter level · q map

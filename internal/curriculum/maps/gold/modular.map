@@ -1,0 +1,7 @@
+# Modular Arithmetic (Gold › Math)
+# Two lanes from fast power, Fermat on the exponent and inverses for
+# fractions, joining at Divisor Analysis.
+core  cses-1095 > cses-1712 > cses-2182  # fast power; exponents reduce mod p-1
+core  cses-1095 > cf-1279D > cses-2182   # inverse as a^(p-2): fractions mod p
+
+side  cses-2182 > usaco-1498  # geometric sums of powers, on bit runs

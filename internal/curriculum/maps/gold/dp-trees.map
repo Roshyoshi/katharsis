@@ -1,0 +1,9 @@
+# DP on Trees - Introduction (Gold › Trees)
+# Two-state warm-ups join at Barn Painting; the lane then turns to merging
+# children's depth tables and ends at Delegation.
+core  cses-1130 > cf-1528A > usaco-766    # few states per node, scored per edge
+core  cses-1130 > usaco-1497 > usaco-766  # take or skip, on a functional graph
+core  usaco-766 > cf-161D > usaco-1019    # state = depth; pair child paths to K
+
+side  cf-1528A > cf-1394D      # state is the parent edge's direction
+side  usaco-1019 > usaco-1020  # binary search the length, same pairs

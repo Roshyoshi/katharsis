@@ -1,0 +1,3 @@
+# Suffix Array (Advanced › Strings)
+# One short lane: sorted rotations, then LCPs of sorted suffixes.
+core  cses-1113 > usaco-768  # invert BWT, then LCPs across strings

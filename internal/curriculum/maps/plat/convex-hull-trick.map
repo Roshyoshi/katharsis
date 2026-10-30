@@ -1,0 +1,7 @@
+# Convex Hull Trick (Platinum › Geometry)
+# One lane, a monotone hull inside a DP, then queries in any order, then a
+# hull of DP-made lines; circular and point-hull variants as stretch.
+core  cses-2087 > cf-660F > usaco-1285  # deque hull; any-order x; DP lines
+
+side  cses-2087 > usaco-626  # the same layered DP around a circle
+side  cf-660F > usaco-998    # binary search on a hull of points

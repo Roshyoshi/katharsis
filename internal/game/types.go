@@ -724,25 +724,36 @@ type Ease struct {
 }
 
 // TrialSpec is a learn-mode trial as the curriculum builds it
-// (curriculum.Trial): the module's unit problems, Easy to Hard, and where
-// to draw the blind integration doors from.
+// (curriculum.Trial): the module it tests, the topic its doors come from
+// and the rating each aims at.
 type TrialSpec struct {
 	Module, Title string
-	Unit          []catalog.ID
-	IntegTopic    string // "" or Mixed: any topic
-	IntegBand     [2]int // CF-scale ratings, inclusive; {0, 0}: any rating
-	Capability    string // granted on a clear; "" grants nothing
+	Topic         string // catalog topic of the doors; "" or Mixed: any
+	Band          [2]int // CF-scale ratings, inclusive; {0, 0}: any rating
+	// Targets are the doors' ratings, room by room (see Target).
+	Targets    []int
+	Capability string // granted on a clear; "" grants nothing
 }
 
-// TrialState is a trial in progress. Biome 0 is the unit and biome 1 the
-// integration; Plan holds each biome's problems, one per room, so the map
-// can show the whole trial up front.
+// Target is the rating room k of n aims at: Targets[k], else spread
+// evenly across Band, easiest first; 0 (any rating) with neither.
+func (t TrialSpec) Target(k, n int) int {
+	switch {
+	case k < len(t.Targets):
+		return t.Targets[k]
+	case t.Band == [2]int{}:
+		return 0
+	case n <= 1:
+		return (t.Band[0] + t.Band[1]) / 2
+	}
+	return t.Band[0] + (t.Band[1]-t.Band[0])*k/(n-1)
+}
+
+// TrialState is a trial in progress. Plan holds each biome's problems, one
+// per room, so the map can show the whole trial up front.
 type TrialState struct {
 	TrialSpec
 	Plan [][]catalog.ID
-	// TopUp lists the unit problems drawn from the pool because Unit was
-	// shorter than the trial rules' unit biome.
-	TopUp []catalog.ID
 	// Lost counts the rooms lost to :q! (rules.TrialLostRooms).
 	Lost int
 	// Passed is set on a clear; Granted is the capability it added to Meta

@@ -1,0 +1,11 @@
+# Introduction to Tree Algorithms (Silver › Graphs)
+# Subtree sizes and distances join at Tree Distances II; it and the
+# edge-filter lane join at Ski Slope, which pushes path data from the root.
+core  cses-1674 > cses-1133 > usaco-1520  # sizes up, then push answers down
+core  cses-1131 > cses-1132 > cses-1133   # diameter, farthest, sum of all
+core  usaco-968 > usaco-788 > usaco-1520  # walk only allowed edges, per query
+
+side  cses-1674 > usaco-1062 > usaco-894  # answer from each node's degree
+side  cses-1674 > usaco-833               # walk the parent chain to the LCA
+side  cses-1131 > usaco-1016              # depth parity splits the tree
+side  cses-1133 > cf-839C                 # push a probability parent to child

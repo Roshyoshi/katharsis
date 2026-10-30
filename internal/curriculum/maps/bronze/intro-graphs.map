@@ -1,0 +1,8 @@
+# Introduction to Graphs (Bronze › Additional)
+# Degree counting and neighbour-list constraints join at Livestock Lineup,
+# the walked-through chain problem; trees and cycles hang off as stretch.
+core  usaco-940 > usaco-808 > usaco-965  # degrees pick out the special nodes
+core  usaco-916 > usaco-965              # pair constraints, smallest answer
+
+side  usaco-808 > usaco-1013             # functional graph to permutation
+side  usaco-940 > usaco-833 > usaco-941  # parent pointers, then is it a tree

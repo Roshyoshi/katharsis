@@ -1,0 +1,9 @@
+# Stacks (Gold › Data Structures)
+# One root, two lanes, monotone stacks that find each bar's span and stacks
+# as LIFO order; each lane ends in its own capstone.
+core  cses-1645 > cses-1142 > cf-547B > cses-1147  # pops give each bar's min span
+core  cses-1645 > usaco-922 > usaco-743          # LIFO order of plates, paints
+
+side  cses-1147 > cses-1148   # count all rectangles, not the max
+side  cses-1645 > cses-2416   # next-greater chains, summed by BIT
+side  cses-1645 > usaco-1162  # a monotone stack drops stale guesses

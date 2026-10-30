@@ -3,7 +3,6 @@ package rtfm
 import (
 	"cmp"
 	"fmt"
-	"math"
 	"slices"
 	"strings"
 
@@ -19,49 +18,58 @@ import (
 	"katharsis/internal/units"
 )
 
-// Level is what opens on a node of the RTFM map (.agents/work/rtfm-map-plan.md
-// §3.4): one module in three panels, READ (the module in the reader),
-// PRACTICE (its problems, each an untimed door through screens.Upsolve) and
-// TRIAL (the module page's TRIAL section), then SEE ALSO, the shortcuts it
-// opens and the module's CC BY-NC-SA attribution.
+// Level is what opens on a node of the RTFM map: the module's own map
+// (curriculum.Map, laid out by layoutMap), its problems on paths from
+// READ to the TRIAL. A problem opens once every problem with a path into
+// it is solved, and the trial once every core one is; the stretch
+// problems (☆) hang off the core, and nothing waits on them:
 //
-// The cursor moves over READ, PRACTICE's rows and TRIAL; enter acts on the
-// row under it. Leaving is the host's: it takes q, esc, h, left and
-// backspace before they reach the level, as Browser does for its page.
+//	▪ READ ┬ ✓ Paired Up ────────────┬ ○ Diamond Collector ───── ⚔ TRIAL
+//	       │                         ├ ☆ Cow Checkups
+//	       ╰ ● Sleepy Cow Herding ───╯
+//
+// Under the map, a card on the item under the cursor: what it is, why it
+// is open or locked, what it leads to. Then the shortcuts the level
+// opens, SEE ALSO and the module's CC BY-NC-SA attribution.
+//
+// The arrows move across the map. Enter acts on the item under the
+// cursor: READ reads the module, an open or solved problem is an untimed
+// door (screens.Upsolve), the trial starts (screens.StartTrial, which the
+// app refuses while the core is unsolved). A level the path has not
+// reached yet (curriculum.Atlas.Progress) shows its map, but nothing on
+// it plays. Leaving is the host's: it takes q, esc and backspace before
+// they reach the level, as Browser does for its page.
 type Level struct {
 	l      curriculum.Level
 	region string
 	e      entry
-	page   *Module // the module page, for its TRIAL lines
+	page   *Module // the module page, for its pass line
 	caps   map[string]bool
 	opened bool
+	passed bool     // its trial
+	lock   string   // the trial level to pass first, "" when open
 	prereq []string // prerequisites as display names, ✓ when passed
 	warps  string   // what the level opens a shortcut to, "" for nothing
-	items  []practiceItem
-	solved int // of the playable items
-	rating int // the player's, for the practice that is near it
+	nodes  []node
+	lay    mapLayout
 
-	cur  int // 0 is READ, 1..len(items) PRACTICE's rows, then TRIAL
-	ptop int // first PRACTICE row shown, when the list does not fit
+	cur       int // the item under the cursor: a node, readItem or trialItem
+	top, left int // the map's first row and column shown, when it does not fit
 }
 
-// practiceItem is one PRACTICE row: a problem the game can judge, or one
-// it cannot (external), which only opens its URL. starred is the guide's
-// pick; stretch a Very Hard or Insane label, the guide's for later.
-type practiceItem struct {
-	id                   catalog.ID // "" for an external problem
-	title, source, label string
-	url                  string
-	rating               int
-	solved               bool
-	starred, stretch     bool
+// node is a problem of the level's map as the screen shows it.
+type node struct {
+	curriculum.Node
+	title, source, label, contest, url string
+	rating                             int // 0 when not shown (catalog.ShowsRating)
+	solved                             bool
+	open                               bool // every parent solved
 }
-
-func (it practiceItem) playable() bool { return it.id != "" }
 
 // NewLevel builds the level screen for l, a level of c's atlas in the
-// region titled region.
-func NewLevel(c *curriculum.Curriculum, l curriculum.Level, region string, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Level {
+// region titled region. lock is the trial level the path waits on before
+// l, "" when l is open (curriculum.LevelProgress.Open).
+func NewLevel(c *curriculum.Curriculum, l curriculum.Level, region, lock string, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Level {
 	mod, ok := curriculum.Module{}, false
 	if c != nil {
 		mod, ok = c.Module(l.Module)
@@ -71,9 +79,11 @@ func NewLevel(c *curriculum.Curriculum, l curriculum.Level, region string, m gam
 	}
 	caps := capSet(m)
 	e := newEntry(mod, judgeable, lookup)
+	passed := slices.Contains(m.TrialsPassed, l.Module)
 	v := &Level{
-		l: l, region: region, e: e, page: newModule(c, e, caps, slices.Contains(m.TrialsPassed, l.Module), lookup), caps: caps,
-		opened: slices.Contains(m.Opened, l.Module),
+		l: l, region: region, e: e, page: newModule(c, e, caps, passed), caps: caps,
+		opened: slices.Contains(m.Opened, l.Module), passed: passed, lock: lock,
+		cur: readItem,
 	}
 	for _, id := range l.Prereqs {
 		name := id
@@ -88,8 +98,8 @@ func NewLevel(c *curriculum.Curriculum, l curriculum.Level, region string, m gam
 		v.prereq = append(v.prereq, name)
 	}
 	v.warps = warpText(c, l.Warps)
-	v.items, v.solved = practiceItems(mod, l.Playable, m, lookup)
-	v.rating = int(m.Rating)
+	v.nodes = mapNodes(mod, l.Map, game.Solved(&m), lookup)
+	v.lay = layoutMap(l.Map, v.hasTrial())
 	return v
 }
 
@@ -121,107 +131,132 @@ func warpText(c *curriculum.Curriculum, ids []string) string {
 	return strings.Join(parts, ui.G.Sep)
 }
 
-// practiceItems lists mod's problems, each once (starred if the guide
-// stars any of its listings), in the order to try them: the playable ones
-// not yet solved, the guide's starred first and then the easiest by
-// rating; those solved anywhere; the stretch ones (Very Hard, Insane);
-// then the external ones in the guide's order.
-func practiceItems(mod curriculum.Module, playable []catalog.ID, m game.Meta, lookup screens.Lookup) (items []practiceItem, solved int) {
-	done := map[catalog.ID]bool{}
-	for _, s := range m.Solves {
-		done[s.Problem] = true
+// mapNodes is mp's nodes with what the guide's entry and the catalog say
+// of each, and whether solved names it.
+func mapNodes(mod curriculum.Module, mp curriculum.Map, solved map[catalog.ID]bool, lookup screens.Lookup) []node {
+	refs := map[string]curriculum.ProblemRef{}
+	for _, l := range mod.Problems {
+		for _, r := range l.Problems {
+			if _, dup := refs[r.UniqueID]; !dup {
+				refs[r.UniqueID] = r
+			}
+		}
 	}
-	var all []practiceItem
-	at := map[string]int{}
-	for _, list := range mod.Problems {
-		for _, r := range list.Problems {
-			it := practiceItem{title: r.Name, source: r.Source, label: r.Difficulty, url: r.URL, starred: r.Starred,
-				stretch: r.Difficulty == "Very Hard" || r.Difficulty == "Insane"}
-			key := r.UniqueID
-			if slices.Contains(playable, r.ID) {
-				key = string(r.ID)
-				it.id, it.solved = r.ID, done[r.ID]
-				if lookup != nil {
-					if p, ok := lookup(r.ID); ok {
-						it.title = cmp.Or(p.Title, it.title)
-						it.rating = p.Rating
-					}
+	out := make([]node, len(mp.Nodes))
+	for i, n := range mp.Nodes {
+		r := refs[n.Problem]
+		x := node{Node: n, title: cmp.Or(r.Name, n.Problem), source: r.Source, label: r.Difficulty,
+			url: r.URL, solved: solved[n.ID]}
+		if lookup != nil {
+			if p, ok := lookup(n.ID); ok {
+				x.title, x.contest = cmp.Or(p.Title, x.title), p.Contest
+				if catalog.ShowsRating(n.ID) {
+					x.rating = p.Rating
 				}
 			}
-			if i, dup := at[key]; dup {
-				all[i].starred = all[i].starred || it.starred
-				continue
-			}
-			at[key] = len(all)
-			all = append(all, it)
 		}
+		out[i] = x
 	}
-	var ext []practiceItem
-	for _, it := range all {
-		switch {
-		case it.playable():
-			items = append(items, it)
-			if it.solved {
-				solved++
-			}
-		default:
-			ext = append(ext, it)
-		}
+	for i := range out {
+		out[i].open = !slices.ContainsFunc(out[i].Parents, func(p int) bool { return !out[p].solved })
 	}
-	group := func(it practiceItem) int {
-		switch {
-		case it.stretch:
-			return 2
-		case it.solved:
-			return 1
-		}
-		return 0
-	}
-	rated := func(it practiceItem) int { return cmp.Or(it.rating, math.MaxInt) } // unrated last
-	slices.SortStableFunc(items, func(a, b practiceItem) int {
-		star := 0
-		switch {
-		case a.starred && !b.starred:
-			star = -1
-		case b.starred && !a.starred:
-			star = 1
-		}
-		return cmp.Or(cmp.Compare(group(a), group(b)), star, cmp.Compare(rated(a), rated(b)))
-	})
-	return append(items, ext...), solved
+	return out
 }
 
-// hasTrial reports whether the level shows a TRIAL panel: trial levels and
+// hasTrial reports whether the map ends in a trial: trial levels and
 // castles do, a page does not.
 func (v *Level) hasTrial() bool { return v.l.Kind != curriculum.PageLevel }
 
-// library reports whether the level is General's, the guide's pages about
-// contests in general: their problems are the pages' examples (Fast I/O
-// cites a Platinum problem where reading input decides it), not practice.
-func (v *Level) library() bool { return v.e.mod.Division == "general" }
+// tally counts the map's core and stretch problems and those solved.
+func (v *Level) tally() (core, coreSolved, side, sideSolved int) {
+	for _, n := range v.nodes {
+		switch {
+		case n.Core:
+			core++
+			if n.solved {
+				coreSolved++
+			}
+		default:
+			side++
+			if n.solved {
+				sideSolved++
+			}
+		}
+	}
+	return core, coreSolved, side, sideSolved
+}
 
-// last is the cursor's last position.
-func (v *Level) last() int {
+// trialOpen reports whether the trial may start: the level is on the
+// path and every core problem is solved.
+func (v *Level) trialOpen() bool {
+	core, solved, _, _ := v.tally()
+	return v.lock == "" && solved == core
+}
+
+// playable reports whether node i may be played: the level is on the
+// path and the node open. A solved one stays playable, to try again.
+func (v *Level) playable(i int) bool { return v.lock == "" && (v.nodes[i].open || v.nodes[i].solved) }
+
+// items is every item of the map, READ first.
+func (v *Level) items() []int {
+	out := []int{readItem}
+	for i := range v.nodes {
+		out = append(out, i)
+	}
 	if v.hasTrial() {
-		return len(v.items) + 1
+		out = append(out, trialItem)
 	}
-	return len(v.items)
+	return out
 }
 
-// item is the PRACTICE row under the cursor.
-func (v *Level) item() (practiceItem, bool) {
-	if v.cur >= 1 && v.cur <= len(v.items) {
-		return v.items[v.cur-1], true
+// Practice puts the cursor on what to do next: the first open core
+// problem not solved, then the trial while it waits to be passed, then
+// the first open stretch problem; READ once nothing is left.
+func (v *Level) Practice() { v.cur = v.next() }
+
+func (v *Level) next() int {
+	todo := func(core bool) int {
+		return slices.IndexFunc(v.nodes, func(n node) bool { return n.Core == core && n.open && !n.solved })
 	}
-	return practiceItem{}, false
+	switch {
+	case v.lock != "":
+	case todo(true) >= 0:
+		return todo(true)
+	case v.hasTrial() && !v.passed:
+		return trialItem
+	case todo(false) >= 0:
+		return todo(false)
+	}
+	return readItem
 }
 
-// Practice puts the cursor on PRACTICE's first row.
-func (v *Level) Practice() {
-	if len(v.items) > 0 {
-		v.cur = 1
+// move is an arrow: to the nearest item that way. Across (←→) is deeper
+// or shallower on the map, the nearest column first, then the nearest
+// row; up and down (↑↓) change lane, the nearest column first again, so
+// the cursor keeps to its depth while it can.
+func (v *Level) move(dr, dc int) {
+	at := v.lay.cell(v.cur)
+	best, bestKey := v.cur, [3]int{}
+	for _, i := range v.items() {
+		c := v.lay.cell(i)
+		dRow, dCol := c[0]-at[0], c[1]-at[1]
+		var key [3]int
+		switch {
+		case dc != 0 && dCol*dc > 0:
+			key = [3]int{dCol * dc, abs(dRow), c[0]}
+		case dr != 0 && dRow*dr > 0:
+			key = [3]int{abs(dCol), dRow * dr, c[1]}
+		default:
+			continue
+		}
+		if best == v.cur || slices.Compare(key[:], bestKey[:]) < 0 {
+			best, bestKey = i, key
+		}
 	}
+	v.cur = best
 }
+
+func abs(x int) int { return max(x, -x) }
 
 func (v *Level) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	k, ok := msg.(tea.KeyPressMsg)
@@ -231,14 +266,20 @@ func (v *Level) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	id := v.l.Module
 	switch k.String() {
 	case "up", "k":
-		v.cur = max(v.cur-1, 0)
+		v.move(-1, 0)
 	case "down", "j":
-		v.cur = min(v.cur+1, v.last())
+		v.move(1, 0)
+	case "left", "h":
+		v.move(0, -1)
+	case "right", "l":
+		v.move(0, 1)
 	case "home", "g":
-		v.cur = 0
+		v.cur = readItem
 	case "end", "G":
-		v.cur = v.last()
-	case "p":
+		if v.hasTrial() {
+			v.cur = trialItem
+		}
+	case "n", "p":
 		v.Practice()
 	case "r":
 		return v, screens.Emit(screens.OpenModule{Module: id})
@@ -247,8 +288,8 @@ func (v *Level) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 			return v, screens.Emit(screens.StartTrial{Module: id})
 		}
 	case "o":
-		if it, ok := v.item(); ok && !it.playable() && it.url != "" {
-			return v, screens.Emit(reader.OpenURL{URL: it.url})
+		if v.cur >= 0 && v.nodes[v.cur].url != "" {
+			return v, screens.Emit(reader.OpenURL{URL: v.nodes[v.cur].url})
 		}
 		if u := v.e.mod.URL; u != "" {
 			return v, screens.Emit(reader.OpenURL{URL: u})
@@ -259,86 +300,351 @@ func (v *Level) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 	return v, nil
 }
 
-// act is enter on the row under the cursor.
+// act is enter on the item under the cursor. A locked problem does
+// nothing: its card says what it waits on.
 func (v *Level) act() tea.Cmd {
-	if v.cur == 0 {
-		return screens.Emit(screens.OpenModule{Module: v.l.Module})
-	}
-	it, ok := v.item()
 	switch {
-	case !ok:
+	case v.cur == readItem:
+		return screens.Emit(screens.OpenModule{Module: v.l.Module})
+	case v.cur == trialItem:
 		return screens.Emit(screens.StartTrial{Module: v.l.Module})
-	case it.playable():
-		return screens.Emit(screens.Upsolve{Problem: it.id})
-	case it.url != "":
-		return screens.Emit(reader.OpenURL{URL: it.url})
+	case v.playable(v.cur):
+		return screens.Emit(screens.Upsolve{Problem: v.nodes[v.cur].ID})
 	}
 	return nil
 }
-
-// labelW is the panels' label column ("PRACTICE  "), after the cursor's
-// three cells; a panel's content starts at contentCol.
-const (
-	labelW     = 10
-	contentCol = 3 + labelW
-)
 
 func (v *Level) View(width, height int) string {
 	w, h := max(width, 1), max(height, 1)
 	m := v.e.mod
 	crumb := strings.Join([]string{ui.Strong.Render("RTFM"), m.DivisionTitle, v.region, v.l.Title},
 		ui.Muted.Render(ui.G.Crumb))
-	head := []string{ui.Spread(crumb, capCell(v.l.Capability, v.caps[v.l.Capability]), w), ui.Rule(w)}
-	name := " " + ui.Strong.Render(v.l.Title)
-	if v.l.Kind == curriculum.CastleLevel {
-		// A conclusion is the world's gauntlet: the boss door's glyph.
-		name = " " + ui.Special.Render(ui.G.Boss) + name
+	head := []string{ui.Spread(crumb, capCell(v.l.Capability, v.caps[v.l.Capability]), w), ui.Rule(w), v.nameLine()}
+	if v.lock != "" {
+		head = append(head, " "+ui.Warn.Render(ui.G.CapLocked+" locked")+": pass "+v.lock+" first"+
+			ui.Muted.Render("; nothing here plays until then"))
 	}
-	if f := m.Frequency; f >= 0 {
-		name += "  " + stars(f) + " " + ui.Muted.Render(frequencyText(f))
-	}
-	if v.hasTrial() {
-		t := v.e.trial
-		name += ui.Muted.Render(ui.G.Sep) + ui.RatingBand(t.IntegBand[0], t.IntegBand[1]) +
-			ui.Muted.Render(ui.G.Sep) + v.e.biome
-	}
-	head = append(head, name)
 	var desc []string
 	for _, l := range ui.WrapN(m.Description, max(w-2, 10), 2) {
 		desc = append(desc, " "+l)
 	}
+	card, foot := v.card(w), v.footLines(w)
 
-	read := []string{v.row(0, "READ", ui.Spread("the module, in the reader", v.openedWord(), w-contentCol))}
-	trial := v.trialLines(w)
-	foot := v.footLines(w)
-
-	// PRACTICE gets the rows left over, its label row included; then the
-	// description and the blank lines that set the panels apart, in that
-	// order, take what remains.
+	// The map gets the rows the head, the card and the foot leave, with a
+	// blank line on each side when they fit; then the description, and
+	// the blank lines that keep the foot at the bottom.
 	rows := max(h-1, 0) // the status bar
-	fixed := len(head) + len(read) + len(trial) + len(foot)
-	want := 1 + len(v.items)
-	prows := max(min(want, rows-fixed), 2) - 1
-	spare := rows - fixed - 1 - prows
-	practice := v.practiceLines(w, prows)
+	room := rows - len(head) - len(card) - len(foot)
+	gap := room >= min(v.lay.rows, 3)+2
+	if gap {
+		room -= 2
+	}
+	n := max(min(v.lay.rows, room), 1)
+	spare := room - n
 
 	body := slices.Clone(head)
-	if spare > 0 && len(desc) > 0 && spare >= len(desc)+1 {
+	if len(desc) > 0 && spare >= len(desc)+1 {
 		body = append(body, desc...)
 		spare -= len(desc)
 	}
-	if spare > 0 {
+	if gap {
 		body = append(body, "")
-		spare--
 	}
-	body = append(body, read...)
-	body = append(body, practice...)
-	body = append(body, trial...)
+	body = append(body, v.mapLines(w, n)...)
+	if gap {
+		body = append(body, "")
+	}
+	body = append(body, card...)
 	for ; spare > 0; spare-- {
 		body = append(body, "")
 	}
 	body = append(body, foot...)
 	return ui.Layout(w, h, body, v.statusBar(w))
+}
+
+// nameLine is the level's title, the guide's frequency stars and how far
+// the map is solved: "core 2/4 · ★ 0/2".
+func (v *Level) nameLine() string {
+	name := " " + ui.Strong.Render(v.l.Title)
+	if v.l.Kind == curriculum.CastleLevel {
+		// A conclusion is the world's gauntlet: the boss door's glyph.
+		name = " " + ui.Special.Render(ui.G.Boss) + name
+	}
+	if f := v.e.mod.Frequency; f >= 0 {
+		name += "  " + stars(f) + " " + ui.Muted.Render(frequencyText(f))
+	}
+	core, coreSolved, side, sideSolved := v.tally()
+	if core > 0 {
+		name += ui.Muted.Render(ui.G.Sep) + fmt.Sprintf("core %d/%d", coreSolved, core)
+	}
+	if side > 0 {
+		name += ui.Muted.Render(ui.G.Sep) + ui.Warn.Render(ui.G.Star) + fmt.Sprintf(" %d/%d", sideSolved, side)
+	}
+	return name
+}
+
+// ---- the map ----------------------------------------------------------------
+
+// Column widths. Each column's items start at its x; after an item's label
+// come a space, the cell where paths turn into the next column, and the
+// space before the next item, where the cursor sits.
+const (
+	gutter  = 3
+	minCol  = 12 // the narrowest a problem's column gets before the map pans
+	maxCol  = 26
+	padLeft = 1 // READ's cursor
+)
+
+// mapCols is each column's x and width in cells: READ's column fits READ,
+// the trial's fits the trial when it holds nothing else, and the rest
+// share what w leaves, between minCol and maxCol.
+func (v *Level) mapCols(w int) (xs, cw []int) {
+	cols := v.lay.cols
+	cw = make([]int, cols)
+	cw[0] = ansi.StringWidth(readLabel()) + gutter
+	share, rest := w-padLeft-cw[0], 0
+	for c := 1; c < cols; c++ {
+		if v.lay.hasTrial && c == v.lay.trial[1] && !v.colHolds(c) {
+			cw[c] = ansi.StringWidth(trialLabel()) + 1
+			share -= cw[c]
+			continue
+		}
+		rest++
+	}
+	each := maxCol
+	if rest > 0 {
+		each = min(max(share/rest, minCol), maxCol)
+	}
+	xs = make([]int, cols)
+	x := padLeft
+	for c := range cols {
+		if cw[c] == 0 {
+			cw[c] = each
+		}
+		xs[c] = x
+		x += cw[c]
+	}
+	return xs, cw
+}
+
+// colHolds reports whether a problem sits in column c.
+func (v *Level) colHolds(c int) bool {
+	return slices.ContainsFunc(v.lay.at, func(at [2]int) bool { return at[1] == c })
+}
+
+func readLabel() string  { return ui.G.Page + " READ" }
+func trialLabel() string { return ui.G.Boss + " TRIAL" }
+
+// label is item i drawn in w cells: its glyph, the state's colour, and
+// its title cut to fit.
+func (v *Level) label(i, w int) string {
+	g, tok, text := v.glyph(i)
+	title := ui.Clip(text, max(w-2, 1))
+	switch {
+	case i == v.cur:
+		title = ui.Focus.Render(title)
+	case tok == ui.Muted:
+		title = ui.Muted.Render(title)
+	}
+	return tok.Render(g) + " " + title
+}
+
+// glyph is item i's mark and colour, and its title: ▪ READ; ✓ a solved
+// core problem, ● one open, ○ one locked; ★ a solved stretch problem, ☆
+// one not; ⚔ the trial, faint until the core is solved, ✓ once passed.
+// Anything locked is faint.
+func (v *Level) glyph(i int) (string, ui.Token, string) {
+	switch i {
+	case readItem:
+		return ui.G.Page, ui.FG, "READ"
+	case trialItem:
+		switch {
+		case v.passed:
+			return ui.G.Pass, ui.OK, "TRIAL"
+		case v.trialOpen():
+			return ui.G.Boss, ui.Special, "TRIAL"
+		}
+		return ui.G.Boss, ui.Muted, "TRIAL"
+	}
+	n := v.nodes[i]
+	tok := ui.Muted
+	if v.playable(i) {
+		tok = ui.FG
+	}
+	switch {
+	case n.Core && n.solved:
+		return ui.G.Pass, ui.OK, n.title
+	case n.Core && tok == ui.FG:
+		return ui.G.Here, ui.FG, n.title
+	case n.Core:
+		return ui.G.Ahead, ui.Muted, n.title
+	case n.solved:
+		return ui.G.Star, ui.Warn, n.title
+	}
+	return ui.G.StarOff, tok, n.title
+}
+
+// mapLines draws the map in n lines w cells wide: the items in their
+// columns, the paths between them, lit where they leave something solved
+// (READ's always), and the cursor before the item under it. A map larger
+// than that pans to keep the cursor in view.
+func (v *Level) mapLines(w, n int) []string {
+	xs, cw := v.mapCols(w)
+	full := xs[len(xs)-1] + cw[len(cw)-1]
+	labels := map[int]string{}
+	for _, i := range v.items() {
+		// Before the gutter, but for the trial, which no path leaves.
+		room := cw[v.lay.cell(i)[1]] - gutter
+		if i == trialItem {
+			room = max(room, ansi.StringWidth(trialLabel()))
+		}
+		labels[i] = v.label(i, room)
+	}
+	lk := newLinks(full, v.lay.rows)
+	for _, e := range v.lay.edges {
+		lit := e.from == readItem || e.from >= 0 && v.nodes[e.from].solved
+		v.lay.draw(lk, xs, e, ansi.StringWidth(labels[e.from]), lit)
+	}
+	c := newCanvas(full, v.lay.rows)
+	for y, row := range lk.mask {
+		for x, m := range row {
+			if g := linkGlyph(m); g != "" {
+				tok := ui.Muted
+				if lk.lit[y][x] {
+					tok = ui.FG
+				}
+				c.put(y, x, tok.Render(g))
+			}
+		}
+	}
+	for i, l := range labels {
+		at := v.lay.cell(i)
+		c.put(at[0], xs[at[1]], l)
+	}
+	at := v.lay.cell(v.cur)
+	c.put(at[0], xs[at[1]]-1, ui.Focus.Render(ui.G.Cursor))
+
+	// Pan: the cursor's column and row in view, as little moved as can be.
+	v.left = min(v.left, at[1])
+	if full <= w {
+		v.left = 0
+	}
+	for v.left < at[1] && xs[at[1]]+cw[at[1]]-(xs[v.left]-padLeft) > w {
+		v.left++
+	}
+	v.top = max(min(v.top, at[0]), at[0]-n+1)
+	v.top = max(min(v.top, v.lay.rows-n), 0)
+	x0 := xs[v.left] - padLeft
+	var out []string
+	for y := v.top; y < min(v.top+n, v.lay.rows); y++ {
+		cells := c.cells[y][x0:min(x0+w, full)]
+		out = append(out, strings.TrimRight(strings.Join(cells, ""), " "))
+	}
+	return out
+}
+
+// ---- the card ---------------------------------------------------------------
+
+// card is the facts of the item under the cursor, a line each: what it
+// is, where it stands, and the note of the chain that placed it.
+func (v *Level) card(w int) []string {
+	ind := strings.Repeat(" ", gutter)
+	g, tok, _ := v.glyph(v.cur)
+	mark := " " + tok.Render(g) + " "
+	switch v.cur {
+	case readItem:
+		out := []string{ui.Spread(mark+ui.Strong.Render("READ")+"  the module, in the reader", v.openedWord(), w)}
+		if len(v.nodes) > 0 {
+			out = append(out, ind+ui.Muted.Render("nothing waits on it: the first problems are open from the start"))
+		}
+		if !v.hasTrial() {
+			out = append(out, ind+v.page.passLine())
+		}
+		return out
+	case trialItem:
+		t := v.e.trial
+		what := mark + ui.Strong.Render("TRIAL") + "  " + units.Plural(curriculum.Doors, "unseen door") + " on " +
+			v.e.biome + ui.Muted.Render(ui.G.Sep+"blind"+ui.G.Sep) + fmt.Sprintf("pass %d of %d", trialPass, curriculum.Doors)
+		aimed := ui.Muted.Render("spread over ") + ui.RatingBand(t.Band[0], t.Band[1])
+		if a := aims(t); a != "" {
+			aimed = ui.Muted.Render("aimed ") + a + ui.Muted.Render(": the core's middle, its hardest, a step past")
+		}
+		core, solved, _, _ := v.tally()
+		var state string
+		switch {
+		case v.passed:
+			state = ui.OK.Render(ui.G.Pass+" passed") + ui.Muted.Render(": t plays it again")
+		case v.lock != "":
+			state = "locked: pass " + v.lock + " first"
+		case solved < core:
+			state = fmt.Sprintf("opens once the core is solved: %d of %d so far", solved, core)
+		default:
+			state = "open" + ui.Muted.Render(": enter or t starts it")
+		}
+		return []string{what, ind + aimed, ind + state, ind + v.page.passLine()}
+	}
+
+	n := v.nodes[v.cur]
+	var facts []string
+	for _, f := range []string{n.source, n.label} {
+		if f != "" {
+			facts = append(facts, f)
+		}
+	}
+	right := ui.Muted.Render(strings.Join(facts, ui.G.Sep))
+	if n.rating > 0 {
+		right += " " + ui.Rating(n.rating)
+	}
+	kind := "core"
+	if !n.Core {
+		kind = "stretch"
+	}
+	var state string
+	switch {
+	case v.lock != "":
+		state = "locked: pass " + v.lock + " first"
+	case n.solved:
+		state = ui.OK.Render(ui.G.Pass+" solved") + ui.Muted.Render(": enter plays it again, untimed")
+	case n.open:
+		state = "open" + ui.Muted.Render(": enter starts it, untimed")
+	default:
+		state = "locked: solve " + v.titles(slices.DeleteFunc(slices.Clone(n.Parents), func(p int) bool { return v.nodes[p].solved })) + " first"
+	}
+	if to := v.leadsTo(v.cur); to != "" {
+		state += ui.Muted.Render(ui.G.Sep+"leads to ") + to
+	}
+	out := []string{ui.Spread(mark+ui.Strong.Render(n.title), right, w), ind + kind + ui.Muted.Render(ui.G.Sep) + state}
+	if n.Note != "" {
+		out = append(out, ind+ui.Muted.Render(n.Note))
+	}
+	return out
+}
+
+// titles names nodes is, comma-separated.
+func (v *Level) titles(is []int) string {
+	var out []string
+	for _, i := range is {
+		out = append(out, v.nodes[i].title)
+	}
+	return strings.Join(out, ", ")
+}
+
+// leadsTo names what node i opens the way to: its children, and the trial
+// for a core problem no other core problem follows.
+func (v *Level) leadsTo(i int) string {
+	var kids []int
+	core := false
+	for j, n := range v.nodes {
+		if slices.Contains(n.Parents, i) {
+			kids = append(kids, j)
+			core = core || n.Core
+		}
+	}
+	out := v.titles(kids)
+	if v.nodes[i].Core && !core && v.hasTrial() {
+		out = strings.Join(slices.DeleteFunc([]string{out, "the trial"}, func(s string) bool { return s == "" }), ", ")
+	}
+	return out
 }
 
 // openedWord is READ's state: "opened" once the page was opened in the
@@ -348,137 +654,6 @@ func (v *Level) openedWord() string {
 		return ui.Muted.Render("opened")
 	}
 	return ""
-}
-
-// row is a panel's line: the cursor's cell when at is under it, then the
-// label and the content.
-func (v *Level) row(at int, label, content string) string {
-	cur := " "
-	if v.cur == at {
-		cur = ui.Focus.Render(ui.G.Cursor)
-	}
-	if label != "" {
-		label = ui.Strong.Render(label)
-	}
-	return " " + cur + " " + ui.Fit(label, labelW) + content
-}
-
-// practiceLines is PRACTICE in n rows besides its label row: as many
-// problems as fit, scrolled to keep the cursor on screen, "+N above" and
-// "+N more" saying what does not show.
-func (v *Level) practiceLines(w, n int) []string {
-	playable := 0
-	for _, it := range v.items {
-		if it.playable() {
-			playable++
-		}
-	}
-	// A page's problems are the guide's examples, not practice: no k/n,
-	// each with its division and rating to say how far off it is.
-	label := "PRACTICE"
-	var head string
-	switch {
-	case len(v.items) > 0 && v.library():
-		label, head = "EXAMPLES", ui.Muted.Render("from the guide, not practice: o opens one")
-		if playable > 0 {
-			head = ui.Muted.Render("from the guide, not practice: enter opens one untimed")
-		}
-	case playable > 0:
-		// From the player's rating to 300 over it: practice that stretches
-		// without breaking (the list runs easiest first, so it is a block).
-		head = fmt.Sprintf("%d/%d solved", v.solved, playable) +
-			ui.Muted.Render(ui.G.Sep+"near you ") + ui.RatingBand(v.rating, v.rating+300)
-	case len(v.items) > 0:
-		head = ui.Muted.Render("none the game can judge: o opens one")
-	default:
-		head = ui.Muted.Render("no problems listed")
-	}
-	out := []string{v.row(-1, label, head)}
-	if len(v.items) == 0 {
-		return out
-	}
-	n = min(n, len(v.items))
-	if i := v.cur - 1; i >= 0 && i < len(v.items) {
-		v.ptop = min(v.ptop, i)
-		v.ptop = max(v.ptop, i-n+1)
-	}
-	v.ptop = max(min(v.ptop, len(v.items)-n), 0)
-
-	const srcW, diffW, ratingW = 7, 9, 5
-	titleW := 0
-	for _, it := range v.items {
-		titleW = max(titleW, ansi.StringWidth(it.title))
-	}
-	more := 0
-	if n < len(v.items) {
-		more = len(" +999 above")
-	}
-	fixed := contentCol + 4 + colGap + srcW + colGap + diffW + colGap + ratingW // ✓ ★
-	titleW = max(min(titleW, w-fixed-more), 8)
-	for i := v.ptop; i < v.ptop+n; i++ {
-		it := v.items[i]
-		mark, star := " ", " "
-		if it.solved {
-			mark = ui.OK.Render(ui.G.Pass)
-		}
-		if it.starred {
-			star = ui.Warn.Render(ui.G.Star) // the guide's pick
-		}
-		rating := ""
-		switch {
-		case !it.playable():
-			rating = "link"
-		case it.rating > 0 && catalog.ShowsRating(it.id):
-			rating = ui.Rating(it.rating)
-		}
-		line := mark + " " + star + " " + ui.Fit(it.title, titleW) + strings.Repeat(" ", colGap) +
-			ui.Fit(it.source, srcW) + strings.Repeat(" ", colGap) + ui.Fit(it.label, diffW) +
-			strings.Repeat(" ", colGap) + ui.AlignRight(rating, ratingW)
-		// Links, and the stretch its label already names, step back.
-		if !it.playable() || it.stretch {
-			line = ui.Muted.Render(line)
-		}
-		switch {
-		case i == v.ptop+n-1 && i < len(v.items)-1:
-			line += ui.Muted.Render(fmt.Sprintf("  +%d more", len(v.items)-1-i))
-		case i == v.ptop && i > 0:
-			line += ui.Muted.Render(fmt.Sprintf("  +%d above", i))
-		}
-		out = append(out, strings.TrimRight(v.row(i+1, "", line), " "))
-	}
-	return out
-}
-
-// trialLines is TRIAL as the module page sets it (module.go): the unit
-// doors, any the catalog tops up, the blind integration doors and what
-// passing grants. A page has none, but one on a gated topic says, on a
-// row the cursor never reaches, that the capability is earned elsewhere.
-func (v *Level) trialLines(w int) []string {
-	if !v.hasTrial() {
-		if v.e.trial.Capability == "" {
-			return nil
-		}
-		return []string{v.row(v.last()+1, "TRIAL", v.page.passLine())}
-	}
-	ind := strings.Repeat(" ", modIndent)
-	var lines []string
-	for _, l := range v.page.unitLines(w - (contentCol - modIndent)) {
-		lines = append(lines, strings.TrimPrefix(l, ind))
-	}
-	t := v.e.trial
-	where := v.e.biome + ui.G.Sep + ui.RatingBand(t.IntegBand[0], t.IntegBand[1])
-	if n := v.e.short(); n > 0 {
-		lines = append(lines, fmt.Sprintf("+  %d topped up from the catalog%s%s", n, ui.G.Sep, where))
-	}
-	lines = append(lines, "+  "+units.Plural(integrationDoors, "blind integration door")+ui.G.Sep+where)
-	lines = append(lines, v.page.passLine())
-
-	at := v.last()
-	out := []string{v.row(at, "TRIAL", lines[0])}
-	for _, l := range lines[1:] {
-		out = append(out, strings.Repeat(" ", contentCol)+l)
-	}
-	return out
 }
 
 // footLines is the level's foot: the shortcuts it opens, SEE ALSO (its
@@ -494,8 +669,9 @@ func (v *Level) footLines(w int) []string {
 	if len(v.prereq) > 0 {
 		req = strings.Join(v.prereq, ui.Muted.Render(ui.G.Sep))
 	}
-	see := wrap(ui.Muted.Render("needs ")+req, contentCol, w)
-	see[0] = " " + ui.Fit(ui.Strong.Render("SEE ALSO"), contentCol-1) + strings.TrimLeft(see[0], " ")
+	const labelW = 10
+	see := wrap(ui.Muted.Render("needs ")+req, 1+labelW, w)
+	see[0] = " " + ui.Fit(ui.Strong.Render("SEE ALSO"), labelW) + strings.TrimLeft(see[0], " ")
 	out = append(out, see...)
 	for _, l := range wrap(v.e.mod.Attribution(), 0, text) {
 		out = append(out, ui.Muted.Render(l))
@@ -506,14 +682,11 @@ func (v *Level) footLines(w int) []string {
 // statusBar is the pager's bar, as on the module page: the level on the
 // left, its keys on the right.
 func (v *Level) statusBar(w int) string {
-	keys := []string{"j/k", "move", "enter", "go", "r", "read", "p", "practice"}
-	if v.library() {
-		keys[len(keys)-1] = "examples"
-	}
+	keys := []string{"hjkl", "move", "enter", "go", "n", "next", "r", "read"}
 	if v.hasTrial() {
 		keys = append(keys, "t", "trial")
 	}
-	if it, ok := v.item(); ok && !it.playable() && it.url != "" {
+	if v.cur >= 0 && v.nodes[v.cur].url != "" {
 		keys = append(keys, "o", "open problem")
 	} else if v.e.mod.URL != "" {
 		keys = append(keys, "o", "usaco.guide")

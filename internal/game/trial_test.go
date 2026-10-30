@@ -16,20 +16,18 @@ import (
 // ps is a prefix-sums problem id in trialPool.
 func ps(rating int) catalog.ID { return catalog.ID(fmt.Sprintf("ps:%d", rating)) }
 
-// trialPool has prefix-sums problems at chosen ratings, so the draws of a
-// Silver trial (band 1350..1650) are determined: in the band only 1400 and
-// 1600 are free once the unit takes 1300 and 1500; past it 1700 is within
-// the first window and 1200 within the second. Off-topic problems in the
-// band, and filler, must lose to all of them.
+// trialPool has prefix-sums problems 200 apart, so each of silverTrial's
+// aims has one within the narrowest window and the draws are determined.
+// Off-topic problems on the aims, and filler, must lose to them.
 func trialPool() []catalog.Problem {
 	var pool []catalog.Problem
-	for _, r := range []int{1200, 1300, 1400, 1500, 1600, 1700, 2400} {
+	for _, r := range []int{1200, 1400, 1600, 1800, 2400} {
 		pool = append(pool, catalog.Problem{ID: ps(r), Title: fmt.Sprint("PS ", r), Topic: "prefix-sums", Rating: r, Judgeable: true})
 	}
 	pool = append(pool,
-		catalog.Problem{ID: "ps:unjudgeable", Topic: "prefix-sums", Rating: 1450},
-		catalog.Problem{ID: "dp:1500", Topic: "dp", Rating: 1500, Judgeable: true},
-		catalog.Problem{ID: "dp:1550", Topic: "dp", Rating: 1550, Judgeable: true},
+		catalog.Problem{ID: "ps:unjudgeable", Topic: "prefix-sums", Rating: 1700},
+		catalog.Problem{ID: "dp:1400", Topic: "dp", Rating: 1400, Judgeable: true},
+		catalog.Problem{ID: "dp:1700", Topic: "dp", Rating: 1700, Judgeable: true},
 	)
 	return append(pool, dense([]string{"simulation"}, 800, 2600, 100)...)
 }
@@ -37,10 +35,7 @@ func trialPool() []catalog.Problem {
 func silverTrial() game.TrialSpec {
 	return game.TrialSpec{
 		Module: "prefix-sums", Title: "Introduction to Prefix Sums",
-		// Out of rating order (the module's own order wins), with an id
-		// the pool lacks, an unjudgeable one and a repeat.
-		Unit:       []catalog.ID{ps(1500), "usaco:404", "ps:unjudgeable", ps(1300), ps(1500)},
-		IntegTopic: "prefix-sums", IntegBand: [2]int{1350, 1650},
+		Topic: "prefix-sums", Band: [2]int{1350, 1650}, Targets: []int{1400, 1600, 1700},
 		Capability: game.CapabilityFor("prefix-sums"),
 	}
 }
@@ -58,48 +53,77 @@ func newTrial(t *testing.T, r rules.Rules, m *game.Meta, spec game.TrialSpec, se
 	return &harness{t: t, s: s, m: m, ps: pool, now: t0, fx: fx}
 }
 
-// wideTrial is rules.Trial with a unit of 4 and 2 blind doors, so
-// silverTrial's unit of two is topped up and the integration draw runs
-// out of the band.
-func wideTrial() rules.Rules {
-	r := rules.Trial()
-	r.Biomes[0].Rooms, r.Biomes[1].Rooms = 4, 2
-	return r
-}
-
+// TestNewTrialLayout: one room per target, each door the on-topic problem
+// nearest its aim, every door blind.
 func TestNewTrialLayout(t *testing.T) {
 	t.Parallel()
 	for seed := range uint64(10) {
-		h := newTrial(t, wideTrial(), nil, silverTrial(), seed)
+		h := newTrial(t, rules.Trial(), nil, silverTrial(), seed)
 		s, m := h.s, h.m
-		tr := s.Trial
-		// Top-ups 1400 and 1600 merge into 1500, 1300 by rating without
-		// reordering the module's two.
-		if want := []catalog.ID{ps(1400), ps(1500), ps(1300), ps(1600)}; !slices.Equal(tr.Plan[0], want) {
-			t.Fatalf("seed %d: unit %v, want %v", seed, tr.Plan[0], want)
+		if got, want := slices.Concat(s.Trial.Plan...), []catalog.ID{ps(1400), ps(1600), ps(1800)}; !slices.Equal(got, want) {
+			t.Fatalf("seed %d: doors %v, want %v", seed, got, want)
 		}
-		if want := []catalog.ID{ps(1400), ps(1600)}; !slices.Equal(tr.TopUp, want) {
-			t.Errorf("top-ups %v, want %v", tr.TopUp, want)
-		}
-		// On topic beats in band: 1700 and 1200, not dp:1500.
-		if got := slices.Sorted(slices.Values(tr.Plan[1])); !slices.Equal(got, []catalog.ID{ps(1200), ps(1700)}) {
-			t.Errorf("integration %v, want ps:1200 and ps:1700", tr.Plan[1])
-		}
-		if len(s.Biomes) != 2 || s.Biomes[0].Rooms != 4 || s.Biomes[1].Rooms != 2 ||
-			s.Rules.Biomes[0].Rooms != 4 || s.Rules.Biomes[1].Rooms != 2 ||
-			s.Biomes[0].Name != "unit" || s.Biomes[1].Name != "integration" || s.Biomes[0].Topic != "prefix-sums" {
-			t.Errorf("biomes %+v, rules biomes %+v", s.Biomes, s.Rules.Biomes)
+		if len(s.Biomes) != 1 || s.Biomes[0].Rooms != 3 || s.Biomes[0].Name != "trial" || s.Biomes[0].Topic != "prefix-sums" {
+			t.Errorf("biomes %+v", s.Biomes)
 		}
 		if s.Boot != 1 || m.Boots != 1 || s.Prestige != 0 || s.Phase != game.PhaseDoors || len(s.Doors) != 1 {
 			t.Fatalf("boot %d/%d prestige %d phase %s doors %d", s.Boot, m.Boots, s.Prestige, s.Phase, len(s.Doors))
 		}
-		d := s.Doors[0]
-		if d.Problem != ps(1400) || d.Blind || d.Mystery || d.Cursed || d.Tier != "" {
-			t.Errorf("first door %+v, want ps:1400 with tags shown and no tier", d)
+		if d := s.Doors[0]; d.Problem != ps(1400) || !d.Blind || d.Mystery || d.Cursed || d.Tier != "" {
+			t.Errorf("first door %+v, want ps:1400, blind, no tier", d)
 		}
-		pf, ok := has[game.Prefetch](h.fx)
-		if !ok || len(pf.Problems) != 6 {
+		if pf, ok := has[game.Prefetch](h.fx); !ok || len(pf.Problems) != 3 {
 			t.Errorf("effects %v, want a Prefetch of the whole plan first", h.fx)
+		}
+	}
+}
+
+// TestTrialAims: with no targets the doors spread over the band; an aim
+// the topic cannot reach within every window gives up the topic for the
+// rating.
+func TestTrialAims(t *testing.T) {
+	t.Parallel()
+	spread := silverTrial()
+	spread.Targets = nil
+	far := silverTrial()
+	far.Targets = []int{1400, 1600, 3000}
+	for _, tc := range []struct {
+		name string
+		spec game.TrialSpec
+		want func(ids []catalog.ID) bool
+	}{
+		// 1350, 1500, 1650.
+		{"spread over the band", spread, func(ids []catalog.ID) bool {
+			return slices.Equal(ids, []catalog.ID{ps(1400), ps(1600), ps(1800)})
+		}},
+		// 3000: ps:2400 is 600 off, past the widest window; the filler at
+		// 2500 and 2600 is within it.
+		{"far aim", far, func(ids []catalog.ID) bool {
+			return slices.Equal(ids[:2], []catalog.ID{ps(1400), ps(1600)}) &&
+				(ids[2] == "t:simulation:2500" || ids[2] == "t:simulation:2600")
+		}},
+	} {
+		for seed := range uint64(10) {
+			got := slices.Concat(newTrial(t, rules.Trial(), nil, tc.spec, seed).s.Trial.Plan...)
+			if !tc.want(got) {
+				t.Errorf("%s, seed %d: doors %v", tc.name, seed, got)
+			}
+		}
+	}
+}
+
+// TestTrialSkipsSolved: a trial door is one the player has not solved,
+// with help or without. ps:1600 was solved with the editorial, so its aim
+// takes ps:1800, a window out, and the last aim, 1700, passes over it for
+// ps:1200, two windows out: a solved door waits behind every unsolved one
+// on the topic in reach.
+func TestTrialSkipsSolved(t *testing.T) {
+	t.Parallel()
+	for seed := range uint64(10) {
+		m := &game.Meta{Solves: []game.Solve{{Problem: ps(1600), Kind: game.Editorial}}}
+		tr := newTrial(t, rules.Trial(), m, silverTrial(), seed).s.Trial
+		if got, want := slices.Concat(tr.Plan...), []catalog.ID{ps(1400), ps(1800), ps(1200)}; !slices.Equal(got, want) {
+			t.Fatalf("seed %d: doors %v, want %v", seed, got, want)
 		}
 	}
 }
@@ -107,9 +131,9 @@ func TestNewTrialLayout(t *testing.T) {
 func TestNewTrialErrors(t *testing.T) {
 	t.Parallel()
 	choice := rules.Trial()
-	choice.Biomes[1].Kind, choice.Biomes[1].Choices = rules.Choice, 2
+	choice.Biomes[0].Kind, choice.Biomes[0].Choices = rules.Choice, 2
 	empty := silverTrial()
-	empty.IntegBand = [2]int{1650, 1350}
+	empty.Band = [2]int{1650, 1350}
 	tiny := []catalog.Problem{{ID: "only", Topic: "dp", Rating: 1500, Judgeable: true}}
 	tests := []struct {
 		name string
@@ -135,29 +159,18 @@ func TestNewTrialErrors(t *testing.T) {
 	}
 }
 
-// clearTrial ACs every door of a trial, committing at the merge window.
+// clearTrial ACs every door of a trial: one biome, so no merge window
+// comes between them.
 func clearTrial(h *harness) {
 	h.t.Helper()
 	for h.s.Phase != game.PhaseCleared {
-		switch h.s.Phase {
-		case game.PhaseDoors:
-			h.clearDoor(0, 10*time.Minute)
-		case game.PhaseMerge:
-			h.pick()
-			if len(h.s.DaemonOffers) != 0 {
-				h.t.Fatalf("a trial offered daemons %v", h.s.DaemonOffers)
-			}
-			h.do(game.Commit{})
-			h.do(game.LeaveMerge{})
-			if d := h.s.Doors[0]; !d.Blind || d.Mystery || d.Cursed {
-				h.t.Fatalf("integration door %+v, want blind only", d)
-			}
-			if n := h.s.LostRoomsLeft(); n != 0 {
-				h.t.Fatalf("a blind door with %d rooms left to lose, want none: only the unit's go", n)
-			}
-		default:
+		if h.s.Phase != game.PhaseDoors {
 			h.t.Fatalf("phase %s in a trial", h.s.Phase)
 		}
+		if d := h.s.Doors[0]; !d.Blind || d.Mystery || d.Cursed {
+			h.t.Fatalf("door %+v, want blind only", d)
+		}
+		h.clearDoor(0, 10*time.Minute)
 	}
 }
 
@@ -213,22 +226,24 @@ func TestTrialFail(t *testing.T) {
 		fail  func(h *harness)
 		cause game.Outcome
 	}{
-		// One unit room lost, the second :q! ends it.
-		{"a second :q! in the unit", false, func(h *harness) {
+		// One room lost, the second :q! ends it.
+		{"a second :q!", false, func(h *harness) {
 			h.open(0)
 			h.do(game.GiveUp{})
 			h.open(0)
 			h.do(game.GiveUp{})
 		}, game.GaveUp},
-		// The unit room left to lose does not cover a blind door.
-		{":q! on the blind door", true, func(h *harness) {
+		{"a :q! after a clear and a loss", true, func(h *harness) {
 			h.do(game.GiveUp{})
-			h.pick()
-			h.do(game.LeaveMerge{})
 			h.open(0)
 			h.do(game.GiveUp{})
 		}, game.GaveUp},
-		{"out of lives", true, func(h *harness) { h.do(wa); h.do(wa); h.do(wa) }, game.OutOfLives},
+		// However many cycles the upgrade picks left.
+		{"out of lives", true, func(h *harness) {
+			for n := 0; h.s.Phase == game.PhaseProblem && n < 20; n++ {
+				h.do(wa)
+			}
+		}, game.OutOfLives},
 	}
 	for _, tc := range tests {
 		dump := game.CoreDump{Problem: "usaco:1", Bytes: 300, Boot: 7}
@@ -257,54 +272,43 @@ func TestTrialFail(t *testing.T) {
 	}
 }
 
-// TestTrialLosesRooms: a :q! loses its unit room, paid nothing and rated
-// as failed, and the trial goes on to the next room or the merge window.
-// Losing TrialLostRooms rooms still passes.
+// TestTrialLosesRooms: a :q! loses its room, paid nothing and rated as
+// failed, and the trial goes on to the next room, or passes after the
+// last. Losing TrialLostRooms rooms, any of them, still passes.
 func TestTrialLosesRooms(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		name string
-		lose []int // the doors, in plan order, given up
-	}{
-		{"the first", []int{0}},
-		{"the unit's last, then the merge window", []int{1}},
-	}
-	for _, tc := range tests {
+	for lose := range 3 {
 		m := &game.Meta{}
 		h := newTrial(t, rules.Trial(), m, silverTrial(), 1)
 		var lost []catalog.ID
-		for door := 0; h.s.Phase != game.PhaseCleared; {
-			switch h.s.Phase {
-			case game.PhaseDoors:
-				if !slices.Contains(tc.lose, door) {
-					h.clearDoor(0, 10*time.Minute)
-					door++
-					continue
-				}
-				d := h.open(0)
-				rating := m.Rating
-				h.do(game.GiveUp{})
-				lost = append(lost, d.Problem)
-				if m.Rating >= rating {
-					t.Errorf("%s: %s given up, rating %.0f -> %.0f, want it rated as failed", tc.name, d.Problem, rating, m.Rating)
-				}
-				if _, ok := has[game.CloseProblem](h.fx); !ok || h.s.Crash != nil {
-					t.Fatalf("%s: :q! on door %d: effects %v, crash %+v", tc.name, door, h.fx, h.s.Crash)
-				}
-				door++
-			case game.PhaseMerge:
-				h.pick()
-				h.do(game.LeaveMerge{})
-			default:
-				t.Fatalf("%s: phase %s", tc.name, h.s.Phase)
+		for door := 0; h.s.Phase != game.PhaseCleared; door++ {
+			if h.s.Phase != game.PhaseDoors {
+				t.Fatalf("door %d: phase %s", lose, h.s.Phase)
+			}
+			if door != lose {
+				h.clearDoor(0, 10*time.Minute)
+				continue
+			}
+			if n := h.s.LostRoomsLeft(); n != 1 {
+				t.Fatalf("door %d: %d rooms left to lose, want 1", door, n)
+			}
+			d := h.open(0)
+			rating := m.Rating
+			h.do(game.GiveUp{})
+			lost = append(lost, d.Problem)
+			if m.Rating >= rating {
+				t.Errorf("door %d: %s given up, rating %.0f -> %.0f, want it rated as failed", lose, d.Problem, rating, m.Rating)
+			}
+			if _, ok := has[game.CloseProblem](h.fx); !ok || h.s.Crash != nil {
+				t.Fatalf("door %d: :q!: effects %v, crash %+v", lose, h.fx, h.s.Crash)
 			}
 		}
 		s := h.s
-		if !s.Trial.Passed || s.Trial.Lost != len(tc.lose) || s.Trial.Granted != "CAP_PREFIX" {
-			t.Errorf("%s: trial %+v, want passed with %d lost", tc.name, s.Trial, len(tc.lose))
+		if !s.Trial.Passed || s.Trial.Lost != 1 || s.Trial.Granted != "CAP_PREFIX" {
+			t.Errorf("door %d lost: trial %+v, want passed with 1 lost", lose, s.Trial)
 		}
-		if len(m.Solves) != 3-len(tc.lose) || len(m.Regressions) != 0 {
-			t.Errorf("%s: %d solves, regressions %v; want %d and none", tc.name, len(m.Solves), m.Regressions, 3-len(tc.lose))
+		if len(m.Solves) != 2 || len(m.Regressions) != 0 {
+			t.Errorf("door %d lost: %d solves, regressions %v; want 2 and none", lose, len(m.Solves), m.Regressions)
 		}
 		var gaveUp []catalog.ID
 		for _, a := range s.History {
@@ -313,7 +317,7 @@ func TestTrialLosesRooms(t *testing.T) {
 			}
 		}
 		if !slices.Equal(gaveUp, lost) {
-			t.Errorf("%s: history gave up %v, want %v", tc.name, gaveUp, lost)
+			t.Errorf("door %d lost: history gave up %v, want %v", lose, gaveUp, lost)
 		}
 	}
 }

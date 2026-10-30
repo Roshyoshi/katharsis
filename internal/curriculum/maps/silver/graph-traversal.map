@@ -1,0 +1,11 @@
+# Graph Traversal (Silver › Graphs)
+# Components and threshold lanes join at Wormhole Sort; two-colouring ends
+# at Revegetation, which also counts components.
+core  usaco-944 > usaco-644 > usaco-992  # label components, then as a check
+core  usaco-668 > usaco-669 > usaco-992  # edges by a threshold; search it
+core  cf-862B > usaco-920                # two-colour, then every component
+core  usaco-944 > usaco-920              # count components, two ways each
+
+side  usaco-668 > usaco-1206            # DFS from every vertex, now mutual
+side  usaco-668 > usaco-1304            # directed search, each flight once
+side  usaco-944 > usaco-1159 > cf-920E  # components plus a sorted structure
