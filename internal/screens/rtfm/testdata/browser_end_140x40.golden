@@ -4,20 +4,20 @@ RTFM(7)                                                USACO Guide · CC BY-NC-S
        Fast Input & Output                   Userland                          -
 ▾ BRONZE                                                                                 2 modules
    ▾ Additional
-       Casework                              Userland                          4 doors        ★★☆☆
+       Casework                              Userland                          2 doors        ★★☆☆
    ▾ Conclusion
-       Additional Practice for USACO Bronze  Userland                          4 doors
+       Additional Practice for USACO Bronze  Userland                          2 doors
 ▾ SILVER                                                                         2 modules · ■ 1/2
    ▾ Prefix Sums
-       Introduction to Prefix Sums           The Accumulator     □ CAP_PREFIX  4 doors        ★★★★
+       Introduction to Prefix Sums           The Accumulator     □ CAP_PREFIX  2 doors        ★★★★
    ▾ Sorting & Searching
-       Two Pointers                          The Sliding Window  ■ CAP_TWOPTR  4 doors        ★★☆☆
+       Two Pointers                          The Sliding Window  ■ CAP_TWOPTR  2 doors        ★★☆☆
 ▾ GOLD                                                                            1 module · ■ 0/1
    ▾ Additional Topics
-       (Optional) Hashmaps                   The Heap            □ CAP_DS      1+3 topped up  ★☆☆☆
+       (Optional) Hashmaps                   The Heap            □ CAP_DS      1+1 topped up  ★☆☆☆
 ▾ PLATINUM                                                                                1 module
    ▾ Misc. Topics
-       Matrix Exponentiation                 The ALU                           1+3 topped up  ★☆☆☆
+       Matrix Exponentiation                 The ALU                           1+1 topped up  ★☆☆☆
 ▾ ADVANCED                                                                        1 module · ■ 0/1
    ▾ Data Structures
        Counting Minimums with Segment Tree   The Heap            □ CAP_DS      -              ☆☆☆☆

@@ -5,20 +5,20 @@ RTFM(7)                  USACO Guide · CC BY-NC-SA 4.0                   RTFM(7
        Fast Input & Output               Userland                          -
 ▾ BRONZE                                                               2 modules
    ▾ Additional
-       Casework                          Userland                          4
+       Casework                          Userland                          2
    ▾ Conclusion
-       Additional Practice for USACO B…  Userland                          4
+       Additional Practice for USACO B…  Userland                          2
 ▾ SILVER                                                       2 modules · ■ 1/2
    ▾ Prefix Sums
-       Introduction to Prefix Sums       The Accumulator     □ CAP_PREFIX  4
+       Introduction to Prefix Sums       The Accumulator     □ CAP_PREFIX  2
    ▾ Sorting & Searching
-       Two Pointers                      The Sliding Window  ■ CAP_TWOPTR  4
+       Two Pointers                      The Sliding Window  ■ CAP_TWOPTR  2
 ▾ GOLD                                                          1 module · ■ 0/1
    ▾ Additional Topics
-       (Optional) Hashmaps               The Heap            □ CAP_DS      1+3
+       (Optional) Hashmaps               The Heap            □ CAP_DS      1+1
 ▾ PLATINUM                                                              1 module
    ▾ Misc. Topics
-       Matrix Exponentiation             The ALU                           1+3
+       Matrix Exponentiation             The ALU                           1+1
 ▾ ADVANCED                                                      1 module · ■ 0/1
    ▾ Data Structures
  rtfm(7) line 1/38 · ■ 1/3 held       enter open · tab fold · / filter · q quit

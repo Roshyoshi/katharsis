@@ -58,10 +58,19 @@ func newTrial(t *testing.T, r rules.Rules, m *game.Meta, spec game.TrialSpec, se
 	return &harness{t: t, s: s, m: m, ps: pool, now: t0, fx: fx}
 }
 
+// wideTrial is rules.Trial with a unit of 4 and 2 blind doors, so
+// silverTrial's unit of two is topped up and the integration draw runs
+// out of the band.
+func wideTrial() rules.Rules {
+	r := rules.Trial()
+	r.Biomes[0].Rooms, r.Biomes[1].Rooms = 4, 2
+	return r
+}
+
 func TestNewTrialLayout(t *testing.T) {
 	t.Parallel()
 	for seed := range uint64(10) {
-		h := newTrial(t, rules.Trial(), nil, silverTrial(), seed)
+		h := newTrial(t, wideTrial(), nil, silverTrial(), seed)
 		s, m := h.s, h.m
 		tr := s.Trial
 		// Top-ups 1400 and 1600 merge into 1500, 1300 by rating without
@@ -143,6 +152,9 @@ func clearTrial(h *harness) {
 			if d := h.s.Doors[0]; !d.Blind || d.Mystery || d.Cursed {
 				h.t.Fatalf("integration door %+v, want blind only", d)
 			}
+			if n := h.s.LostRoomsLeft(); n != 0 {
+				h.t.Fatalf("a blind door with %d rooms left to lose, want none: only the unit's go", n)
+			}
 		default:
 			h.t.Fatalf("phase %s in a trial", h.s.Phase)
 		}
@@ -181,8 +193,8 @@ func TestTrialPass(t *testing.T) {
 		if _, ok := has[game.ShowCleared](h.fx); !ok {
 			t.Errorf("%s: effects %v", tc.name, h.fx)
 		}
-		if len(m.Solves) != 6 || slices.ContainsFunc(m.Solves, func(x game.Solve) bool { return !x.Trial }) {
-			t.Errorf("%s: solves %+v, want 6 trial solves", tc.name, m.Solves)
+		if len(m.Solves) != 3 || slices.ContainsFunc(m.Solves, func(x game.Solve) bool { return !x.Trial }) {
+			t.Errorf("%s: solves %+v, want 3 trial solves", tc.name, m.Solves)
 		}
 		if s.Committed != s.Earned() || m.Bank != s.Earned() {
 			t.Errorf("%s: committed %d bank %d earned %d", tc.name, s.Committed, m.Bank, s.Earned())
@@ -197,18 +209,35 @@ func TestTrialFail(t *testing.T) {
 	wa := game.SubmitResult{Verdict: "WA", Passed: 1, Total: 10}
 	tests := []struct {
 		name  string
+		clear bool // clear the first door, then open the second
 		fail  func(h *harness)
 		cause game.Outcome
 	}{
-		{":q!", func(h *harness) { h.do(game.GiveUp{}) }, game.GaveUp},
-		{"out of lives", func(h *harness) { h.do(wa); h.do(wa); h.do(wa) }, game.OutOfLives},
+		// One unit room lost, the second :q! ends it.
+		{"a second :q! in the unit", false, func(h *harness) {
+			h.open(0)
+			h.do(game.GiveUp{})
+			h.open(0)
+			h.do(game.GiveUp{})
+		}, game.GaveUp},
+		// The unit room left to lose does not cover a blind door.
+		{":q! on the blind door", true, func(h *harness) {
+			h.do(game.GiveUp{})
+			h.pick()
+			h.do(game.LeaveMerge{})
+			h.open(0)
+			h.do(game.GiveUp{})
+		}, game.GaveUp},
+		{"out of lives", true, func(h *harness) { h.do(wa); h.do(wa); h.do(wa) }, game.OutOfLives},
 	}
 	for _, tc := range tests {
 		dump := game.CoreDump{Problem: "usaco:1", Bytes: 300, Boot: 7}
 		m := &game.Meta{CoreDump: &dump}
 		h := newTrial(t, rules.Trial(), m, silverTrial(), 1)
-		h.clearDoor(0, 10*time.Minute)
-		h.open(0)
+		if tc.clear {
+			h.clearDoor(0, 10*time.Minute)
+			h.open(0)
+		}
 		earned := h.s.Earned()
 		tc.fail(h)
 		s := h.s
@@ -224,6 +253,67 @@ func TestTrialFail(t *testing.T) {
 		_, ed := has[game.OpenEditorial](h.fx)
 		if ed != (tc.cause == game.GaveUp) {
 			t.Errorf("%s: editorial opened %v", tc.name, ed)
+		}
+	}
+}
+
+// TestTrialLosesRooms: a :q! loses its unit room, paid nothing and rated
+// as failed, and the trial goes on to the next room or the merge window.
+// Losing TrialLostRooms rooms still passes.
+func TestTrialLosesRooms(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		lose []int // the doors, in plan order, given up
+	}{
+		{"the first", []int{0}},
+		{"the unit's last, then the merge window", []int{1}},
+	}
+	for _, tc := range tests {
+		m := &game.Meta{}
+		h := newTrial(t, rules.Trial(), m, silverTrial(), 1)
+		var lost []catalog.ID
+		for door := 0; h.s.Phase != game.PhaseCleared; {
+			switch h.s.Phase {
+			case game.PhaseDoors:
+				if !slices.Contains(tc.lose, door) {
+					h.clearDoor(0, 10*time.Minute)
+					door++
+					continue
+				}
+				d := h.open(0)
+				rating := m.Rating
+				h.do(game.GiveUp{})
+				lost = append(lost, d.Problem)
+				if m.Rating >= rating {
+					t.Errorf("%s: %s given up, rating %.0f -> %.0f, want it rated as failed", tc.name, d.Problem, rating, m.Rating)
+				}
+				if _, ok := has[game.CloseProblem](h.fx); !ok || h.s.Crash != nil {
+					t.Fatalf("%s: :q! on door %d: effects %v, crash %+v", tc.name, door, h.fx, h.s.Crash)
+				}
+				door++
+			case game.PhaseMerge:
+				h.pick()
+				h.do(game.LeaveMerge{})
+			default:
+				t.Fatalf("%s: phase %s", tc.name, h.s.Phase)
+			}
+		}
+		s := h.s
+		if !s.Trial.Passed || s.Trial.Lost != len(tc.lose) || s.Trial.Granted != "CAP_PREFIX" {
+			t.Errorf("%s: trial %+v, want passed with %d lost", tc.name, s.Trial, len(tc.lose))
+		}
+		if len(m.Solves) != 3-len(tc.lose) || len(m.Regressions) != 0 {
+			t.Errorf("%s: %d solves, regressions %v; want %d and none", tc.name, len(m.Solves), m.Regressions, 3-len(tc.lose))
+		}
+		var gaveUp []catalog.ID
+		for _, a := range s.History {
+			if a.Outcome == game.GaveUp {
+				gaveUp = append(gaveUp, a.Door.Problem)
+			}
+		}
+		if !slices.Equal(gaveUp, lost) {
+			t.Errorf("%s: history gave up %v, want %v", tc.name, gaveUp, lost)
 		}
 	}
 }

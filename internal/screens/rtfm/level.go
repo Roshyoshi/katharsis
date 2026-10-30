@@ -16,6 +16,7 @@ import (
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/ui"
+	"katharsis/internal/units"
 )
 
 // Level is what opens on a node of the RTFM map (.agents/work/rtfm-map-plan.md
@@ -69,7 +70,7 @@ func NewLevel(c *curriculum.Curriculum, l curriculum.Level, region string, m gam
 		mod = curriculum.Module{ID: l.Module, Title: l.Title, Frequency: -1}
 	}
 	caps := capSet(m)
-	e := newEntry(mod, judgeable)
+	e := newEntry(mod, judgeable, lookup)
 	v := &Level{
 		l: l, region: region, e: e, page: newModule(c, e, caps, slices.Contains(m.TrialsPassed, l.Module), lookup), caps: caps,
 		opened: slices.Contains(m.Opened, l.Module),
@@ -469,7 +470,7 @@ func (v *Level) trialLines(w int) []string {
 	if n := v.e.short(); n > 0 {
 		lines = append(lines, fmt.Sprintf("+  %d topped up from the catalog%s%s", n, ui.G.Sep, where))
 	}
-	lines = append(lines, fmt.Sprintf("+  %d blind integration doors%s%s", integrationDoors, ui.G.Sep, where))
+	lines = append(lines, "+  "+units.Plural(integrationDoors, "blind integration door")+ui.G.Sep+where)
 	lines = append(lines, v.page.passLine())
 
 	at := v.last()

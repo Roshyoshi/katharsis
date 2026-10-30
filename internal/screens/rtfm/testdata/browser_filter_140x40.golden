@@ -2,7 +2,7 @@ RTFM(7)                                                USACO Guide · CC BY-NC-S
        MODULE                                BIOME               CAPABILITY    TRIAL          FREQ
 ▾ SILVER                                                                         2 modules · ■ 1/2
    ▾ Sorting & Searching
-       Two Pointers                          The Sliding Window  ■ CAP_TWOPTR  4 doors        ★★☆☆
+       Two Pointers                          The Sliding Window  ■ CAP_TWOPTR  2 doors        ★★☆☆
 
 COLOPHON
        Learn mode content is adapted from the USACO Guide (https://usaco.guide,

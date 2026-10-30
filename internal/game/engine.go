@@ -322,7 +322,7 @@ func (e *engine) expire(watch bool) bool {
 // fail closes the open door with o (TimedOut or GaveUp): for its price
 // where it has one, else by crashing the boot.
 func (e *engine) fail(o Outcome) {
-	if !e.saveFail(o) && !e.kdump(o) {
+	if !e.saveFail(o) && !e.loseTrialRoom(o) && !e.kdump(o) {
 		e.crash(o, false)
 	}
 }

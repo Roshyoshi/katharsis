@@ -6,12 +6,10 @@ NAME
        indices satisfying some condition in linear time.
        Two Pointers. "I only took the regular course."
 
-TRIAL                         unit: Easy → Hard, tags shown · integration: blind
-       1  Paired Up           Easy       ◆1350  2017 US Open, Silver P1
-       2  Diamond Collector   Medium     ◆1500  2016 US Open, Silver P2
-       3  Sleepy Cow Herding  Medium
-       4  Cow Checkups        Hard
-       +  2 blind integration doors · The Sliding Window · ◆1350–1650
+TRIAL               unit: tags shown · integration: blind · pass: 1 of 2 + blind
+       1  Paired Up          Easy       ◆1350  2017 US Open, Silver P1
+       2  Diamond Collector  Medium     ◆1500  2016 US Open, Silver P2
+       +  1 blind integration door · The Sliding Window · ◆1350–1650
        ■  CAP_TWOPTR held: The Sliding Window is already on your routes
 
 SEE ALSO
@@ -21,4 +19,6 @@ SEE ALSO
 “Two Pointers” by Darren Yao, Qi Wang, Ryan Chou, David Zhou, USACO Guide
 (https://usaco.guide/silver/two-pointers), CC BY-NC-SA 4.0
 (https://creativecommons.org/licenses/by-nc-sa/4.0/); converted from MDX to
- two-pointers(7) line 1/22      r read · t start trial · o usaco.guide · q back
+Markdown.
+
+ line 1/20 (END)                r read · t start trial · o usaco.guide · q back

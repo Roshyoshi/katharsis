@@ -381,8 +381,8 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 	// Each attempt records the biome its door opened in, which is where
 	// walking the attempts through the rooms puts it (a clear moves on a
 	// room, and so does a door failed for cycles where the room is lost,
-	// rules.FailMoveOn; a skipped tier has no room), and the open door is
-	// in the current biome.
+	// rules.FailMoveOn, or a trial's :q! that loses its room; a skipped
+	// tier has no room), and the open door is in the current biome.
 	biome, room := 0, 0
 	last := len(s.Biomes) - 1
 	for i, h := range s.History {
@@ -392,7 +392,8 @@ func (c *checker) check(s *game.State, m *game.Meta, a game.Action, err error) {
 		// kdump's capture goes on from a crash, out of cycles included.
 		failed := (h.Outcome == game.TimedOut || h.Outcome == game.GaveUp || h.Outcome == game.OutOfLives && s.Kdumped) &&
 			(s.Crash == nil || i < len(s.History)-1)
-		lost := failed && s.Rules.FailMoveOn && s.Biomes[biome].Kind != rules.Boss && (room+1 < s.Biomes[biome].Rooms || biome < last)
+		lost := failed && s.Rules.FailMoveOn && s.Biomes[biome].Kind != rules.Boss && (room+1 < s.Biomes[biome].Rooms || biome < last) ||
+			failed && s.Trial != nil
 		if h.Outcome == game.Cleared || lost {
 			for room++; room >= s.Biomes[biome].Rooms && biome < last; {
 				biome, room = biome+1, 0
@@ -556,10 +557,15 @@ func (c *checker) checkEase(s *game.State, m *game.Meta, a game.Action, err erro
 			fail("door %+v bought back without a floor easing %+v", d, s.Ease)
 		}
 	}
+	lost := 0 // a trial's rooms lost to :q!, the unit's only
 	for i, h := range s.History {
 		end := i == len(s.History)-1 && s.Crash != nil
 		failed := h.Outcome == game.TimedOut || h.Outcome == game.GaveUp
 		priced := s.Rules.Biomes[h.Biome].FailCycles > 0 || h.Outcome == game.TimedOut && s.Rules.Biomes[h.Biome].TimeoutLife
+		if s.Trial != nil && h.Outcome == game.GaveUp && !end {
+			lost++
+			priced = h.Biome == 0 && lost <= s.Rules.TrialLostRooms
+		}
 		if failed && !end && !priced {
 			fail("door %+v %s in biome %d, which has no price for it, and the boot went on", h.Door, h.Outcome, h.Biome)
 		}

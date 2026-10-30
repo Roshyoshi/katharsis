@@ -88,7 +88,7 @@ for two more picks. The full roster and its numbers:
 | `:Debug [n]` | lldb on sample n, stopped at `main` (any test with the `strace` daemon) |
 | `:Quack` | rubber duck: first the tags, then the technique |
 | `:Retreat` | swap the door for 5 cycles (`kexec`: free once an act), only in its first 2:30 |
-| `:q!` | give up, after a confirmation: burns the act's price (10, 12, 15; a boss 20 and a new boss door), the room is lost and the boot goes on; The Halting Problem is one shot |
+| `:q!` | give up, after a confirmation: burns the act's price (10, 12, 15; a boss 20 and a new boss door), the room is lost and the boot goes on; The Halting Problem is one shot. In an RTFM trial it loses a unit room, no cycles: a trial passes with the blind door and 1 of its 2 unit doors, so a second `:q!`, or one on the blind door, ends it |
 
 **Keys:**
 

@@ -8,12 +8,12 @@ RTFM / Silver / Sorting & Searching / Two Pointers                [x] CAP_TWOPTR
                  Cow Checkups               Silver   Hard
              +   Paired Up                  Silver   Easy       *1350
                * Sum of Two Values          CSES     Very Easy   link
-               * Books                      CF       Very Easy   link  +8 more
-   TRIAL     1  Paired Up           Easy       *1350  2017 US Open, Silver P1
-             2  Diamond Collector   Medium     *1500  2016 US Open, Silver P2
-             3  Sleepy Cow Herding  Medium
-             4  Cow Checkups        Hard
-             +  2 blind integration doors | The Sliding Window | *1350-1650
+               * Books                      CF       Very Easy   link
+                 Subarray Sums I            CSES     Very Easy   link
+               * Sum of Three Values        CSES     Easy        link  +6 more
+   TRIAL     1  Paired Up          Easy       *1350  2017 US Open, Silver P1
+             2  Diamond Collector  Medium     *1500  2016 US Open, Silver P2
+             +  1 blind integration door | The Sliding Window | *1350-1650
              [x]  CAP_TWOPTR held: The Sliding Window is already on your routes
  ^ also opens: Matrix Exponentiation (Platinum) | Counting Minimums with Segm...
  SEE ALSO    needs Introduction to Prefix Sums (Silver) + | Casework (Bronze)

@@ -5,12 +5,10 @@ NAME
        Dividing into multiple cases and solving for each one separately.
        "Casework," sighs the Mock Turtle. "We did it at sea."
 
-TRIAL                         unit: Easy → Hard, tags shown · integration: blind
-       1  Sleepy Cow Herding   Medium
-       2  Fence Painting       Medium
-       3  Social Distancing I  Medium
-       4  Leaders              Hard
-       +  2 blind integration doors · Userland · ◆1000–1300
+TRIAL               unit: tags shown · integration: blind · pass: 1 of 2 + blind
+       1  Sleepy Cow Herding  Medium
+       2  Leaders             Hard
+       +  1 blind integration door · Userland · ◆1000–1300
        ○  pass → ✓ only: grants no capability, Userland is open to every boot
 
 SEE ALSO
@@ -21,4 +19,6 @@ SEE ALSO
 CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/); converted
 from MDX to Markdown.
 
- casework(7) line 1/20 (END)    r read · t start trial · o usaco.guide · q back
+
+
+ casework(7) line 1/18 (END)    r read · t start trial · o usaco.guide · q back

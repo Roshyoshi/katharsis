@@ -523,8 +523,8 @@ func TestModulePlan(t *testing.T) {
 	// contests; then integration doors in the module's biome and band.
 	for _, want := range []string{
 		"1  Breed Counting", "Very Easy", "◆1250", "2015 December, Silver P3",
-		"4  Farmer John's Favorite Operation",
-		"+  2 blind integration doors · The Accumulator · ◆1350–1650",
+		"2  Subsequences Summing to Sevens",
+		"+  1 blind integration door · The Accumulator · ◆1350–1650",
 		"“Introduction to Prefix Sums” by Darren Yao, Dustin Miao, USACO Guide",
 		"RTFM › Silver › Prefix Sums",
 		"requires  nothing",
@@ -538,7 +538,7 @@ func TestModulePlan(t *testing.T) {
 	}
 
 	v = plain(module(t, "hashmaps").View(140, 40))
-	for _, want := range []string{"1  Farmer John Solves 3SUM", "+  3 topped up from the catalog · The Heap · ◆1700–2000"} {
+	for _, want := range []string{"1  Farmer John Solves 3SUM", "+  1 topped up from the catalog · The Heap · ◆1700–2000"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("hashmaps page lacks %q:\n%s", want, v)
 		}

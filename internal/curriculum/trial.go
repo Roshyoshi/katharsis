@@ -1,6 +1,7 @@
 package curriculum
 
 import (
+	"maps"
 	"slices"
 	"sort"
 
@@ -10,13 +11,13 @@ import (
 )
 
 // DefaultUnitSize is the number of unit doors in a module trial: the rooms
-// of rules.Trial's unit biome, its first (DESIGN.md "Learn mode": 4 doors
-// from the module list, Easy -> Hard). A shorter unit is the engine's to
+// of rules.Trial's unit biome, its first (DESIGN.md "Learn mode": 2 doors
+// from the module list, easiest first). A shorter unit is the engine's to
 // top up, so this is also the size the RTFM screens promise.
 var DefaultUnitSize = rules.Trial().Biomes[0].Rooms
 
 // Trial is the learn-mode challenge for one module: a unit of problems from
-// the module's own lists, then two blind integration doors the engine draws
+// the module's own lists, then a blind integration door the engine draws
 // from the catalog by topic and rating band.
 //
 // Every level of the atlas but a page has one (Kind.HasTrial). Most grant
@@ -57,9 +58,10 @@ func (t Trial) Spec() game.TrialSpec {
 
 // TrialFor builds the trial for m with DefaultUnitSize unit doors.
 // judgeable reports whether the catalog can serve and judge an ID; nil
-// accepts every reference CatalogID maps.
-func TrialFor(m Module, judgeable func(catalog.ID) bool) Trial {
-	return TrialForN(m, judgeable, DefaultUnitSize)
+// accepts every reference CatalogID maps. lookup gives the catalog's
+// problem, for its rating; nil knows none.
+func TrialFor(m Module, judgeable func(catalog.ID) bool, lookup func(catalog.ID) (catalog.Problem, bool)) Trial {
+	return TrialForN(m, judgeable, lookup, DefaultUnitSize)
 }
 
 type candidate struct {
@@ -83,7 +85,7 @@ func rankWithin(a, b candidate) bool {
 }
 
 // TrialForN picks up to n unit doors. Picking the n easiest would often
-// give four "Easy" problems; the unit should ramp like the module does, so
+// give two "Easy" problems; the unit should ramp like the module does, so
 // selection goes round-robin over difficulty labels from easiest up,
 // taking the best-ranked remaining problem of each label per round, and the
 // result is sorted by label.
@@ -95,7 +97,7 @@ func rankWithin(a, b candidate) bool {
 // integration doors from every topic (Mixed) at the division's band; and
 // no capability is granted. Nothing new is asked of the engine, so a castle
 // trial plays and replays as any other.
-func TrialForN(m Module, judgeable func(catalog.ID) bool, n int) Trial {
+func TrialForN(m Module, judgeable func(catalog.ID) bool, lookup func(catalog.ID) (catalog.Problem, bool), n int) Trial {
 	t := Trial{
 		Module:     m,
 		IntegTopic: m.Topic,
@@ -124,39 +126,45 @@ func TrialForN(m Module, judgeable func(catalog.ID) bool, n int) Trial {
 		}
 	}
 
-	byLabel := map[int][]candidate{}
-	var labels []int
+	t.Kind = levelKind(m.ID, m.Division, len(cands) > 0)
+
+	// The unit ramps Easy → Hard (DESIGN.md "Learn mode"). Its stretch
+	// fills a unit only when the module has too few others, as the
+	// module's own problems still beat the catalog's filler: the guide's
+	// Very Hard and Insane problems, and those the catalog rates past the
+	// division's band by more than the trial draw's narrowest rating
+	// window (a Gold problem on a Silver module's list). Over the full
+	// guide 11 of 105 units held one, which spent the trial's room to
+	// lose (rules.TrialLostRooms) before it began; 5 still do, for want of
+	// others. CSES ratings come from solver counts (catalog.ShowsRating),
+	// so they do not count against a problem.
+	over := t.IntegBand[1] + rules.Trial().RatingWindows[0]
+	past := func(id catalog.ID) bool {
+		if lookup == nil || !catalog.ShowsRating(id) {
+			return false
+		}
+		p, ok := lookup(id)
+		return ok && p.Rating > over
+	}
+	ramp, stretch := map[int][]candidate{}, map[int][]candidate{}
 	for _, c := range cands {
 		r := DifficultyRank(c.ref.Difficulty)
-		if _, ok := byLabel[r]; !ok {
-			labels = append(labels, r)
-		}
-		byLabel[r] = append(byLabel[r], c)
-	}
-	t.Kind = levelKind(m.ID, m.Division, len(cands) > 0)
-	sort.Ints(labels)
-	for _, r := range labels {
-		g := byLabel[r]
-		sort.SliceStable(g, func(i, j int) bool { return rankWithin(g[i], g[j]) })
-	}
-
-	// The unit ramps Easy → Hard (DESIGN.md "Learn mode"). The guide's Very
-	// Hard and Insane problems are its stretch: they fill a unit only when
-	// the module has too few others, as the module's own problems still
-	// beat the catalog's filler.
-	var ramp, stretch []int
-	for _, r := range labels {
-		if r == difficultyRank["Very Hard"] || r == difficultyRank["Insane"] {
-			stretch = append(stretch, r)
+		if r == difficultyRank["Very Hard"] || r == difficultyRank["Insane"] || past(c.ref.ID) {
+			stretch[r] = append(stretch[r], c)
 		} else {
-			ramp = append(ramp, r)
+			ramp[r] = append(ramp[r], c)
 		}
 	}
 	var picked []candidate
-	for _, pass := range [][]int{ramp, stretch} {
+	for _, byLabel := range []map[int][]candidate{ramp, stretch} {
+		labels := slices.Sorted(maps.Keys(byLabel))
+		for _, r := range labels {
+			g := byLabel[r]
+			sort.SliceStable(g, func(i, j int) bool { return rankWithin(g[i], g[j]) })
+		}
 		for len(picked) < n {
 			progress := false
-			for _, r := range pass {
+			for _, r := range labels {
 				if len(picked) == n {
 					break
 				}

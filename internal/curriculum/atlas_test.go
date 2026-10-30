@@ -139,7 +139,7 @@ func TestFullAtlasTrials(t *testing.T) {
 				topped++
 			}
 			m, _ := c.Module(l.Module)
-			tr := TrialFor(m, judgeable)
+			tr := TrialFor(m, judgeable, nil)
 			spec := tr.Spec()
 			switch {
 			case tr.Kind != l.Kind:

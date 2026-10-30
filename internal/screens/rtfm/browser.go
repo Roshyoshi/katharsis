@@ -94,7 +94,7 @@ func NewBrowser(c *curriculum.Curriculum, m game.Meta, judgeable Judgeable, look
 					if !ok || mod.Meta {
 						continue
 					}
-					e := newEntry(mod, judgeable)
+					e := newEntry(mod, judgeable, lookup)
 					cv.mods = append(cv.mods, e)
 					b.all = append(b.all, e)
 				}

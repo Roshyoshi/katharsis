@@ -743,6 +743,8 @@ type TrialState struct {
 	// TopUp lists the unit problems drawn from the pool because Unit was
 	// shorter than the trial rules' unit biome.
 	TopUp []catalog.ID
+	// Lost counts the rooms lost to :q! (rules.TrialLostRooms).
+	Lost int
 	// Passed is set on a clear; Granted is the capability it added to Meta
 	// ("" when Capability was empty or already held).
 	Passed  bool

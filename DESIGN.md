@@ -141,9 +141,11 @@ Quotes are matched to the cause of the crash and must have a known source.
 ```
 RTFM › Silver › Prefix Sums                         □ CAP_PREFIX
   read   USACO Guide module in the TUI (o = open in browser)
-  unit   4 doors from the module list, Easy→Hard, tags shown, soft timer
-  integ  2 blind doors at the same difficulty
-  pass   ■ CAP_PREFIX → topic biomes join route choices; lib unlocked
+  unit   2 doors from the module list, easiest first, tags shown, soft timer
+  integ  1 blind door at the same difficulty, drawn anew each try
+  pass   the blind door and 1 of 2: a :q! loses a unit room; a second,
+         or one on the blind door, ends the trial
+         ■ CAP_PREFIX → topic biomes join route choices; lib unlocked
 ```
 
 RTFM opens on a world map (D60, `.agents/work/rtfm-map-plan.md`): an
@@ -158,8 +160,11 @@ i opens the man index, which searches. n goes to the next trial in guide
 order not passed; a card shows the level's loop (read → practice →
 trial, ✓ as each is done). PRACTICE runs in the order to try it: the
 guide's ★ picks, then easiest by rating, the solved, then the stretch
-(Very Hard, Insane). A trial's unit ramps Easy → Hard; stretch problems
-fill it only when the module has too few others. General's problems are
+(Very Hard, Insane). A trial's unit ramps from the module's easiest
+label; stretch problems, and those the catalog rates over 100 past the
+division's band, fill it only when the module has too few others. Three
+doors, as a module is small: one to three focus problems and a median
+8 (Bronze) to 11 (Silver) playable on its list. General's problems are
 the pages' examples, not practice.
 
 ## Content

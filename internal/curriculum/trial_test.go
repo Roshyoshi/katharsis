@@ -47,21 +47,38 @@ func TestTrialUnit(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		judgeable func(catalog.ID) bool
+		rated     map[catalog.ID]int // the catalog's ratings; nil is no lookup
 		n         int
 		want      []catalog.ID
 	}{
 		// One per label, easiest labels first; within Easy the starred
 		// non-focus problem beats the focus problem; N/A sorts last.
-		{"default", nil, DefaultUnitSize, ids("usaco:5", "usaco:3", "cses:10", "usaco:7")},
+		{"default", nil, nil, DefaultUnitSize, ids("usaco:5", "usaco:3")},
+		{"four", nil, nil, 4, ids("usaco:5", "usaco:3", "cses:10", "usaco:7")},
 		// Insane (usaco:6) is stretch: in a unit only once the rest run out.
-		{"second round", nil, 7, ids("usaco:5", "usaco:3", "usaco:1", "cses:10", "usaco:7", "usaco:4", "usaco:8")},
-		{"judgeable filter", noCSES, 4, ids("usaco:5", "usaco:3", "usaco:7", "usaco:8")},
-		{"stretch last", func(id catalog.ID) bool { return id == "usaco:6" || id == "usaco:2" }, 4, ids("usaco:2", "usaco:6")},
-		{"everything, deduplicated", nil, 100, ids("usaco:5", "usaco:3", "usaco:1", "usaco:2", "cses:10", "usaco:7", "usaco:4", "usaco:6", "usaco:8")},
-		{"nothing judgeable", func(catalog.ID) bool { return false }, 4, nil},
+		{"second round", nil, nil, 7, ids("usaco:5", "usaco:3", "usaco:1", "cses:10", "usaco:7", "usaco:4", "usaco:8")},
+		{"judgeable filter", noCSES, nil, 4, ids("usaco:5", "usaco:3", "usaco:7", "usaco:8")},
+		{"stretch last", func(id catalog.ID) bool { return id == "usaco:6" || id == "usaco:2" }, nil, 4, ids("usaco:2", "usaco:6")},
+		{"everything, deduplicated", nil, nil, 100, ids("usaco:5", "usaco:3", "usaco:1", "usaco:2", "cses:10", "usaco:7", "usaco:4", "usaco:6", "usaco:8")},
+		{"nothing judgeable", func(catalog.ID) bool { return false }, nil, 4, nil},
+		// Silver's band tops at 1650 and the narrowest window is 100: a Hard
+		// problem rated past 1750 is stretch, and its label's next one
+		// takes its seat; at 1750 it stays.
+		{"rated past the band", nil, map[catalog.ID]int{"usaco:7": 1751}, 4, ids("usaco:5", "usaco:3", "cses:10", "usaco:4")},
+		{"at the window's edge", nil, map[catalog.ID]int{"usaco:7": 1750}, 4, ids("usaco:5", "usaco:3", "cses:10", "usaco:7")},
+		{"past the band, still before Insane", nil, map[catalog.ID]int{"usaco:7": 2400}, 8,
+			ids("usaco:5", "usaco:3", "usaco:1", "usaco:2", "cses:10", "usaco:7", "usaco:4", "usaco:8")},
+		{"CSES ratings are solver counts", nil, map[catalog.ID]int{"cses:10": 3000}, 4, ids("usaco:5", "usaco:3", "cses:10", "usaco:7")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := TrialForN(trialModule, tc.judgeable, tc.n)
+			var lookup func(catalog.ID) (catalog.Problem, bool)
+			if tc.rated != nil {
+				lookup = func(id catalog.ID) (catalog.Problem, bool) {
+					r, ok := tc.rated[id]
+					return catalog.Problem{ID: id, Rating: r}, ok
+				}
+			}
+			got := TrialForN(trialModule, tc.judgeable, lookup, tc.n)
 			if !reflect.DeepEqual(got.Unit, tc.want) {
 				t.Errorf("unit = %v, want %v", got.Unit, tc.want)
 			}
@@ -84,7 +101,7 @@ func TestTrialIntegration(t *testing.T) {
 		{Module{Division: "adv", Topic: "strings"}, "strings", [2]int{2400, 2800}, "CAP_STRING"},
 		{Module{Division: "bronze", Topic: "simulation"}, "simulation", [2]int{1000, 1300}, ""},
 	} {
-		got := TrialFor(tc.m, nil)
+		got := TrialFor(tc.m, nil, nil)
 		if got.IntegTopic != tc.topic || got.IntegBand != tc.band || got.Capability != tc.cap {
 			t.Errorf("%s/%q: topic=%q band=%v cap=%q, want %q %v %q",
 				tc.m.Division, tc.m.Topic, got.IntegTopic, got.IntegBand, got.Capability, tc.topic, tc.band, tc.cap)
@@ -95,7 +112,7 @@ func TestTrialIntegration(t *testing.T) {
 // TestTrialSpec: the curriculum's trial is what the engine plays, and a
 // short unit is the engine's to top up.
 func TestTrialSpec(t *testing.T) {
-	tr := TrialForN(trialModule, nil, 2)
+	tr := TrialForN(trialModule, nil, nil, 1)
 	spec := tr.Spec()
 	if spec.Module != "prefix-sums" || spec.IntegTopic != "prefix-sums" || spec.IntegBand != [2]int{1350, 1650} ||
 		spec.Capability != "CAP_PREFIX" || !reflect.DeepEqual(spec.Unit, tr.Unit) {
@@ -114,17 +131,17 @@ func TestTrialSpec(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(s.Trial.Plan[0]) != 4 || len(s.Trial.TopUp) != 2 || len(s.Trial.Plan[1]) != 2 {
-		t.Errorf("plan %v, top-ups %v: want a unit of 4 (2 topped up) and 2 integration doors", s.Trial.Plan, s.Trial.TopUp)
+	if len(s.Trial.Plan[0]) != 2 || len(s.Trial.TopUp) != 1 || len(s.Trial.Plan[1]) != 1 {
+		t.Errorf("plan %v, top-ups %v: want a unit of 2 (1 topped up) and 1 integration door", s.Trial.Plan, s.Trial.TopUp)
 	}
 }
 
 func TestTrialForFixture(t *testing.T) {
 	m, _ := loadFixture(t).Module("prefix-sums")
-	got := TrialFor(m, func(id catalog.ID) bool { return id.Source() == catalog.USACO })
+	got := TrialFor(m, func(id catalog.ID) bool { return id.Source() == catalog.USACO }, nil)
 	// The fixture's USACO problems: 572, 691 (Very Easy), 595 (Easy), 1471
-	// (Medium, starred). One per label, then a second Very Easy.
-	want := ids("usaco:572", "usaco:691", "usaco:595", "usaco:1471")
+	// (Medium, starred). One per label from the easiest.
+	want := ids("usaco:572", "usaco:595")
 	if !reflect.DeepEqual(got.Unit, want) {
 		t.Errorf("unit = %v, want %v", got.Unit, want)
 	}
@@ -152,7 +169,7 @@ func TestTrialKinds(t *testing.T) {
 		if !ok {
 			t.Fatalf("fixture has no %s", tc.id)
 		}
-		got := TrialFor(m, usaco)
+		got := TrialFor(m, usaco, nil)
 		if got.Kind != tc.kind || got.IntegTopic != tc.topic || got.Capability != tc.cap {
 			t.Errorf("%s: kind %v topic %q cap %q, want %v %q %q", tc.id, got.Kind, got.IntegTopic, got.Capability, tc.kind, tc.topic, tc.cap)
 		}
@@ -167,7 +184,7 @@ func TestTrialKinds(t *testing.T) {
 	none := func(catalog.ID) bool { return false }
 	for id, want := range map[string]LevelKind{"casework": PageLevel, "bronze-conclusion": CastleLevel, "prefix-sums": PageLevel} {
 		m, _ := c.Module(id)
-		if got := TrialFor(m, none).Kind; got != want {
+		if got := TrialFor(m, none, nil).Kind; got != want {
 			t.Errorf("%s with nothing judgeable: kind %v, want %v", id, got, want)
 		}
 		if l, _, _ := c.Atlas(none).Level(id); l.Kind != want {
@@ -181,10 +198,10 @@ func TestTrialKinds(t *testing.T) {
 // band, nothing granted, and the engine plays it as it plays any trial.
 func TestCastleTrialSpec(t *testing.T) {
 	m, _ := loadFixture(t).Module("bronze-conclusion")
-	tr := TrialFor(m, func(id catalog.ID) bool { return id.Source() == catalog.USACO })
+	tr := TrialFor(m, func(id catalog.ID) bool { return id.Source() == catalog.USACO }, nil)
 	spec := tr.Spec()
 	// The conclusion's USACO problems: 642, 509 (Medium), 1181, 1085 (Hard).
-	if want := ids("usaco:642", "usaco:509", "usaco:1181", "usaco:1085"); !reflect.DeepEqual(spec.Unit, want) {
+	if want := ids("usaco:642", "usaco:1181"); !reflect.DeepEqual(spec.Unit, want) {
 		t.Errorf("unit %v, want %v", spec.Unit, want)
 	}
 	if spec.Module != "bronze-conclusion" || spec.IntegTopic != catalog.Mixed ||
@@ -192,9 +209,9 @@ func TestCastleTrialSpec(t *testing.T) {
 		t.Errorf("spec %+v, want bronze-conclusion, mixed at Bronze's band, no capability", spec)
 	}
 
-	// Two of the unit judgeable, the rest of the pool on other topics:
+	// One of the unit judgeable, the rest of the pool on other topics:
 	// the engine tops the unit up and draws integration from any topic.
-	spec.Unit = spec.Unit[:2]
+	spec.Unit = spec.Unit[:1]
 	var pool []catalog.Problem
 	topics := []string{"graphs", "dp", "simulation", "math", "strings", "trees"}
 	for i, id := range append(slices.Clone(spec.Unit), ids("usaco:900", "usaco:901", "usaco:902", "usaco:903")...) {
@@ -205,7 +222,7 @@ func TestCastleTrialSpec(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(s.Trial.Plan[0]) != 4 || len(s.Trial.TopUp) != 2 || len(s.Trial.Plan[1]) != 2 {
-		t.Errorf("plan %v, top-ups %v: want a unit of 4 (2 topped up) and 2 integration doors", s.Trial.Plan, s.Trial.TopUp)
+	if len(s.Trial.Plan[0]) != 2 || len(s.Trial.TopUp) != 1 || len(s.Trial.Plan[1]) != 1 {
+		t.Errorf("plan %v, top-ups %v: want a unit of 2 (1 topped up) and 1 integration door", s.Trial.Plan, s.Trial.TopUp)
 	}
 }

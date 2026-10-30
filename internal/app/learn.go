@@ -111,7 +111,7 @@ func (m *Model) learnModule(topic string) string {
 		if mod.Topic != topic || mod.Meta {
 			continue
 		}
-		has := curriculum.TrialFor(mod, m.judgeable).Kind.HasTrial()
+		has := curriculum.TrialFor(mod, m.judgeable, m.d.Catalog.Get).Kind.HasTrial()
 		band := curriculum.DivisionBand(mod.Division)
 		d := max(float64(band[0])-rating, rating-float64(band[1]), 0)
 		if has && !trial || has == trial && d < far {
@@ -141,7 +141,7 @@ func (m *Model) trialNext(st *game.State) *bootui.Learn {
 		if mod.Meta || slices.Contains(m.meta.TrialsPassed, mod.ID) || c != "" && slices.Contains(m.meta.Capabilities, c) {
 			continue
 		}
-		if curriculum.TrialFor(mod, m.judgeable).Kind.HasTrial() {
+		if curriculum.TrialFor(mod, m.judgeable, m.d.Catalog.Get).Kind.HasTrial() {
 			return &bootui.Learn{Module: mod.ID, Title: mod.Title}
 		}
 	}
@@ -199,7 +199,7 @@ func (m *Model) startTrial(id string) tea.Cmd {
 	if !ok {
 		return fail("no module %q", id)
 	}
-	t := curriculum.TrialFor(mod, m.judgeable)
+	t := curriculum.TrialFor(mod, m.judgeable, m.d.Catalog.Get)
 	if !t.Kind.HasTrial() {
 		if mod.Division == "general" {
 			return fail("%s has no trial: %s is reading only", mod.Title, mod.DivisionTitle)

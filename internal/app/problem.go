@@ -327,11 +327,18 @@ func (m *Model) retreatRefused() bool {
 }
 
 // giveUpPrice is the Q confirm's word on a :q! (D47): what it burns and
-// where the boot goes, or that it ends the boot.
+// where the boot goes, or that it ends the boot; in a trial, whether it
+// loses the room or ends the trial.
 func giveUpPrice(st *game.State) string {
 	c, ok := st.FailCost(game.GaveUp)
 	boss := st.Biome < len(st.Biomes) && st.Biomes[st.Biome].Kind == rules.Boss
-	switch {
+	switch n := st.LostRoomsLeft(); {
+	case st.Trial != nil && n > 1:
+		return fmt.Sprintf(":q! loses the room · the trial goes on, %s more may go", units.Plural(n-1, "room"))
+	case st.Trial != nil && n == 1:
+		return ":q! loses the room · the trial goes on, the next :q! ends it"
+	case st.Trial != nil:
+		return ":q! ends the trial"
 	case !ok && st.OneShot() && boss:
 		return ":q! ends the boot (one shot)"
 	case !ok:

@@ -17,6 +17,7 @@ import (
 	"katharsis/internal/screens"
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/ui"
+	"katharsis/internal/units"
 )
 
 // Module is one module's page, set as a man page: NAME (id, title, what it
@@ -39,7 +40,7 @@ type Module struct {
 // NewModule builds the page for mod. c resolves prerequisite ids to titles
 // and may be nil; judgeable and lookup are as for NewBrowser.
 func NewModule(c *curriculum.Curriculum, mod curriculum.Module, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Module {
-	return newModule(c, newEntry(mod, judgeable), capSet(m), slices.Contains(m.TrialsPassed, mod.ID), lookup)
+	return newModule(c, newEntry(mod, judgeable, lookup), capSet(m), slices.Contains(m.TrialsPassed, mod.ID), lookup)
 }
 
 func newModule(c *curriculum.Curriculum, e entry, caps map[string]bool, passed bool, lookup screens.Lookup) *Module {
@@ -134,13 +135,14 @@ func (p *Module) body(w int) []string {
 		return append(out, p.seeAlso(text)...)
 	}
 	out = append(out, "", ui.Spread(ui.Strong.Render("TRIAL"),
-		ui.Muted.Render("unit: Easy → Hard, tags shown · integration: blind"), text))
+		ui.Muted.Render(fmt.Sprintf("unit: tags shown · integration: blind · pass: %d of %d + blind",
+			unitPass, curriculum.DefaultUnitSize)), text))
 	out = append(out, p.unitLines(w)...)
 	where := p.e.biome + ui.G.Sep + ui.RatingBand(t.IntegBand[0], t.IntegBand[1])
 	if n := p.e.short(); n > 0 {
 		out = append(out, ind+fmt.Sprintf("+  %d topped up from the catalog · %s", n, where))
 	}
-	out = append(out, ind+fmt.Sprintf("+  %d blind integration doors · %s", integrationDoors, where))
+	out = append(out, ind+"+  "+units.Plural(integrationDoors, "blind integration door")+" · "+where)
 	out = append(out, ind+p.passLine())
 	return append(out, p.seeAlso(text)...)
 }

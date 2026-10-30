@@ -269,3 +269,36 @@ func TestGiveUpAsks(t *testing.T) {
 		}
 	})
 }
+
+// TestTrialGiveUpAsks: in a trial, :q! asks the same way and answers in the
+// trial's terms: a room lost while it may lose one (rules.TrialLostRooms),
+// then the end of the trial; the trial goes on after the room it loses.
+func TestTrialGiveUpAsks(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		loadGuide(h)
+		h.send(screens.StartTrial{Module: "prefix-sums"})
+		ask := func() string {
+			req, reply := session.NewRequest(session.Command{Cmd: session.CmdGiveUp, Args: []string{session.ArgAsk}})
+			h.send(req)
+			rep, _ := answer(reply)
+			if !rep.OK {
+				t.Fatalf("giveup ask answered %+v", rep)
+			}
+			return rep.Text
+		}
+		for _, want := range []string{
+			"Give up? :q! loses the room · the trial goes on, the next :q! ends it.",
+			"Give up? :q! ends the trial.",
+		} {
+			h.enterDoor()
+			if got := ask(); got != want {
+				t.Errorf("room %d: %q, want %q", h.m.state.Room, got, want)
+			}
+			h.send(game.GiveUp{})
+		}
+		if s := h.m.state; s.Phase != game.PhaseCrashed || s.Trial.Lost != 1 {
+			t.Errorf("after two :q!: phase %s, %d rooms lost; want crashed after 1", s.Phase, s.Trial.Lost)
+		}
+	})
+}

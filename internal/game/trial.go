@@ -19,7 +19,7 @@ import (
 //
 // The unit plays t.Unit in order, with tags shown, skipping problems the
 // pool cannot judge. A unit shorter than the minimum is topped up from the
-// pool (only 41 of 149 guide modules list 4 playable USACO problems);
+// pool (9 of the guide's 105 trials list fewer than 2 playable problems);
 // top-ups are merged in by rating so the unit still ramps, and the module's
 // own order is never changed. The integration draws blind doors the same
 // way (see trialDraw).
@@ -209,6 +209,40 @@ func (e *engine) trialProblem() *catalog.Problem {
 		return ps[0]
 	}
 	return &catalog.Problem{ID: id, Topic: s.Biomes[s.Biome].Topic, Rating: (tr.IntegBand[0] + tr.IntegBand[1]) / 2, Judgeable: true}
+}
+
+// LostRoomsLeft is how many more rooms the trial may lose to :q! and still
+// pass (rules.TrialLostRooms). Only unit rooms can go, so it is 0 on a
+// blind door, as outside a trial.
+func (s *State) LostRoomsLeft() int {
+	if s.Trial == nil || s.Biome != 0 {
+		return 0
+	}
+	return max(s.Rules.TrialLostRooms-s.Trial.Lost, 0)
+}
+
+// loseTrialRoom is a trial's :q! while it has a unit room to lose: the
+// door closes, rated as failed, and the trial goes on as after a clear,
+// with no pay and no upgrade pick, to the blind doors once the unit is
+// done. Like a failed trial, it schedules no regression (see crash). It
+// reports false where the :q! ends the trial.
+func (e *engine) loseTrialRoom(o Outcome) bool {
+	s := e.s
+	if o != GaveUp || s.LostRoomsLeft() == 0 {
+		return false
+	}
+	name := e.door()
+	a := e.close(o)
+	s.Trial.Lost++
+	e.logf("%s: :q!, room lost, %d more may go", name, s.LostRoomsLeft())
+	e.emit(CloseProblem{Door: a.Door}, Sound{Name: "wa"})
+	if s.Room++; s.Room < s.Biomes[s.Biome].Rooms {
+		s.Phase = PhaseDoors
+		e.rollRoom(true, "fresh")
+	} else {
+		e.enterMerge()
+	}
+	return true
 }
 
 // passTrial grants the trial's capability and records the module.

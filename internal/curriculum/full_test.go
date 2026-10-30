@@ -62,13 +62,13 @@ func TestFullGuide(t *testing.T) {
 				seen[p.ID] = true
 			}
 		}
-		if u := TrialFor(m, isUSACO).Unit; len(u) > 0 {
+		if u := TrialFor(m, isUSACO, nil).Unit; len(u) > 0 {
 			modsWithUSACO++
 			if len(u) == DefaultUnitSize {
 				fullUSACOUnits++
 			}
 		}
-		if len(TrialFor(m, nil).Unit) == DefaultUnitSize {
+		if len(TrialFor(m, nil, nil).Unit) == DefaultUnitSize {
 			fullUnits++
 		}
 	}

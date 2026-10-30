@@ -676,7 +676,7 @@ func (p *Map) card() []string {
 	case lp.Passed:
 		did = append(did, step(true, "trial"))
 	default:
-		did = append(did, fmt.Sprintf("trial %s + %d blind", units.Plural(curriculum.DefaultUnitSize, "door"), integrationDoors))
+		did = append(did, fmt.Sprintf("trial %d of %s + %d blind", unitPass, units.Plural(curriculum.DefaultUnitSize, "door"), integrationDoors))
 	}
 	sep := ui.Muted.Render(" " + ui.G.Arrow + " ")
 	if !l.Kind.HasTrial() {

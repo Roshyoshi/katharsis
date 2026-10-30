@@ -349,6 +349,13 @@ type Rules struct {
 	// ShowFailingInput shows every door's failing full test, as the strace
 	// daemon does (see game.State.ShowsFailingInput).
 	ShowFailingInput bool `toml:"show_failing_input"`
+	// TrialLostRooms is how many unit rooms a trial may lose to :q! and
+	// still pass: the door closes, rated as failed, and the trial goes on
+	// to the next room. One more :q! ends the trial, as does one on a blind
+	// door: the unit replays on a retry and the blind doors are drawn anew,
+	// so they are the test a retry still asks. Boots ignore it; they price
+	// a :q! in cycles (Biome.FailCycles).
+	TrialLostRooms int `toml:"trial_lost_rooms"`
 
 	// ---- prestige ----------------------------------------------------------
 
@@ -1075,6 +1082,16 @@ func shortBiomes() []Biome {
 //
 // Failing input is shown, as if strace ran: a trial is the first time the
 // player meets the topic, and a hidden WA teaches nothing.
+//
+// A trial is three doors, sized to a USACO Guide module: one to three
+// focus problems teach it, and its list has a median 8 (Bronze) to 11
+// (Silver) playable problems, of which four unit doors took half. Passing
+// takes the blind door and one of the two unit doors (TrialLostRooms). By the
+// Elo model (game.Expected) over every trial the full guide plans,
+// charged WAs and ECC picks included, a player at the middle of the
+// division's band passes 40-50% of first tries and one at its top
+// 63-69%. Four unit doors and two blind, all to clear, gave 2-4% and
+// 11-20% in twice the time.
 func Trial() Rules {
 	// A trial is learn mode, not a boot: it keeps the lives the rules had
 	// before cycles (three, a failed submit one), and no map.
@@ -1082,14 +1099,15 @@ func Trial() Rules {
 	r.Name = "trial"
 	r.DoorsPerRoom = 1
 	r.Biomes = []Biome{
-		{Kind: Fixed, Name: "unit", Rooms: 4, TargetClear: 0.7, Timer: Duration{30 * time.Minute}},
-		{Kind: Fixed, Name: "integration", Rooms: 2, TargetClear: 0.7, Timer: Duration{30 * time.Minute}},
+		{Kind: Fixed, Name: "unit", Rooms: 2, TargetClear: 0.7, Timer: Duration{30 * time.Minute}},
+		{Kind: Fixed, Name: "integration", Rooms: 1, TargetClear: 0.7, Timer: Duration{30 * time.Minute}},
 	}
 	r.BlindChance, r.MysteryChance, r.CursedChance = 0, 0, 0
 	r.Ascensions = nil
 	r.MasteryAttempts = 0 // the unit shows tags and the integration hides them
 	r.OnExpire = ExpireOvertime
 	r.ShowFailingInput = true
+	r.TrialLostRooms = 1
 	// A trial is not aimed, so it has nothing to ease, and it is no boot.
 	r.EaseAbove, r.GovernorAfter, r.ComebackDays = 0, 0, 0
 	r.FirstBiomes, r.FirstDoor, r.FirstEditorial = nil, false, false
@@ -1243,9 +1261,10 @@ func (r Rules) Validate() error {
 // burn or duration, a known fountain placement, a finite clock.
 func (r Rules) validateCycles() error {
 	if r.LifeCycles < 0 || r.SubmitCycles < 0 || r.RetreatCycles < 0 || r.FsckCycles < 0 ||
-		r.ECCCycles < 0 || r.OneShot < 0 || r.FountainCycles < 0 || r.OverclockMax < 0 || r.OverclockCycles < 0 {
+		r.ECCCycles < 0 || r.OneShot < 0 || r.FountainCycles < 0 || r.OverclockMax < 0 || r.OverclockCycles < 0 ||
+		r.TrialLostRooms < 0 {
 		return fmt.Errorf("rules %q: need life_cycles, submit_cycles, retreat_cycles, fsck_cycles, "+
-			"ecc_cycles, one_shot, fountain_cycles, overclock_max, overclock_cycles >= 0", r.Name)
+			"ecc_cycles, one_shot, fountain_cycles, overclock_max, overclock_cycles, trial_lost_rooms >= 0", r.Name)
 	}
 	if r.ECCPenalty.Duration < 0 || r.ECCMargin.Duration < 0 || r.RetreatLock.Duration < 0 {
 		return fmt.Errorf("rules %q: need ecc_penalty, ecc_margin, retreat_lock >= 0", r.Name)

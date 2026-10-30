@@ -2,7 +2,7 @@ RTFM(7)                  USACO Guide · CC BY-NC-SA 4.0                   RTFM(7
        MODULE                            BIOME               CAPABILITY    TRIAL
 ▾ SILVER                                                       2 modules · ■ 1/2
    ▾ Sorting & Searching
-       Two Pointers                      The Sliding Window  ■ CAP_TWOPTR  4
+       Two Pointers                      The Sliding Window  ■ CAP_TWOPTR  2
 
 COLOPHON
        Learn mode content is adapted from the USACO Guide (https://usaco.guide,

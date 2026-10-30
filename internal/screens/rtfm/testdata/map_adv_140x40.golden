@@ -4,8 +4,8 @@ RTFM › Advanced                                                               
      ○ ┄┄┄┄┄┄┄┄┄  ▪ ┄┄┄┄┄┄┄┄┄  ○ ─────────  ▪ ─────────  ○ ─────────  ○ ───────────╮          │ ■ CAP_GRAPH → Routing Table · ☆☆☆☆ has not │
      ■            ■            ■            ■            ■            ■            │          │ appeared                                   │
      Max Suffix … Wavelet Tree Counting Mi… Segment Tre… Persistent … Treaps       │          │ needs Graph Traversal (Silver)             │
-                                                                                   │          │ read → practice 0/3 → trial 4 doors + 2    │
-     Graphs 0/5                             Convexity 0/3                          │          │ blind                                      │
+                                                                                   │          │ read → practice 0/3 → trial 1 of 2 doors + │
+     Graphs 0/5                             Convexity 0/3                          │          │ 1 blind                                    │
  ╭─  ○ ───────── ▸○ ┄┄┄┄┄┄┄┄┄  ○ ┄┄┄┄┄┄┄┄┄  ○ ─────────  ○ ─────────  ○ ───────────╯          │ ↑ from Graph Traversal (Silver)            │
  │   ■            ■            □            □                         ■                       ╰────────────────────────────────────────────╯
  │   BCCs and 2C… Eulerian To… Shortest Pa… Slope Trick  Lagrangian … LineContain…

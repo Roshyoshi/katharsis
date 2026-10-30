@@ -122,7 +122,7 @@ func TestTrialGrantsItsCapability(t *testing.T) {
 		if !ok {
 			t.Fatal("fixture guide has no prefix-sums module")
 		}
-		want := curriculum.TrialFor(mod, h.m.judgeable).Capability
+		want := curriculum.TrialFor(mod, h.m.judgeable, h.m.d.Catalog.Get).Capability
 		if want == "" {
 			t.Fatal("prefix-sums grants no capability")
 		}

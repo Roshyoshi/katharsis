@@ -2,7 +2,7 @@ RTFM(7)                                                USACO Guide · CC BY-NC-S
        MODULE                                BIOME               CAPABILITY    TRIAL          FREQ
 ▾ SILVER                                                                         2 modules · ■ 1/2
    ▾ Prefix Sums
-       Introduction to Prefix Sums           The Accumulator     □ CAP_PREFIX  4 doors        ★★★★
+       Introduction to Prefix Sums           The Accumulator     □ CAP_PREFIX  2 doors        ★★★★
 
 COLOPHON
        Learn mode content is adapted from the USACO Guide (https://usaco.guide,

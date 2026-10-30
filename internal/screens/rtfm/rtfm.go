@@ -26,6 +26,7 @@ import (
 	"katharsis/internal/flavor"
 	"katharsis/internal/game"
 	"katharsis/internal/rules"
+	"katharsis/internal/screens"
 	"katharsis/internal/ui"
 )
 
@@ -36,9 +37,14 @@ type Judgeable = func(catalog.ID) bool
 
 // integrationDoors is how many blind doors follow a trial's unit: the rooms
 // of rules.Trial's integration biome, its second, which is what a trial
-// boot plays (DESIGN.md "Learn mode": 2 blind doors at the same
+// boot plays (DESIGN.md "Learn mode": 1 blind door at the same
 // difficulty).
 var integrationDoors = rules.Trial().Biomes[1].Rooms
+
+// unitPass is how many of a full unit's doors passing takes: the rest may
+// be lost to :q! (rules.Trial's TrialLostRooms). Every blind door must
+// clear.
+var unitPass = curriculum.DefaultUnitSize - rules.Trial().TrialLostRooms
 
 // entry is one module as both screens show it. The trial is built once, up
 // front: its unit size and capability appear on every browser row.
@@ -48,8 +54,8 @@ type entry struct {
 	biome string // flavor name of the biome the trial's doors come from
 }
 
-func newEntry(m curriculum.Module, judgeable Judgeable) entry {
-	t := curriculum.TrialFor(m, judgeable)
+func newEntry(m curriculum.Module, judgeable Judgeable, lookup screens.Lookup) entry {
+	t := curriculum.TrialFor(m, judgeable, lookup)
 	// The integration topic, not the module's own: General modules have
 	// no topic, and their doors are drawn from Userland ("mixed").
 	return entry{mod: m, trial: t, biome: flavor.BiomeName(t.IntegTopic)}
@@ -91,10 +97,10 @@ func capCell(c string, held bool) string {
 	return ui.Muted.Render(ui.G.CapLocked + " " + c)
 }
 
-// unitLabel says how big a trial's unit is: "4 doors", or "2+2 topped up"
+// unitLabel says how big a trial's unit is: "2 doors", or "1+1 topped up"
 // when the module has too few judgeable problems and the catalog fills the
 // rest; the topped-up part is muted, since it is the catalog's and not the
-// module's. compact drops the words for narrow terminals: "4", "2+2".
+// module's. compact drops the words for narrow terminals: "2", "1+1".
 func unitLabel(have, short int, compact bool) string {
 	switch {
 	case short == 0 && compact:
