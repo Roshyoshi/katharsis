@@ -231,9 +231,15 @@ func (m *Model) refresh() {
 }
 
 func (m *Model) onTick() tea.Cmd {
+	practice := m.practiceTick() // a practice door, over a paused boot or none
 	if m.state == nil {
-		return nil
+		return practice
 	}
+	return tea.Batch(practice, m.bootTick())
+}
+
+// bootTick is a Tick on the boot in flight.
+func (m *Model) bootTick() tea.Cmd {
 	// No Tick while a submit is being judged: the engine grants a grace
 	// period for submits past the deadline, but not for Tick. The grace
 	// also bounds the wait, so a judge that never reports back (it failed,
@@ -304,7 +310,7 @@ func (m *Model) onFetched(f fetchedMsg) tea.Cmd {
 		return fail("fetch %s: %v", f.door.Problem, f.err)
 	}
 	p, _ := m.d.Catalog.Get(f.door.Problem)
-	d := &Door{Door: f.door, Problem: p, Assets: f.assets, Upsolve: f.upsolve, Opened: m.d.Now()}
+	d := &Door{Door: f.door, Problem: p, Assets: f.assets, Upsolve: f.upsolve, Opened: m.d.Now(), Clocked: m.d.Now()}
 	if f.upsolve {
 		d.ReadEditorial = m.sawEditorial(f.door.Problem)
 		d.Sub, d.SeedBoot = m.upsolveFiles(f.door.Problem)
@@ -318,6 +324,9 @@ func (m *Model) onFetched(f fetchedMsg) tea.Cmd {
 	}
 	m.open = d
 	m.upsolveOpened()
+	if d.practice() && game.EditorialLeft(&m.meta, d.Door.Problem) == 0 {
+		m.keepEditorial() // its clock let it out before: back beside the source
+	}
 	m.refresh()
 	// The pane's statement, boot or none: refresh skips the screens when no
 	// boot is in flight, as for RTFM practice from GRUB.
@@ -348,6 +357,10 @@ func (m *Model) awaits(f fetchedMsg) bool {
 
 func (m *Model) closeDoor() {
 	m.doorClosed()
+	if m.open != nil && m.open.practice() {
+		m.foldPractice()
+		m.checkpointMeta()
+	}
 	if m.open != nil {
 		m.d.Runner.Close()
 	}

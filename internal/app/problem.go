@@ -16,6 +16,7 @@ import (
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/reader"
+	"katharsis/internal/screens/rtfm"
 	"katharsis/internal/session"
 	"katharsis/internal/ui"
 	"katharsis/internal/units"
@@ -67,7 +68,8 @@ func guard(cmd tea.Cmd) tea.Cmd {
 
 // problemScreen is the pane beside the editor while a door is open: the
 // boot HUD bar on top, the sample/submit HUD below, and the keys for the
-// door. In an upsolve it shows the problem without a timer or cycles.
+// door. In an upsolve it shows the problem without a timer or cycles; in
+// RTFM practice, with its clock (practiceBar).
 type problemScreen struct {
 	m       *Model
 	upsolve bool
@@ -152,6 +154,20 @@ func (s *problemScreen) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 			// editor; without a retry it could only time out.
 			return s, s.m.openDoor(s.door, false)
 		}
+		if s.practice() {
+			// The clock holds the editorial (the app refuses it too), then
+			// asks once: showing it stops the clock.
+			id := s.door.Problem
+			if left := game.EditorialLeft(&s.m.meta, id); left > 0 {
+				return s, note("the editorial opens at %s on the clock: %s to go",
+					units.Clock(game.EditorialAfter), units.Countdown(left))
+			}
+			if c := game.Practice(&s.m.meta, id); c.Editorial == 0 && !game.Solved(&s.m.meta)[id] && !asked {
+				s.confirm, s.ask = key, "e again: the editorial stops the clock at "+units.Clock(c.Spent)+
+					", red · the solve counts as editorial-assisted"
+				return s, nil
+			}
+		}
 		if s.upsolve {
 			return s, screens.Emit(screens.OpenEditorial{Problem: s.door.Problem})
 		}
@@ -202,6 +218,8 @@ func (s *problemScreen) View(w, h int) string {
 	var top []string
 	p, _ := s.m.d.Catalog.Get(s.door.Problem)
 	switch {
+	case s.practice():
+		top = append(top, s.practiceBar(p.Title)...)
 	case s.upsolve && s.solved():
 		top = append(top, ui.Strong.Render("upsolve · "+p.Title)+"  "+ui.OK.Render(ui.G.Pass+" solved")+
 			ui.Muted.Render(" · s submits again · Q leaves"))
@@ -366,6 +384,38 @@ func (s *problemScreen) openPage() tea.Cmd {
 	return screens.Emit(reader.OpenURL{URL: p.URL})
 }
 
+// practice reports whether the door on screen is RTFM practice: an
+// upsolve on a clock (practice.go).
+func (s *problemScreen) practice() bool { return s.upsolve && isPractice(s.door.Problem) }
+
+// practiceBar is an RTFM practice door's vitals: its title, then its clock
+// (rtfm.ClockFace) and what the clock says, ticking down to the editorial,
+// then where it stopped; once solved, the keys left.
+func (s *problemScreen) practiceBar(title string) []string {
+	id := s.door.Problem
+	c, solved := game.Practice(&s.m.meta, id), game.Solved(&s.m.meta)[id]
+	clock := rtfm.ClockFace(c, solved, ui.Token.Render)
+	say := s.m.practiceNote(id)
+	switch {
+	case solved:
+		say = ui.OK.Render(ui.G.Pass+" "+say) + ui.Muted.Render(" · s submits again · Q leaves")
+	case c.Editorial == 0 && game.EditorialLeft(&s.m.meta, id) == 0:
+		say = ui.Muted.Render(say + " · e stops the clock")
+	default:
+		say = ui.Muted.Render(say)
+	}
+	return []string{ui.Strong.Render("practice · " + title), strings.TrimLeft(clock+"  "+say, " ")}
+}
+
+// editorialKey is e's label in an upsolve: "editorial", or on an RTFM
+// practice door whose clock still holds it, the wait: "editorial 07:26".
+func (s *problemScreen) editorialKey() string {
+	if left := game.EditorialLeft(&s.m.meta, s.door.Problem); s.practice() && left > 0 {
+		return "editorial " + units.Countdown(left)
+	}
+	return "editorial"
+}
+
 // solved reports whether the upsolve on screen is accepted and still open
 // (Door.Solved).
 func (s *problemScreen) solved() bool {
@@ -421,10 +471,10 @@ func (s *problemScreen) footers(w int) (vim, keys string) {
 	switch {
 	case s.upsolve && narrow:
 		return ui.Muted.Render(":w :Submit :Debug n"),
-			ui.Footer(w, append(append([]string{"s", "submit", "e", "editorial"}, web...), "Q", "leave", "h", "help")...)
+			ui.Footer(w, append(append([]string{"s", "submit", "e", s.editorialKey()}, web...), "Q", "leave", "h", "help")...)
 	case s.upsolve:
 		return ui.Footer(w, ":w", "samples", ":Submit", "judge", ":Debug n", "debug"),
-			row([]string{"e", "editorial"}, web, []string{"Q", "leave", "w", "output"})
+			row([]string{"e", s.editorialKey()}, web, []string{"Q", "leave", "w", "output"})
 	case narrow:
 		return ui.Muted.Render(":w :Submit :Debug n :Quack :Retreat :q!"),
 			row([]string{"?", "duck"}, web, []string{"R", s.retreatKey(), "w", "output"})
@@ -551,7 +601,10 @@ func (m *Model) reveal(level int) string {
 // wide and tmux draws it in one, so vim leaves a stale character after it.
 func (m *Model) statusLine() string {
 	s, c := m.state, m.attempt()
-	if c == nil {
+	switch {
+	case m.open != nil && m.open.practice():
+		return m.practiceText() + " on the clock"
+	case c == nil:
 		return "no door open"
 	}
 	t := units.Countdown(max(c.Deadline.Sub(m.d.Now()), 0)) + " left"

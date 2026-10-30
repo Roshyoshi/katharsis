@@ -11,11 +11,12 @@ import (
 // ◆ only a difficulty. A non-ASCII glyph is followed by a space, a digit or
 // the end of its token, never by another glyph or a border.
 //
-// Prefix glyphs (Timer, Duck, Rating, Times, Approx) are written straight
-// before their digits and carry any space they need: "⏱ 23:41", "🦆1",
-// "◆1300"; in ASCII "T-23:41", "duck 1", "*1300".
+// Prefix glyphs (Timer, Stopwatch, Duck, Rating, Times, Approx) are
+// written straight before their digits and carry any space they need:
+// "⏱ 23:41", "🦆1", "◆1300"; in ASCII "T-23:41", "duck 1", "*1300".
 type Glyphs struct {
 	Timer      string // countdown prefix: "⏱ 23:41"; never sent to vim, which draws ⏱ two cells wide
+	Stopwatch  string // count-up prefix, a practice clock: "⏱ 12:34", "T+12:34"; Timer's ⏱, as for vim
 	Life       string // a life left
 	LifeLost   string // a life lost
 	Duck       string // duck count prefix: "🦆1"; the one true emoji, two cells everywhere
@@ -66,7 +67,7 @@ type Glyphs struct {
 
 // Unicode is the default glyph set.
 var Unicode = Glyphs{
-	Timer: "⏱ ", Life: "♥", LifeLost: "♡", Duck: "🦆",
+	Timer: "⏱ ", Stopwatch: "⏱ ", Life: "♥", LifeLost: "♡", Duck: "🦆",
 	Pass: "✓", Fail: "✗", Crash: "☠",
 	Boss: "⚔", Mystery: "?", Blind: "◌", Cursed: "☠", Regression: "↺", Retreat: "↩",
 	Here: "●", Ahead: "○", Rating: "◆", AtMost: "≤", Cap: "■", CapLocked: "□",
@@ -82,7 +83,7 @@ var Unicode = Glyphs{
 // modifiers fall back to the kernel taint letters the crash screen prints
 // (R M B C X), so a letter means the same modifier on every screen.
 var ASCII = Glyphs{
-	Timer: "T-", Life: "#", LifeLost: "-", Duck: "duck ",
+	Timer: "T-", Stopwatch: "T+", Life: "#", LifeLost: "-", Duck: "duck ",
 	Pass: "+", Fail: "x", Crash: "!",
 	Boss: "X", Mystery: "M", Blind: "B", Cursed: "C", Regression: "R", Retreat: "<",
 	Here: "@", Ahead: ".", Rating: "*", AtMost: "<=", Cap: "[x]", CapLocked: "[ ]",

@@ -16,11 +16,13 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/game"
 	"katharsis/internal/hud"
 	"katharsis/internal/judge"
 	"katharsis/internal/libs"
 	"katharsis/internal/problem"
 	"katharsis/internal/session"
+	"katharsis/internal/units"
 )
 
 // TmuxRunner is the real Runner. Each door gets a directory under Root with
@@ -371,7 +373,13 @@ func (r *TmuxRunner) materialize(d Door) (dir, src string, err error) {
 		// cache.
 		_ = copyStatement(d.Assets.Statement, filepath.Join(dir, "statement.md"), d.Problem.URL, editorialWhere(d))
 	}
-	if d.Upsolve && d.Assets.Editorial != "" {
+	switch {
+	case d.practice():
+		// RTFM practice's editorial waits on its clock: the game puts it
+		// here once it shows it, or on the AC (keepEditorial). One left
+		// from before the clock would give it away.
+		_ = os.Remove(filepath.Join(dir, "editorial.md"))
+	case d.Upsolve && d.Assets.Editorial != "":
 		// An upsolve allows the editorial: beside the source from the start,
 		// to ask about once solved. A boot door gets it on its AC.
 		_ = copyEditorial(d.Assets.Editorial, filepath.Join(dir, "editorial.md"))
@@ -508,6 +516,9 @@ func editorialWhere(d Door) string {
 	switch {
 	case d.Assets.Editorial == "":
 		return "none for this problem."
+	case d.practice():
+		return "editorial.md joins this file once the game shows it (e, open after " +
+			units.Clock(game.EditorialAfter) + " on the problem's clock, which it stops) or you solve it."
 	case d.Upsolve:
 		return "editorial.md, beside this file. Reading it there is not counted; " +
 			"e in the game shows it and marks the solve editorial-assisted."

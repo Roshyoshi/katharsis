@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -34,8 +35,9 @@ import (
 // attribution.
 //
 // The arrows move across the map. Enter acts on the item under the
-// cursor: READ reads the module, an open or solved problem is an untimed
-// door (screens.Upsolve), the trial starts (screens.StartTrial, which the
+// cursor: READ reads the module, an open or solved problem is a practice
+// door on its clock (screens.Upsolve, game.PracticeClock), the trial
+// starts (screens.StartTrial, which the
 // app refuses while the core is unsolved). A locked problem does nothing,
 // not even o: its statement waits with it. Only a level the path has
 // reached (curriculum.Atlas.Progress) is shown at all; Map keeps the rest
@@ -65,6 +67,8 @@ type node struct {
 	rating                             int // 0 when not shown (catalog.ShowsRating)
 	solved                             bool
 	open                               bool // every parent solved
+	clock                              game.PracticeClock
+	edLeft                             time.Duration // game.EditorialLeft
 }
 
 // NewLevel builds the level screen for l, a level of c's atlas in the
@@ -100,6 +104,9 @@ func NewLevel(c *curriculum.Curriculum, l curriculum.Level, region string, m gam
 	}
 	v.warps = warpText(c, l.Warps)
 	v.nodes = mapNodes(mod, l.Map, game.Solved(&m), lookup)
+	for i, n := range v.nodes {
+		v.nodes[i].clock, v.nodes[i].edLeft = game.Practice(&m, n.ID), game.EditorialLeft(&m, n.ID)
+	}
 	v.lay = layoutMap(l.Map, v.hasTrial())
 	return v
 }
@@ -600,9 +607,11 @@ func (v *Level) card(w int) []string {
 	var state string
 	switch {
 	case n.solved:
-		state = ui.OK.Render(ui.G.Pass+" solved") + ui.Muted.Render(": enter plays it again, untimed")
+		state = ui.OK.Render(ui.G.Pass+" solved") + ui.Muted.Render(": enter plays it again")
+	case n.open && n.clock.Spent > 0:
+		state = "open" + ui.Muted.Render(": enter goes on")
 	case n.open:
-		state = "open" + ui.Muted.Render(": enter starts it, untimed")
+		state = "open" + ui.Muted.Render(": enter starts the clock")
 	default:
 		state = "locked: solve " + v.titles(slices.DeleteFunc(slices.Clone(n.Parents), func(p int) bool { return v.nodes[p].solved })) + " first"
 	}
@@ -610,10 +619,37 @@ func (v *Level) card(w int) []string {
 		state += ui.Muted.Render(ui.G.Sep+"leads to ") + to
 	}
 	out := []string{ui.Spread(mark+ui.Strong.Render(n.title), right, w), ind + kind + ui.Muted.Render(ui.G.Sep) + state}
+	if c := clockLine(n); c != "" {
+		out = append(out, ind+c)
+	}
 	if n.Note != "" {
 		out = append(out, ind+ui.Muted.Render(n.Note))
 	}
 	return out
+}
+
+// clockLine is problem n's clock on its card (ClockFace) and what it
+// says: how long the editorial still waits, or where the clock stopped;
+// "" for a locked problem whose clock never ran, and for one solved
+// before its clock ran.
+func clockLine(n node) string {
+	face := ClockFace(n.clock, n.solved, ui.Token.Render)
+	var say string
+	switch {
+	case face == "", !n.open && !n.solved && n.clock.Spent == 0:
+		return ""
+	case n.solved && n.clock.Editorial > 0:
+		say = ": the editorial at the red, then the yellow to the AC"
+	case n.solved:
+		say = " to the AC, no editorial"
+	case n.clock.Editorial > 0:
+		say = ": stopped at the editorial; the yellow runs to the AC"
+	case n.edLeft > 0:
+		say = ui.G.Sep + "editorial in " + units.Countdown(n.edLeft)
+	default:
+		say = ui.G.Sep + "editorial open: e in the door shows it, and stops the clock"
+	}
+	return face + ui.Muted.Render(say)
 }
 
 // titles names nodes is, comma-separated.

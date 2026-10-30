@@ -4,9 +4,11 @@ import (
 	"strings"
 
 	"katharsis/internal/catalog"
+	"katharsis/internal/game"
 	bootui "katharsis/internal/screens/boot"
 	"katharsis/internal/screens/reader"
 	"katharsis/internal/ui"
+	"katharsis/internal/units"
 )
 
 // The problem pane reads statement first (UX J8): under the vitals the
@@ -87,10 +89,15 @@ func (s *problemScreen) helpLines(w int) []string {
 	if s.online() {
 		pairs = append(pairs, [2]string{"o", "the page on the web: figures, layout"})
 	}
-	if s.upsolve {
+	switch {
+	case s.practice():
+		pairs = append(pairs, [2]string{"e", "the editorial, open after " + units.Clock(game.EditorialAfter) +
+			" on the clock (asks): stops the clock and marks the solve editorial-assisted"},
+			[2]string{"Q", "leave: the clock waits for you (solved, it stays open until then)"})
+	case s.upsolve:
 		pairs = append(pairs, [2]string{"e", "the editorial: marks the solve editorial-assisted"},
 			[2]string{"Q", "leave the upsolve (solved, it stays open until then)"})
-	} else {
+	default:
 		pairs = append(pairs,
 			[2]string{"?", "duck: tags, then technique"},
 			[2]string{"R", s.retreatHelp()},
@@ -108,7 +115,11 @@ func (s *problemScreen) helpLines(w int) []string {
 	}
 	// Where the notes beside the source are, and when (editorialWhere).
 	folder := "statement.md, under the problem's page · editorial.md once you solve the door"
-	if s.upsolve {
+	switch {
+	case s.practice():
+		folder = "statement.md, under the problem's page · editorial.md once the game shows it (e) " +
+			"or you solve the problem"
+	case s.upsolve:
 		folder = "statement.md, under the problem's page · editorial.md, from the start: " +
 			"read there it is not counted, e here marks the solve editorial-assisted"
 	}

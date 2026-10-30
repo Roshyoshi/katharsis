@@ -98,7 +98,7 @@ for two more picks. The full roster and its numbers:
 | Map (the hub) | `enter` resume · `n` new boot (ends the one in flight as a crash) · `g` pause into GRUB · `t` RTFM · `q` quit |
 | Exits | `←/→` or `1-4` select · `enter` take · `t` RTFM on a locked one · `m` map |
 | Doors | `←/→` or `1-3` select · `enter` open · `m` map · `q` quit (the boot waits on the map) |
-| Problem pane | `s` submit · `t` statement · `w` the samples in full · `?` duck · `R` retreat · `Q Q` give up · `e` reopen a closed editor |
+| Problem pane | `s` submit · `t` statement · `w` the samples in full · `?` duck · `R` retreat · `Q Q` give up · `e` reopen a closed editor · in an upsolve `e` editorial and `Q` leave; in RTFM practice a clock counts up, the editorial opens at 20:00 on it, and `e e` shows it and stops the clock red |
 | Samples (`w`) | input, expected output and your output side by side, stderr under them, the build's warnings above · `h/l` or `1-9` sample · `j/k` · `space` page · `g/G` · `w` or `q` back |
 | Merge window | `c` commit bytes · `f` fsck · `↑/↓` + `enter` pick an upgrade or daemon, then leave |
 | Kernel panic | `u` upsolve the problem · `e` editorial · `r` reboot (twice over a live core dump) · `s` short · `p` patch · `b` read the story beat · `l` git log · `g` GRUB |
@@ -131,7 +131,7 @@ In a tmux session the game starts, `g++` and `clang++` on PATH are these.
 
 | | |
 |---|---|
-| `~/cp/runs/boot-N/<problem>/` | your solutions; `statement.md`, opening with the problem's page and where its editorial is; `editorial.md`, for a boot door once you solve it, for an upsolve (`~/cp/runs/upsolve/`) from the start. Read in the folder it is not counted; `e` in the game shows it and marks the solve editorial-assisted. The samples and your own cases (`:Case`) are in `tests/` |
+| `~/cp/runs/boot-N/<problem>/` | your solutions; `statement.md`, opening with the problem's page and where its editorial is; `editorial.md`, for a boot door once you solve it, for an upsolve (`~/cp/runs/upsolve/`) from the start, for RTFM practice once the game shows it or you solve it. Read in the folder it is not counted; `e` in the game shows it and marks the solve editorial-assisted. The samples and your own cases (`:Case`) are in `tests/` |
 | `~/.local/share/katharsis/katharsis.db` | saves: boots, attempts, rating, bank |
 | `~/Library/Caches/katharsis/` | problems, tests, editorials, builds |
 | `~/.config/katharsis/presets/*.toml` | custom rules: each lists only what it changes from the standard rules ([rules.go](internal/rules/rules.go)), a `[[biome]]` list replaces them all, and an unknown key is an error; `standard`, `short` and `patch` are built-in names |

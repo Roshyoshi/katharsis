@@ -81,7 +81,7 @@ func (m *Model) intent(msg tea.Msg) (tea.Cmd, bool) {
 	case screens.OpenStatement:
 		return m.openDoc(msg.Problem, false), true
 	case screens.OpenEditorial:
-		return m.openDoc(msg.Problem, true), true
+		return m.openEditorial(msg.Problem), true // practice.go
 	case screens.OpenSamples:
 		s := samples.New(func() (hud.Pass, bool) {
 			if h := m.hud(); h != nil {
@@ -284,7 +284,8 @@ func redact(md string, p catalog.Problem) string {
 }
 
 // startUpsolve opens a problem outside a boot, a core dump, a regression or
-// RTFM practice: untimed, no lives, editorial allowed.
+// RTFM practice: no lives, and untimed with the editorial allowed, but for
+// RTFM practice, on its clock (practice.go).
 func (m *Model) startUpsolve(id catalog.ID) tea.Cmd {
 	p, ok := m.d.Catalog.Get(id)
 	if !ok {
@@ -303,18 +304,29 @@ func (m *Model) startUpsolve(id catalog.ID) tea.Cmd {
 // readEditorial notes that id's editorial is on screen: an upsolve of it
 // that follows, the one open included, is editorial-assisted. Only a shown
 // one counts: marked when asked for, an editorial that was not there (or
-// did not download) made the solve pay as assisted.
+// did not download) made the solve pay as assisted. On RTFM practice it
+// stops the clock (game.PracticeEditorial) and joins the source.
 func (m *Model) readEditorial(id catalog.ID) {
 	m.editorials[id] = m.d.Now()
 	if m.open != nil && m.open.Door.Problem == id {
 		m.open.ReadEditorial = true
+		if m.open.practice() {
+			m.keepEditorial()
+		}
+	}
+	if isPractice(id) {
+		m.foldPractice()
+		if game.PracticeEditorial(&m.meta, id) {
+			m.checkpointMeta()
+		}
 	}
 }
 
 // keepEditorial copies the open door's editorial beside its source, as
 // editorial.md, on its AC: a boot door allows no editorial until then. An
-// upsolve has had it from the start (materialize). A mystery door in a
-// boot keeps its secret, as its statement does.
+// upsolve has had it from the start (materialize), but RTFM practice, which
+// gets it once its clock lets the game show it (readEditorial) and on the
+// AC. A mystery door in a boot keeps its secret, as its statement does.
 func (m *Model) keepEditorial() {
 	o := m.open
 	if o == nil || o.Assets.Editorial == "" || o.Door.Mystery && !o.Upsolve {
@@ -411,6 +423,7 @@ func (m *Model) onUpsolveJudged(j judgedMsg) tea.Cmd {
 	if m.open.Solved {
 		return note("AC again · the solve counted the first time")
 	}
+	m.foldPractice() // its clock stops at the solve
 	m.open.Solved = true
 	kind := game.Independent
 	if m.open.ReadEditorial {

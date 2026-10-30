@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand/v2"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"katharsis/internal/rules"
 	"katharsis/internal/screens"
 	bootui "katharsis/internal/screens/boot"
+	"katharsis/internal/screens/rtfm"
 	"katharsis/internal/session"
 	"katharsis/internal/store"
 	"katharsis/internal/ui"
@@ -44,8 +46,11 @@ type Door struct {
 	Problem catalog.Problem
 	Assets  catalog.Assets
 	Boot    int
-	Upsolve bool // untimed, outside a boot
+	Upsolve bool // outside a boot: untimed, but for RTFM practice's clock (practice.go)
 	Opened  time.Time
+	// Clocked is when an RTFM practice door's clock last took its time
+	// (foldPractice).
+	Clocked time.Time
 	// ReadEditorial marks an upsolve whose editorial was opened, so the
 	// solve is recorded as editorial-assisted.
 	ReadEditorial bool
@@ -531,11 +536,14 @@ func (m *Model) Conceal() bool {
 
 // Clock is the HUD's clock in a boot: the countdown with cycles and ducks,
 // e.g. "23:41 · ♥ 24/30 cycles · 🦆1"; on The Halting Problem's doors the
-// countdown is hidden (bootui.HiddenClock). Outside a boot it counts up,
-// as in practice.
+// countdown is hidden (bootui.HiddenClock). On RTFM practice it counts up
+// (practiceText); any other upsolve is untimed.
 func (m *Model) Clock() string {
 	s, c := m.state, m.attempt()
-	if c == nil {
+	switch {
+	case m.open != nil && m.open.practice():
+		return m.practiceText()
+	case c == nil:
 		return "untimed"
 	}
 	left := c.Deadline.Sub(m.d.Now())
@@ -557,10 +565,16 @@ func (m *Model) Clock() string {
 // or hidden on The Halting Problem's doors; a soft timer's overrun in
 // Danger; the cycles as the HUD draws them, "♥ 24/30 cycles"; and for a
 // moment the strip's timer warning (borderWarn), which a hidden clock
-// still gives.
+// still gives. On RTFM practice it is the practice clock as the pane
+// draws it (rtfm.ClockFace).
 func (m *Model) BorderClock() string {
 	s, c := m.state, m.attempt()
-	if c == nil {
+	switch {
+	case m.open != nil && m.open.practice():
+		id := m.open.Door.Problem
+		face := rtfm.ClockFace(game.Practice(&m.meta, id), game.Solved(&m.meta)[id], ui.Token.Tmux)
+		return strings.TrimLeft(face+ui.Muted.Tmux(" · "+m.practiceNote(id)), " ·")
+	case c == nil:
 		return ui.TmuxEscape(ui.G.Timer + "untimed")
 	}
 	left := c.Deadline.Sub(m.d.Now())

@@ -120,6 +120,9 @@ type Meta struct {
 	// Opened lists the RTFM modules whose page was opened in the reader, each
 	// once: what the map's cards call "opened", never "read".
 	Opened []string `json:",omitempty"`
+	// Practice is the RTFM practice problems' clocks (PracticeClock), each
+	// problem once, in the order first opened.
+	Practice []PracticeClock `json:",omitempty"`
 
 	// Installed lists the packages (rules.Package) bought with the bank,
 	// each once, in the order installed; Theme is the installed banner theme

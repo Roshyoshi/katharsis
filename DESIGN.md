@@ -172,11 +172,18 @@ Enter opens the level's own map, designed by hand per module
 paths from READ to the TRIAL, core lanes and the stretch off them. A
 problem opens once every problem with a path into it is solved, and the
 trial once every core problem is; READ opens nothing, as opening a page
-says nothing of reading it. Problems are untimed upsolves (0 B). The card
-under the map says what a problem waits on and leads to; n goes to what
-to do next: an open core problem, then the trial, then the stretch. A
-problem the catalog cannot judge drops out of its map, and what it led to
-waits on what led into it.
+says nothing of reading it. Problems are upsolves (0 B) on a clock that
+counts up (`game.PracticeClock`): the problem's, summed over every upsolve
+of it until its first AC, where it stops green. Its editorial opens at
+20:00 on the clock (`game.EditorialAfter`), and only then; e asks, and
+showing it stops the clock red, the time from there to the AC counting on
+beside it in yellow (⏱ 22:10 +09:12) and the solve editorial-assisted.
+Until the game shows it, or the AC, the folder holds no `editorial.md`.
+A tick counts at most 10 s, so a machine asleep does not run the clock.
+The card under the map says what a problem waits on, leads to and stands
+at on its clock; n goes to what to do next: an open core problem, then
+the trial, then the stretch. A problem the catalog cannot judge drops out
+of its map, and what it led to waits on what led into it.
 
 Each problem is in one place. The guide's (`listed.txt`) are RTFM's: no
 boot or trial draws them. Of the rest, the trials hold back half of each

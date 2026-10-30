@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/x/ansi"
 
@@ -49,17 +50,37 @@ const (
 // Minimums. The player opened the page and solved what solved names, and
 // passed the trials passed names besides Prefix Sums's.
 func twoPointers(t testing.TB, passed []string, solved ...catalog.ID) *rtfm.Level {
-	c := loadCurriculum(t)
-	l, region := atlasLevel(t, c, "two-pointers")
-	l.Prereqs = []string{"prefix-sums", "casework"}
-	l.Warps = []string{"matrix-expo", "count-min"}
 	m := fixture.Meta()
 	for _, id := range solved {
 		m.Solves = append(m.Solves, game.Solve{Problem: id})
 	}
-	m.TrialsPassed = append([]string{"prefix-sums"}, passed...)
+	m.TrialsPassed = passed
+	return twoPointersFor(t, m)
+}
+
+// twoPointersFor is Two Pointers for the player m, Prefix Sums passed and
+// the page opened besides.
+func twoPointersFor(t testing.TB, m game.Meta) *rtfm.Level {
+	c := loadCurriculum(t)
+	l, region := atlasLevel(t, c, "two-pointers")
+	l.Prereqs = []string{"prefix-sums", "casework"}
+	l.Warps = []string{"matrix-expo", "count-min"}
+	m.TrialsPassed = append([]string{"prefix-sums"}, m.TrialsPassed...)
 	m.Opened = []string{"two-pointers"}
 	return rtfm.NewLevel(c, l, region, m, fixture.Judgeable, fixture.Lookup)
+}
+
+// clocked is Two Pointers with Paired Up solved 31:02 on its clock and
+// Sleepy Cow Herding's at spent, its editorial shown at editorial (0:
+// not).
+func clocked(spent, editorial time.Duration) func(testing.TB) *rtfm.Level {
+	return func(t testing.TB) *rtfm.Level {
+		m := fixture.Meta()
+		m.Solves = []game.Solve{{Problem: pairedUp, Upsolve: true}}
+		m.Practice = []game.PracticeClock{{Problem: pairedUp, Spent: 31*time.Minute + 2*time.Second},
+			{Problem: sleepy, Spent: spent, Editorial: editorial}}
+		return twoPointersFor(t, m)
+	}
 }
 
 // trialLevel is Two Pointers with Paired Up solved.
@@ -219,7 +240,16 @@ func TestLevelCard(t *testing.T) {
 		want []string
 	}{
 		{"locked", trialLevel, []string{"l", "l"}, []string{"core", "locked: solve Sleepy Cow Herding first", "leads to the trial"}},
-		{"open", trialLevel, []string{"l", "j"}, []string{"open: enter starts it", "leads to Diamond Collector"}},
+		{"open", trialLevel, []string{"l", "j"}, []string{"open: enter starts the clock", "leads to Diamond Collector",
+			"⏱ 00:00 · editorial in 20:00"}},
+		{"on the clock", clocked(12*time.Minute+34*time.Second, 0), []string{"l", "j"},
+			[]string{"open: enter goes on", "⏱ 12:34 · editorial in 07:26"}},
+		{"the editorial open", clocked(20*time.Minute, 0), []string{"l", "j"},
+			[]string{"⏱ 20:00 · editorial open: e in the door shows it, and stops the clock"}},
+		{"stopped at the editorial", clocked(22*time.Minute+10*time.Second, 21*time.Minute), []string{"l", "j"},
+			[]string{"⏱ 21:00 +01:10: stopped at the editorial; the yellow runs to the AC"}},
+		{"solved on the clock", clocked(0, 0), []string{"l"},
+			[]string{"✓ solved: enter plays it again", "⏱ 31:02 to the AC, no editorial"}},
 		{"stretch", trialLevel, []string{"l", "l", "j"}, []string{"stretch", "open"}},
 		{"trial", trialLevel, []string{"G"}, []string{"3 unseen doors", "pass 2 of 3", "opens once the core is solved: 1 of 3 so far"}},
 	} {

@@ -231,7 +231,7 @@ func TestGoldenCatalogue(t *testing.T) {
 // glyphWidths is the width every Unicode glyph must take, by field. A
 // field missing here fails the test, so a new glyph gets checked.
 var glyphWidths = map[string]int{
-	"Timer": 2, "Duck": 2, "Crumb": 3, "Sep": 3,
+	"Timer": 2, "Stopwatch": 2, "Duck": 2, "Crumb": 3, "Sep": 3,
 }
 
 func TestGlyphWidths(t *testing.T) {
@@ -283,9 +283,11 @@ func TestGlyphWidths(t *testing.T) {
 // TestOneMeaning checks no two meanings share a Unicode glyph, except the
 // ones the design gives one: ☠ is lethal, so it marks both a crash and a
 // cursed door, whose one WA is a crash; a bar's cells are shades of the
-// heat map's ramp, the lighter one less.
+// heat map's ramp, the lighter one less; ⏱ is a door's clock, down in a
+// boot and up in practice (ASCII's T- and T+ tell them apart).
 func TestOneMeaning(t *testing.T) {
-	shared := map[string]bool{"Crash/Cursed": true, "Empty/Heat[1]": true, "Fill/Heat[3]": true}
+	shared := map[string]bool{"Crash/Cursed": true, "Empty/Heat[1]": true, "Fill/Heat[3]": true,
+		"Timer/Stopwatch": true}
 	seen := map[string]string{}
 	see := func(name, s string) {
 		if prev, dup := seen[s]; dup && !shared[prev+"/"+name] {
