@@ -19,6 +19,6 @@ RTFM / Silver                               trials 3/14 | [x] 4/6 | solved 2/110
 | needs Introduction to Graphs (Bronze) + | Complete Search with Recursion ... |
 | [ ] locked: pass Priority Queues first                                       |
 | read -> core 0/6 +* 0/3 -> trial: pass 2 of 3 blind                          |
-| ^ opens Eulerian Tours (Advanced), String Searching (Advanced)               |
+| ^ leads on to Eulerian Tours (Advanced), String Searching (Advanced)         |
 +------------------------------------------------------------------------------+
- next > Ad Hoc Problems       h/l path | j/k row | n next | enter level | q map
+ next > Ad Hoc Problems            h/l path | j/k row | n next | w warp | q map

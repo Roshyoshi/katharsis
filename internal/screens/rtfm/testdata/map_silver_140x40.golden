@@ -8,8 +8,8 @@ RTFM › Silver                                                                 
      Graphs 0/4                                          Sorting & Searching 1/6   │          │ □ locked: pass Priority Queues first       │
  ╭─  ○ ─────────  ○ ─────────  ○ ───────── ▸○ ─────────  ○ ─────────  ○ ───────────╯          │ read → core 0/6 +★ 0/3 → trial: pass 2 of  │
  │   ■            □ ↑          ■            ■ ↑          ■                                    │ 3 blind                                    │
- │   Introductio… Introductio… Flood Fill   Graph Trave… Priority Qu… Greedy Algo…            │ ↑ opens Eulerian Tours (Advanced), String  │
- │                                                                                            │ Searching (Advanced)                       │
+ │   Introductio… Introductio… Flood Fill   Graph Trave… Priority Qu… Greedy Algo…            │ ↑ leads on to Eulerian Tours (Advanced),   │
+ │                                                                                            │ String Searching (Advanced)                │
  │   Additional … Conclusion 0/1                                                              ╰────────────────────────────────────────────╯
  ╰─  ○ ─────────  ⚔
 
@@ -37,4 +37,4 @@ RTFM › Silver                                                                 
 
 
 
- next ▸ Ad Hoc Problems                 h/l path · j/k row · n next · enter level · r read · t trial · w warp · tab world · i index · q map
+ next ▸ Ad Hoc Problems                                                  h/l path · j/k row · n next · w warp · tab world · i index · q map

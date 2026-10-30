@@ -2,6 +2,7 @@ package rtfm
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -20,13 +21,16 @@ import (
 // divisions fold; / filters modules by title or id. Enter on a module opens
 // its page in place, and q or h there returns to the index, so the app
 // keeps one screen on its stack for all of learn mode; a page another
-// screen linked to (Open) goes back there on q.
+// screen linked to (Open) goes back there on q. A module the path has not
+// reached (curriculum.Atlas.Progress) is listed faint, and does not open.
 type Browser struct {
 	divs   []division
 	all    []entry // every module, for column widths and the totals
 	cur    *curriculum.Curriculum
 	caps   map[string]bool
 	passed map[string]bool // the modules whose trial is passed
+	atlas  curriculum.Atlas
+	prog   curriculum.Progress
 
 	rows     []row // what is visible: folds and the filter applied
 	sel, top int   // sel indexes rows; top is the first visible line
@@ -83,6 +87,8 @@ type row struct {
 func NewBrowser(c *curriculum.Curriculum, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Browser {
 	b := &Browser{cur: c, caps: capSet(m), passed: passedSet(m)}
 	if c != nil {
+		b.atlas = c.Atlas(judgeable)
+		b.prog = b.atlas.Progress(&m)
 		for _, d := range c.Divisions {
 			dv := division{title: d.Title}
 			for _, ch := range d.Chapters {
@@ -113,7 +119,7 @@ func NewBrowser(c *curriculum.Curriculum, m game.Meta, judgeable Judgeable, look
 // Refresh swaps in the player's Meta (a passed trial grants a capability),
 // keeping folds, filter, selection and an open module page.
 func (b *Browser) Refresh(m game.Meta) {
-	b.caps, b.passed = capSet(m), passedSet(m)
+	b.caps, b.passed, b.prog = capSet(m), passedSet(m), b.atlas.Progress(&m)
 	if b.page != nil {
 		b.page.caps, b.page.passed = b.caps, b.passed[b.page.e.mod.ID]
 	}
@@ -127,16 +133,16 @@ func (b *Browser) Typing() bool { return b.typing }
 // Open shows the page of the module with id as a link from another screen
 // (a locked exit's t, the next step after a boot or a trial): q and esc go
 // straight back there (screens.Back), while h returns to the index, its
-// row unfolded and selected. It reports whether the curriculum has the
-// module.
+// row unfolded and selected. It reports whether it opened the page: the
+// curriculum has the module, and the path has reached it; a locked one is
+// only selected.
 func (b *Browser) Open(id string) bool {
 	if !b.Select(id) {
 		return false
 	}
 	r, _ := b.selected()
-	b.open(r)
-	b.linked = true
-	return true
+	b.linked = b.open(r)
+	return b.linked
 }
 
 // Select puts the index at the module with id, its row unfolded and
@@ -263,9 +269,40 @@ func (b *Browser) refold(r row) {
 	}
 }
 
-func (b *Browser) open(r row) {
+// open opens module row r's page, unless the path has yet to reach it,
+// and reports whether it did.
+func (b *Browser) open(r row) bool {
 	e := b.entry(r)
+	if b.locked(e.mod.ID) {
+		return false
+	}
 	b.page, b.linked = newModule(b.cur, e, b.caps, b.passed[e.mod.ID]), false
+	return true
+}
+
+// locked reports whether the path has yet to reach module id's level; a
+// module off the atlas is never locked.
+func (b *Browser) locked(id string) bool {
+	lp, ok := b.prog[id]
+	return ok && !lp.Open
+}
+
+// lockNote is why the selected module does not open, "" when it does:
+// "□ locked: pass Two Pointers first".
+func (b *Browser) lockNote() string {
+	r, ok := b.selected()
+	if !ok || r.kind != modRow {
+		return ""
+	}
+	id := b.entry(r).mod.ID
+	if !b.locked(id) {
+		return ""
+	}
+	note := ui.G.CapLocked + " locked"
+	if l, ok := b.atlas.Before(id); ok {
+		note += ": pass " + l.Title + " first"
+	}
+	return note
 }
 
 func (b *Browser) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
@@ -659,6 +696,9 @@ func (b *Browser) lines(cols columns, w int) []string {
 			}
 			line = cols.cells(title, e.biome, capCell(e.trial.Capability, b.caps[e.trial.Capability]),
 				size, stars(e.mod.Frequency))
+			if b.locked(e.mod.ID) {
+				line = ui.Muted.Render(ansi.Strip(line))
+			}
 		}
 		if i == b.sel {
 			line = ui.Select.Render(ui.Fit(ansi.Strip(line), w))
@@ -722,15 +762,25 @@ func (b *Browser) bar(w, lines int) string {
 			n++
 		}
 	}
+	// A locked module takes the left of the bar for why, and enter is not
+	// offered.
+	lock := b.lockNote()
+	open := []string{"enter", "open"}
+	if lock != "" {
+		open = nil
+	}
 	switch {
 	case b.typing:
 		return ui.Spread("/"+b.input+"█", ui.Muted.Render(units.Plural(n, "match")), w)
 	case b.query != "":
 		left := "/" + b.query + ": " + units.Plural(n, "match")
-		if n == 0 {
+		switch {
+		case n == 0:
 			left = "Pattern not found: /" + b.query
+		case lock != "":
+			left = lock
 		}
-		return ui.StatusBar(w, left, "esc", "clear", "enter", "open", "q", "quit")
+		return ui.StatusBar(w, left, slices.Concat([]string{"esc", "clear"}, open, []string{"q", "quit"})...)
 	}
 	if len(b.all) == 0 {
 		return ui.StatusBar(w, "Manual page rtfm(7) (press q to quit)")
@@ -738,12 +788,16 @@ func (b *Browser) bar(w, lines int) string {
 	held, total := distinctCaps(b.all, b.caps)
 	pos := ui.PagerLine(b.top, b.h, lines)
 	caps := fmt.Sprintf("%s %d/%d held", ui.G.Cap, held, total)
-	keys := []string{"enter", "open", "tab", "fold", "/", "filter", "q", "quit"}
-	for _, left := range []string{
+	keys := slices.Concat(open, []string{"tab", "fold", "/", "filter", "q", "quit"})
+	lefts := []string{
 		"Manual page rtfm(7) " + pos + ui.G.Sep + caps,
 		"rtfm(7) " + pos + ui.G.Sep + caps,
 		pos + ui.G.Sep + caps,
-	} {
+	}
+	if lock != "" {
+		lefts = []string{lock + ui.G.Sep + pos, lock}
+	}
+	for _, left := range lefts {
 		if ui.StatusBarFits(w, left, keys...) {
 			return ui.StatusBar(w, left, keys...)
 		}

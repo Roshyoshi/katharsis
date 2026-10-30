@@ -23,9 +23,11 @@ import (
 // way a Mario map folds. A card names the level under the cursor. Enter
 // opens the level in place and q there comes back, so the app keeps one
 // screen for the map; i leaves for the man index (screens.OpenIndex),
-// which searches. The path is fixed (curriculum.Atlas.Progress): a trial
-// level opens once the trial before it is passed, and lights up behind
-// what is cleared; the selected level's prerequisites light up with it.
+// which searches. The path is fixed (curriculum.Atlas.Progress): a level
+// opens once the trial before it is passed, and lights up behind what is
+// cleared; the selected level's prerequisites light up with it. A level
+// the path has not reached is faint, and the cursor may visit it to read
+// its card, but nothing enters it: not enter, p, r or t.
 type Map struct {
 	cur       *curriculum.Curriculum
 	atlas     curriculum.Atlas
@@ -143,10 +145,16 @@ func (p *Map) Selected() string {
 // spot is the selected level.
 func (p *Map) spot() spot { return p.lv[p.world][p.at[p.world]] }
 
-func (p *Map) openLevel() {
+// openLevel opens the selected level, if the path has reached it, and
+// reports whether it did.
+func (p *Map) openLevel() bool {
 	s := p.spot()
+	if !p.prog[s.Module].Open {
+		return false
+	}
 	region := p.atlas.Worlds[p.world].Regions[s.region].Title
-	p.level = NewLevel(p.cur, s.Level, region, p.lock(s.Module), p.meta, p.judgeable, p.lookup)
+	p.level = NewLevel(p.cur, s.Level, region, p.meta, p.judgeable, p.lookup)
+	return true
 }
 
 // lock is the trial level the path waits on before module id's, by title,
@@ -247,18 +255,21 @@ func (p *Map) worldKey(k string) tea.Cmd {
 	case "enter":
 		p.openLevel()
 	case "p":
-		p.openLevel()
-		p.level.Practice()
+		if p.openLevel() {
+			p.level.Practice()
+		}
 	case "w":
 		p.warp()
 	case "r":
-		return screens.Emit(screens.OpenModule{Module: p.spot().Module})
+		if s := p.spot(); p.prog[s.Module].Open {
+			return screens.Emit(screens.OpenModule{Module: s.Module})
+		}
 	case "t":
 		// A page whose capability is earned elsewhere goes to that trial.
 		s := p.spot()
 		if l, _, ok := p.atlas.EarnedIn(s.Module); ok {
 			p.show(l.Module)
-		} else if s.Kind != curriculum.PageLevel {
+		} else if s.Kind != curriculum.PageLevel && p.prog[s.Module].Open {
 			return screens.Emit(screens.StartTrial{Module: s.Module})
 		}
 	case "i", "/":
@@ -335,8 +346,11 @@ func (p *Map) worldView(w, h int) string {
 	crumb := ui.Strong.Render("RTFM") + ui.Muted.Render(ui.G.Crumb) + wd.Title
 	out := []string{ui.Spread(crumb, tally(p.prog.Sum(wd)), w), ui.Rule(w)}
 	room := max(h-len(out)-1, 0)
-	keys := []string{"h/l", "path", "j/k", "row", "n", "next", "enter", "level", "r", "read", "t", "trial",
-		"w", "warp", "tab", "world", "i", "index", "q", "map"}
+	keys := []string{"h/l", "path", "j/k", "row", "n", "next"}
+	if p.prog[p.spot().Module].Open {
+		keys = append(keys, "enter", "level", "r", "read", "t", "trial")
+	}
+	keys = append(keys, "w", "warp", "tab", "world", "i", "index", "q", "map")
 	if p.linked {
 		keys[len(keys)-1] = "back"
 	}
@@ -493,10 +507,10 @@ func (p *Map) drawWorld(mw, room int) []string {
 	return lines
 }
 
-// glyph is a level's node: ○ ahead, ✓ passed, ▪ a page (faint until
-// opened, and never ticked: opening is not reading), ⚔ the castle; faint
-// while the path has not reached it. need marks a prerequisite of the
-// selection, in the focus colour.
+// glyph is a level's node: ○ ahead, ✓ passed, ▪ a page (never ticked:
+// opening is not reading, and the path lit past it says it was opened),
+// ⚔ the castle; faint while the path has not reached it, and only then.
+// need marks a prerequisite of the selection, in the focus colour.
 func (p *Map) glyph(l curriculum.Level, need bool) string {
 	lp := p.prog[l.Module]
 	g, tok := ui.G.Ahead, ui.FG
@@ -505,10 +519,7 @@ func (p *Map) glyph(l curriculum.Level, need bool) string {
 	}
 	switch {
 	case l.Kind == curriculum.PageLevel:
-		g, tok = ui.G.Page, ui.Muted
-		if lp.Opened {
-			tok = ui.FG
-		}
+		g = ui.G.Page
 	case lp.Passed:
 		g, tok = ui.G.Pass, ui.OK
 	case l.Kind == curriculum.CastleLevel && lp.Open:
@@ -715,7 +726,7 @@ func (p *Map) card() []string {
 
 	switch {
 	case len(l.Warps) > 0:
-		out = append(out, ui.Special.Render(ui.G.Warp)+" opens "+p.titles(l.Warps))
+		out = append(out, ui.Special.Render(ui.G.Warp)+" leads on to "+p.titles(l.Warps))
 	case len(p.from[l.Module]) > 0:
 		out = append(out, ui.Special.Render(ui.G.Warp)+" from "+p.titles(p.from[l.Module]))
 	}
@@ -883,7 +894,7 @@ func (p *Map) worldNote(i int) string {
 	}
 	switch {
 	case len(to) > 0:
-		return ui.Special.Render(ui.G.Warp) + ui.Muted.Render(" "+units.Plural(len(to), "level")+" of later worlds open from here")
+		return ui.Special.Render(ui.G.Warp) + ui.Muted.Render(" "+units.Plural(len(to), "level")+" of later worlds build on this one")
 	case p.special(i):
 		return ui.Muted.Render("the special world" + ui.G.Sep + units.Plural(free, "level") + " need nothing first")
 	}

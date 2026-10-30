@@ -29,16 +29,18 @@ import (
 //	       ╰ ● Sleepy Cow Herding ───╯
 //
 // Under the map, a card on the item under the cursor: what it is, why it
-// is open or locked, what it leads to. Then the shortcuts the level
-// opens, SEE ALSO and the module's CC BY-NC-SA attribution.
+// is open or locked, what it leads to. Then the later modules the level
+// leads on to (its warps), SEE ALSO and the module's CC BY-NC-SA
+// attribution.
 //
 // The arrows move across the map. Enter acts on the item under the
 // cursor: READ reads the module, an open or solved problem is an untimed
 // door (screens.Upsolve), the trial starts (screens.StartTrial, which the
-// app refuses while the core is unsolved). A level the path has not
-// reached yet (curriculum.Atlas.Progress) shows its map, but nothing on
-// it plays. Leaving is the host's: it takes q, esc and backspace before
-// they reach the level, as Browser does for its page.
+// app refuses while the core is unsolved). A locked problem does nothing,
+// not even o: its statement waits with it. Only a level the path has
+// reached (curriculum.Atlas.Progress) is shown at all; Map keeps the rest
+// shut. Leaving is the host's: it takes q, esc and backspace before they
+// reach the level, as Browser does for its page.
 type Level struct {
 	l      curriculum.Level
 	region string
@@ -47,9 +49,8 @@ type Level struct {
 	caps   map[string]bool
 	opened bool
 	passed bool     // its trial
-	lock   string   // the trial level to pass first, "" when open
 	prereq []string // prerequisites as display names, ✓ when passed
-	warps  string   // what the level opens a shortcut to, "" for nothing
+	warps  string   // the later modules it leads on to, "" for none
 	nodes  []node
 	lay    mapLayout
 
@@ -67,9 +68,9 @@ type node struct {
 }
 
 // NewLevel builds the level screen for l, a level of c's atlas in the
-// region titled region. lock is the trial level the path waits on before
-// l, "" when l is open (curriculum.LevelProgress.Open).
-func NewLevel(c *curriculum.Curriculum, l curriculum.Level, region, lock string, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Level {
+// region titled region that the path has reached
+// (curriculum.LevelProgress.Open).
+func NewLevel(c *curriculum.Curriculum, l curriculum.Level, region string, m game.Meta, judgeable Judgeable, lookup screens.Lookup) *Level {
 	mod, ok := curriculum.Module{}, false
 	if c != nil {
 		mod, ok = c.Module(l.Module)
@@ -82,7 +83,7 @@ func NewLevel(c *curriculum.Curriculum, l curriculum.Level, region, lock string,
 	passed := slices.Contains(m.TrialsPassed, l.Module)
 	v := &Level{
 		l: l, region: region, e: e, page: newModule(c, e, caps, passed), caps: caps,
-		opened: slices.Contains(m.Opened, l.Module), passed: passed, lock: lock,
+		opened: slices.Contains(m.Opened, l.Module), passed: passed,
 		cur: readItem,
 	}
 	for _, id := range l.Prereqs {
@@ -103,7 +104,7 @@ func NewLevel(c *curriculum.Curriculum, l curriculum.Level, region, lock string,
 	return v
 }
 
-// warpText names the modules ids opens a shortcut to, grouped by
+// warpText names the modules ids, a level's warps, grouped by
 // division: "Eulerian Tours, String Searching (Advanced)".
 func warpText(c *curriculum.Curriculum, ids []string) string {
 	var divs []string
@@ -186,16 +187,16 @@ func (v *Level) tally() (core, coreSolved, side, sideSolved int) {
 	return core, coreSolved, side, sideSolved
 }
 
-// trialOpen reports whether the trial may start: the level is on the
-// path and every core problem is solved.
+// trialOpen reports whether the trial may start: every core problem is
+// solved.
 func (v *Level) trialOpen() bool {
 	core, solved, _, _ := v.tally()
-	return v.lock == "" && solved == core
+	return solved == core
 }
 
-// playable reports whether node i may be played: the level is on the
-// path and the node open. A solved one stays playable, to try again.
-func (v *Level) playable(i int) bool { return v.lock == "" && (v.nodes[i].open || v.nodes[i].solved) }
+// playable reports whether node i may be played: it is open. A solved one
+// stays playable, to try again.
+func (v *Level) playable(i int) bool { return v.nodes[i].open || v.nodes[i].solved }
 
 // items is every item of the map, READ first.
 func (v *Level) items() []int {
@@ -219,7 +220,6 @@ func (v *Level) next() int {
 		return slices.IndexFunc(v.nodes, func(n node) bool { return n.Core == core && n.open && !n.solved })
 	}
 	switch {
-	case v.lock != "":
 	case todo(true) >= 0:
 		return todo(true)
 	case v.hasTrial() && !v.passed:
@@ -288,10 +288,14 @@ func (v *Level) Update(msg tea.Msg) (screens.Screen, tea.Cmd) {
 			return v, screens.Emit(screens.StartTrial{Module: id})
 		}
 	case "o":
-		if v.cur >= 0 && v.nodes[v.cur].url != "" {
-			return v, screens.Emit(reader.OpenURL{URL: v.nodes[v.cur].url})
+		u := v.e.mod.URL
+		if v.cur >= 0 {
+			if !v.playable(v.cur) {
+				break // a locked problem's statement waits with it
+			}
+			u = cmp.Or(v.nodes[v.cur].url, u)
 		}
-		if u := v.e.mod.URL; u != "" {
+		if u != "" {
 			return v, screens.Emit(reader.OpenURL{URL: u})
 		}
 	case "enter":
@@ -320,10 +324,6 @@ func (v *Level) View(width, height int) string {
 	crumb := strings.Join([]string{ui.Strong.Render("RTFM"), m.DivisionTitle, v.region, v.l.Title},
 		ui.Muted.Render(ui.G.Crumb))
 	head := []string{ui.Spread(crumb, capCell(v.l.Capability, v.caps[v.l.Capability]), w), ui.Rule(w), v.nameLine()}
-	if v.lock != "" {
-		head = append(head, " "+ui.Warn.Render(ui.G.CapLocked+" locked")+": pass "+v.lock+" first"+
-			ui.Muted.Render("; nothing here plays until then"))
-	}
 	var desc []string
 	for _, l := range ui.WrapN(m.Description, max(w-2, 10), 2) {
 		desc = append(desc, " "+l)
@@ -574,8 +574,6 @@ func (v *Level) card(w int) []string {
 		switch {
 		case v.passed:
 			state = ui.OK.Render(ui.G.Pass+" passed") + ui.Muted.Render(": t plays it again")
-		case v.lock != "":
-			state = "locked: pass " + v.lock + " first"
 		case solved < core:
 			state = fmt.Sprintf("opens once the core is solved: %d of %d so far", solved, core)
 		default:
@@ -601,8 +599,6 @@ func (v *Level) card(w int) []string {
 	}
 	var state string
 	switch {
-	case v.lock != "":
-		state = "locked: pass " + v.lock + " first"
 	case n.solved:
 		state = ui.OK.Render(ui.G.Pass+" solved") + ui.Muted.Render(": enter plays it again, untimed")
 	case n.open:
@@ -656,14 +652,14 @@ func (v *Level) openedWord() string {
 	return ""
 }
 
-// footLines is the level's foot: the shortcuts it opens, SEE ALSO (its
+// footLines is the level's foot: the modules it leads on to, SEE ALSO (its
 // prerequisites, ✓ for each whose trial is passed) and the module's
 // attribution, which CC BY-NC-SA requires, as the module page prints it.
 func (v *Level) footLines(w int) []string {
 	text := min(w, 80)
 	var out []string
 	if v.warps != "" {
-		out = append(out, ui.Clip(" "+ui.G.Warp+" also opens: "+v.warps, w))
+		out = append(out, ui.Clip(" "+ui.G.Warp+" leads on to: "+v.warps, w))
 	}
 	req := "nothing"
 	if len(v.prereq) > 0 {
@@ -686,9 +682,11 @@ func (v *Level) statusBar(w int) string {
 	if v.hasTrial() {
 		keys = append(keys, "t", "trial")
 	}
-	if v.cur >= 0 && v.nodes[v.cur].url != "" {
+	switch {
+	case v.cur >= 0 && !v.playable(v.cur):
+	case v.cur >= 0 && v.nodes[v.cur].url != "":
 		keys = append(keys, "o", "open problem")
-	} else if v.e.mod.URL != "" {
+	case v.e.mod.URL != "":
 		keys = append(keys, "o", "usaco.guide")
 	}
 	keys = append(keys, "q", "map")

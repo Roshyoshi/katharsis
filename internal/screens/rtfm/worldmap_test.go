@@ -250,9 +250,25 @@ func TestMapKeys(t *testing.T) {
 		t.Errorf("w again went to %s, want string-search", got)
 	}
 
-	wantMsg(t, press(t, m, "r"), screens.OpenModule{Module: "string-search"})
-	wantMsg(t, press(t, m, "t"), screens.StartTrial{Module: "string-search"})
+	// A warp only looks ahead: String Searching is far past where the path
+	// has reached, so nothing enters it, and the bar offers none of it.
+	for _, k := range []string{"enter", "p", "r", "t"} {
+		wantMsg(t, press(t, m, k), nil)
+	}
+	if v := ansi.Strip(m.View(80, 24)); !strings.Contains(v, "╭─ String Searching") ||
+		!strings.Contains(v, ui.G.CapLocked+" locked: pass ") || strings.Contains(v, "enter level") {
+		t.Errorf("enter on a locked level shows:\n%s", v)
+	}
 	wantMsg(t, press(t, m, "i"), screens.OpenIndex{Module: "string-search"})
+
+	// The first trial not passed is open: the path is at it.
+	passed := midSilver(t, a).TrialsPassed
+	at := silver[slices.IndexFunc(silver, func(l curriculum.Level) bool {
+		return l.Kind.HasTrial() && !l.Optional && !slices.Contains(passed, l.Module)
+	})].Module
+	m = mapAt(t, "silver", at)
+	wantMsg(t, press(t, m, "r"), screens.OpenModule{Module: at})
+	wantMsg(t, press(t, m, "t"), screens.StartTrial{Module: at})
 
 	m = mapAt(t, "general", "")
 	wantMsg(t, press(t, m, "t"), nil) // a page has no trial
@@ -319,11 +335,11 @@ func TestMapFlip(t *testing.T) {
 
 	m := open()
 	before := held(m)
-	wantMsg(t, press(t, m, "t"), nil) // skips; does not start the trial
+	wantMsg(t, press(t, m, "i"), nil) // skips; does not open the index
 	if got := held(m) - before; got != n {
 		t.Errorf("the switch palace filled in %d marks, want %d", got, n)
 	}
-	wantMsg(t, press(t, m, "t"), screens.StartTrial{Module: "graph-traversal"})
+	wantMsg(t, press(t, m, "i"), screens.OpenIndex{Module: "graph-traversal"})
 
 	anim.SetMotion(anim.Motion{Reduced: true})
 	defer anim.SetMotion(anim.Motion{})

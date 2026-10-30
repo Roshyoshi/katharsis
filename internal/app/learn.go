@@ -161,12 +161,17 @@ func (m *Model) judgeable(id catalog.ID) bool {
 	return ok && p.Judgeable
 }
 
-// openModule shows a module's guide page in the reader, and records it
-// opened the first time (Meta.Opened: the map's "opened", never "read").
+// openModule shows a module's guide page in the reader, once the path has
+// reached it, and records it opened the first time (Meta.Opened: the
+// map's "opened", never "read").
 func (m *Model) openModule(id string) tea.Cmd {
 	mod, ok := m.module(id)
 	if !ok {
 		return fail("no module %q", id)
+	}
+	a := m.cur.Atlas(m.judgeable)
+	if cmd := locked(a, a.Progress(&m.meta), mod); cmd != nil {
+		return cmd
 	}
 	md, err := mod.Markdown()
 	if err != nil {
@@ -214,16 +219,26 @@ func (m *Model) startTrial(id string) tea.Cmd {
 		return fail("%s has no trial: it grants no capability and lists no problem the game can judge", mod.Title)
 	}
 	a := m.cur.Atlas(m.judgeable)
-	switch p := a.Progress(&m.meta)[id]; {
-	case !p.Open:
-		if l, ok := a.Before(id); ok {
-			return fail("%s is locked: pass %s first", mod.Title, l.Title)
-		}
-		return fail("%s is locked", mod.Title)
-	case p.CoreSolved < p.Core:
+	prog := a.Progress(&m.meta)
+	if cmd := locked(a, prog, mod); cmd != nil {
+		return cmd
+	}
+	if p := prog[id]; p.CoreSolved < p.Core {
 		return fail("%s's trial opens once its core is solved: %d of %d so far", mod.Title, p.CoreSolved, p.Core)
 	}
 	return m.beginTrial(t.Spec())
+}
+
+// locked refuses mod while the path has yet to reach its level, nil once
+// it has or when it is off the atlas (the guide's pages about itself).
+func locked(a curriculum.Atlas, prog curriculum.Progress, mod curriculum.Module) tea.Cmd {
+	if p, ok := prog[mod.ID]; !ok || p.Open {
+		return nil
+	}
+	if l, ok := a.Before(mod.ID); ok {
+		return fail("%s is locked: pass %s first", mod.Title, l.Title)
+	}
+	return fail("%s is locked", mod.Title)
 }
 
 // beginTrial starts the trial t, in the Mock Turtle's words

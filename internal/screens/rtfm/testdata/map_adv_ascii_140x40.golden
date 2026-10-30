@@ -4,11 +4,11 @@ RTFM / Advanced                                                                 
      . :::::::::  = :::::::::  . ---------  = ---------  . ---------  . -----------+          | [x] CAP_GRAPH -> Routing Table | .... has  |
      [x]          [x]          [x]          [x]          [x]          [x]          |          | not appeared                               |
      Max Suffi... Wavelet Tree Counting ... Segment T... Persisten... Treaps       |          | needs Graph Traversal (Silver)             |
-                                                                                   |          | read | 3 examples from the guide | trial   |
-     Graphs 0/3                             Convexity 0/3                          |          | in BCCs and 2CCs: t goes there             |
- +-  . --------- >= :::::::::  = :::::::::  . ---------  . ---------  . -----------+          | ^ from Graph Traversal (Silver)            |
- |   [x]          [x]          [ ]          [ ]                       [x]                     +--------------------------------------------+
- |   BCCs and ... Eulerian ... Shortest ... Slope Trick  Lagrangia... LineConta...
+                                                                                   |          | [ ] locked: pass Slope Trick first         |
+     Graphs 0/3                             Convexity 0/3                          |          | read | 3 examples from the guide | trial   |
+ +-  . --------- >= :::::::::  = :::::::::  . ---------  . ---------  . -----------+          | in BCCs and 2CCs: t goes there             |
+ |   [x]          [x]          [ ]          [ ]                       [x]                     | ^ from Graph Traversal (Silver)            |
+ |   BCCs and ... Eulerian ... Shortest ... Slope Trick  Lagrangia... LineConta...            +--------------------------------------------+
  |
  |   Graphs 0/3                                                       Dynamic Programmin...
  +-  . :::::::::  = ---------  . ---------  = ---------  = ---------  = -----------+
@@ -37,4 +37,4 @@ RTFM / Advanced                                                                 
 
 
 
- next > Ad Hoc Problems                 h/l path | j/k row | n next | enter level | r read | t trial | w warp | tab world | i index | q map
+ next > Ad Hoc Problems                                                  h/l path | j/k row | n next | w warp | tab world | i index | q map

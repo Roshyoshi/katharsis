@@ -447,6 +447,7 @@ func TestOpenModuleRecordsOpened(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
 		loadGuide(h)
+		h.m.meta.TrialsPassed = []string{"bronze-conclusion"} // the path is at Prefix Sums
 		h.send(screens.OpenModule{Module: "prefix-sums"})
 		h.send(screens.Back{})
 		h.send(screens.OpenModule{Module: "fast-io"})
@@ -479,6 +480,7 @@ func TestRTFMIndexOverTheMap(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newHarness(t)
 		loadGuide(h)
+		h.m.meta.TrialsPassed = []string{"bronze-conclusion"} // the path is at Prefix Sums
 		h.send(screens.OpenLearn{Module: "prefix-sums"})
 		p, ok := h.m.top().(*rtfm.Map)
 		if !ok {
@@ -670,6 +672,24 @@ func TestTrialWaitsOnThePath(t *testing.T) {
 		h.send(screens.StartTrial{Module: "prefix-sums"})
 		if !started() {
 			t.Fatalf("with the core solved, no trial: %q", h.m.flash)
+		}
+	})
+}
+
+// A module's page waits on the path as its trial does: no reader, nothing
+// recorded opened, and the flash says what to pass.
+func TestReadWaitsOnThePath(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		loadGuide(h)
+		h.send(screens.OpenModule{Module: "prefix-sums"})
+		if len(h.m.meta.Opened) > 0 || !strings.Contains(h.m.flash, "is locked: pass Additional Practice for USACO Bronze first") {
+			t.Fatalf("before Bronze's castle: opened %v, flash %q", h.m.meta.Opened, h.m.flash)
+		}
+		h.m.meta.TrialsPassed = append(h.m.meta.TrialsPassed, "bronze-conclusion")
+		h.send(screens.OpenModule{Module: "prefix-sums"})
+		if !slices.Equal(h.m.meta.Opened, []string{"prefix-sums"}) {
+			t.Fatalf("once the path is there: opened %v, flash %q", h.m.meta.Opened, h.m.flash)
 		}
 	})
 }

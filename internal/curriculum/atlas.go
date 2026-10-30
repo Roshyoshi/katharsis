@@ -49,9 +49,10 @@ type Level struct {
 	Topic     string
 	Frequency int
 	// Prereqs are the module's prerequisites that are modules of the
-	// guide; Warps the later-world modules this one opens a shortcut to:
-	// those that skip a whole world and whose prerequisites all sit in
-	// this one's world or before it (Super Mario World's Star Road).
+	// guide; Warps the later-world modules this one leads on to: those
+	// that skip a whole world and whose prerequisites all sit in this
+	// one's world or before it (Super Mario World's Star Road). A warp is
+	// a look ahead, the map's w: the path still opens its target in turn.
 	Prereqs, Warps []string
 	// Playable are the distinct problems of the module the game can judge,
 	// for General's examples.
@@ -100,9 +101,9 @@ func (a Atlas) Level(id string) (Level, int, bool) {
 }
 
 // Before is the trial level whose pass opens module id's (Progress): the
-// last one before it in guide order, across worlds, that is not optional;
-// ok is false for the path's first and for levels off it (pages,
-// General's).
+// last one before it in guide order, across worlds, that is neither
+// optional nor a page; ok is false for the path's first and for levels off
+// it (General's).
 func (a Atlas) Before(id string) (l Level, ok bool) {
 	for _, w := range a.Worlds {
 		if w.ID == generalID {
@@ -110,13 +111,9 @@ func (a Atlas) Before(id string) (l Level, ok bool) {
 		}
 		for _, x := range w.Levels() {
 			switch {
-			case !x.Kind.HasTrial():
-				if x.Module == id {
-					return Level{}, false
-				}
 			case x.Module == id:
 				return l, ok
-			case !x.Optional:
+			case x.Kind.HasTrial() && !x.Optional:
 				l, ok = x, true
 			}
 		}
@@ -280,7 +277,8 @@ type LevelProgress struct {
 	// reaches Core.
 	Core, CoreSolved int
 	Side, SideSolved int
-	// Open is whether the player may play it (Atlas.Progress, the path).
+	// Open is whether the path has reached it (Atlas.Progress): until then
+	// it may not be read, practised or tried.
 	Open bool
 }
 
@@ -298,11 +296,12 @@ type Progress map[string]LevelProgress
 // mode"): a trial level opens once the trial before it in guide order is
 // passed, a world's first once the world before it is, through its
 // castle. An optional level (Level.Optional) opens in its turn but holds
-// nothing up: the guide says it can wait. Pages and General, the library,
-// are open and gate nothing: opening a page says nothing of reading it
-// (plan Q4), so it is no checkpoint. A level the player already made
-// progress on stays open whatever comes before it, so a save from before
-// the path was fixed loses nothing.
+// nothing up: the guide says it can wait. A page opens in its turn too and
+// gates nothing: opening a page says nothing of reading it (plan Q4), so
+// it is no checkpoint. General, the library, is open from the start. A
+// level the player already made progress on (a page: opened) stays open
+// whatever comes before it, so a save from before the path was fixed
+// loses nothing.
 func (a Atlas) Progress(m *game.Meta) Progress {
 	solved := game.Solved(m)
 	p := Progress{}
@@ -334,8 +333,10 @@ func (a Atlas) Progress(m *game.Meta) Progress {
 				}
 			}
 			switch {
-			case w.ID == generalID || !l.Kind.HasTrial():
+			case w.ID == generalID:
 				lp.Open = true
+			case !l.Kind.HasTrial():
+				lp.Open = prev || lp.Opened
 			case l.Optional:
 				lp.Open = prev || lp.started()
 			default:

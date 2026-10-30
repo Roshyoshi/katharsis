@@ -38,8 +38,13 @@ func loadCurriculum(t testing.TB) *curriculum.Curriculum {
 	return c
 }
 
+// browser is the index for a player the path has reached everywhere:
+// every trial on the fixture's path passed but Hashing's, which is
+// optional.
 func browser(t testing.TB) *rtfm.Browser {
-	return rtfm.NewBrowser(loadCurriculum(t), fixture.Meta(), fixture.Judgeable, fixture.Lookup)
+	m := fixture.Meta()
+	m.TrialsPassed = []string{"casework", "bronze-conclusion", "prefix-sums", "two-pointers", "matrix-expo"}
+	return rtfm.NewBrowser(loadCurriculum(t), m, fixture.Judgeable, fixture.Lookup)
 }
 
 func module(t testing.TB, id string) *rtfm.Module {
@@ -449,6 +454,26 @@ func TestBrowserOpenByID(t *testing.T) {
 	if b.Open("no-such-module") {
 		t.Error("Open(no-such-module) = true")
 	}
+}
+
+// A module the path has not reached is listed faint and does not open,
+// from the index or by Open; the bar says what to pass first, and offers
+// no enter. A new player has only Casework and General open.
+func TestBrowserLocked(t *testing.T) {
+	b := rtfm.NewBrowser(loadCurriculum(t), fixture.Meta(), fixture.Judgeable, fixture.Lookup)
+	wantMsg(t, press(t, b, cat([]string{"/"}, typed("two"), []string{"enter", "enter", "r"})...), nil)
+	v := plain(b.View(140, 40))
+	if !strings.Contains(v, "RTFM(7)") || !strings.Contains(v, "□ locked: pass Introduction to Prefix Sums first") ||
+		strings.Contains(v, "enter open") {
+		t.Errorf("enter on Two Pointers, locked:\n%s", v)
+	}
+	if b.Open("two-pointers") {
+		t.Error("Open(two-pointers) opened a locked page")
+	}
+	if !b.Open("casework") {
+		t.Error("Open(casework) = false; it is the path's first")
+	}
+	wantMsg(t, press(t, b, "r"), screens.OpenModule{Module: "casework"})
 }
 
 // ---- capability marks -------------------------------------------------------

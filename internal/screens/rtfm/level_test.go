@@ -48,7 +48,7 @@ const (
 // (passed) and Casework, and opens Matrix Exponentiation and Counting
 // Minimums. The player opened the page and solved what solved names, and
 // passed the trials passed names besides Prefix Sums's.
-func twoPointers(t testing.TB, lock string, passed []string, solved ...catalog.ID) *rtfm.Level {
+func twoPointers(t testing.TB, passed []string, solved ...catalog.ID) *rtfm.Level {
 	c := loadCurriculum(t)
 	l, region := atlasLevel(t, c, "two-pointers")
 	l.Prereqs = []string{"prefix-sums", "casework"}
@@ -59,20 +59,17 @@ func twoPointers(t testing.TB, lock string, passed []string, solved ...catalog.I
 	}
 	m.TrialsPassed = append([]string{"prefix-sums"}, passed...)
 	m.Opened = []string{"two-pointers"}
-	return rtfm.NewLevel(c, l, region, lock, m, fixture.Judgeable, fixture.Lookup)
+	return rtfm.NewLevel(c, l, region, m, fixture.Judgeable, fixture.Lookup)
 }
 
 // trialLevel is Two Pointers with Paired Up solved.
-func trialLevel(t testing.TB) *rtfm.Level { return twoPointers(t, "", nil, pairedUp) }
-
-// lockedLevel is Two Pointers before the path reaches it.
-func lockedLevel(t testing.TB) *rtfm.Level { return twoPointers(t, "Prefix Sums", nil) }
+func trialLevel(t testing.TB) *rtfm.Level { return twoPointers(t, nil, pairedUp) }
 
 // pageLevel is General's Fast I/O: a page, reading only.
 func pageLevel(t testing.TB) *rtfm.Level {
 	c := loadCurriculum(t)
 	l, region := atlasLevel(t, c, "fast-io")
-	return rtfm.NewLevel(c, l, region, "", fixture.Meta(), fixture.Judgeable, fixture.Lookup)
+	return rtfm.NewLevel(c, l, region, fixture.Meta(), fixture.Judgeable, fixture.Lookup)
 }
 
 // toppedLevel is Counting Minimums: a gated topic with nothing the fixture
@@ -80,7 +77,7 @@ func pageLevel(t testing.TB) *rtfm.Level {
 func toppedLevel(t testing.TB) *rtfm.Level {
 	c := loadCurriculum(t)
 	l, region := atlasLevel(t, c, "count-min")
-	return rtfm.NewLevel(c, l, region, "", fixture.Meta(), fixture.Judgeable, fixture.Lookup)
+	return rtfm.NewLevel(c, l, region, fixture.Meta(), fixture.Judgeable, fixture.Lookup)
 }
 
 // castleLevel is the Bronze conclusion, its first problem upsolved.
@@ -89,7 +86,7 @@ func castleLevel(t testing.TB) *rtfm.Level {
 	l, region := atlasLevel(t, c, "bronze-conclusion")
 	m := fixture.Meta()
 	m.Solves = []game.Solve{{Problem: l.Map.Nodes[0].ID, Upsolve: true}}
-	return rtfm.NewLevel(c, l, region, "", m, fixture.Judgeable, fixture.Lookup)
+	return rtfm.NewLevel(c, l, region, m, fixture.Judgeable, fixture.Lookup)
 }
 
 func TestLevelGoldens(t *testing.T) {
@@ -101,7 +98,6 @@ func TestLevelGoldens(t *testing.T) {
 		{"level_trial", trialLevel, nil},
 		{"level_trial_node", trialLevel, []string{"n"}},
 		{"level_trial_end", trialLevel, []string{"G"}},
-		{"level_locked", lockedLevel, []string{"l"}},
 		{"level_page", pageLevel, nil},
 		{"level_topped", toppedLevel, nil},
 		{"level_castle", castleLevel, []string{"n"}},
@@ -137,9 +133,9 @@ func TestLevelGoldens(t *testing.T) {
 // height lines, none wider than width.
 func TestLevelFits(t *testing.T) {
 	states := map[string]func(t testing.TB) *rtfm.Level{
-		"trial": trialLevel, "locked": lockedLevel, "page": pageLevel, "topped": toppedLevel, "castle": castleLevel,
+		"trial": trialLevel, "page": pageLevel, "topped": toppedLevel, "castle": castleLevel,
 		"bare": func(testing.TB) *rtfm.Level {
-			return rtfm.NewLevel(nil, curriculum.Level{Module: "x"}, "", "", game.Meta{}, nil, nil)
+			return rtfm.NewLevel(nil, curriculum.Level{Module: "x"}, "", game.Meta{}, nil, nil)
 		},
 	}
 	for name, mk := range states {
@@ -165,9 +161,8 @@ func TestLevelFits(t *testing.T) {
 }
 
 // TestLevelIntents: enter acts on the item under the cursor, which the
-// arrows move across the map; a locked problem, or anything on a locked
-// level but READ and the trial, does nothing, and a page has no trial to
-// start.
+// arrows move across the map; a locked problem does nothing, o included,
+// and a page has no trial to start.
 func TestLevelIntents(t *testing.T) {
 	tests := []struct {
 		name string
@@ -183,21 +178,20 @@ func TestLevelIntents(t *testing.T) {
 		// Diamond Collector waits on Sleepy Cow Herding.
 		{"a locked problem", trialLevel, []string{"l", "l", "enter"}, nil},
 		{"next", trialLevel, []string{"n", "enter"}, screens.Upsolve{Problem: sleepy}},
-		{"next once the core is solved", func(t testing.TB) *rtfm.Level { return twoPointers(t, "", nil, pairedUp, sleepy, diamond) },
+		{"next once the core is solved", func(t testing.TB) *rtfm.Level { return twoPointers(t, nil, pairedUp, sleepy, diamond) },
 			[]string{"n", "enter"}, screens.StartTrial{Module: "two-pointers"}},
 		{"the stretch once the trial is passed", func(t testing.TB) *rtfm.Level {
-			return twoPointers(t, "", []string{"two-pointers"}, pairedUp, sleepy, diamond)
+			return twoPointers(t, []string{"two-pointers"}, pairedUp, sleepy, diamond)
 		}, []string{"n", "enter"}, screens.Upsolve{Problem: stretchID}},
 		{"READ once nothing is left", func(t testing.TB) *rtfm.Level {
-			return twoPointers(t, "", []string{"two-pointers"}, pairedUp, sleepy, diamond, stretchID)
+			return twoPointers(t, []string{"two-pointers"}, pairedUp, sleepy, diamond, stretchID)
 		}, []string{"n", "enter"}, screens.OpenModule{Module: "two-pointers"}},
 		{"t", trialLevel, []string{"t"}, screens.StartTrial{Module: "two-pointers"}},
 		{"enter on TRIAL", trialLevel, []string{"G", "enter"}, screens.StartTrial{Module: "two-pointers"}},
-		{"a locked level's root", lockedLevel, []string{"l", "enter"}, nil},
-		{"a locked level's READ", lockedLevel, []string{"enter"}, screens.OpenModule{Module: "two-pointers"}},
 		{"castle t", castleLevel, []string{"t"}, screens.StartTrial{Module: "bronze-conclusion"}},
 		{"o on READ", trialLevel, []string{"o"}, reader.OpenURL{URL: "https://usaco.guide/silver/two-pointers"}},
 		{"o on a problem", trialLevel, []string{"l", "o"}, reader.OpenURL{URL: "http://www.usaco.org/index.php?page=viewproblem2&cpid=738"}},
+		{"o on a locked problem", trialLevel, []string{"l", "l", "o"}, nil},
 		{"topped t", toppedLevel, []string{"t"}, nil}, // a page: no trial of its own
 		{"page t", pageLevel, []string{"t"}, nil},
 		{"page G enter", pageLevel, []string{"G", "enter"}, screens.OpenModule{Module: "fast-io"}},
@@ -228,7 +222,6 @@ func TestLevelCard(t *testing.T) {
 		{"open", trialLevel, []string{"l", "j"}, []string{"open: enter starts it", "leads to Diamond Collector"}},
 		{"stretch", trialLevel, []string{"l", "l", "j"}, []string{"stretch", "open"}},
 		{"trial", trialLevel, []string{"G"}, []string{"3 unseen doors", "pass 2 of 3", "opens once the core is solved: 1 of 3 so far"}},
-		{"locked level", lockedLevel, []string{"l"}, []string{"locked: pass Prefix Sums first"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			v := tc.make(t)

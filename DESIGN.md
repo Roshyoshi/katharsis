@@ -155,13 +155,17 @@ RTFM opens on a world map (D60, `.agents/work/rtfm-map-plan.md`): an
 overworld of the guide's divisions, and in each, its modules as levels on
 one folded path in guide order. A level is a trial (○ → ✓), a page (▪,
 reading only) or the division's conclusion, its castle (⚔). The path is
-fixed, as the USACO training pages are: a trial level opens once the trial
+fixed, as the USACO training pages are: a level opens once the trial
 before it is passed, across worlds. An optional module (the guide's
-"(Optional)", or frequency 0) opens in its turn and holds nothing up;
-pages and General, the library, are always open. A level with progress on
-it stays open, so older saves lose nothing. ↑ marks the guide's three
-world-skipping prerequisite edges. i opens the man index, which searches;
-n goes to the next trial on the path.
+"(Optional)", or frequency 0) and a page open in their turn and hold
+nothing up; only General, the library, is open from the start. A level the
+path has not reached is faint, and nothing enters it: not its map, its
+page in the reader, its trial or its row in the man index. The cursor
+still visits it, and its card says what to pass first. A level with
+progress on it (a page: opened) stays open, so older saves lose nothing.
+↑ marks the guide's three world-skipping prerequisite edges: a look ahead
+(w), not a way in. i opens the man index, which searches; n goes to the
+next trial on the path.
 
 Enter opens the level's own map, designed by hand per module
 (`internal/curriculum/maps/<division>/<module>.map`): its problems on

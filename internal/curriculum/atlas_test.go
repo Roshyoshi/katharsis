@@ -233,19 +233,25 @@ func TestProgressPath(t *testing.T) {
 		t.Fatalf("%s has no core", id)
 		return ""
 	}
+	silver := []string{"casework", "bronze-conclusion", "prefix-sums", "two-pointers"}
 	for _, tc := range []struct {
 		name   string
 		passed []string
 		solved []catalog.ID
+		opened []string
 		want   string
 	}{
-		{"new", nil, nil, "fast-io casework count-min"},
-		{"casework passed", []string{"casework"}, nil, "fast-io casework bronze-conclusion count-min"},
-		{"through Silver", []string{"casework", "bronze-conclusion", "prefix-sums", "two-pointers"}, nil,
+		{"new", nil, nil, nil, "fast-io casework"},
+		{"casework passed", []string{"casework"}, nil, nil, "fast-io casework bronze-conclusion"},
+		{"through Silver", silver, nil, nil,
+			"fast-io casework bronze-conclusion prefix-sums two-pointers hashmaps matrix-expo"},
+		// count-min is a page: it opens in its turn, and gates nothing.
+		{"a page in its turn", append(slices.Clone(silver), "matrix-expo"), nil, nil,
 			"fast-io casework bronze-conclusion prefix-sums two-pointers hashmaps matrix-expo count-min"},
-		{"progress keeps a level open", nil, []catalog.ID{coreOf("two-pointers")}, "fast-io casework two-pointers count-min"},
+		{"progress keeps a level open", nil, []catalog.ID{coreOf("two-pointers")}, nil, "fast-io casework two-pointers"},
+		{"an opened page stays open", nil, nil, []string{"count-min"}, "fast-io casework count-min"},
 	} {
-		m := &game.Meta{TrialsPassed: tc.passed}
+		m := &game.Meta{TrialsPassed: tc.passed, Opened: tc.opened}
 		for _, id := range tc.solved {
 			m.Solves = append(m.Solves, game.Solve{Problem: id})
 		}
@@ -256,7 +262,8 @@ func TestProgressPath(t *testing.T) {
 	for id, want := range map[string]string{
 		"casework": "", "bronze-conclusion": "casework", "prefix-sums": "bronze-conclusion",
 		"matrix-expo": "two-pointers", // past the optional hashmaps
-		"fast-io":     "", "count-min": "",
+		"count-min":   "matrix-expo",
+		"fast-io":     "",
 	} {
 		l, ok := a.Before(id)
 		if l.Module != want || ok != (want != "") {

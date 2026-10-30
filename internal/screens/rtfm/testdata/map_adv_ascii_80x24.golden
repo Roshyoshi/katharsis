@@ -12,13 +12,13 @@ RTFM / Advanced                              trials 0/22 | [x] 2/7 | solved 0/41
      Misc. Topics                                                         |
  +:  = ---  = :::  = :::  = :::  = :::  . :::  . :::  . ---  = ---  . ----+
  :
- :   Misc. Topics
- +:  =
+
 
 +- Eulerian Tours ----------------------------------------- Advanced / Graphs -+
 | [x] CAP_GRAPH -> Routing Table | .... has not appeared                       |
 | needs Graph Traversal (Silver)                                               |
+| [ ] locked: pass Slope Trick first                                           |
 | read | 3 examples from the guide | trial in BCCs and 2CCs: t goes there      |
 | ^ from Graph Traversal (Silver)                                              |
 +------------------------------------------------------------------------------+
- next > Ad Hoc Problems       h/l path | j/k row | n next | enter level | q map
+ next > Ad Hoc Problems            h/l path | j/k row | n next | w warp | q map
