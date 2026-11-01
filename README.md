@@ -1,9 +1,5 @@
 # katharsis
-
-A roguelike where the fights are competitive-programming problems. Pick a
-door, solve it in your own vim before the timer runs out, and push through
-biomes to the boss. Crash and you lose what you didn't commit, unless you go
-back and upsolve the problem that killed you.
+deadcells but vibe coded for competitive programming (ie. somewhat useful for empl*yment🤮).
 
 Design and vocabulary: [DESIGN.md](DESIGN.md).
 
